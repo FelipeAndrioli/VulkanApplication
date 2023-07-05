@@ -42,7 +42,7 @@
 int main() {
 	
 	Engine::ApplicationSpec spec;
-	spec.Name = "RayTracer.exe";
+	spec.Name = "VulkanApplication.exe";
 	spec.Width = 800;
 	spec.Height = 600;
 

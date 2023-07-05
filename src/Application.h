@@ -20,6 +20,10 @@
 
 #include <chrono>
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
+
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
 #else
@@ -107,6 +111,7 @@ namespace Engine {
 		void Init();
 		void InitGlfw();
 		void InitVulkan();
+		void InitImGui();
 		void Shutdown();
 
 		void createVulkanInstance();
@@ -137,19 +142,13 @@ namespace Engine {
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 		void updateUniformBuffer(uint32_t currentImage);
-	
+
 		void drawFrame();
 
 	private:
 		bool m_Running;
 		GLFWwindow* m_Window;
-		//VkInstance m_VulkanInstance;
 		VkDebugUtilsMessengerEXT m_DebugMessenger;
-		//VkSurfaceKHR m_Surface;
-		//VkPhysicalDevice m_PhysicalDevice;
-		//VkDevice m_VulkanDevice;
-		//VkQueue m_GraphicsQueue;
-		//VkQueue m_PresentQueue;
 		VkSwapchainKHR m_SwapChain;
 		std::vector<VkImage> m_SwapChainImages;
 		std::vector<VkImageView> m_SwapChainImageViews;
