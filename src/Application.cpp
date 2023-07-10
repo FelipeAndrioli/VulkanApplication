@@ -120,12 +120,42 @@ namespace Engine {
 		memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 	}
 
+	void Application::recordUICommands(uint32_t imageIndex) {
+		VkCommandBufferBeginInfo cmdBufferInfo = {};
+		cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		cmdBufferInfo.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		if (vkBeginCommandBuffer(m_UICommandBuffers[imageIndex], &cmdBufferInfo) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to start recording UI command buffer!");
+		}
+
+		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = m_UIRenderPass;
+		renderPassInfo.framebuffer = m_UIFrameBuffers[imageIndex];
+		renderPassInfo.renderArea.extent.width = m_SwapChainExtent.width;
+		renderPassInfo.renderArea.extent.height = m_SwapChainExtent.height;
+		renderPassInfo.clearValueCount = 1;
+		renderPassInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(m_UICommandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), m_UICommandBuffers[imageIndex]);
+		vkCmdEndRenderPass(m_UICommandBuffers[imageIndex]);
+
+		if (vkEndCommandBuffer(m_UICommandBuffers[imageIndex]) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to record UI command buffers!");
+		}
+	}
+
 	void Application::drawFrame() {
 
 		vkWaitForFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
 
 		uint32_t imageIndex;
-		VkResult result = vkAcquireNextImageKHR(g_VulkanDevice, m_SwapChain, UINT64_MAX, m_ImageAvailableSemaphores[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
+		VkResult result = vkAcquireNextImageKHR(g_VulkanDevice, m_SwapChain, UINT64_MAX, 
+			m_ImageAvailableSemaphores[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			recreateSwapChain();
@@ -141,17 +171,21 @@ namespace Engine {
 		vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
 		recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
 
+		recordUICommands(imageIndex);
+
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 		VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame]};
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
+		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers[imageIndex], m_UICommandBuffers[imageIndex] };
+
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = waitSemaphores;
 		submitInfo.pWaitDstStageMask = waitStages;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &m_CommandBuffers[m_CurrentFrame];
+		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
+		submitInfo.pCommandBuffers = cmdBuffers.data();
 
 		VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
 		submitInfo.signalSemaphoreCount = 1;
@@ -288,6 +322,25 @@ namespace Engine {
 		wd->SemaphoreIndex = (wd->SemaphoreIndex + 1) % wd->ImageCount;
 	}
 
+	void Application::drawUI() {
+		static int value = 0;
+
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		ImGui::Begin("Renderer Options");
+		if (ImGui::Button("Button")) {
+			value++;
+		}
+
+		ImGui::Text("%d", value);
+
+		ImGui::End();
+
+		ImGui::Render();
+	}
+
 	void Application::Run() {
 		m_Running = true;
 
@@ -295,24 +348,8 @@ namespace Engine {
 
 		while (!glfwWindowShouldClose(m_Window) && m_Running) {
 			glfwPollEvents();
+			drawUI();
 			drawFrame();
-
-			ImGui_ImplVulkan_NewFrame();
-			ImGui_ImplGlfw_NewFrame();
-			ImGui::NewFrame();
-			ImGui::Begin("Another window");
-			ImGui::Text("Felipe");
-			ImGui::End();
-
-			ImGui::Render();
-			ImDrawData* draw_data = ImGui::GetDrawData();
-
-			const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
-
-			if (!is_minimized) {
-				FrameRender(wd, draw_data);
-				FramePresent(wd);
-			}
 		}
 
 		vkDeviceWaitIdle(g_VulkanDevice);
@@ -422,23 +459,186 @@ namespace Engine {
 		ImGui_ImplVulkanH_CreateOrResizeWindow(g_VulkanInstance, g_PhysicalDevice, g_VulkanDevice, wd, indices.graphicsFamily.value(), nullptr, width, height, g_MinImageCount);
 	}
 
+	void Application::createUIDescriptorPool() {
+		VkDescriptorPoolSize pool_sizes[] = {
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+		};
+
+		VkDescriptorPoolCreateInfo pool_info = {};
+		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+		pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
+		pool_info.poolSizeCount = static_cast<uint32_t>(IM_ARRAYSIZE(pool_sizes));
+		pool_info.pPoolSizes = pool_sizes;
+
+		if (vkCreateDescriptorPool(g_VulkanDevice, &pool_info, nullptr, &m_UIDescriptorPool) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create UI descriptor pool!");
+		}
+	}
+
+	void Application::createUIRenderPass() {
+		VkAttachmentDescription attachDescription = {};
+		attachDescription.format = m_SwapChainImageFormat;
+		attachDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+		attachDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+		attachDescription.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		attachDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		attachDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		attachDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		attachDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+		VkAttachmentReference attachReference = {};
+		attachReference.attachment = 0;
+		attachReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass = {};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &attachReference;
+
+		// create a subpass dependency to sync main and UI render pass
+		VkSubpassDependency subpassDependency = {};
+		subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		subpassDependency.dstSubpass = 0;
+		subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		subpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		subpassDependency.dstStageMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+		VkRenderPassCreateInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = 1;
+		renderPassInfo.pAttachments = &attachDescription;
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpass;
+		renderPassInfo.dependencyCount = 1;
+		renderPassInfo.pDependencies = &subpassDependency;
+
+		if (vkCreateRenderPass(g_VulkanDevice, &renderPassInfo, nullptr, &m_UIRenderPass) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create UI Render pass!");
+		}
+	}
+
+	void Application::createUICommandPool() {
+		QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
+		
+		VkCommandPoolCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		info.queueFamilyIndex = indices.graphicsFamily.value();
+		info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+		if (vkCreateCommandPool(g_VulkanDevice, &info, nullptr, &m_UICommandPool) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create UI Command pool!");
+		}
+	}
+
+	void Application::createUICommandBuffers() {
+		m_UICommandBuffers.resize(m_SwapChainImageViews.size());
+		//m_UICommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = m_UICommandPool;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandBufferCount = static_cast<uint32_t>(m_UICommandBuffers.size());
+
+		if (vkAllocateCommandBuffers(g_VulkanDevice, &allocInfo, m_UICommandBuffers.data()) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create UI Command buffers!");
+		}
+	}
+
+	void Application::createUIFrameBuffers() {
+		m_UIFrameBuffers.resize(m_SwapChainImages.size());
+
+		VkImageView attachment[1];
+		VkFramebufferCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		info.renderPass = m_UIRenderPass;
+		info.attachmentCount = 1;
+		info.pAttachments = attachment;
+		info.width = m_SwapChainExtent.width;
+		info.height = m_SwapChainExtent.height;
+		info.layers = 1;
+
+		for (uint32_t i = 0; i < m_SwapChainImages.size(); i++) {
+			attachment[0] = m_SwapChainImageViews[i];
+
+			if (vkCreateFramebuffer(g_VulkanDevice, &info, nullptr, &m_UIFrameBuffers[i]) != VK_SUCCESS) {
+				throw std::runtime_error("Failed to create UI Frame buffers!");
+			}
+		}
+	}
+
+	VkCommandBuffer beginSingleTimeCommands(VkCommandPool cmdPool) {
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool = cmdPool;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer commandBuffer = {};
+		vkAllocateCommandBuffers(g_VulkanDevice, &allocInfo, &commandBuffer);
+
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create one time command buffer!");
+		}
+
+		return commandBuffer;
+	}
+
+	void endSingleTimeCommands(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) {
+		vkEndCommandBuffer(cmdBuffer);
+
+		VkSubmitInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		info.commandBufferCount = 1;
+		info.pCommandBuffers = &cmdBuffer;
+
+		vkQueueSubmit(g_GraphicsQueue, 1, &info, VK_NULL_HANDLE);
+		vkQueueWaitIdle(g_GraphicsQueue);
+
+		vkFreeCommandBuffers(g_VulkanDevice, cmdPool, 1, &cmdBuffer);
+	}
+
 	void Application::InitImGui() {
 
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGui::StyleColorsDark();
+	
+		createUIDescriptorPool();
+		createUIRenderPass();
+		createUICommandPool();
+		createUICommandBuffers();
+		createUIFrameBuffers();
+
+		/*
 		int w;
 		int h;
 
 		glfwGetFramebufferSize(m_Window, &w, &h);
 		ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
 		setupVulkanWindow(wd, g_Surface, w, h);
+		*/
 
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
 		ImGuiIO& io = ImGui::GetIO();
 		(void)io;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
-
-		ImGui::StyleColorsDark();
 
 		QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
 
@@ -450,16 +650,24 @@ namespace Engine {
 		init_info.QueueFamily = indices.graphicsFamily.value();
 		init_info.Queue = g_GraphicsQueue;
 		init_info.PipelineCache = g_PipelineCache;
-		init_info.DescriptorPool = m_DescriptorPool;
-		init_info.Subpass = 0;
+		init_info.DescriptorPool = m_UIDescriptorPool;
+		//init_info.Subpass = 0;
 		init_info.MinImageCount = g_MinImageCount;
-		init_info.ImageCount = wd->ImageCount;
+		init_info.ImageCount = g_MinImageCount;
+		//init_info.ImageCount = wd->ImageCount;
 		init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 		init_info.Allocator = nullptr;
 		init_info.CheckVkResultFn = check_vk_result;
-		ImGui_ImplVulkan_Init(&init_info, wd->RenderPass);
+		//ImGui_ImplVulkan_Init(&init_info, wd->RenderPass);
+		ImGui_ImplVulkan_Init(&init_info, m_UIRenderPass);
+
+		VkCommandBuffer commandBuffer = beginSingleTimeCommands(m_UICommandPool);
+		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+		endSingleTimeCommands(commandBuffer, m_UICommandPool);
+		ImGui_ImplVulkan_DestroyFontUploadObjects();
 
 		// no font uploaded, imgui will use a default font
+		/*
 		VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
 		VkCommandBuffer command_buffer = wd->Frames[wd->FrameIndex].CommandBuffer;
 		VkResult err = vkResetCommandPool(g_VulkanDevice, command_pool, 0);
@@ -488,6 +696,7 @@ namespace Engine {
 		check_vk_result(err);
 
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
+		*/
 	}
 
 	std::vector<const char*> getRequiredExtensions() {
@@ -922,7 +1131,8 @@ namespace Engine {
 		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		//colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		VkAttachmentReference colorAttachmentRef{};
 		colorAttachmentRef.attachment = 0;
@@ -1378,7 +1588,8 @@ namespace Engine {
 	}
 
 	void Application::createCommandBuffers() {
-		m_CommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		//m_CommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		m_CommandBuffers.resize(m_SwapChainFramebuffers.size());
 
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1449,6 +1660,12 @@ namespace Engine {
 		createSwapChain();
 		createImageViews();
 		createFramebuffers();
+		createCommandBuffers();
+
+		// UI
+		ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
+		createUICommandBuffers();
+		createUIFrameBuffers();
 	}
 
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, 
@@ -1463,9 +1680,17 @@ namespace Engine {
 
 	void Application::Shutdown() {
 
+		// UI
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
+
+		for (auto uiFrameBuffer : m_UIFrameBuffers) {
+			vkDestroyFramebuffer(g_VulkanDevice, uiFrameBuffer, nullptr);
+		}
+
+		vkFreeCommandBuffers(g_VulkanDevice, m_UICommandPool, 
+			static_cast<uint32_t>(m_UICommandBuffers.size()), m_UICommandBuffers.data());
 
 		cleanupSwapChain();
 

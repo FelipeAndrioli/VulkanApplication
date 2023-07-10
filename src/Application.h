@@ -144,6 +144,16 @@ namespace Engine {
 		void updateUniformBuffer(uint32_t currentImage);
 
 		void drawFrame();
+	
+		// UI
+		void setupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface, int width, int height);
+		void createUIDescriptorPool();
+		void createUIRenderPass();
+		void createUICommandPool();
+		void createUICommandBuffers();
+		void createUIFrameBuffers();
+		void drawUI();
+		void recordUICommands(uint32_t imageIndex);
 
 	private:
 		bool m_Running;
@@ -175,5 +185,12 @@ namespace Engine {
 		std::vector<void*> m_UniformBuffersMapped;
 		VkDescriptorPool m_DescriptorPool;
 		std::vector<VkDescriptorSet> m_DescriptorSets;
+
+		// UI
+		VkDescriptorPool m_UIDescriptorPool;
+		VkRenderPass m_UIRenderPass;
+		VkCommandPool m_UICommandPool;
+		std::vector<VkCommandBuffer> m_UICommandBuffers;
+		std::vector<VkFramebuffer> m_UIFrameBuffers;
 	};
 }
