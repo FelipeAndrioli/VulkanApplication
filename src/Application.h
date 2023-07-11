@@ -153,7 +153,7 @@ namespace Engine {
 		void createUICommandBuffers();
 		void createUIFrameBuffers();
 		void drawUI();
-		void recordUICommands(uint32_t imageIndex);
+		void recordUICommands(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 	private:
 		bool m_Running;

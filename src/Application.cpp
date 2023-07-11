@@ -120,12 +120,12 @@ namespace Engine {
 		memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 	}
 
-	void Application::recordUICommands(uint32_t imageIndex) {
+	void Application::recordUICommands(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
 		VkCommandBufferBeginInfo cmdBufferInfo = {};
 		cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		cmdBufferInfo.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-		if (vkBeginCommandBuffer(m_UICommandBuffers[imageIndex], &cmdBufferInfo) != VK_SUCCESS) {
+		if (vkBeginCommandBuffer(commandBuffer, &cmdBufferInfo) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to start recording UI command buffer!");
 		}
 
@@ -140,11 +140,11 @@ namespace Engine {
 		renderPassInfo.clearValueCount = 1;
 		renderPassInfo.pClearValues = &clearColor;
 
-		vkCmdBeginRenderPass(m_UICommandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), m_UICommandBuffers[imageIndex]);
-		vkCmdEndRenderPass(m_UICommandBuffers[imageIndex]);
+		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+		vkCmdEndRenderPass(commandBuffer);
 
-		if (vkEndCommandBuffer(m_UICommandBuffers[imageIndex]) != VK_SUCCESS) {
+		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to record UI command buffers!");
 		}
 	}
@@ -171,7 +171,7 @@ namespace Engine {
 		vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
 		recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
 
-		recordUICommands(imageIndex);
+		recordUICommands(m_UICommandBuffers[m_CurrentFrame], imageIndex);
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -179,7 +179,7 @@ namespace Engine {
 		VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame]};
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers[imageIndex], m_UICommandBuffers[imageIndex] };
+		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers[m_CurrentFrame], m_UICommandBuffers[m_CurrentFrame] };
 
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = waitSemaphores;
@@ -226,6 +226,7 @@ namespace Engine {
 		if (err < 0) throw std::runtime_error("Something went wrong");
 	}
 
+	/*
 	void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data) {
 		VkResult err;
 
@@ -298,6 +299,7 @@ namespace Engine {
 			check_vk_result(err);
 		}
 	}
+	*/
 
 	void FramePresent(ImGui_ImplVulkanH_Window* wd) {
 		if (g_FramebufferResized) return;
@@ -323,28 +325,17 @@ namespace Engine {
 	}
 
 	void Application::drawUI() {
-		static int value = 0;
-
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-
-		ImGui::Begin("Renderer Options");
-		if (ImGui::Button("Button")) {
-			value++;
-		}
-
-		ImGui::Text("%d", value);
-
-		ImGui::End();
-
+		ImGui::ShowDemoWindow();
 		ImGui::Render();
 	}
 
 	void Application::Run() {
 		m_Running = true;
 
-		ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
+		//ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
 
 		while (!glfwWindowShouldClose(m_Window) && m_Running) {
 			glfwPollEvents();
@@ -543,8 +534,8 @@ namespace Engine {
 	}
 
 	void Application::createUICommandBuffers() {
-		m_UICommandBuffers.resize(m_SwapChainImageViews.size());
-		//m_UICommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		//m_UICommandBuffers.resize(m_SwapChainImageViews.size());
+		m_UICommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -558,7 +549,7 @@ namespace Engine {
 	}
 
 	void Application::createUIFrameBuffers() {
-		m_UIFrameBuffers.resize(m_SwapChainImages.size());
+		m_UIFrameBuffers.resize(m_SwapChainImageViews.size());
 
 		VkImageView attachment[1];
 		VkFramebufferCreateInfo info = {};
@@ -570,7 +561,7 @@ namespace Engine {
 		info.height = m_SwapChainExtent.height;
 		info.layers = 1;
 
-		for (uint32_t i = 0; i < m_SwapChainImages.size(); i++) {
+		for (uint32_t i = 0; i < m_SwapChainImageViews.size(); i++) {
 			attachment[0] = m_SwapChainImageViews[i];
 
 			if (vkCreateFramebuffer(g_VulkanDevice, &info, nullptr, &m_UIFrameBuffers[i]) != VK_SUCCESS) {
@@ -1588,8 +1579,8 @@ namespace Engine {
 	}
 
 	void Application::createCommandBuffers() {
-		//m_CommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-		m_CommandBuffers.resize(m_SwapChainFramebuffers.size());
+		m_CommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		//m_CommandBuffers.resize(m_SwapChainFramebuffers.size());
 
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
