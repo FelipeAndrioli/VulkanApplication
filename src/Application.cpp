@@ -15,7 +15,7 @@ static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
 static int g_MinImageCount = 2;
 
 // Temporary
-const std::vector<Engine::Vertex> vertices = {
+std::vector<Engine::Vertex> vertices = {
 	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
 	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
 	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
@@ -69,7 +69,7 @@ namespace Engine {
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
 	
-		VkBuffer vertexBuffers[] = { m_VertexBuffer };
+		VkBuffer vertexBuffers[] = { m_VertexBuffers[m_CurrentFrame]};
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, m_IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
@@ -167,6 +167,7 @@ namespace Engine {
 		vkResetFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame]);
 
 		updateUniformBuffer(m_CurrentFrame);
+		updateVertexBuffer(m_CurrentFrame);
 		
 		vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
 		recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
@@ -328,7 +329,19 @@ namespace Engine {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		ImGui::ShowDemoWindow();
+		//ImGui::ShowDemoWindow();
+		ImGui::SliderFloat("R0", &vertices[0].color.r, 0.0f, 1.0f);
+		ImGui::SliderFloat("G0", &vertices[0].color.g, 0.0f, 1.0f);
+		ImGui::SliderFloat("B0", &vertices[0].color.b, 0.0f, 1.0f);
+		ImGui::SliderFloat("R1", &vertices[1].color.r, 0.0f, 1.0f);
+		ImGui::SliderFloat("G1", &vertices[1].color.g, 0.0f, 1.0f);
+		ImGui::SliderFloat("B1", &vertices[1].color.b, 0.0f, 1.0f);
+		ImGui::SliderFloat("R2", &vertices[2].color.r, 0.0f, 1.0f);
+		ImGui::SliderFloat("G2", &vertices[2].color.g, 0.0f, 1.0f);
+		ImGui::SliderFloat("B2", &vertices[2].color.b, 0.0f, 1.0f);
+		ImGui::SliderFloat("R3", &vertices[3].color.r, 0.0f, 1.0f);
+		ImGui::SliderFloat("G3", &vertices[3].color.g, 0.0f, 1.0f);
+		ImGui::SliderFloat("B3", &vertices[3].color.b, 0.0f, 1.0f);
 		ImGui::Render();
 	}
 
@@ -1461,11 +1474,23 @@ namespace Engine {
 	}
 
 	void Application::createVertexBuffer() {
+		m_VertexBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		m_VertexBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+
 		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_VertexBuffers[i], m_VertexBuffersMemory[i]);
+		}
+	}
+
+	void Application::updateVertexBuffer(uint32_t currentImage) {
+		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+		
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingBufferMemory;
-
+		
 		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
 			stagingBuffer, stagingBufferMemory);
@@ -1475,13 +1500,11 @@ namespace Engine {
 		memcpy(data, vertices.data(), (size_t)bufferSize);
 		vkUnmapMemory(g_VulkanDevice, stagingBufferMemory);
 		
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_VertexBuffer, m_VertexBufferMemory);
-
-		copyBuffer(stagingBuffer, m_VertexBuffer, bufferSize);
+		copyBuffer(stagingBuffer, m_VertexBuffers[currentImage], bufferSize);
 
 		vkDestroyBuffer(g_VulkanDevice, stagingBuffer, nullptr);
 		vkFreeMemory(g_VulkanDevice, stagingBufferMemory, nullptr);
+
 	}
 
 	void Application::createIndexBuffer() {
@@ -1697,8 +1720,10 @@ namespace Engine {
 		vkDestroyBuffer(g_VulkanDevice, m_IndexBuffer, nullptr);
 		vkFreeMemory(g_VulkanDevice, m_IndexBufferMemory, nullptr);
 
-		vkDestroyBuffer(g_VulkanDevice, m_VertexBuffer, nullptr);
-		vkFreeMemory(g_VulkanDevice, m_VertexBufferMemory, nullptr);
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			vkDestroyBuffer(g_VulkanDevice, m_VertexBuffers[i], nullptr);
+			vkFreeMemory(g_VulkanDevice, m_VertexBuffersMemory[i], nullptr);
+		}
 
 		vkDestroyPipeline(g_VulkanDevice, m_GraphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(g_VulkanDevice, m_PipelineLayout, nullptr);

@@ -142,6 +142,7 @@ namespace Engine {
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 		void updateUniformBuffer(uint32_t currentImage);
+		void updateVertexBuffer(uint32_t currentImage);
 
 		void drawFrame();
 	
@@ -176,8 +177,8 @@ namespace Engine {
 		std::vector<VkFence> m_InFlightFences;
 		ApplicationSpec m_Spec;
 		uint32_t m_CurrentFrame = 0;
-		VkBuffer m_VertexBuffer;
-		VkDeviceMemory m_VertexBufferMemory;
+		std::vector<VkBuffer> m_VertexBuffers;
+		std::vector<VkDeviceMemory> m_VertexBuffersMemory;
 		VkBuffer m_IndexBuffer;
 		VkDeviceMemory m_IndexBufferMemory;
 		std::vector<VkBuffer> m_UniformBuffers;
