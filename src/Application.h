@@ -20,9 +20,8 @@
 
 #include <chrono>
 
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan.h"
+#include "Common.h"
+#include "UI.h"
 
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
@@ -30,74 +29,11 @@ const bool c_EnableValidationLayers = true;
 const bool c_EnableValidationLayers = false;
 #endif
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
-
 const std::vector<const char*> c_ValidationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
 
 namespace Engine {
-
-	const std::vector<const char*> c_DeviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME
-	};
-
-	struct ApplicationSpec {
-		std::string Name = "Application.exe";
-		uint32_t Width = 1600;
-		uint32_t Height = 900;
-	};
-
-	struct QueueFamilyIndices {
-		std::optional<uint32_t>graphicsFamily;
-		std::optional<uint32_t>presentFamily;
-
-		bool isComplete() {
-			return graphicsFamily.has_value() && presentFamily.has_value();
-		}
-	};
-
-	struct SwapChainSupportDetails {
-		VkSurfaceCapabilitiesKHR capabilities;
-		std::vector<VkSurfaceFormatKHR> formats;
-		std::vector<VkPresentModeKHR> presentModes;
-	};
-
-	struct Vertex {
-		// temporary, will move it to a better place later
-		glm::vec2 pos;
-		glm::vec3 color;
-
-		static VkVertexInputBindingDescription getBindingDescription() {
-			VkVertexInputBindingDescription bindingDescription{};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(Vertex);
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-			return bindingDescription;
-		}
-
-		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-			attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-			return attributeDescriptions;
-		}
-	};
-
-	struct UniformBufferObject {
-		alignas(16) glm::mat4 model;
-		alignas(16) glm::mat4 view;
-		alignas(16) glm::mat4 proj;
-	};
 
 	class Application {
 	public:
@@ -145,17 +81,7 @@ namespace Engine {
 		void updateVertexBuffer(uint32_t currentImage);
 
 		void drawFrame();
-	
-		// UI
-		void setupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface, int width, int height);
-		void createUIDescriptorPool();
-		void createUIRenderPass();
-		void createUICommandPool();
-		void createUICommandBuffers();
-		void createUIFrameBuffers();
-		void drawUI();
-		void recordUICommands(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-
+		
 	private:
 		bool m_Running;
 		GLFWwindow* m_Window;
@@ -186,12 +112,5 @@ namespace Engine {
 		std::vector<void*> m_UniformBuffersMapped;
 		VkDescriptorPool m_DescriptorPool;
 		std::vector<VkDescriptorSet> m_DescriptorSets;
-
-		// UI
-		VkDescriptorPool m_UIDescriptorPool;
-		VkRenderPass m_UIRenderPass;
-		VkCommandPool m_UICommandPool;
-		std::vector<VkCommandBuffer> m_UICommandBuffers;
-		std::vector<VkFramebuffer> m_UIFrameBuffers;
 	};
 }

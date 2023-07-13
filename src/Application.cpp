@@ -6,35 +6,14 @@ static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
 static VkDevice g_VulkanDevice = VK_NULL_HANDLE;
 static VkQueue g_GraphicsQueue = VK_NULL_HANDLE;
 static VkQueue g_PresentQueue = VK_NULL_HANDLE;
-//static VkDebugUtilsMessengerEXT g_DebugMessenger;
 static VkSurfaceKHR g_Surface = VK_NULL_HANDLE;
 static bool g_FramebufferResized = false;
 
-static ImGui_ImplVulkanH_Window g_MainWindowData;
 static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
 static int g_MinImageCount = 2;
 
-// Temporary
-std::vector<Engine::Vertex> vertices = {
-	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-};
-
-/*
-const std::vector<Engine::Vertex> vertices = {
-	{{-1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}},
-	{{1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
-	{{1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-	{{-1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}}
-};
-*/
-
-const std::vector<uint16_t> indices = {
-	0, 1, 2, 2, 3, 0
-};
-
+static Engine::QueueFamilyIndices g_QueueFamilyIndices;
+static Engine::UI g_UI;
 
 namespace Engine {
 	Application::Application(const ApplicationSpec &spec) : m_Spec(spec) {
@@ -108,8 +87,10 @@ namespace Engine {
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 		UniformBufferObject ubo{};
-		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = glm::lookAt(glm::vec3(0.0f, 1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.proj = glm::perspective(glm::radians(45.0f), m_SwapChainExtent.width / (float)m_SwapChainExtent.height, 0.1f, 10.0f);
 
 		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way
@@ -118,35 +99,6 @@ namespace Engine {
 		ubo.proj[1][1] *= -1;
 
 		memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-	}
-
-	void Application::recordUICommands(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-		VkCommandBufferBeginInfo cmdBufferInfo = {};
-		cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		cmdBufferInfo.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		if (vkBeginCommandBuffer(commandBuffer, &cmdBufferInfo) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to start recording UI command buffer!");
-		}
-
-		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = m_UIRenderPass;
-		renderPassInfo.framebuffer = m_UIFrameBuffers[imageIndex];
-		renderPassInfo.renderArea.extent.width = m_SwapChainExtent.width;
-		renderPassInfo.renderArea.extent.height = m_SwapChainExtent.height;
-		renderPassInfo.clearValueCount = 1;
-		renderPassInfo.pClearValues = &clearColor;
-
-		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
-		vkCmdEndRenderPass(commandBuffer);
-
-		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to record UI command buffers!");
-		}
 	}
 
 	void Application::drawFrame() {
@@ -172,7 +124,7 @@ namespace Engine {
 		vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
 		recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
 
-		recordUICommands(m_UICommandBuffers[m_CurrentFrame], imageIndex);
+		g_UI.RecordCommands(m_SwapChainExtent, m_CurrentFrame, imageIndex);
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -180,7 +132,7 @@ namespace Engine {
 		VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame]};
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers[m_CurrentFrame], m_UICommandBuffers[m_CurrentFrame] };
+		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers[m_CurrentFrame], g_UI.GetCommandBuffer(m_CurrentFrame) };
 
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = waitSemaphores;
@@ -221,130 +173,6 @@ namespace Engine {
 		m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 	
-	static void check_vk_result(VkResult err) {
-		if (err == 0) return;
-		fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
-		if (err < 0) throw std::runtime_error("Something went wrong");
-	}
-
-	/*
-	void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data) {
-		VkResult err;
-
-		VkSemaphore image_acquired_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].ImageAcquiredSemaphore;
-		VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
-
-		err = vkAcquireNextImageKHR(g_VulkanDevice, wd->Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &wd->FrameIndex);
-		
-		if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR) {
-			g_FramebufferResized = true;
-			return;
-		}
-
-		check_vk_result(err);
-
-		ImGui_ImplVulkanH_Frame* fd = &wd->Frames[wd->FrameIndex];
-
-		{
-			err = vkWaitForFences(g_VulkanDevice, 1, &fd->Fence, VK_TRUE, UINT64_MAX);
-			check_vk_result(err);
-
-			err = vkResetFences(g_VulkanDevice, 1, &fd->Fence);
-			check_vk_result(err);
-		}
-
-		{
-			err = vkResetCommandPool(g_VulkanDevice, fd->CommandPool, 0);
-			check_vk_result(err);
-			
-			VkCommandBufferBeginInfo info = {};
-			info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-			err = vkBeginCommandBuffer(fd->CommandBuffer, &info);
-			check_vk_result(err);
-		}
-
-		{
-			VkRenderPassBeginInfo info = {};
-			info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			info.renderPass = wd->RenderPass;
-			info.framebuffer = fd->Framebuffer;
-			info.renderArea.extent.width = wd->Width;
-			info.renderArea.extent.height = wd->Height;
-			info.clearValueCount = 1;
-			info.pClearValues = &wd->ClearValue;
-			vkCmdBeginRenderPass(fd->CommandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
-		}
-
-		// record imgui primitives into command buffer
-		ImGui_ImplVulkan_RenderDrawData(draw_data, fd->CommandBuffer);
-
-		// submit command buffer
-		vkCmdEndRenderPass(fd->CommandBuffer);
-
-		{
-			VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			VkSubmitInfo info = {};
-			info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-			info.waitSemaphoreCount = 1;
-			info.pWaitSemaphores = &image_acquired_semaphore;
-			info.commandBufferCount = 1;
-			info.pWaitDstStageMask = &wait_stage;
-			info.pCommandBuffers = &fd->CommandBuffer;
-			info.signalSemaphoreCount = 1;
-			info.pSignalSemaphores = &render_complete_semaphore;
-
-			err = vkEndCommandBuffer(fd->CommandBuffer);
-			check_vk_result(err);
-			err = vkQueueSubmit(g_GraphicsQueue, 1, &info, fd->Fence);
-			check_vk_result(err);
-		}
-	}
-	*/
-
-	void FramePresent(ImGui_ImplVulkanH_Window* wd) {
-		if (g_FramebufferResized) return;
-
-		VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->FrameIndex].RenderCompleteSemaphore;
-		VkPresentInfoKHR info = {};
-		info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		info.waitSemaphoreCount = 1;
-		info.pWaitSemaphores = &render_complete_semaphore;
-		info.swapchainCount = 1;
-		info.pSwapchains = &wd->Swapchain;
-		info.pImageIndices = &wd->FrameIndex;
-
-		VkResult err = vkQueuePresentKHR(g_GraphicsQueue, &info);
-		
-		if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR) {
-			g_FramebufferResized = true;
-			return;
-		}
-
-		check_vk_result(err);
-		wd->SemaphoreIndex = (wd->SemaphoreIndex + 1) % wd->ImageCount;
-	}
-
-	void Application::drawUI() {
-		ImGui_ImplVulkan_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-		//ImGui::ShowDemoWindow();
-		ImGui::SliderFloat("R0", &vertices[0].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("G0", &vertices[0].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("B0", &vertices[0].color.b, 0.0f, 1.0f);
-		ImGui::SliderFloat("R1", &vertices[1].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("G1", &vertices[1].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("B1", &vertices[1].color.b, 0.0f, 1.0f);
-		ImGui::SliderFloat("R2", &vertices[2].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("G2", &vertices[2].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("B2", &vertices[2].color.b, 0.0f, 1.0f);
-		ImGui::SliderFloat("R3", &vertices[3].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("G3", &vertices[3].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("B3", &vertices[3].color.b, 0.0f, 1.0f);
-		ImGui::Render();
-	}
-
 	void Application::Run() {
 		m_Running = true;
 
@@ -352,7 +180,7 @@ namespace Engine {
 
 		while (!glfwWindowShouldClose(m_Window) && m_Running) {
 			glfwPollEvents();
-			drawUI();
+			g_UI.Draw();
 			drawFrame();
 		}
 
@@ -366,7 +194,9 @@ namespace Engine {
 	void Application::Init() {
 		InitGlfw();
 		InitVulkan();
-		InitImGui();
+		g_UI.Init(*m_Window, g_VulkanInstance, g_PhysicalDevice, g_VulkanDevice, 
+			g_QueueFamilyIndices, g_GraphicsQueue, m_SwapChainExtent, m_SwapChainImageViews,
+			m_SwapChainImageFormat, g_MinImageCount);
 	}
 
 	static void framebufferResizeCallback(GLFWwindow *window, int width, int height) {
@@ -437,271 +267,10 @@ namespace Engine {
 		createDescriptorSets();
 		createCommandBuffers();
 		createSyncObjects();
+
+		g_QueueFamilyIndices = findQueueFamilies(g_PhysicalDevice);
 	}
 
-	void setupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface, int width, int height) {
-		wd->Surface = surface;
-		VkBool32 res;
-
-		QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
-		vkGetPhysicalDeviceSurfaceSupportKHR(g_PhysicalDevice, indices.graphicsFamily.value(), wd->Surface, &res);
-
-		if (res != VK_TRUE) {
-			fprintf(stderr, "Error no WSI support on physical device\n");
-			throw std::runtime_error("Error no WSI support on physical device");
-		}
-
-		const VkFormat requestSurfaceImageFormat[] = { VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM };
-		const VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-		wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(g_PhysicalDevice, wd->Surface, requestSurfaceImageFormat, (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), requestSurfaceColorSpace);
-		
-		VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_KHR };
-
-		wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(g_PhysicalDevice, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
-
-		IM_ASSERT(g_MinImageCount >= 2);
-		ImGui_ImplVulkanH_CreateOrResizeWindow(g_VulkanInstance, g_PhysicalDevice, g_VulkanDevice, wd, indices.graphicsFamily.value(), nullptr, width, height, g_MinImageCount);
-	}
-
-	void Application::createUIDescriptorPool() {
-		VkDescriptorPoolSize pool_sizes[] = {
-			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
-		};
-
-		VkDescriptorPoolCreateInfo pool_info = {};
-		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-		pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
-		pool_info.poolSizeCount = static_cast<uint32_t>(IM_ARRAYSIZE(pool_sizes));
-		pool_info.pPoolSizes = pool_sizes;
-
-		if (vkCreateDescriptorPool(g_VulkanDevice, &pool_info, nullptr, &m_UIDescriptorPool) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create UI descriptor pool!");
-		}
-	}
-
-	void Application::createUIRenderPass() {
-		VkAttachmentDescription attachDescription = {};
-		attachDescription.format = m_SwapChainImageFormat;
-		attachDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-		attachDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-		attachDescription.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		attachDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		attachDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		attachDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-		VkAttachmentReference attachReference = {};
-		attachReference.attachment = 0;
-		attachReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDescription subpass = {};
-		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments = &attachReference;
-
-		// create a subpass dependency to sync main and UI render pass
-		VkSubpassDependency subpassDependency = {};
-		subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		subpassDependency.dstSubpass = 0;
-		subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		subpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		subpassDependency.dstStageMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-		VkRenderPassCreateInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = 1;
-		renderPassInfo.pAttachments = &attachDescription;
-		renderPassInfo.subpassCount = 1;
-		renderPassInfo.pSubpasses = &subpass;
-		renderPassInfo.dependencyCount = 1;
-		renderPassInfo.pDependencies = &subpassDependency;
-
-		if (vkCreateRenderPass(g_VulkanDevice, &renderPassInfo, nullptr, &m_UIRenderPass) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create UI Render pass!");
-		}
-	}
-
-	void Application::createUICommandPool() {
-		QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
-		
-		VkCommandPoolCreateInfo info = {};
-		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		info.queueFamilyIndex = indices.graphicsFamily.value();
-		info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-		if (vkCreateCommandPool(g_VulkanDevice, &info, nullptr, &m_UICommandPool) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create UI Command pool!");
-		}
-	}
-
-	void Application::createUICommandBuffers() {
-		//m_UICommandBuffers.resize(m_SwapChainImageViews.size());
-		m_UICommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = m_UICommandPool;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = static_cast<uint32_t>(m_UICommandBuffers.size());
-
-		if (vkAllocateCommandBuffers(g_VulkanDevice, &allocInfo, m_UICommandBuffers.data()) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create UI Command buffers!");
-		}
-	}
-
-	void Application::createUIFrameBuffers() {
-		m_UIFrameBuffers.resize(m_SwapChainImageViews.size());
-
-		VkImageView attachment[1];
-		VkFramebufferCreateInfo info = {};
-		info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		info.renderPass = m_UIRenderPass;
-		info.attachmentCount = 1;
-		info.pAttachments = attachment;
-		info.width = m_SwapChainExtent.width;
-		info.height = m_SwapChainExtent.height;
-		info.layers = 1;
-
-		for (uint32_t i = 0; i < m_SwapChainImageViews.size(); i++) {
-			attachment[0] = m_SwapChainImageViews[i];
-
-			if (vkCreateFramebuffer(g_VulkanDevice, &info, nullptr, &m_UIFrameBuffers[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to create UI Frame buffers!");
-			}
-		}
-	}
-
-	VkCommandBuffer beginSingleTimeCommands(VkCommandPool cmdPool) {
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool = cmdPool;
-		allocInfo.commandBufferCount = 1;
-
-		VkCommandBuffer commandBuffer = {};
-		vkAllocateCommandBuffers(g_VulkanDevice, &allocInfo, &commandBuffer);
-
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create one time command buffer!");
-		}
-
-		return commandBuffer;
-	}
-
-	void endSingleTimeCommands(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) {
-		vkEndCommandBuffer(cmdBuffer);
-
-		VkSubmitInfo info = {};
-		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		info.commandBufferCount = 1;
-		info.pCommandBuffers = &cmdBuffer;
-
-		vkQueueSubmit(g_GraphicsQueue, 1, &info, VK_NULL_HANDLE);
-		vkQueueWaitIdle(g_GraphicsQueue);
-
-		vkFreeCommandBuffers(g_VulkanDevice, cmdPool, 1, &cmdBuffer);
-	}
-
-	void Application::InitImGui() {
-
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		ImGui::StyleColorsDark();
-	
-		createUIDescriptorPool();
-		createUIRenderPass();
-		createUICommandPool();
-		createUICommandBuffers();
-		createUIFrameBuffers();
-
-		/*
-		int w;
-		int h;
-
-		glfwGetFramebufferSize(m_Window, &w, &h);
-		ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
-		setupVulkanWindow(wd, g_Surface, w, h);
-		*/
-
-		ImGuiIO& io = ImGui::GetIO();
-		(void)io;
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
-
-		QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
-
-		ImGui_ImplGlfw_InitForVulkan(m_Window, true);
-		ImGui_ImplVulkan_InitInfo init_info = {};
-		init_info.Instance = g_VulkanInstance;
-		init_info.PhysicalDevice = g_PhysicalDevice;
-		init_info.Device = g_VulkanDevice;
-		init_info.QueueFamily = indices.graphicsFamily.value();
-		init_info.Queue = g_GraphicsQueue;
-		init_info.PipelineCache = g_PipelineCache;
-		init_info.DescriptorPool = m_UIDescriptorPool;
-		//init_info.Subpass = 0;
-		init_info.MinImageCount = g_MinImageCount;
-		init_info.ImageCount = g_MinImageCount;
-		//init_info.ImageCount = wd->ImageCount;
-		init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-		init_info.Allocator = nullptr;
-		init_info.CheckVkResultFn = check_vk_result;
-		//ImGui_ImplVulkan_Init(&init_info, wd->RenderPass);
-		ImGui_ImplVulkan_Init(&init_info, m_UIRenderPass);
-
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands(m_UICommandPool);
-		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-		endSingleTimeCommands(commandBuffer, m_UICommandPool);
-		ImGui_ImplVulkan_DestroyFontUploadObjects();
-
-		// no font uploaded, imgui will use a default font
-		/*
-		VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
-		VkCommandBuffer command_buffer = wd->Frames[wd->FrameIndex].CommandBuffer;
-		VkResult err = vkResetCommandPool(g_VulkanDevice, command_pool, 0);
-		check_vk_result(err);
-
-		VkCommandBufferBeginInfo begin_info = {};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		
-		err = vkBeginCommandBuffer(command_buffer, &begin_info);
-		check_vk_result(err);
-
-		ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
-
-		VkSubmitInfo end_info = {};
-		end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		end_info.commandBufferCount = 1;
-		end_info.pCommandBuffers = &command_buffer;
-		
-		err = vkEndCommandBuffer(command_buffer);
-		check_vk_result(err);
-		err = vkQueueSubmit(g_GraphicsQueue, 1, &end_info, VK_NULL_HANDLE);
-		check_vk_result(err);
-
-		err = vkDeviceWaitIdle(g_VulkanDevice);
-		check_vk_result(err);
-
-		ImGui_ImplVulkan_DestroyFontUploadObjects();
-		*/
-	}
 
 	std::vector<const char*> getRequiredExtensions() {
 		uint32_t glfwExtensionCount = 0;
@@ -1663,8 +1232,10 @@ namespace Engine {
 
 			QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
 
-			ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-			ImGui_ImplVulkanH_CreateOrResizeWindow(g_VulkanInstance, g_PhysicalDevice, g_VulkanDevice, &g_MainWindowData, indices.graphicsFamily.value(), nullptr, width, height, g_MinImageCount);
+			// TODO UI
+			// TODO Check if we actually need this
+			//ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
+			//ImGui_ImplVulkanH_CreateOrResizeWindow(g_VulkanInstance, g_PhysicalDevice, g_VulkanDevice, &g_MainWindowData, indices.graphicsFamily.value(), nullptr, width, height, g_MinImageCount);
 		}
 
 		vkDeviceWaitIdle(g_VulkanDevice);
@@ -1676,10 +1247,7 @@ namespace Engine {
 		createFramebuffers();
 		createCommandBuffers();
 
-		// UI
-		ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-		createUICommandBuffers();
-		createUIFrameBuffers();
+		g_UI.Resize(g_VulkanDevice, m_SwapChainExtent, m_SwapChainImageViews, g_MinImageCount);
 	}
 
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, 
@@ -1694,17 +1262,7 @@ namespace Engine {
 
 	void Application::Shutdown() {
 
-		// UI
-		ImGui_ImplVulkan_Shutdown();
-		ImGui_ImplGlfw_Shutdown();
-		ImGui::DestroyContext();
-
-		for (auto uiFrameBuffer : m_UIFrameBuffers) {
-			vkDestroyFramebuffer(g_VulkanDevice, uiFrameBuffer, nullptr);
-		}
-
-		vkFreeCommandBuffers(g_VulkanDevice, m_UICommandPool, 
-			static_cast<uint32_t>(m_UICommandBuffers.size()), m_UICommandBuffers.data());
+		g_UI.Destroy(g_VulkanDevice);
 
 		cleanupSwapChain();
 
