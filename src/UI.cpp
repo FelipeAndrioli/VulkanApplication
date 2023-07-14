@@ -1,7 +1,11 @@
 #include "UI.h"
 
 namespace Engine {
-	UI::UI() {};
+	UI::UI() {
+		m_UIDescriptorPool = VK_NULL_HANDLE;
+		m_UIRenderPass = VK_NULL_HANDLE;
+		m_UICommandPool = VK_NULL_HANDLE;
+	};
 
 	void UI::Init(GLFWwindow &r_Window, const VkInstance &r_VulkanInstance, const VkPhysicalDevice &r_PhysicalDevice, 
 		VkDevice &r_LogicalDevice, const QueueFamilyIndices &r_QueueFamilyIndices, VkQueue &r_GraphicsQueue,
@@ -56,24 +60,12 @@ namespace Engine {
 		return m_UICommandBuffers[currentFrame];
 	}
 
-	void UI::Draw() {
+	void UI::Draw(const std::shared_ptr<Layer> &layer) {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		//ImGui::ShowDemoWindow();
-		ImGui::Begin("Settings");
 
-		ImGui::SliderFloat("R0", &vertices[0].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("G0", &vertices[0].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("B0", &vertices[0].color.b, 0.0f, 1.0f);
-		ImGui::SliderFloat("R1", &vertices[1].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("G1", &vertices[1].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("B1", &vertices[1].color.b, 0.0f, 1.0f);
-		ImGui::SliderFloat("R2", &vertices[2].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("G2", &vertices[2].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("B2", &vertices[2].color.b, 0.0f, 1.0f);
-
-		ImGui::End();
+		layer->OnUIRender();
 
 		ImGui::Render();
 	}

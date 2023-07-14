@@ -39,6 +39,15 @@
 
 #include "Application.h"
 
+class RayTracerLayer : public Engine::Layer {
+public:
+	virtual void OnUIRender() override {
+		ImGui::Begin("Hello There");
+		ImGui::Button("Button");
+		ImGui::End();
+	}
+};
+
 int main() {
 	
 	Engine::ApplicationSpec spec;
@@ -47,6 +56,8 @@ int main() {
 	spec.Height = 600;
 
 	Engine::Application* app = new Engine::Application(spec);
+
+	app->AddLayer<RayTracerLayer>();
 
 	try {
 		app->Run();

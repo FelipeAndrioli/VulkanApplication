@@ -24,6 +24,11 @@ namespace Engine {
 		Shutdown();
 	}
 
+	void Application::AddLayer(const std::shared_ptr<Layer> &newLayer) {
+		m_Layers.emplace_back(newLayer);
+		newLayer->OnAttach();
+	}
+
 	void Application::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -72,7 +77,8 @@ namespace Engine {
 			nullptr);
 
 		//vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+		//vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffer, 0, 1, 0, 0, 0);
 		vkCmdEndRenderPass(commandBuffer);
 
 		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
@@ -180,7 +186,13 @@ namespace Engine {
 
 		while (!glfwWindowShouldClose(m_Window) && m_Running) {
 			glfwPollEvents();
-			g_UI.Draw();
+
+			for (auto& layer : m_Layers) {
+				// TODO add a proper timer
+				layer->OnUpdate(0.0);
+				g_UI.Draw(layer);
+			}
+
 			drawFrame();
 		}
 

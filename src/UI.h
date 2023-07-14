@@ -5,12 +5,14 @@
 
 #include <iostream>
 #include <vector>
+#include <memory>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 
 #include "Common.h"
+#include "Layer.h"
 
 namespace Engine {
 	class UI {
@@ -27,7 +29,7 @@ namespace Engine {
 		void Resize(VkDevice& r_LogicalDevice, VkExtent2D& r_SwapChainExtent, std::vector<VkImageView>& r_SwapChainImageViews,
 			int minImageCount);
 		VkCommandBuffer& GetCommandBuffer(uint32_t currentFrame);
-		void Draw();
+		void Draw(const std::shared_ptr<Layer> &layer);
 	private:
 		void createUIDescriptorPool(VkDevice& r_LogicalDevice);
 		void createUIRenderPass(VkDevice& r_LogicalDevice, const VkFormat& r_SwapChainImageFormat);

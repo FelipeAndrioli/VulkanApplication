@@ -79,8 +79,7 @@ namespace Engine {
 	inline const std::vector<uint16_t> indices = {
 		0, 1, 2, 2, 3, 0
 	};
-
-
+	
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
