@@ -5,6 +5,7 @@ static VkInstance g_VulkanInstance = VK_NULL_HANDLE;
 static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
 static VkDevice g_VulkanDevice = VK_NULL_HANDLE;
 static VkQueue g_GraphicsQueue = VK_NULL_HANDLE;
+static VkQueue g_ComputeQueue = VK_NULL_HANDLE;
 static VkQueue g_PresentQueue = VK_NULL_HANDLE;
 static VkSurfaceKHR g_Surface = VK_NULL_HANDLE;
 static bool g_FramebufferResized = false;
@@ -215,8 +216,9 @@ namespace Engine {
 
 		int i = 0;
 		for (const auto& queueFamily : queueFamilies) {
-			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
 				indices.graphicsFamily = i;
+				indices.graphicsAndComputeFamily = i;
 			}
 
 			VkBool32 presentSupport = false;
@@ -565,6 +567,7 @@ namespace Engine {
 
 		vkGetDeviceQueue(g_VulkanDevice, indices.graphicsFamily.value(), 0, &g_GraphicsQueue);
 		vkGetDeviceQueue(g_VulkanDevice, indices.presentFamily.value(), 0, &g_PresentQueue);
+		vkGetDeviceQueue(g_VulkanDevice, indices.graphicsAndComputeFamily.value(), 0, &g_ComputeQueue);
 	}
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
@@ -1049,7 +1052,7 @@ namespace Engine {
 		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+			createBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_VertexBuffers[i], m_VertexBuffersMemory[i]);
 		}
 	}
