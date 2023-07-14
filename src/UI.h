@@ -12,7 +12,6 @@
 #include "imgui_impl_vulkan.h"
 
 #include "Common.h"
-#include "Layer.h"
 
 namespace Engine {
 	class UI {
@@ -29,7 +28,7 @@ namespace Engine {
 		void Resize(VkDevice& r_LogicalDevice, VkExtent2D& r_SwapChainExtent, std::vector<VkImageView>& r_SwapChainImageViews,
 			int minImageCount);
 		VkCommandBuffer& GetCommandBuffer(uint32_t currentFrame);
-		void Draw(const std::shared_ptr<Layer> &layer);
+		void Draw();
 	private:
 		void createUIDescriptorPool(VkDevice& r_LogicalDevice);
 		void createUIRenderPass(VkDevice& r_LogicalDevice, const VkFormat& r_SwapChainImageFormat);

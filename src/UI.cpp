@@ -60,12 +60,24 @@ namespace Engine {
 		return m_UICommandBuffers[currentFrame];
 	}
 
-	void UI::Draw(const std::shared_ptr<Layer> &layer) {
+	void UI::Draw() {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		layer->OnUIRender();
+		ImGui::Begin("Settings");
+		ImGui::SliderFloat("Color 0 R", &vertices[0].color.r, 0.0f, 1.0f);
+		ImGui::SliderFloat("Color 0 G", &vertices[0].color.g, 0.0f, 1.0f);
+		ImGui::SliderFloat("Color 0 B", &vertices[0].color.b, 0.0f, 1.0f);
+
+		ImGui::SliderFloat("Color 1 R", &vertices[1].color.r, 0.0f, 1.0f);
+		ImGui::SliderFloat("Color 1 G", &vertices[1].color.g, 0.0f, 1.0f);
+		ImGui::SliderFloat("Color 1 B", &vertices[1].color.b, 0.0f, 1.0f);
+
+		ImGui::SliderFloat("Color 2 R", &vertices[2].color.r, 0.0f, 1.0f);
+		ImGui::SliderFloat("Color 2 G", &vertices[2].color.g, 0.0f, 1.0f);
+		ImGui::SliderFloat("Color 2 B", &vertices[2].color.b, 0.0f, 1.0f);
+		ImGui::End();
 
 		ImGui::Render();
 	}

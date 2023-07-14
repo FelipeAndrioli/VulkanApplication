@@ -23,7 +23,6 @@
 
 #include "Common.h"
 #include "UI.h"
-#include "Layer.h"
 
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
@@ -41,14 +40,6 @@ namespace Engine {
 	public:
 		Application(const ApplicationSpec &applicationSpec = ApplicationSpec());
 		~Application();
-
-		template<typename T>
-		void AddLayer() {
-			static_assert(std::is_base_of<Layer, T>::value, "Pushed type is not a subclass of Layer!");
-			m_Layers.emplace_back(std::make_shared<T>())->OnAttach();
-		}
-
-		void AddLayer(const std::shared_ptr<Layer> &newLayer);
 
 		void Run();
 		void Close();
@@ -121,7 +112,5 @@ namespace Engine {
 		std::vector<void*> m_UniformBuffersMapped;
 		VkDescriptorPool m_DescriptorPool;
 		std::vector<VkDescriptorSet> m_DescriptorSets;
-
-		std::vector<std::shared_ptr<Layer>> m_Layers;
 	};
 }
