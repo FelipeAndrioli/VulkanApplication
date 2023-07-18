@@ -200,8 +200,6 @@ namespace Engine {
 	void Application::Run() {
 		m_Running = true;
 
-		//ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
-
 		while (!glfwWindowShouldClose(m_Window) && m_Running) {
 			glfwPollEvents();
 			g_UI.Draw();
@@ -889,9 +887,9 @@ namespace Engine {
 		VkPipelineViewportStateCreateInfo viewportState{};
 		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		viewportState.viewportCount = 1;
-		//viewportState.pViewports = &viewport;
+		viewportState.pViewports = &viewport;
 		viewportState.scissorCount = 1;
-		//viewportState.pScissors = &scissor;
+		viewportState.pScissors = &scissor;
 
 		VkPipelineRasterizationStateCreateInfo rasterizer{};
 		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -1118,7 +1116,6 @@ namespace Engine {
 
 		vkDestroyBuffer(g_VulkanDevice, stagingBuffer, nullptr);
 		vkFreeMemory(g_VulkanDevice, stagingBufferMemory, nullptr);
-
 	}
 
 	void Application::createIndexBuffer() {
@@ -1415,12 +1412,10 @@ namespace Engine {
 
 			vkUpdateDescriptorSets(g_VulkanDevice, 1, &descriptorWrite, 0, nullptr);
 		}
-
 	}
 
 	void Application::createCommandBuffers() {
 		m_CommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-		//m_CommandBuffers.resize(m_SwapChainFramebuffers.size());
 
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1486,11 +1481,6 @@ namespace Engine {
 			glfwWaitEvents();
 
 			QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
-
-			// TODO UI
-			// TODO Check if we actually need this
-			//ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-			//ImGui_ImplVulkanH_CreateOrResizeWindow(g_VulkanInstance, g_PhysicalDevice, g_VulkanDevice, &g_MainWindowData, indices.graphicsFamily.value(), nullptr, width, height, g_MinImageCount);
 		}
 
 		vkDeviceWaitIdle(g_VulkanDevice);
