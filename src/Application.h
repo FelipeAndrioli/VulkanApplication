@@ -17,6 +17,7 @@
 #include <limits>
 #include <algorithm>
 #include <fstream>
+#include <random>
 
 #include <chrono>
 #include <memory>
@@ -35,7 +36,6 @@ const std::vector<const char*> c_ValidationLayers = {
 };
 
 namespace Engine {
-
 	class Application {
 	public:
 		Application(const ApplicationSpec &applicationSpec = ApplicationSpec());
@@ -43,7 +43,6 @@ namespace Engine {
 
 		void Run();
 		void Close();
-
 	private:
 		void Init();
 		void InitGlfw();
@@ -72,6 +71,11 @@ namespace Engine {
 		void recreateSwapChain();
 		void cleanupSwapChain();
 
+		void createShaderStorageBuffers();
+		void createComputeDescriptorSets();
+		void createComputeDescriptorSetLayout();
+		void createComputePipeline();
+		
 		VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
 		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
@@ -79,6 +83,8 @@ namespace Engine {
 		void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 		void updateUniformBuffer(uint32_t currentImage);
 		void updateVertexBuffer(uint32_t currentImage);
+		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
+		void createComputeCommandBuffers();
 
 		void drawFrame();
 		
@@ -112,5 +118,15 @@ namespace Engine {
 		std::vector<void*> m_UniformBuffersMapped;
 		VkDescriptorPool m_DescriptorPool;
 		std::vector<VkDescriptorSet> m_DescriptorSets;
+		std::vector<VkBuffer> m_ShaderStorageBuffers;
+		std::vector<VkDeviceMemory> m_ShaderStorageBuffersMemory;
+
+		VkDescriptorSetLayout m_ComputeDescriptorSetLayout;
+		std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
+		VkPipelineLayout m_ComputePipelineLayout;
+		VkPipeline m_ComputePipeline;
+		std::vector<VkFence> m_ComputeInFlightFences;
+		std::vector<VkSemaphore> m_ComputeFinishedSemaphores;
+		std::vector<VkCommandBuffer> m_ComputeCommandBuffers;
 	};
 }
