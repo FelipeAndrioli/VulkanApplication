@@ -9,6 +9,7 @@ static VkQueue g_ComputeQueue = VK_NULL_HANDLE;
 static VkQueue g_PresentQueue = VK_NULL_HANDLE;
 static VkSurfaceKHR g_Surface = VK_NULL_HANDLE;
 static bool g_FramebufferResized = false;
+bool g_Running;
 
 static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
 static int g_MinImageCount = 2;
@@ -198,9 +199,9 @@ namespace Engine {
 	}
 	
 	void Application::Run() {
-		m_Running = true;
+		g_Running = true;
 
-		while (!glfwWindowShouldClose(m_Window) && m_Running) {
+		while (!glfwWindowShouldClose(m_Window) && g_Running) {
 			glfwPollEvents();
 			g_UI.Draw();
 			drawFrame();
@@ -210,7 +211,7 @@ namespace Engine {
 	}
 
 	void Application::Close() {
-		m_Running = false;
+		g_Running = false;
 	}
 
 	void Application::Init() {
@@ -225,6 +226,13 @@ namespace Engine {
 	static void framebufferResizeCallback(GLFWwindow *window, int width, int height) {
 		g_FramebufferResized = true;
 		std::cout << "width - " << width << " height - " << height << '\n';
+	}
+
+	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+			std::cout << "Closing application" << '\n';
+			g_Running = false;
+		}
 	}
 
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
@@ -269,6 +277,7 @@ namespace Engine {
 
 		m_Window = glfwCreateWindow(m_Spec.Width, m_Spec.Height, m_Spec.Name.c_str(), nullptr, nullptr);
 		glfwSetFramebufferSizeCallback(m_Window, framebufferResizeCallback);
+		glfwSetKeyCallback(m_Window, keyCallback);
 	}
 
 	void Application::InitVulkan() {

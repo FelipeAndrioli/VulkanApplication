@@ -89,7 +89,6 @@ namespace Engine {
 		void drawFrame();
 		
 	private:
-		bool m_Running;
 		GLFWwindow* m_Window;
 		VkDebugUtilsMessengerEXT m_DebugMessenger;
 		VkSwapchainKHR m_SwapChain;
