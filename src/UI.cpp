@@ -116,12 +116,17 @@ namespace Engine {
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 
+		vkDestroyRenderPass(r_LogicalDevice, m_UIRenderPass, nullptr);
+
 		for (auto uiFrameBuffer : m_UIFrameBuffers) {
 			vkDestroyFramebuffer(r_LogicalDevice, uiFrameBuffer, nullptr);
 		}
 
 		vkFreeCommandBuffers(r_LogicalDevice, m_UICommandPool, 
 			static_cast<uint32_t>(m_UICommandBuffers.size()), m_UICommandBuffers.data());
+
+		vkDestroyDescriptorPool(r_LogicalDevice, m_UIDescriptorPool, nullptr);
+		vkDestroyCommandPool(r_LogicalDevice, m_UICommandPool, nullptr);
 	}
 
 	UI::~UI() {

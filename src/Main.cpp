@@ -56,5 +56,7 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
+	delete(app);
+
 	return EXIT_SUCCESS;
 }

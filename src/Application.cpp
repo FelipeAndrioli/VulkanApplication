@@ -1508,8 +1508,15 @@ namespace Engine {
 	void Application::Shutdown() {
 
 		g_UI.Destroy(g_VulkanDevice);
-
 		cleanupSwapChain();
+
+		vkDestroyPipeline(g_VulkanDevice, m_ComputePipeline, nullptr);
+		vkDestroyPipelineLayout(g_VulkanDevice, m_ComputePipelineLayout, nullptr);
+		vkDestroyDescriptorSetLayout(g_VulkanDevice, m_ComputeDescriptorSetLayout, nullptr);
+
+		vkDestroyPipeline(g_VulkanDevice, m_GraphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(g_VulkanDevice, m_PipelineLayout, nullptr);
+		vkDestroyRenderPass(g_VulkanDevice, m_RenderPass, nullptr);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vkDestroyBuffer(g_VulkanDevice, m_UniformBuffers[i], nullptr);
@@ -1517,30 +1524,20 @@ namespace Engine {
 		}
 
 		vkDestroyDescriptorPool(g_VulkanDevice, m_DescriptorPool, nullptr);
-
-		vkDestroyDescriptorSetLayout(g_VulkanDevice, m_ComputeDescriptorSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(g_VulkanDevice, m_DescriptorSetLayout, nullptr);
+		
+		vkDestroyBuffer(g_VulkanDevice, m_IndexBuffer, nullptr);
+		vkFreeMemory(g_VulkanDevice, m_IndexBufferMemory, nullptr);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vkDestroyBuffer(g_VulkanDevice, m_ShaderStorageBuffers[i], nullptr);
 			vkFreeMemory(g_VulkanDevice, m_ShaderStorageBuffersMemory[i], nullptr);
 		}
 
-		vkDestroyDescriptorSetLayout(g_VulkanDevice, m_DescriptorSetLayout, nullptr);
-
-		vkDestroyBuffer(g_VulkanDevice, m_IndexBuffer, nullptr);
-		vkFreeMemory(g_VulkanDevice, m_IndexBufferMemory, nullptr);
-
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		for (size_t i = 0; i < m_VertexBuffers.size(); i++) {
 			vkDestroyBuffer(g_VulkanDevice, m_VertexBuffers[i], nullptr);
 			vkFreeMemory(g_VulkanDevice, m_VertexBuffersMemory[i], nullptr);
 		}
-
-		vkDestroyPipeline(g_VulkanDevice, m_GraphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(g_VulkanDevice, m_PipelineLayout, nullptr);
-		vkDestroyRenderPass(g_VulkanDevice, m_RenderPass, nullptr);
-	
-		vkDestroyPipeline(g_VulkanDevice, m_ComputePipeline, nullptr);
-		vkDestroyPipelineLayout(g_VulkanDevice, m_ComputePipelineLayout, nullptr);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vkDestroySemaphore(g_VulkanDevice, m_ImageAvailableSemaphores[i], nullptr);
@@ -1552,7 +1549,6 @@ namespace Engine {
 		}
 
 		vkDestroyCommandPool(g_VulkanDevice, m_CommandPool, nullptr);
-
 		vkDestroyDevice(g_VulkanDevice, nullptr);
 
 		if (c_EnableValidationLayers) {
