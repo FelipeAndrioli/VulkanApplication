@@ -42,6 +42,6 @@ namespace Engine {
 		VkRenderPass m_UIRenderPass;
 		VkCommandPool m_UICommandPool;
 		std::vector<VkCommandBuffer> m_UICommandBuffers;
-		std::vector<VkFramebuffer> m_UIFrameBuffers;
+		std::vector<VkFramebuffer> m_UIFramebuffers;
 	};
 };

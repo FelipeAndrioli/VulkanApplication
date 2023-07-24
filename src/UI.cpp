@@ -51,6 +51,11 @@ namespace Engine {
 
 	void UI::Resize(VkDevice& r_LogicalDevice, VkExtent2D& r_SwapChainExtent, std::vector<VkImageView>& r_SwapChainImageViews, 
 		int minImageCount) {
+
+		for (auto framebuffer : m_UIFramebuffers) {
+			vkDestroyFramebuffer(r_LogicalDevice, framebuffer, nullptr);
+		}
+
 		ImGui_ImplVulkan_SetMinImageCount(minImageCount);
 		createUICommandBuffers(r_LogicalDevice);
 		createUIFrameBuffers(r_LogicalDevice, r_SwapChainExtent, r_SwapChainImageViews);
@@ -96,7 +101,7 @@ namespace Engine {
 		VkRenderPassBeginInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = m_UIRenderPass;
-		renderPassInfo.framebuffer = m_UIFrameBuffers[imageIndex];
+		renderPassInfo.framebuffer = m_UIFramebuffers[imageIndex];
 		renderPassInfo.renderArea.extent.width = r_SwapChainExtent.width;
 		renderPassInfo.renderArea.extent.height = r_SwapChainExtent.height;
 		renderPassInfo.clearValueCount = 1;
@@ -118,7 +123,7 @@ namespace Engine {
 
 		vkDestroyRenderPass(r_LogicalDevice, m_UIRenderPass, nullptr);
 
-		for (auto uiFrameBuffer : m_UIFrameBuffers) {
+		for (auto uiFrameBuffer : m_UIFramebuffers) {
 			vkDestroyFramebuffer(r_LogicalDevice, uiFrameBuffer, nullptr);
 		}
 
@@ -233,22 +238,21 @@ namespace Engine {
 	void UI::createUIFrameBuffers(VkDevice &r_LogicalDevice, const VkExtent2D &r_SwapChainExtent, 
 		const std::vector<VkImageView> &r_SwapChainImageViews) {
 		
-		m_UIFrameBuffers.resize(r_SwapChainImageViews.size());
+		m_UIFramebuffers.resize(r_SwapChainImageViews.size());
 
-		VkImageView attachment[1];
-		VkFramebufferCreateInfo info = {};
-		info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		info.renderPass = m_UIRenderPass;
-		info.attachmentCount = 1;
-		info.pAttachments = attachment;
-		info.width = r_SwapChainExtent.width;
-		info.height = r_SwapChainExtent.height;
-		info.layers = 1;
+		for (size_t i = 0; i < r_SwapChainImageViews.size(); i++) {
+			VkImageView attachments[] = { r_SwapChainImageViews[i] };
 
-		for (uint32_t i = 0; i < r_SwapChainImageViews.size(); i++) {
-			attachment[0] = r_SwapChainImageViews[i];
+			VkFramebufferCreateInfo info = {};
+			info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			info.renderPass = m_UIRenderPass;
+			info.attachmentCount = 1;
+			info.pAttachments = attachments;
+			info.width = r_SwapChainExtent.width;
+			info.height = r_SwapChainExtent.height;
+			info.layers = 1;
 
-			if (vkCreateFramebuffer(r_LogicalDevice, &info, nullptr, &m_UIFrameBuffers[i]) != VK_SUCCESS) {
+			if (vkCreateFramebuffer(r_LogicalDevice, &info, nullptr, &m_UIFramebuffers[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to create UI Frame buffers!");
 			}
 		}
