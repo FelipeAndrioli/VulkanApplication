@@ -20,7 +20,8 @@ static Engine::UI g_UI;
 const uint32_t PARTICLE_COUNT = 8192;
 
 namespace Engine {
-	Application::Application(const ApplicationSpec &spec) : m_Spec(spec) {
+	Application::Application(const ApplicationSpec &spec, const UserSettings &userSettings) : m_Spec(spec), m_UserSettings(userSettings) {
+		std::cout << m_UserSettings.IsRayTraced << '\n';
 		Init();
 	}
 

@@ -46,7 +46,10 @@ int main() {
 	spec.Width = 800;
 	spec.Height = 600;
 
-	Engine::Application* app = new Engine::Application(spec);
+	Engine::UserSettings userSettings;
+	userSettings.IsRayTraced = true;
+	
+	Engine::Application* app = new Engine::Application(spec, userSettings);
 
 	try {
 		app->Run();
