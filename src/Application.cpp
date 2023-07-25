@@ -21,7 +21,6 @@ const uint32_t PARTICLE_COUNT = 8192;
 
 namespace Engine {
 	Application::Application(const ApplicationSpec &spec, const UserSettings &userSettings) : m_Spec(spec), m_UserSettings(userSettings) {
-		std::cout << m_UserSettings.IsRayTraced << '\n';
 		Init();
 	}
 
@@ -103,6 +102,64 @@ namespace Engine {
 		memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 	}
 
+	void Application::drawRayTraced() {
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		
+		vkWaitForFences(g_VulkanDevice, 1, &m_ComputeInFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
+		updateUniformBuffer(m_CurrentFrame);
+		vkResetFences(g_VulkanDevice, 1, &m_ComputeInFlightFences[m_CurrentFrame]);
+
+		vkResetCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame], 0);
+		recordComputeCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame]);
+
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_ComputeCommandBuffers[m_CurrentFrame];
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &m_ComputeFinishedSemaphores[m_CurrentFrame];
+
+		if (vkQueueSubmit(g_ComputeQueue, 1, &submitInfo, m_ComputeInFlightFences[m_CurrentFrame]) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to submit compute command buffer!");
+		}
+	}
+
+	void Application::drawRasterized() {
+		updateVertexBuffer(m_CurrentFrame);
+	}
+
+	void Application::handleDraw(uint32_t imageIndex) {
+		VkResult result;
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		
+		vkResetFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame]);
+
+		m_UserSettings.IsRayTraced ? drawRayTraced() : drawRasterized();
+		
+		vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
+		recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
+		g_UI.RecordCommands(m_SwapChainExtent, m_CurrentFrame, imageIndex);
+
+		VkSemaphore waitSemaphores[] = { m_ComputeFinishedSemaphores[m_CurrentFrame], m_ImageAvailableSemaphores[m_CurrentFrame]};
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		
+		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers[m_CurrentFrame], g_UI.GetCommandBuffer(m_CurrentFrame) };
+
+		submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.waitSemaphoreCount = 2;
+		submitInfo.pWaitSemaphores = waitSemaphores;
+		submitInfo.pWaitDstStageMask = waitStages;
+		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
+		submitInfo.pCommandBuffers = cmdBuffers.data();
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &m_RenderFinishedSemaphores[m_CurrentFrame];
+	
+		if (vkQueueSubmit(g_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_CurrentFrame]) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to submit draw command buffer!");
+		}
+	}
+
 	void Application::drawFrame() {
 
 		VkSubmitInfo submitInfo{};
@@ -110,66 +167,18 @@ namespace Engine {
 		uint32_t imageIndex;
 		VkResult result;
 
-		// Compute Submit 
-		{
-			vkWaitForFences(g_VulkanDevice, 1, &m_ComputeInFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
-			updateUniformBuffer(m_CurrentFrame);
-			vkResetFences(g_VulkanDevice, 1, &m_ComputeInFlightFences[m_CurrentFrame]);
+		vkWaitForFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
+		result = vkAcquireNextImageKHR(g_VulkanDevice, m_SwapChain, UINT64_MAX, 
+			m_ImageAvailableSemaphores[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
 
-			vkResetCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame], 0);
-			recordComputeCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame]);
-
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers = &m_ComputeCommandBuffers[m_CurrentFrame];
-			submitInfo.signalSemaphoreCount = 1;
-			submitInfo.pSignalSemaphores = &m_ComputeFinishedSemaphores[m_CurrentFrame];
-
-			if (vkQueueSubmit(g_ComputeQueue, 1, &submitInfo, m_ComputeInFlightFences[m_CurrentFrame]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to submit compute command buffer!");
-			}
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+			recreateSwapChain();
+			return;
+		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+			throw std::runtime_error("Failed to acquire swap chain image!");
 		}
-	
-		// Graphics Submit 
-		{
-			vkWaitForFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
-			result = vkAcquireNextImageKHR(g_VulkanDevice, m_SwapChain, UINT64_MAX, 
-				m_ImageAvailableSemaphores[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
 
-			if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-				recreateSwapChain();
-				return;
-			} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-				throw std::runtime_error("Failed to acquire swap chain image!");
-			}
-			
-			vkResetFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame]);
-
-			//updateVertexBuffer(m_CurrentFrame);
-			
-			vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
-			recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
-
-			g_UI.RecordCommands(m_SwapChainExtent, m_CurrentFrame, imageIndex);
-
-			VkSemaphore waitSemaphores[] = { m_ComputeFinishedSemaphores[m_CurrentFrame], m_ImageAvailableSemaphores[m_CurrentFrame]};
-			VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-			
-			std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers[m_CurrentFrame], g_UI.GetCommandBuffer(m_CurrentFrame) };
-
-			submitInfo = {};
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-			submitInfo.waitSemaphoreCount = 2;
-			submitInfo.pWaitSemaphores = waitSemaphores;
-			submitInfo.pWaitDstStageMask = waitStages;
-			submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
-			submitInfo.pCommandBuffers = cmdBuffers.data();
-			submitInfo.signalSemaphoreCount = 1;
-			submitInfo.pSignalSemaphores = &m_RenderFinishedSemaphores[m_CurrentFrame];
-		
-			if (vkQueueSubmit(g_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_CurrentFrame]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to submit draw command buffer!");
-			}
-		}
+		handleDraw(imageIndex);
 
 		// Present submit
 		{
@@ -293,16 +302,17 @@ namespace Engine {
 		createComputeDescriptorSetLayout();
 		createGraphicsPipeline();
 		createComputePipeline();
-		//createDescriptorSetLayout();
+		createDescriptorSetLayout();
 		createFramebuffers();
 		createCommandPool();
-		//createVertexBuffer();
-		//createIndexBuffer();
+		createVertexBuffer();
+		createIndexBuffer();
 		createShaderStorageBuffers();
 		createUniformBuffers();
 		createDescriptorPool();
+		createComputeDescriptorPool();
 		createComputeDescriptorSets();
-		//createDescriptorSets();
+		createDescriptorSets();
 		createCommandBuffers();
 		createComputeCommandBuffers();
 		createSyncObjects();
@@ -1198,7 +1208,7 @@ namespace Engine {
 		std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_ComputeDescriptorSetLayout);
 		VkDescriptorSetAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = m_DescriptorPool;
+		allocInfo.descriptorPool = m_ComputeDescriptorPool;
 		allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 		allocInfo.pSetLayouts = layouts.data();
 
@@ -1363,6 +1373,33 @@ namespace Engine {
 		}
 	}
 
+	void Application::createComputeDescriptorPool() {
+		// TODO change the create descriptor pool function to receive the descriptor pool as parameter
+
+		std::array<VkDescriptorPoolSize, 2> poolSizes = {};
+		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+		poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+		/*
+			We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
+			because our sets reference the SSBOs tof the last and current frame (for now).
+		*/
+		poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 2;
+
+		VkDescriptorPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.poolSizeCount = 2;
+		poolInfo.pPoolSizes = poolSizes.data();
+		poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+		poolInfo.flags = 0;
+
+		if (vkCreateDescriptorPool(g_VulkanDevice, &poolInfo, nullptr, &m_ComputeDescriptorPool) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create Descriptor Pool!");
+		}
+	}
+
 	void Application::createDescriptorPool() {
 		std::array<VkDescriptorPoolSize, 2> poolSizes = {};
 		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1522,6 +1559,7 @@ namespace Engine {
 
 		vkDestroyPipeline(g_VulkanDevice, m_ComputePipeline, nullptr);
 		vkDestroyPipelineLayout(g_VulkanDevice, m_ComputePipelineLayout, nullptr);
+		vkDestroyDescriptorPool(g_VulkanDevice, m_ComputeDescriptorPool, nullptr);
 		vkDestroyDescriptorSetLayout(g_VulkanDevice, m_ComputeDescriptorSetLayout, nullptr);
 
 		vkDestroyPipeline(g_VulkanDevice, m_GraphicsPipeline, nullptr);

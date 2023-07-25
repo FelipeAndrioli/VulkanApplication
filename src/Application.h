@@ -66,6 +66,7 @@ namespace Engine {
 		void createIndexBuffer();
 		void createUniformBuffers();
 		void createDescriptorPool();
+		void createComputeDescriptorPool();
 		void createDescriptorSets();
 		void createCommandBuffers();
 		void createSyncObjects();
@@ -88,7 +89,10 @@ namespace Engine {
 		void createComputeCommandBuffers();
 
 		void drawFrame();
-		
+		void handleDraw(uint32_t imageIndex);
+		void drawRayTraced();
+		void drawRasterized();
+
 	private:
 		GLFWwindow* m_Window;
 		VkDebugUtilsMessengerEXT m_DebugMessenger;
@@ -122,6 +126,7 @@ namespace Engine {
 		std::vector<VkBuffer> m_ShaderStorageBuffers;
 		std::vector<VkDeviceMemory> m_ShaderStorageBuffersMemory;
 
+		VkDescriptorPool m_ComputeDescriptorPool;
 		VkDescriptorSetLayout m_ComputeDescriptorSetLayout;
 		std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
 		VkPipelineLayout m_ComputePipelineLayout;
