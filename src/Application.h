@@ -25,6 +25,7 @@
 #include "Common.h"
 #include "UI.h"
 #include "UserSettings.h"
+#include "WindowSettings.h"
 
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
@@ -39,7 +40,8 @@ const std::vector<const char*> c_ValidationLayers = {
 namespace Engine {
 	class Application {
 	public:
-		Application(const ApplicationSpec &applicationSpec = ApplicationSpec(), const UserSettings &userSettings = UserSettings());
+		Application(const WindowSettings &windowSettings = WindowSettings(), 
+			const UserSettings &userSettings = UserSettings());
 		~Application();
 
 		void Run();
@@ -117,7 +119,7 @@ namespace Engine {
 		std::vector<VkSemaphore> m_ImageAvailableSemaphores;
 		std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 		std::vector<VkFence> m_InFlightFences;
-		ApplicationSpec m_Spec;
+		WindowSettings m_WindowSettings;
 		UserSettings m_UserSettings;
 		uint32_t m_CurrentFrame = 0;
 		std::vector<VkBuffer> m_VertexBuffers;

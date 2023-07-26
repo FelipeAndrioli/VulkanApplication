@@ -18,12 +18,6 @@ namespace Engine {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
 	};
 
-	struct ApplicationSpec {
-		std::string Name = "Application.exe";
-		uint32_t Width = 1600;
-		uint32_t Height = 900;
-	};
-
 	struct QueueFamilyIndices {
 		std::optional<uint32_t>graphicsFamily;
 		std::optional<uint32_t>presentFamily;

@@ -41,15 +41,15 @@
 
 int main() {
 	
-	Engine::ApplicationSpec spec;
-	spec.Name = "VulkanApplication.exe";
-	spec.Width = 800;
-	spec.Height = 600;
+	Engine::WindowSettings windowSettings;
+	windowSettings.Title = "VulkanApplication.exe";
+	windowSettings.Width = 800;
+	windowSettings.Height = 600;
 
 	Engine::UserSettings userSettings;
 	userSettings.IsRayTraced = true;
 	
-	Engine::Application* app = new Engine::Application(spec, userSettings);
+	Engine::Application* app = new Engine::Application(windowSettings, userSettings);
 
 	try {
 		app->Run();

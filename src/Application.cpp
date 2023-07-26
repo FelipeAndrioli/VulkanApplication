@@ -20,7 +20,7 @@ static Engine::UI g_UI;
 const uint32_t PARTICLE_COUNT = 8192;
 
 namespace Engine {
-	Application::Application(const ApplicationSpec &spec, const UserSettings &userSettings) : m_Spec(spec), m_UserSettings(userSettings) {
+	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) : m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
 		Init();
 	}
 
@@ -349,7 +349,7 @@ namespace Engine {
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-		m_Window = glfwCreateWindow(m_Spec.Width, m_Spec.Height, m_Spec.Name.c_str(), nullptr, nullptr);
+		m_Window = glfwCreateWindow(m_WindowSettings.Width, m_WindowSettings.Height, m_WindowSettings.Title.c_str(), nullptr, nullptr);
 		glfwSetFramebufferSizeCallback(m_Window, framebufferResizeCallback);
 		glfwSetKeyCallback(m_Window, keyCallback);
 	}
@@ -366,11 +366,13 @@ namespace Engine {
 		createComputeDescriptorSetLayout();
 		createDescriptorSetLayout();
 		createGraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
-			Particle::getBindindDescription(), Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST, 
-			m_RayTracerPipelineLayout, m_RayTracerGraphicsPipeline, 0, m_DescriptorSetLayout);
+			Particle::getBindindDescription(), Particle::getAttributeDescriptions(), 
+			VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_RayTracerPipelineLayout, m_RayTracerGraphicsPipeline, 
+			0, m_DescriptorSetLayout);
 		createGraphicsPipeline("./Assets/Shaders/vert.spv", "./Assets/Shaders/frag.spv",
-			Vertex::getBindingDescription(), Vertex::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-			m_RasterizerPipelineLayout, m_RasterizerGraphicsPipeline, 1, m_DescriptorSetLayout);
+			Vertex::getBindingDescription(), Vertex::getAttributeDescriptions(), 
+			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_RasterizerPipelineLayout, m_RasterizerGraphicsPipeline, 
+			1, m_DescriptorSetLayout);
 		createComputePipeline();
 		createFramebuffers();
 		createCommandPool();
