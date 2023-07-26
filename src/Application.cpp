@@ -202,10 +202,16 @@ namespace Engine {
 
 		submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		//submitInfo.waitSemaphoreCount = 2;
-		submitInfo.waitSemaphoreCount = 1;
-		//submitInfo.pWaitSemaphores = waitSemaphores;
-		submitInfo.pWaitSemaphores = &m_ImageAvailableSemaphores[m_CurrentFrame];
+		
+		if (m_UserSettings.IsRayTraced) {
+			submitInfo.waitSemaphoreCount = 2;
+			submitInfo.pWaitSemaphores = waitSemaphores;
+		}
+		else {
+			submitInfo.waitSemaphoreCount = 1;
+			submitInfo.pWaitSemaphores = &m_ImageAvailableSemaphores[m_CurrentFrame];
+		}
+
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
 		submitInfo.pCommandBuffers = cmdBuffers.data();
