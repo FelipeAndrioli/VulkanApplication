@@ -12,6 +12,7 @@
 #include "imgui_impl_vulkan.h"
 
 #include "Common.h"
+#include "UserSettings.h"
 
 namespace Engine {
 	class UI {
@@ -29,6 +30,7 @@ namespace Engine {
 			int minImageCount);
 		VkCommandBuffer& GetCommandBuffer(uint32_t currentFrame);
 		void Draw();
+		void DrawUserSettings(UserSettings &r_UserSettings);
 	private:
 		void createUIDescriptorPool(VkDevice& r_LogicalDevice);
 		void createUIRenderPass(VkDevice& r_LogicalDevice, const VkFormat& r_SwapChainImageFormat);

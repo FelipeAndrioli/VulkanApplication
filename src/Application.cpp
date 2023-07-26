@@ -270,7 +270,8 @@ namespace Engine {
 
 		while (!glfwWindowShouldClose(m_Window) && g_Running) {
 			glfwPollEvents();
-			g_UI.Draw();
+			//g_UI.Draw();
+			g_UI.DrawUserSettings(m_UserSettings);
 			drawFrame();
 		}
 

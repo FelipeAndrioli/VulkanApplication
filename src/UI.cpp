@@ -65,6 +65,18 @@ namespace Engine {
 		return m_UICommandBuffers[currentFrame];
 	}
 
+	void UI::DrawUserSettings(UserSettings &r_UserSettings) {
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		
+		ImGui::Begin("Settings");
+		ImGui::Checkbox("Ray Tracing enable", &r_UserSettings.IsRayTraced);
+		ImGui::End();
+		
+		ImGui::Render();
+	}
+
 	void UI::Draw() {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
