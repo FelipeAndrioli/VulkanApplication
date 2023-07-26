@@ -28,59 +28,6 @@ namespace Engine {
 		Shutdown();
 	}
 
-	void Application::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		beginInfo.pInheritanceInfo = nullptr;
-
-		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to begin recording command buffer!");
-		}
-
-		VkRenderPassBeginInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = m_RenderPass;
-		renderPassInfo.framebuffer = m_SwapChainFramebuffers[imageIndex];
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = m_SwapChainExtent;
-
-		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-		renderPassInfo.clearValueCount = 1;
-		renderPassInfo.pClearValues = &clearColor;
-
-		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
-
-		VkViewport viewport = {};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)m_SwapChainExtent.width;
-		viewport.height = (float)m_SwapChainExtent.height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-		VkRect2D scissor = {};
-		scissor.offset = { 0, 0 };
-		scissor.extent = m_SwapChainExtent;
-
-		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_ShaderStorageBuffers[m_CurrentFrame], offsets);
-
-		vkCmdDraw(commandBuffer, PARTICLE_COUNT, 1, 0, 0);
-		//vkCmdDrawIndexed();
-
-		vkCmdEndRenderPass(commandBuffer);
-
-		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to record command buffer!");
-		}
-	}
-
 	void Application::updateUniformBuffer(uint32_t currentImage) {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -102,7 +49,7 @@ namespace Engine {
 		memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 	}
 
-	void Application::drawRayTraced() {
+	void Application::drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex) {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
@@ -121,23 +68,131 @@ namespace Engine {
 		if (vkQueueSubmit(g_ComputeQueue, 1, &submitInfo, m_ComputeInFlightFences[m_CurrentFrame]) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit compute command buffer!");
 		}
+
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.pInheritanceInfo = nullptr;
+
+		if (vkBeginCommandBuffer(r_CommandBuffer, &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to begin recording command buffer!");
+		}
+
+		VkRenderPassBeginInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = m_RenderPass;
+		renderPassInfo.framebuffer = m_SwapChainFramebuffers[imageIndex];
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = m_SwapChainExtent;
+
+		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+		renderPassInfo.clearValueCount = 1;
+		renderPassInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(r_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_RayTracerGraphicsPipeline);
+
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)m_SwapChainExtent.width;
+		viewport.height = (float)m_SwapChainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		vkCmdSetViewport(r_CommandBuffer, 0, 1, &viewport);
+
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = m_SwapChainExtent;
+
+		vkCmdSetScissor(r_CommandBuffer, 0, 1, &scissor);
+
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(r_CommandBuffer, 0, 1, &m_ShaderStorageBuffers[m_CurrentFrame], offsets);
+
+		vkCmdDraw(r_CommandBuffer, PARTICLE_COUNT, 1, 0, 0);
+
+		vkCmdEndRenderPass(r_CommandBuffer);
+
+		if (vkEndCommandBuffer(r_CommandBuffer) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to record command buffer!");
+		}
 	}
 
-	void Application::drawRasterized() {
+	void Application::drawRasterized(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex) {
+		updateUniformBuffer(m_CurrentFrame);
 		updateVertexBuffer(m_CurrentFrame);
+		
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.pInheritanceInfo = nullptr;
+
+		if (vkBeginCommandBuffer(r_CommandBuffer, &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to begin recording command buffer!");
+		}
+
+		VkRenderPassBeginInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = m_RenderPass;
+		renderPassInfo.framebuffer = m_SwapChainFramebuffers[imageIndex];
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = m_SwapChainExtent;
+
+		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+		renderPassInfo.clearValueCount = 1;
+		renderPassInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(r_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_RasterizerGraphicsPipeline);
+
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)m_SwapChainExtent.width;
+		viewport.height = (float)m_SwapChainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		vkCmdSetViewport(r_CommandBuffer, 0, 1, &viewport);
+
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = m_SwapChainExtent;
+
+		vkCmdSetScissor(r_CommandBuffer, 0, 1, &scissor);
+
+		VkDeviceSize offsets[] = { 0 };
+
+		vkCmdBindVertexBuffers(r_CommandBuffer, 0, 1, &m_VertexBuffers[m_CurrentFrame], offsets);
+		vkCmdBindIndexBuffer(r_CommandBuffer, m_IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindDescriptorSets(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_RasterizerPipelineLayout, 0, 1, 
+			&m_DescriptorSets[m_CurrentFrame], 0, nullptr);
+
+		vkCmdDrawIndexed(r_CommandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+		vkCmdEndRenderPass(r_CommandBuffer);
+
+		if (vkEndCommandBuffer(r_CommandBuffer) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to record command buffer!");
+		}
 	}
 
 	void Application::handleDraw(uint32_t imageIndex) {
-		VkResult result;
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
 		vkResetFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame]);
 
-		m_UserSettings.IsRayTraced ? drawRayTraced() : drawRasterized();
+		m_UserSettings.IsRayTraced ? drawRayTraced(m_CommandBuffers[m_CurrentFrame], imageIndex) : 
+			drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
 		
-		vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
-		recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
+		//vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
+		//recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
 		g_UI.RecordCommands(m_SwapChainExtent, m_CurrentFrame, imageIndex);
 
 		VkSemaphore waitSemaphores[] = { m_ComputeFinishedSemaphores[m_CurrentFrame], m_ImageAvailableSemaphores[m_CurrentFrame]};
@@ -147,8 +202,10 @@ namespace Engine {
 
 		submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.waitSemaphoreCount = 2;
-		submitInfo.pWaitSemaphores = waitSemaphores;
+		//submitInfo.waitSemaphoreCount = 2;
+		submitInfo.waitSemaphoreCount = 1;
+		//submitInfo.pWaitSemaphores = waitSemaphores;
+		submitInfo.pWaitSemaphores = &m_ImageAvailableSemaphores[m_CurrentFrame];
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
 		submitInfo.pCommandBuffers = cmdBuffers.data();
@@ -300,9 +357,14 @@ namespace Engine {
 		createImageViews();
 		createRenderPass();
 		createComputeDescriptorSetLayout();
-		createGraphicsPipeline();
-		createComputePipeline();
 		createDescriptorSetLayout();
+		createGraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
+			Particle::getBindindDescription(), Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST, 
+			m_RayTracerPipelineLayout, m_RayTracerGraphicsPipeline, 0, m_DescriptorSetLayout);
+		createGraphicsPipeline("./Assets/Shaders/vert.spv", "./Assets/Shaders/frag.spv",
+			Vertex::getBindingDescription(), Vertex::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+			m_RasterizerPipelineLayout, m_RasterizerGraphicsPipeline, 1, m_DescriptorSetLayout);
+		createComputePipeline();
 		createFramebuffers();
 		createCommandPool();
 		createVertexBuffer();
@@ -838,14 +900,17 @@ namespace Engine {
 		}
 	}
 
-	void Application::createGraphicsPipeline() {
+	void Application::createGraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath, 
+		VkVertexInputBindingDescription desiredBindingDescription, std::array<VkVertexInputAttributeDescription, 2> desiredAttributeDescriptions,
+		VkPrimitiveTopology topology, VkPipelineLayout &r_PipelineLayout, VkPipeline &r_GraphicsPipeline, uint32_t layoutCount, 
+		VkDescriptorSetLayout &r_DescriptorSetLayout) {
 		/*
 		auto vertShaderCode = readFile("./Assets/Shaders/vert.spv");
 		auto fragShaderCode = readFile("./Assets/Shaders/frag.spv");
-		*/
 		
 		auto vertShaderCode = readFile("./Assets/Shaders/particle_shader_vert.spv");
 		auto fragShaderCode = readFile("./Assets/Shaders/particle_shader_frag.spv");
+		*/
 
 		/*
 			The compilation and linking of the SPIR-V bytecode to machine code for execution by the GPU
@@ -853,6 +918,9 @@ namespace Engine {
 			the shader modules again as soon as the pipeline creation is finished, which is why we'll make
 			them local variables in the createGraphicsPipeline function instead of class members.
 		*/
+
+		auto vertShaderCode = readFile(vertexShaderPath);
+		auto fragShaderCode = readFile(fragShaderPath);
 
 		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -874,10 +942,13 @@ namespace Engine {
 		/*
 		auto bindingDescription = Vertex::getBindingDescription();
 		auto attributeDescriptions = Vertex::getAttributeDescriptions();
-		*/
 
 		auto bindingDescription = Particle::getBindindDescription();
 		auto attributeDescriptions = Particle::getAttributeDescriptions();
+		*/
+
+		auto bindingDescription = desiredBindingDescription;
+		auto attributeDescriptions = desiredAttributeDescriptions;
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -889,7 +960,8 @@ namespace Engine {
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		//inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		//inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		inputAssembly.topology = topology;
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 		VkViewport viewport{};
@@ -963,12 +1035,15 @@ namespace Engine {
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		//pipelineLayoutInfo.setLayoutCount = 1;
 		//pipelineLayoutInfo.pSetLayouts = &m_DescriptorSetLayout;
-		pipelineLayoutInfo.setLayoutCount = 0;
-		pipelineLayoutInfo.pSetLayouts = nullptr;
+		//pipelineLayoutInfo.setLayoutCount = 0;
+		//pipelineLayoutInfo.pSetLayouts = nullptr;
+		pipelineLayoutInfo.setLayoutCount = layoutCount;
+		layoutCount > 0 ? pipelineLayoutInfo.pSetLayouts = &r_DescriptorSetLayout : pipelineLayoutInfo.pSetLayouts = nullptr;
+
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 		pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-		if (vkCreatePipelineLayout(g_VulkanDevice, &pipelineLayoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS) {
+		if (vkCreatePipelineLayout(g_VulkanDevice, &pipelineLayoutInfo, nullptr, &r_PipelineLayout) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create pipeline layout!");
 		}
 
@@ -984,13 +1059,14 @@ namespace Engine {
 		pipelineInfo.pDepthStencilState = nullptr;
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDynamicState = &dynamicState;
-		pipelineInfo.layout = m_PipelineLayout;
+		pipelineInfo.layout = r_PipelineLayout;
 		pipelineInfo.renderPass = m_RenderPass;
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		//pipelineInfo.basePipelineIndex = -1;
 
-		if (vkCreateGraphicsPipelines(g_VulkanDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_GraphicsPipeline) != VK_SUCCESS) {
+		if (vkCreateGraphicsPipelines(g_VulkanDevice, VK_NULL_HANDLE, 1, &pipelineInfo, 
+			nullptr, &r_GraphicsPipeline) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create graphics pipeline!");
 		}
 
@@ -1562,8 +1638,10 @@ namespace Engine {
 		vkDestroyDescriptorPool(g_VulkanDevice, m_ComputeDescriptorPool, nullptr);
 		vkDestroyDescriptorSetLayout(g_VulkanDevice, m_ComputeDescriptorSetLayout, nullptr);
 
-		vkDestroyPipeline(g_VulkanDevice, m_GraphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(g_VulkanDevice, m_PipelineLayout, nullptr);
+		vkDestroyPipeline(g_VulkanDevice, m_RayTracerGraphicsPipeline, nullptr);
+		vkDestroyPipeline(g_VulkanDevice, m_RasterizerGraphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(g_VulkanDevice, m_RayTracerPipelineLayout, nullptr);
+		vkDestroyPipelineLayout(g_VulkanDevice, m_RasterizerPipelineLayout, nullptr);
 		vkDestroyRenderPass(g_VulkanDevice, m_RenderPass, nullptr);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {

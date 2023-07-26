@@ -59,7 +59,11 @@ namespace Engine {
 		void createImageViews();
 		void createRenderPass();
 		void createDescriptorSetLayout();
-		void createGraphicsPipeline();
+		//void createGraphicsPipeline();
+		void createGraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath,
+			VkVertexInputBindingDescription desiredBindingDescription, std::array<VkVertexInputAttributeDescription, 2> desiredAttributeDescriptions,
+			VkPrimitiveTopology topology, VkPipelineLayout& r_PipelineLayout, VkPipeline& r_GraphicsPipeline,
+			uint32_t layoutCount, VkDescriptorSetLayout &layout);
 		void createFramebuffers();
 		void createCommandPool();
 		void createVertexBuffer();
@@ -90,8 +94,8 @@ namespace Engine {
 
 		void drawFrame();
 		void handleDraw(uint32_t imageIndex);
-		void drawRayTraced();
-		void drawRasterized();
+		void drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
+		void drawRasterized(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
 
 	private:
 		GLFWwindow* m_Window;
@@ -103,8 +107,10 @@ namespace Engine {
 		VkExtent2D m_SwapChainExtent;
 		VkRenderPass m_RenderPass;
 		VkDescriptorSetLayout m_DescriptorSetLayout;
-		VkPipelineLayout m_PipelineLayout;
-		VkPipeline m_GraphicsPipeline;
+		VkPipelineLayout m_RayTracerPipelineLayout;
+		VkPipelineLayout m_RasterizerPipelineLayout;
+		VkPipeline m_RayTracerGraphicsPipeline;
+		VkPipeline m_RasterizerGraphicsPipeline;
 		std::vector<VkFramebuffer> m_SwapChainFramebuffers;
 		VkCommandPool m_CommandPool;
 		std::vector<VkCommandBuffer> m_CommandBuffers;

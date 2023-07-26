@@ -47,7 +47,7 @@ int main() {
 	spec.Height = 600;
 
 	Engine::UserSettings userSettings;
-	userSettings.IsRayTraced = true;
+	userSettings.IsRayTraced = false;
 	
 	Engine::Application* app = new Engine::Application(spec, userSettings);
 
