@@ -1,8 +1,5 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
 #include <iostream>
 #include <vector>
 #include <memory>
@@ -11,6 +8,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 
+#include "Vulkan.h"
 #include "Common.h"
 #include "UserSettings.h"
 

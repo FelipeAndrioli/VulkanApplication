@@ -1,8 +1,5 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-
-#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -10,6 +7,8 @@
 #include <vector>
 #include <array>
 #include <optional>
+
+#include "Vulkan.h"
 
 namespace Engine {
 	const int MAX_FRAMES_IN_FLIGHT = 2;
