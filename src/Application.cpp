@@ -9,7 +9,6 @@ static VkQueue g_ComputeQueue = VK_NULL_HANDLE;
 static VkQueue g_PresentQueue = VK_NULL_HANDLE;
 static VkSurfaceKHR g_Surface = VK_NULL_HANDLE;
 static bool g_FramebufferResized = false;
-bool g_Running;
 
 static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
 static int g_MinImageCount = 2;
@@ -21,6 +20,7 @@ const uint32_t PARTICLE_COUNT = 8192;
 
 namespace Engine {
 	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) : m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
+		m_Window.reset(new class Window(m_WindowSettings));
 		Init();
 	}
 
@@ -225,6 +225,8 @@ namespace Engine {
 
 	void Application::drawFrame() {
 
+		g_UI.DrawUserSettings(m_UserSettings);
+
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		uint32_t imageIndex;
@@ -272,40 +274,33 @@ namespace Engine {
 	}
 	
 	void Application::Run() {
-		g_Running = true;
 
-		while (!glfwWindowShouldClose(m_Window) && g_Running) {
-			glfwPollEvents();
-			//g_UI.Draw();
-			g_UI.DrawUserSettings(m_UserSettings);
-			drawFrame();
-		}
+		m_Window->DrawFrame = std::bind(&Application::drawFrame, this);
+		m_Window->OnKeyPress = std::bind(&Application::processKey, this, std::placeholders::_1, std::placeholders::_2,
+			std::placeholders::_3, std::placeholders::_4);
+		m_Window->OnResize = std::bind(&Application::processResize, this, std::placeholders::_1, std::placeholders::_2);
+		m_Window->Run();
 
 		vkDeviceWaitIdle(g_VulkanDevice);
 	}
 
-	void Application::Close() {
-		g_Running = false;
-	}
-
 	void Application::Init() {
-		InitGlfw();
 		InitVulkan();
-		g_UI.Init(*m_Window, g_VulkanInstance, g_PhysicalDevice, 
+		g_UI.Init(*m_Window->GetHandle(), g_VulkanInstance, g_PhysicalDevice,
 			g_VulkanDevice, g_QueueFamilyIndices, g_GraphicsQueue, 
 			m_SwapChainExtent, m_SwapChainImageViews,m_SwapChainImageFormat, 
 			g_MinImageCount);
 	}
 
-	static void framebufferResizeCallback(GLFWwindow *window, int width, int height) {
+	void Application::processResize(int width, int height) {
 		g_FramebufferResized = true;
 		std::cout << "width - " << width << " height - " << height << '\n';
 	}
 
-	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	void Application::processKey(int key, int scancode, int action, int mods) {
 		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 			std::cout << "Closing application" << '\n';
-			g_Running = false;
+			m_Window->Close();
 		}
 	}
 
@@ -339,19 +334,6 @@ namespace Engine {
 		}
 
 		return indices;
-	}
-
-	void Application::InitGlfw() {
-		if (!glfwInit()) {
-			throw std::runtime_error("Failed to initialize window!");
-		}
-
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-
-		m_Window = glfwCreateWindow(m_WindowSettings.Width, m_WindowSettings.Height, m_WindowSettings.Title.c_str(), nullptr, nullptr);
-		glfwSetFramebufferSizeCallback(m_Window, framebufferResizeCallback);
-		glfwSetKeyCallback(m_Window, keyCallback);
 	}
 
 	void Application::InitVulkan() {
@@ -561,7 +543,7 @@ namespace Engine {
 	}
 
 	void Application::createSurface() {
-		if (glfwCreateWindowSurface(g_VulkanInstance, m_Window, nullptr, &g_Surface) != VK_SUCCESS) {
+		if (glfwCreateWindowSurface(g_VulkanInstance, m_Window->GetHandle(), nullptr, &g_Surface) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create window surface!");
 		}
 	}
@@ -715,7 +697,7 @@ namespace Engine {
 			int width;
 			int height;
 
-			glfwGetFramebufferSize(m_Window, &width, &height);
+			glfwGetFramebufferSize(m_Window->GetHandle(), &width, &height);
 
 			VkExtent2D actualExtent = {
 				static_cast<uint32_t>(width), static_cast<uint32_t>(height)
@@ -1606,10 +1588,10 @@ namespace Engine {
 		int width = 0;
 		int height = 0;
 
-		glfwGetFramebufferSize(m_Window, &width, &height);
+		glfwGetFramebufferSize(m_Window->GetHandle(), &width, &height);
 
 		while (width == 0 || height == 0) {
-			glfwGetFramebufferSize(m_Window, &width, &height);
+			glfwGetFramebufferSize(m_Window->GetHandle(), &width, &height);
 			glfwWaitEvents();
 
 			QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
@@ -1692,7 +1674,6 @@ namespace Engine {
 	
 		vkDestroySurfaceKHR(g_VulkanInstance, g_Surface, nullptr);
 		vkDestroyInstance(g_VulkanInstance, nullptr);
-		glfwDestroyWindow(m_Window);
 		glfwTerminate();
 	}
 }

@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <fstream>
 #include <random>
+#include <functional>
 
 #include <chrono>
 #include <memory>
@@ -26,6 +27,7 @@
 #include "UI.h"
 #include "UserSettings.h"
 #include "WindowSettings.h"
+#include "Window.h"
 
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
@@ -45,10 +47,8 @@ namespace Engine {
 		~Application();
 
 		void Run();
-		void Close();
 	private:
 		void Init();
-		void InitGlfw();
 		void InitVulkan();
 		void Shutdown();
 
@@ -61,7 +61,6 @@ namespace Engine {
 		void createImageViews();
 		void createRenderPass();
 		void createDescriptorSetLayout();
-		//void createGraphicsPipeline();
 		void createGraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath,
 			VkVertexInputBindingDescription desiredBindingDescription, std::array<VkVertexInputAttributeDescription, 2> desiredAttributeDescriptions,
 			VkPrimitiveTopology topology, VkPipelineLayout& r_PipelineLayout, VkPipeline& r_GraphicsPipeline,
@@ -98,9 +97,12 @@ namespace Engine {
 		void handleDraw(uint32_t imageIndex);
 		void drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
 		void drawRasterized(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
+	
+		void processKey(int key, int scancode, int action, int mods);
+		void processResize(int width, int height);
 
 	private:
-		GLFWwindow* m_Window;
+		std::unique_ptr<class Window> m_Window;
 		VkDebugUtilsMessengerEXT m_DebugMessenger;
 		VkSwapchainKHR m_SwapChain;
 		std::vector<VkImage> m_SwapChainImages;

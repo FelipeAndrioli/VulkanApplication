@@ -29,6 +29,8 @@ namespace Engine {
 
 		m_Window = glfwCreateWindow(m_WindowSettings.Width, m_WindowSettings.Height, 
 			m_WindowSettings.Title.c_str(), nullptr, nullptr);
+
+		glfwSetWindowUserPointer(m_Window, this);
 		
 		glfwSetFramebufferSizeCallback(m_Window, framebufferResizeCallback);
 		glfwSetKeyCallback(m_Window, keyCallback);
