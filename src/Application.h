@@ -1,9 +1,7 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS
 
-#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -23,6 +21,7 @@
 #include <chrono>
 #include <memory>
 
+#include "Vulkan.h"
 #include "Common.h"
 #include "UI.h"
 #include "UserSettings.h"
