@@ -21,6 +21,7 @@ const uint32_t PARTICLE_COUNT = 8192;
 namespace Engine {
 	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) : m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
 		m_Window.reset(new class Window(m_WindowSettings));
+
 		Init();
 	}
 
@@ -63,7 +64,7 @@ namespace Engine {
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &m_ComputeCommandBuffers[m_CurrentFrame];
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &m_ComputeFinishedSemaphores[m_CurrentFrame];
+		submitInfo.pSignalSemaphores = m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame);
 
 		if (vkQueueSubmit(g_ComputeQueue, 1, &submitInfo, m_ComputeInFlightFences[m_CurrentFrame]) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit compute command buffer!");
@@ -195,7 +196,7 @@ namespace Engine {
 		//recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
 		g_UI.RecordCommands(m_SwapChainExtent, m_CurrentFrame, imageIndex);
 
-		VkSemaphore waitSemaphores[] = { m_ComputeFinishedSemaphores[m_CurrentFrame], m_ImageAvailableSemaphores[m_CurrentFrame]};
+		VkSemaphore waitSemaphores[] = { *m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame), *m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame)};
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 		
 		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers[m_CurrentFrame], g_UI.GetCommandBuffer(m_CurrentFrame) };
@@ -209,14 +210,14 @@ namespace Engine {
 		}
 		else {
 			submitInfo.waitSemaphoreCount = 1;
-			submitInfo.pWaitSemaphores = &m_ImageAvailableSemaphores[m_CurrentFrame];
+			submitInfo.pWaitSemaphores = m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame);
 		}
 
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
 		submitInfo.pCommandBuffers = cmdBuffers.data();
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &m_RenderFinishedSemaphores[m_CurrentFrame];
+		submitInfo.pSignalSemaphores = m_RenderFinishedSemaphores->GetHandle(m_CurrentFrame);
 	
 		if (vkQueueSubmit(g_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_CurrentFrame]) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit draw command buffer!");
@@ -234,7 +235,7 @@ namespace Engine {
 
 		vkWaitForFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
 		result = vkAcquireNextImageKHR(g_VulkanDevice, m_SwapChain, UINT64_MAX, 
-			m_ImageAvailableSemaphores[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
+			*m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame), VK_NULL_HANDLE, &imageIndex);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			recreateSwapChain();
@@ -250,7 +251,7 @@ namespace Engine {
 			VkPresentInfoKHR presentInfo{};
 			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 			presentInfo.waitSemaphoreCount = 1;
-			presentInfo.pWaitSemaphores = &m_RenderFinishedSemaphores[m_CurrentFrame];
+			presentInfo.pWaitSemaphores = m_RenderFinishedSemaphores->GetHandle(m_CurrentFrame);
 			
 			VkSwapchainKHR swapChains[] = { m_SwapChain };
 			presentInfo.swapchainCount = 1;
@@ -1543,9 +1544,9 @@ namespace Engine {
 	}
 
 	void Application::createSyncObjects() {
-		m_ImageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		m_RenderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		m_ComputeFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+		m_ImageAvailableSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
+		m_RenderFinishedSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
+		m_ComputeFinishedSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
 
 		m_InFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 		m_ComputeInFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1558,14 +1559,11 @@ namespace Engine {
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			if (vkCreateSemaphore(g_VulkanDevice, &semaphoreInfo, nullptr, &m_ImageAvailableSemaphores[i]) != VK_SUCCESS ||
-				vkCreateSemaphore(g_VulkanDevice, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]) != VK_SUCCESS ||
-				vkCreateFence(g_VulkanDevice, &fenceInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS) {
+			if (vkCreateFence(g_VulkanDevice, &fenceInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to create graphics synchronization objects for a frame!");
 			}
 
-			if (vkCreateSemaphore(g_VulkanDevice, &semaphoreInfo, nullptr, &m_ComputeFinishedSemaphores[i]) != VK_SUCCESS ||
-				vkCreateFence(g_VulkanDevice, &fenceInfo, nullptr, &m_ComputeInFlightFences[i]) != VK_SUCCESS) {
+			if (vkCreateFence(g_VulkanDevice, &fenceInfo, nullptr, &m_ComputeInFlightFences[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to create compute synchronization objects for a frame!");
 			}
 		}
@@ -1657,13 +1655,13 @@ namespace Engine {
 		}
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vkDestroySemaphore(g_VulkanDevice, m_ImageAvailableSemaphores[i], nullptr);
-			vkDestroySemaphore(g_VulkanDevice, m_RenderFinishedSemaphores[i], nullptr);
 			vkDestroyFence(g_VulkanDevice, m_InFlightFences[i], nullptr);
-
-			vkDestroySemaphore(g_VulkanDevice, m_ComputeFinishedSemaphores[i], nullptr);
 			vkDestroyFence(g_VulkanDevice, m_ComputeInFlightFences[i], nullptr);
 		}
+
+		m_ImageAvailableSemaphores.reset();
+		m_RenderFinishedSemaphores.reset();
+		m_ComputeFinishedSemaphores.reset();
 
 		vkDestroyCommandPool(g_VulkanDevice, m_CommandPool, nullptr);
 		vkDestroyDevice(g_VulkanDevice, nullptr);
