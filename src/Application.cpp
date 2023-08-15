@@ -54,9 +54,9 @@ namespace Engine {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
-		vkWaitForFences(g_VulkanDevice, 1, &m_ComputeInFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
+		vkWaitForFences(g_VulkanDevice, 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
 		updateUniformBuffer(m_CurrentFrame);
-		vkResetFences(g_VulkanDevice, 1, &m_ComputeInFlightFences[m_CurrentFrame]);
+		vkResetFences(g_VulkanDevice, 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
 
 		vkResetCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame], 0);
 		recordComputeCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame]);
@@ -66,7 +66,7 @@ namespace Engine {
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame);
 
-		if (vkQueueSubmit(g_ComputeQueue, 1, &submitInfo, m_ComputeInFlightFences[m_CurrentFrame]) != VK_SUCCESS) {
+		if (vkQueueSubmit(g_ComputeQueue, 1, &submitInfo, *m_ComputeInFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit compute command buffer!");
 		}
 
@@ -187,7 +187,7 @@ namespace Engine {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
-		vkResetFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame]);
+		vkResetFences(g_VulkanDevice, 1, m_InFlightFences->GetHandle(m_CurrentFrame));
 
 		m_UserSettings.IsRayTraced ? drawRayTraced(m_CommandBuffers[m_CurrentFrame], imageIndex) : 
 			drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
@@ -219,7 +219,7 @@ namespace Engine {
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = m_RenderFinishedSemaphores->GetHandle(m_CurrentFrame);
 	
-		if (vkQueueSubmit(g_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_CurrentFrame]) != VK_SUCCESS) {
+		if (vkQueueSubmit(g_GraphicsQueue, 1, &submitInfo, *m_InFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit draw command buffer!");
 		}
 	}
@@ -233,7 +233,7 @@ namespace Engine {
 		uint32_t imageIndex;
 		VkResult result;
 
-		vkWaitForFences(g_VulkanDevice, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
+		vkWaitForFences(g_VulkanDevice, 1, m_InFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
 		result = vkAcquireNextImageKHR(g_VulkanDevice, m_SwapChain, UINT64_MAX, 
 			*m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame), VK_NULL_HANDLE, &imageIndex);
 
@@ -1548,25 +1548,8 @@ namespace Engine {
 		m_RenderFinishedSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
 		m_ComputeFinishedSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
 
-		m_InFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-		m_ComputeInFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-		VkSemaphoreCreateInfo semaphoreInfo{};
-		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-		VkFenceCreateInfo fenceInfo{};
-		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			if (vkCreateFence(g_VulkanDevice, &fenceInfo, nullptr, &m_InFlightFences[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to create graphics synchronization objects for a frame!");
-			}
-
-			if (vkCreateFence(g_VulkanDevice, &fenceInfo, nullptr, &m_ComputeInFlightFences[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to create compute synchronization objects for a frame!");
-			}
-		}
+		m_InFlightFences.reset(new class Fence(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
+		m_ComputeInFlightFences.reset(new class Fence(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
 	}
 
 	void Application::cleanupSwapChain() {
@@ -1654,10 +1637,8 @@ namespace Engine {
 			vkFreeMemory(g_VulkanDevice, m_VertexBuffersMemory[i], nullptr);
 		}
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vkDestroyFence(g_VulkanDevice, m_InFlightFences[i], nullptr);
-			vkDestroyFence(g_VulkanDevice, m_ComputeInFlightFences[i], nullptr);
-		}
+		m_InFlightFences.reset();
+		m_ComputeInFlightFences.reset();
 
 		m_ImageAvailableSemaphores.reset();
 		m_RenderFinishedSemaphores.reset();

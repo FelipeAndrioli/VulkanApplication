@@ -28,6 +28,7 @@
 #include "WindowSettings.h"
 #include "Window.h"
 #include "Semaphore.h"
+#include "Fence.h"
 
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
@@ -106,6 +107,9 @@ namespace Engine {
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;
 		std::unique_ptr<class Semaphore> m_RenderFinishedSemaphores;
 		std::unique_ptr<class Semaphore> m_ComputeFinishedSemaphores;
+		std::unique_ptr<class Fence> m_InFlightFences;
+		std::unique_ptr<class Fence> m_ComputeInFlightFences;
+		
 		VkDebugUtilsMessengerEXT m_DebugMessenger;
 		VkSwapchainKHR m_SwapChain;
 		std::vector<VkImage> m_SwapChainImages;
@@ -121,7 +125,6 @@ namespace Engine {
 		std::vector<VkFramebuffer> m_SwapChainFramebuffers;
 		VkCommandPool m_CommandPool;
 		std::vector<VkCommandBuffer> m_CommandBuffers;
-		std::vector<VkFence> m_InFlightFences;
 		WindowSettings m_WindowSettings;
 		UserSettings m_UserSettings;
 		uint32_t m_CurrentFrame = 0;
@@ -142,7 +145,6 @@ namespace Engine {
 		std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
 		VkPipelineLayout m_ComputePipelineLayout;
 		VkPipeline m_ComputePipeline;
-		std::vector<VkFence> m_ComputeInFlightFences;
 		std::vector<VkCommandBuffer> m_ComputeCommandBuffers;
 	};
 }
