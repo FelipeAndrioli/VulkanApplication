@@ -27,8 +27,11 @@
 #include "UserSettings.h"
 #include "WindowSettings.h"
 #include "Window.h"
+#include "Instance.h"
 #include "Semaphore.h"
 #include "Fence.h"
+#include "Instance.h"
+#include "DebugUtilsMessenger.h"
 
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
@@ -104,13 +107,14 @@ namespace Engine {
 
 	private:
 		std::unique_ptr<class Window> m_Window;
+		std::unique_ptr<class Instance> m_Instance;
+		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;
 		std::unique_ptr<class Semaphore> m_RenderFinishedSemaphores;
 		std::unique_ptr<class Semaphore> m_ComputeFinishedSemaphores;
 		std::unique_ptr<class Fence> m_InFlightFences;
 		std::unique_ptr<class Fence> m_ComputeInFlightFences;
 		
-		VkDebugUtilsMessengerEXT m_DebugMessenger;
 		VkSwapchainKHR m_SwapChain;
 		std::vector<VkImage> m_SwapChainImages;
 		std::vector<VkImageView> m_SwapChainImageViews;

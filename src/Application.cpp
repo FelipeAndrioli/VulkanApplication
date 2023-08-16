@@ -1,7 +1,6 @@
 #include "Application.h" 
 
 static VkAllocationCallbacks* g_Allocator = nullptr;
-static VkInstance g_VulkanInstance = VK_NULL_HANDLE;
 static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
 static VkDevice g_VulkanDevice = VK_NULL_HANDLE;
 static VkQueue g_GraphicsQueue = VK_NULL_HANDLE;
@@ -21,6 +20,8 @@ const uint32_t PARTICLE_COUNT = 8192;
 namespace Engine {
 	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) : m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
 		m_Window.reset(new class Window(m_WindowSettings));
+		m_Instance.reset(new class Instance(c_ValidationLayers, c_EnableValidationLayers));
+		m_DebugMessenger.reset(c_EnableValidationLayers ? new class DebugUtilsMessenger(m_Instance->GetHandle()) : nullptr);
 
 		Init();
 	}
@@ -287,7 +288,7 @@ namespace Engine {
 
 	void Application::Init() {
 		InitVulkan();
-		g_UI.Init(*m_Window->GetHandle(), g_VulkanInstance, g_PhysicalDevice,
+		g_UI.Init(*m_Window->GetHandle(), m_Instance->GetHandle(), g_PhysicalDevice,
 			g_VulkanDevice, g_QueueFamilyIndices, g_GraphicsQueue, 
 			m_SwapChainExtent, m_SwapChainImageViews,m_SwapChainImageFormat, 
 			g_MinImageCount);
@@ -338,8 +339,6 @@ namespace Engine {
 	}
 
 	void Application::InitVulkan() {
-		createVulkanInstance();
-		setupDebugMessenger();
 		createSurface();
 		pickPhysicalDevice();
 		createLogicalDevice();
@@ -373,178 +372,9 @@ namespace Engine {
 
 		g_QueueFamilyIndices = findQueueFamilies(g_PhysicalDevice);
 	}
-
-
-	std::vector<const char*> getRequiredExtensions() {
-		uint32_t glfwExtensionCount = 0;
-		const char** glfwExtensions;
-		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-		if (c_EnableValidationLayers) {
-			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-		}
-
-		return extensions;
-	}
-
-	bool checkValidationLayerSupport() {
-		uint32_t layerCount;
-		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-		std::vector<VkLayerProperties> availableLayers(layerCount);
-		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-		for (const char* layerName : c_ValidationLayers) {
-			bool layerFound = false;
-
-			for (const auto& layerProperties : availableLayers) {
-				if (strcmp(layerName, layerProperties.layerName) == 0) {
-					layerFound = true;
-					break;
-				}
-			}
-
-			if (!layerFound) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-		VkDebugUtilsMessageTypeFlagsEXT messageType,
-		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData) {
-
-		if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-			std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
-		}
-
-		return VK_FALSE;
-	}
-
-	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
-		createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-		createInfo.pfnUserCallback = debugCallback;
-		createInfo.pUserData = nullptr; // optional
-	}
-
-	void checkRequiredExtensions(uint32_t glfwExtensionCount, const char** glfwExtensions, std::vector<VkExtensionProperties> vulkanSupportedExtensions) {
-
-		bool found = false;
-
-		for (uint32_t i = 0; i < glfwExtensionCount; i++) {
-			for (const auto& extension : vulkanSupportedExtensions) {
-				if (strcmp(glfwExtensions[i], extension.extensionName) == 0) {
-					found = true;
-					break;
-				}
-			}
-
-			if (!found) {
-				throw std::runtime_error("Required extension not supported!");
-			}
-			else {
-				found = false;
-				continue;
-			}
-		}
-	}
-
-	void Application::createVulkanInstance() {
-		if (c_EnableValidationLayers && !checkValidationLayerSupport()) {
-			throw std::runtime_error("Validation layers requested, but not available!");
-		}
-
-		VkApplicationInfo appInfo{};
-		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName = "RayTracer.exe";
-		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.pEngineName = "No Engine";
-		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.apiVersion = VK_API_VERSION_1_0;
-
-		VkInstanceCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		createInfo.pApplicationInfo = &appInfo;
-
-		auto glfwExtensions = getRequiredExtensions();
-
-		createInfo.enabledExtensionCount = static_cast<uint32_t>(glfwExtensions.size());
-		createInfo.ppEnabledExtensionNames = glfwExtensions.data();
-
-		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-
-		if (c_EnableValidationLayers) {
-			createInfo.enabledLayerCount = static_cast<uint32_t>(c_ValidationLayers.size());
-			createInfo.ppEnabledLayerNames = c_ValidationLayers.data();
-
-			populateDebugMessengerCreateInfo(debugCreateInfo);
-			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
-		}
-		else {
-			createInfo.enabledLayerCount = 0;
-
-			createInfo.pNext = nullptr;
-		}
-
-		if (vkCreateInstance(&createInfo, nullptr, &g_VulkanInstance) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create instance!");
-		}
-
-		uint32_t extensionCount = 0;
-		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-
-		std::vector<VkExtensionProperties> extensions(extensionCount);
-
-		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-
-		std::cout << "Available extensions: \n";
-
-		for (const auto& extension : extensions) {
-			std::cout << '\t' << extension.extensionName << '\n';
-		}
-
-		checkRequiredExtensions(static_cast<uint32_t>(glfwExtensions.size()), glfwExtensions.data(),
-			extensions);
-	}
 	
-	VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-		const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-
-		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-		
-		if (func != nullptr) {
-			return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-		} else {
-			return VK_ERROR_EXTENSION_NOT_PRESENT;
-		}
-	}
-	
-	void Application::setupDebugMessenger() {
-		if (!c_EnableValidationLayers) return;
-
-		VkDebugUtilsMessengerCreateInfoEXT createInfo{};
-		populateDebugMessengerCreateInfo(createInfo);
-
-		if (CreateDebugUtilsMessengerEXT(g_VulkanInstance, &createInfo, nullptr,
-			&m_DebugMessenger) != VK_SUCCESS) {
-
-			throw std::runtime_error("Failed to set up debug messenger!");
-		}
-	}
-
 	void Application::createSurface() {
-		if (glfwCreateWindowSurface(g_VulkanInstance, m_Window->GetHandle(), nullptr, &g_Surface) != VK_SUCCESS) {
+		if (glfwCreateWindowSurface(m_Instance->GetHandle(), m_Window->GetHandle(), nullptr, &g_Surface) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create window surface!");
 		}
 	}
@@ -605,14 +435,14 @@ namespace Engine {
 
 	void Application::pickPhysicalDevice() {
 		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(g_VulkanInstance, &deviceCount, nullptr);
+		vkEnumeratePhysicalDevices(m_Instance->GetHandle(), &deviceCount, nullptr);
 
 		if (deviceCount == 0) {
 			throw std::runtime_error("Failed to find GPUs with Vulkan support!");
 		}
 
 		std::vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(g_VulkanInstance, &deviceCount, devices.data());
+		vkEnumeratePhysicalDevices(m_Instance->GetHandle(), &deviceCount, devices.data());
 
 		for (const auto& device : devices) {
 			if (isDeviceSuitable(device)) {
@@ -1544,6 +1374,8 @@ namespace Engine {
 	}
 
 	void Application::createSyncObjects() {
+		// TODO: The Semaphore and Fence classes are pretty similar, maybe we can turn them into a template instead of two different classes
+
 		m_ImageAvailableSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
 		m_RenderFinishedSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
 		m_ComputeFinishedSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
@@ -1590,16 +1422,6 @@ namespace Engine {
 		g_UI.Resize(g_VulkanDevice, m_SwapChainExtent, m_SwapChainImageViews, g_MinImageCount);
 	}
 
-	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, 
-		const VkAllocationCallbacks* pAllocator) {
-	
-		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-
-		if (func != nullptr) {
-			func(instance, debugMessenger, pAllocator);
-		}
-	}
-
 	void Application::Shutdown() {
 
 		g_UI.Destroy(g_VulkanDevice);
@@ -1637,6 +1459,8 @@ namespace Engine {
 			vkFreeMemory(g_VulkanDevice, m_VertexBuffersMemory[i], nullptr);
 		}
 
+		m_DebugMessenger.reset();
+
 		m_InFlightFences.reset();
 		m_ComputeInFlightFences.reset();
 
@@ -1647,12 +1471,9 @@ namespace Engine {
 		vkDestroyCommandPool(g_VulkanDevice, m_CommandPool, nullptr);
 		vkDestroyDevice(g_VulkanDevice, nullptr);
 
-		if (c_EnableValidationLayers) {
-			DestroyDebugUtilsMessengerEXT(g_VulkanInstance, m_DebugMessenger, nullptr);
-		}
-	
-		vkDestroySurfaceKHR(g_VulkanInstance, g_Surface, nullptr);
-		vkDestroyInstance(g_VulkanInstance, nullptr);
+		vkDestroySurfaceKHR(m_Instance->GetHandle(), g_Surface, nullptr);
+		m_Instance.reset();
+		
 		glfwTerminate();
 	}
 }
