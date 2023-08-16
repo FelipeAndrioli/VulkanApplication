@@ -17,7 +17,7 @@ namespace Engine {
 		const std::vector<const char*> m_ValidationLayers;
 		const bool m_EnableValidationLayers;
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
-
+	private:
 		std::vector<const char*> getRequiredExtensions();
 		bool checkValidationLayerSupport();
 		void checkRequiredExtensions(uint32_t glfwExtensionCount, const char** glfwExtensions,
