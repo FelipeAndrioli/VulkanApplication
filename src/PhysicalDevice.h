@@ -17,8 +17,9 @@ namespace Engine {
 		std::vector<VkPhysicalDevice> GetAvailablePhysicalDevices();
 
 		inline SwapChainSupportDetails GetSwapChainSupportDetails() { return QuerySwapChainSupportDetails(m_PhysicalDevice); }
+		inline QueueFamilyIndices& GetQueueFamilyIndices() { return m_QueueFamilyIndices; }
 	private:
-		QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 		bool isDeviceSuitable(VkPhysicalDevice device);
 		bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 		SwapChainSupportDetails QuerySwapChainSupportDetails(VkPhysicalDevice device);
@@ -29,5 +30,6 @@ namespace Engine {
 
 		VkInstance& p_Instance;
 		VkSurfaceKHR& p_Surface;
+		QueueFamilyIndices m_QueueFamilyIndices;
 	};
 }

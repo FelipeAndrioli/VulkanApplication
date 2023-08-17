@@ -41,6 +41,7 @@ namespace Engine {
 		}
 
 		m_SwapChainSupportDetails = QuerySwapChainSupportDetails(m_PhysicalDevice);
+		m_QueueFamilyIndices = FindQueueFamilies(m_PhysicalDevice);
 	}
 
 	PhysicalDevice::~PhysicalDevice() {
@@ -78,7 +79,7 @@ namespace Engine {
 		return details;
 	}
 
-	QueueFamilyIndices PhysicalDevice::findQueueFamilies(VkPhysicalDevice device) {
+	QueueFamilyIndices PhysicalDevice::FindQueueFamilies(VkPhysicalDevice device) {
 		QueueFamilyIndices indices;
 
 		uint32_t queueFamilyCount = 0;
@@ -111,7 +112,7 @@ namespace Engine {
 	}
 
 	bool PhysicalDevice::isDeviceSuitable(VkPhysicalDevice device) {
-		QueueFamilyIndices indices = findQueueFamilies(device);
+		QueueFamilyIndices indices = FindQueueFamilies(device);
 
 		bool extensionsSupported = checkDeviceExtensionSupport(device);
 

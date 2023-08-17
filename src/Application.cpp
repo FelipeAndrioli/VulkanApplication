@@ -11,7 +11,6 @@ static bool g_FramebufferResized = false;
 static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
 static int g_MinImageCount = 2;
 
-static Engine::QueueFamilyIndices g_QueueFamilyIndices;
 static Engine::UI g_UI;
 
 const uint32_t PARTICLE_COUNT = 8192;
@@ -288,7 +287,7 @@ namespace Engine {
 	void Application::Init() {
 		InitVulkan();
 		g_UI.Init(*m_Window->GetHandle(), m_Instance->GetHandle(), m_PhysicalDevice->GetHandle(),
-			g_VulkanDevice, g_QueueFamilyIndices, g_GraphicsQueue, 
+			g_VulkanDevice, m_PhysicalDevice->GetQueueFamilyIndices(), g_GraphicsQueue,
 			m_SwapChainExtent, m_SwapChainImageViews,m_SwapChainImageFormat, 
 			g_MinImageCount);
 	}
@@ -303,38 +302,6 @@ namespace Engine {
 			std::cout << "Closing application" << '\n';
 			m_Window->Close();
 		}
-	}
-
-	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
-		QueueFamilyIndices indices;
-
-		uint32_t queueFamilyCount = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-		int i = 0;
-		for (const auto& queueFamily : queueFamilies) {
-			if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
-				indices.graphicsFamily = i;
-				indices.graphicsAndComputeFamily = i;
-			}
-
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, g_Surface, &presentSupport);
-
-			if (presentSupport) {
-				indices.presentFamily = i;
-			}
-
-			if (indices.isComplete()) {
-				break;
-			}
-			i++;
-		}
-
-		return indices;
 	}
 
 	void Application::InitVulkan() {
@@ -369,8 +336,6 @@ namespace Engine {
 		createCommandBuffers();
 		createComputeCommandBuffers();
 		createSyncObjects();
-
-		g_QueueFamilyIndices = findQueueFamilies(m_PhysicalDevice->GetHandle());
 	}
 	
 	void Application::createSurface() {
@@ -380,7 +345,7 @@ namespace Engine {
 	}
 
 	void Application::createLogicalDevice() {
-		QueueFamilyIndices indices = findQueueFamilies(m_PhysicalDevice->GetHandle());
+		QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
 
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 		std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
@@ -487,7 +452,7 @@ namespace Engine {
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-		QueueFamilyIndices indices = findQueueFamilies(m_PhysicalDevice->GetHandle());
+		QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
 		uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
 		if (indices.graphicsFamily != indices.presentFamily) {
@@ -841,7 +806,7 @@ namespace Engine {
 	}
 
 	void Application::createCommandPool() {
-		QueueFamilyIndices queueFamilyIndices = findQueueFamilies(m_PhysicalDevice->GetHandle());
+		QueueFamilyIndices queueFamilyIndices = m_PhysicalDevice->GetQueueFamilyIndices();
 
 		VkCommandPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -1330,7 +1295,7 @@ namespace Engine {
 			glfwGetFramebufferSize(m_Window->GetHandle(), &width, &height);
 			glfwWaitEvents();
 
-			QueueFamilyIndices indices = findQueueFamilies(m_PhysicalDevice->GetHandle());
+			QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
 		}
 
 		vkDeviceWaitIdle(g_VulkanDevice);
