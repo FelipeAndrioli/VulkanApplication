@@ -28,6 +28,7 @@
 #include "WindowSettings.h"
 #include "Window.h"
 #include "Instance.h"
+#include "PhysicalDevice.h"
 #include "Semaphore.h"
 #include "Fence.h"
 #include "Instance.h"
@@ -59,7 +60,6 @@ namespace Engine {
 		void createVulkanInstance();
 		void setupDebugMessenger();
 		void createSurface();
-		void pickPhysicalDevice();
 		void createLogicalDevice();
 		void createSwapChain();
 		void createImageViews();
@@ -108,6 +108,7 @@ namespace Engine {
 	private:
 		std::unique_ptr<class Window> m_Window;
 		std::unique_ptr<class Instance> m_Instance;
+		std::unique_ptr<class PhysicalDevice> m_PhysicalDevice;
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;
 		std::unique_ptr<class Semaphore> m_RenderFinishedSemaphores;

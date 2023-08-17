@@ -1,7 +1,6 @@
 #include "Application.h" 
 
 static VkAllocationCallbacks* g_Allocator = nullptr;
-static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
 static VkDevice g_VulkanDevice = VK_NULL_HANDLE;
 static VkQueue g_GraphicsQueue = VK_NULL_HANDLE;
 static VkQueue g_ComputeQueue = VK_NULL_HANDLE;
@@ -288,7 +287,7 @@ namespace Engine {
 
 	void Application::Init() {
 		InitVulkan();
-		g_UI.Init(*m_Window->GetHandle(), m_Instance->GetHandle(), g_PhysicalDevice,
+		g_UI.Init(*m_Window->GetHandle(), m_Instance->GetHandle(), m_PhysicalDevice->GetHandle(),
 			g_VulkanDevice, g_QueueFamilyIndices, g_GraphicsQueue, 
 			m_SwapChainExtent, m_SwapChainImageViews,m_SwapChainImageFormat, 
 			g_MinImageCount);
@@ -340,7 +339,8 @@ namespace Engine {
 
 	void Application::InitVulkan() {
 		createSurface();
-		pickPhysicalDevice();
+		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), g_Surface));
+
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
@@ -370,7 +370,7 @@ namespace Engine {
 		createComputeCommandBuffers();
 		createSyncObjects();
 
-		g_QueueFamilyIndices = findQueueFamilies(g_PhysicalDevice);
+		g_QueueFamilyIndices = findQueueFamilies(m_PhysicalDevice->GetHandle());
 	}
 	
 	void Application::createSurface() {
@@ -379,85 +379,8 @@ namespace Engine {
 		}
 	}
 
-	bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
-		uint32_t extensionCount = 0;
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-		std::set<std::string> requiredExtensions(c_DeviceExtensions.begin(), c_DeviceExtensions.end());
-
-		for (const auto& extension : availableExtensions) {
-			requiredExtensions.erase(extension.extensionName);
-		}
-
-		return requiredExtensions.empty();
-	}
-
-	SwapChainSupportDetails querySwapChainSupportDetails(VkPhysicalDevice device) {
-		SwapChainSupportDetails details;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, g_Surface, &details.capabilities);
-
-		uint32_t formatCount;
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, g_Surface, &formatCount, details.formats.data());
-
-		if (formatCount != 0) {
-			details.formats.resize(formatCount);
-			vkGetPhysicalDeviceSurfaceFormatsKHR(device, g_Surface, &formatCount, details.formats.data());
-		}
-
-		uint32_t presentModeCount;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, g_Surface, &presentModeCount, details.presentModes.data());
-
-		if (presentModeCount != 0) {
-			details.presentModes.resize(presentModeCount);
-			vkGetPhysicalDeviceSurfacePresentModesKHR(device, g_Surface, &presentModeCount, details.presentModes.data());
-		}
-
-		return details;
-	}
-
-	bool isDeviceSuitable(VkPhysicalDevice device) {
-		QueueFamilyIndices indices = findQueueFamilies(device);
-
-		bool extensionsSupported = checkDeviceExtensionSupport(device);
-
-		bool swapChainAdequate = false;
-
-		if (extensionsSupported) {
-			SwapChainSupportDetails swapChainSupport = querySwapChainSupportDetails(device);
-			swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-		}
-
-		return indices.isComplete() && extensionsSupported && swapChainAdequate;
-	}
-
-	void Application::pickPhysicalDevice() {
-		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(m_Instance->GetHandle(), &deviceCount, nullptr);
-
-		if (deviceCount == 0) {
-			throw std::runtime_error("Failed to find GPUs with Vulkan support!");
-		}
-
-		std::vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(m_Instance->GetHandle(), &deviceCount, devices.data());
-
-		for (const auto& device : devices) {
-			if (isDeviceSuitable(device)) {
-				g_PhysicalDevice = device;
-				break;
-			}
-		}
-
-		if (g_PhysicalDevice == VK_NULL_HANDLE) {
-			throw std::runtime_error("Failed to find a suitable GPU!");
-		}
-	}
-
 	void Application::createLogicalDevice() {
-		QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
+		QueueFamilyIndices indices = findQueueFamilies(m_PhysicalDevice->GetHandle());
 
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 		std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
@@ -492,7 +415,7 @@ namespace Engine {
 			createInfo.enabledLayerCount = 0;
 		}
 
-		if (vkCreateDevice(g_PhysicalDevice, &createInfo, nullptr, &g_VulkanDevice) != VK_SUCCESS) {
+		if (vkCreateDevice(m_PhysicalDevice->GetHandle(), &createInfo, nullptr, &g_VulkanDevice) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create logical device");
 		}
 
@@ -542,7 +465,7 @@ namespace Engine {
 	}
 
 	void Application::createSwapChain() {
-		SwapChainSupportDetails swapChainSupport = querySwapChainSupportDetails(g_PhysicalDevice);
+		SwapChainSupportDetails swapChainSupport = m_PhysicalDevice->GetSwapChainSupportDetails();
 
 		VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 		VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -564,7 +487,7 @@ namespace Engine {
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-		QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
+		QueueFamilyIndices indices = findQueueFamilies(m_PhysicalDevice->GetHandle());
 		uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
 		if (indices.graphicsFamily != indices.presentFamily) {
@@ -918,7 +841,7 @@ namespace Engine {
 	}
 
 	void Application::createCommandPool() {
-		QueueFamilyIndices queueFamilyIndices = findQueueFamilies(g_PhysicalDevice);
+		QueueFamilyIndices queueFamilyIndices = findQueueFamilies(m_PhysicalDevice->GetHandle());
 
 		VkCommandPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -930,9 +853,9 @@ namespace Engine {
 		}
 	}
 
-	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+	uint32_t findMemoryType(VkPhysicalDevice& physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(g_PhysicalDevice, &memProperties);
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
 		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
 			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
@@ -994,7 +917,7 @@ namespace Engine {
 		VkMemoryAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+		allocInfo.memoryTypeIndex = findMemoryType(m_PhysicalDevice->GetHandle(), memRequirements.memoryTypeBits, properties);
 	
 		if (vkAllocateMemory(g_VulkanDevice, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to allocate vertex buffer memory!");
@@ -1407,7 +1330,7 @@ namespace Engine {
 			glfwGetFramebufferSize(m_Window->GetHandle(), &width, &height);
 			glfwWaitEvents();
 
-			QueueFamilyIndices indices = findQueueFamilies(g_PhysicalDevice);
+			QueueFamilyIndices indices = findQueueFamilies(m_PhysicalDevice->GetHandle());
 		}
 
 		vkDeviceWaitIdle(g_VulkanDevice);

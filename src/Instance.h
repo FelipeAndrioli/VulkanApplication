@@ -3,7 +3,10 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <set>
+
 #include "Vulkan.h"
+#include "Common.h"
 
 namespace Engine {
 	class Instance {
@@ -14,6 +17,7 @@ namespace Engine {
 		VkInstance& GetHandle();
 		const std::vector<const char*>& GetValidationLayers();
 	private:
+
 		const std::vector<const char*> m_ValidationLayers;
 		const bool m_EnableValidationLayers;
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
