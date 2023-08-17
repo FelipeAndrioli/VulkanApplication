@@ -1,0 +1,143 @@
+#include "PhysicalDevice.h"
+
+namespace Engine {
+	PhysicalDevice::PhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface) 
+		: p_Instance(instance), p_Surface(surface) {
+		uint32_t deviceCount = 0;
+		vkEnumeratePhysicalDevices(p_Instance, &deviceCount, nullptr);
+
+		if (deviceCount == 0) {
+			throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+		}
+
+		m_AvailablePhysicalDevices.resize(deviceCount);
+		vkEnumeratePhysicalDevices(p_Instance, &deviceCount, m_AvailablePhysicalDevices.data());
+
+		for (const auto& device : m_AvailablePhysicalDevices) {
+			VkPhysicalDeviceFeatures device_features;
+			VkPhysicalDeviceProperties device_properties;
+	
+			vkGetPhysicalDeviceFeatures(device, &device_features);
+			vkGetPhysicalDeviceProperties(device, &device_properties);
+
+			std::cout << "Available Devices:" << '\n';
+			std::cout << '\t' << device_properties.deviceName << '\n';
+		}
+		
+		for (const auto& device : m_AvailablePhysicalDevices) {
+			if (isDeviceSuitable(device)) {
+				m_PhysicalDevice = device;
+
+				VkPhysicalDeviceProperties device_properties;
+				vkGetPhysicalDeviceProperties(device, &device_properties);
+
+				std::cout << "Selected device: " << device_properties.deviceName << '\n';
+				break;
+			}
+		}
+
+		if (m_PhysicalDevice == VK_NULL_HANDLE) {
+			throw std::runtime_error("Failed to find a suitable GPU!");
+		}
+
+		m_SwapChainSupportDetails = QuerySwapChainSupportDetails(m_PhysicalDevice);
+	}
+
+	PhysicalDevice::~PhysicalDevice() {
+
+	}
+
+	VkPhysicalDevice& PhysicalDevice::GetHandle() {
+		return m_PhysicalDevice;
+	}
+
+	std::vector<VkPhysicalDevice> PhysicalDevice::GetAvailablePhysicalDevices() {
+		return m_AvailablePhysicalDevices;
+	}
+
+	SwapChainSupportDetails PhysicalDevice::QuerySwapChainSupportDetails(VkPhysicalDevice device) {
+		SwapChainSupportDetails details;
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, p_Surface, &details.capabilities);
+
+		uint32_t formatCount;
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, p_Surface, &formatCount, details.formats.data());
+
+		if (formatCount != 0) {
+			details.formats.resize(formatCount);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(device, p_Surface, &formatCount, details.formats.data());
+		}
+
+		uint32_t presentModeCount;
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, p_Surface, &presentModeCount, details.presentModes.data());
+
+		if (presentModeCount != 0) {
+			details.presentModes.resize(presentModeCount);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(device, p_Surface, &presentModeCount, details.presentModes.data());
+		}
+
+		return details;
+	}
+
+	QueueFamilyIndices PhysicalDevice::findQueueFamilies(VkPhysicalDevice device) {
+		QueueFamilyIndices indices;
+
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+		int i = 0;
+		for (const auto& queueFamily : queueFamilies) {
+			if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
+				indices.graphicsFamily = i;
+				indices.graphicsAndComputeFamily = i;
+			}
+
+			VkBool32 presentSupport = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, p_Surface, &presentSupport);
+
+			if (presentSupport) {
+				indices.presentFamily = i;
+			}
+
+			if (indices.isComplete()) {
+				break;
+			}
+			i++;
+		}
+
+		return indices;
+	}
+
+	bool PhysicalDevice::isDeviceSuitable(VkPhysicalDevice device) {
+		QueueFamilyIndices indices = findQueueFamilies(device);
+
+		bool extensionsSupported = checkDeviceExtensionSupport(device);
+
+		bool swapChainAdequate = false;
+
+		if (extensionsSupported) {
+			SwapChainSupportDetails swapChainSupport = QuerySwapChainSupportDetails(device);
+			swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+		}
+
+		return indices.isComplete() && extensionsSupported && swapChainAdequate;
+	}
+
+	bool PhysicalDevice::checkDeviceExtensionSupport(VkPhysicalDevice device) {
+		uint32_t extensionCount = 0;
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+		std::set<std::string> requiredExtensions(c_DeviceExtensions.begin(), c_DeviceExtensions.end());
+
+		for (const auto& extension : availableExtensions) {
+			requiredExtensions.erase(extension.extensionName);
+		}
+
+		return requiredExtensions.empty();
+	}
+}
