@@ -28,6 +28,7 @@
 #include "WindowSettings.h"
 #include "Window.h"
 #include "Instance.h"
+#include "Surface.h"
 #include "PhysicalDevice.h"
 #include "Semaphore.h"
 #include "Fence.h"
@@ -108,6 +109,7 @@ namespace Engine {
 	private:
 		std::unique_ptr<class Window> m_Window;
 		std::unique_ptr<class Instance> m_Instance;
+		std::unique_ptr<class Surface> m_Surface;
 		std::unique_ptr<class PhysicalDevice> m_PhysicalDevice;
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;

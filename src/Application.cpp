@@ -5,7 +5,6 @@ static VkDevice g_VulkanDevice = VK_NULL_HANDLE;
 static VkQueue g_GraphicsQueue = VK_NULL_HANDLE;
 static VkQueue g_ComputeQueue = VK_NULL_HANDLE;
 static VkQueue g_PresentQueue = VK_NULL_HANDLE;
-static VkSurfaceKHR g_Surface = VK_NULL_HANDLE;
 static bool g_FramebufferResized = false;
 
 static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
@@ -305,8 +304,8 @@ namespace Engine {
 	}
 
 	void Application::InitVulkan() {
-		createSurface();
-		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), g_Surface));
+		m_Surface.reset(new class Surface(m_Instance->GetHandle(), *m_Window->GetHandle()));
+		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 
 		createLogicalDevice();
 		createSwapChain();
@@ -338,12 +337,6 @@ namespace Engine {
 		createSyncObjects();
 	}
 	
-	void Application::createSurface() {
-		if (glfwCreateWindowSurface(m_Instance->GetHandle(), m_Window->GetHandle(), nullptr, &g_Surface) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create window surface!");
-		}
-	}
-
 	void Application::createLogicalDevice() {
 		QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
 
@@ -444,7 +437,7 @@ namespace Engine {
 
 		VkSwapchainCreateInfoKHR createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		createInfo.surface = g_Surface;
+		createInfo.surface = m_Surface->GetHandle();
 		createInfo.minImageCount = imageCount;
 		createInfo.imageFormat = surfaceFormat.format;
 		createInfo.imageColorSpace = surfaceFormat.colorSpace;
@@ -1359,7 +1352,7 @@ namespace Engine {
 		vkDestroyCommandPool(g_VulkanDevice, m_CommandPool, nullptr);
 		vkDestroyDevice(g_VulkanDevice, nullptr);
 
-		vkDestroySurfaceKHR(m_Instance->GetHandle(), g_Surface, nullptr);
+		m_Surface.reset();
 		m_Instance.reset();
 		
 		glfwTerminate();
