@@ -1,10 +1,5 @@
 #include "Application.h" 
 
-static VkAllocationCallbacks* g_Allocator = nullptr;
-static VkDevice g_VulkanDevice = VK_NULL_HANDLE;
-static VkQueue g_GraphicsQueue = VK_NULL_HANDLE;
-static VkQueue g_ComputeQueue = VK_NULL_HANDLE;
-static VkQueue g_PresentQueue = VK_NULL_HANDLE;
 static bool g_FramebufferResized = false;
 
 static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
@@ -52,9 +47,9 @@ namespace Engine {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
-		vkWaitForFences(g_VulkanDevice, 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
+		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
 		updateUniformBuffer(m_CurrentFrame);
-		vkResetFences(g_VulkanDevice, 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
+		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
 
 		vkResetCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame], 0);
 		recordComputeCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame]);
@@ -64,7 +59,7 @@ namespace Engine {
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame);
 
-		if (vkQueueSubmit(g_ComputeQueue, 1, &submitInfo, *m_ComputeInFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
+		if (vkQueueSubmit(m_LogicalDevice->GetComputeQueue(), 1, &submitInfo, *m_ComputeInFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit compute command buffer!");
 		}
 
@@ -185,7 +180,7 @@ namespace Engine {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
-		vkResetFences(g_VulkanDevice, 1, m_InFlightFences->GetHandle(m_CurrentFrame));
+		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame));
 
 		m_UserSettings.IsRayTraced ? drawRayTraced(m_CommandBuffers[m_CurrentFrame], imageIndex) : 
 			drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
@@ -217,7 +212,7 @@ namespace Engine {
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = m_RenderFinishedSemaphores->GetHandle(m_CurrentFrame);
 	
-		if (vkQueueSubmit(g_GraphicsQueue, 1, &submitInfo, *m_InFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
+		if (vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, *m_InFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit draw command buffer!");
 		}
 	}
@@ -231,8 +226,8 @@ namespace Engine {
 		uint32_t imageIndex;
 		VkResult result;
 
-		vkWaitForFences(g_VulkanDevice, 1, m_InFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
-		result = vkAcquireNextImageKHR(g_VulkanDevice, m_SwapChain, UINT64_MAX, 
+		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
+		result = vkAcquireNextImageKHR(m_LogicalDevice->GetHandle(), m_SwapChain, UINT64_MAX, 
 			*m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame), VK_NULL_HANDLE, &imageIndex);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -257,7 +252,7 @@ namespace Engine {
 			presentInfo.pImageIndices = &imageIndex;
 			presentInfo.pResults = nullptr;
 		
-			result = vkQueuePresentKHR(g_PresentQueue, &presentInfo);
+			result = vkQueuePresentKHR(m_LogicalDevice->GetPresentQueue(), &presentInfo);
 			
 			if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || g_FramebufferResized) {
 				g_FramebufferResized = false;
@@ -280,13 +275,15 @@ namespace Engine {
 		m_Window->OnResize = std::bind(&Application::processResize, this, std::placeholders::_1, std::placeholders::_2);
 		m_Window->Run();
 
-		vkDeviceWaitIdle(g_VulkanDevice);
+		vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
 	}
 
 	void Application::Init() {
 		InitVulkan();
+
+		// TODO: clean a bit this GUI initializer
 		g_UI.Init(*m_Window->GetHandle(), m_Instance->GetHandle(), m_PhysicalDevice->GetHandle(),
-			g_VulkanDevice, m_PhysicalDevice->GetQueueFamilyIndices(), g_GraphicsQueue,
+			m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices(), m_LogicalDevice->GetGraphicsQueue(),
 			m_SwapChainExtent, m_SwapChainImageViews,m_SwapChainImageFormat, 
 			g_MinImageCount);
 	}
@@ -306,8 +303,8 @@ namespace Engine {
 	void Application::InitVulkan() {
 		m_Surface.reset(new class Surface(m_Instance->GetHandle(), *m_Window->GetHandle()));
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
+		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 
-		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
 		createRenderPass();
@@ -337,51 +334,6 @@ namespace Engine {
 		createSyncObjects();
 	}
 	
-	void Application::createLogicalDevice() {
-		QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
-
-		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-		std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
-
-		float queuePriority = 1.0f;
-		for (uint32_t queueFamily : uniqueQueueFamilies) {
-			VkDeviceQueueCreateInfo queueCreateInfo{};
-			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queueCreateInfo.queueFamilyIndex = queueFamily;
-			queueCreateInfo.queueCount = 1;
-			queueCreateInfo.pQueuePriorities = &queuePriority;
-			queueCreateInfos.push_back(queueCreateInfo);
-		}
-
-		VkPhysicalDeviceFeatures deviceFeatures{};
-
-		VkDeviceCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-		createInfo.pQueueCreateInfos = queueCreateInfos.data();
-
-		createInfo.pEnabledFeatures = &deviceFeatures;
-
-		createInfo.enabledExtensionCount = static_cast<uint32_t>(c_DeviceExtensions.size());
-		createInfo.ppEnabledExtensionNames = c_DeviceExtensions.data();
-
-		if (c_EnableValidationLayers) {
-			createInfo.enabledLayerCount = static_cast<uint32_t>(c_ValidationLayers.size());
-			createInfo.ppEnabledLayerNames = c_ValidationLayers.data();
-		} else {
-			createInfo.enabledLayerCount = 0;
-		}
-
-		if (vkCreateDevice(m_PhysicalDevice->GetHandle(), &createInfo, nullptr, &g_VulkanDevice) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create logical device");
-		}
-
-		vkGetDeviceQueue(g_VulkanDevice, indices.graphicsFamily.value(), 0, &g_GraphicsQueue);
-		vkGetDeviceQueue(g_VulkanDevice, indices.presentFamily.value(), 0, &g_PresentQueue);
-		vkGetDeviceQueue(g_VulkanDevice, indices.graphicsAndComputeFamily.value(), 0, &g_ComputeQueue);
-	}
-
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 		for (const auto& availableFormat : availableFormats) {
 			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
@@ -471,13 +423,13 @@ namespace Engine {
 		createInfo.clipped = VK_TRUE;
 		createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-		if (vkCreateSwapchainKHR(g_VulkanDevice, &createInfo, nullptr, &m_SwapChain) != VK_SUCCESS) {
+		if (vkCreateSwapchainKHR(m_LogicalDevice->GetHandle(), &createInfo, nullptr, &m_SwapChain) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create swap chain!");
 		}
 
-		vkGetSwapchainImagesKHR(g_VulkanDevice, m_SwapChain, &imageCount, nullptr);
+		vkGetSwapchainImagesKHR(m_LogicalDevice->GetHandle(), m_SwapChain, &imageCount, nullptr);
 		m_SwapChainImages.resize(imageCount);
-		vkGetSwapchainImagesKHR(g_VulkanDevice, m_SwapChain, &imageCount, m_SwapChainImages.data());
+		vkGetSwapchainImagesKHR(m_LogicalDevice->GetHandle(), m_SwapChain, &imageCount, m_SwapChainImages.data());
 		m_SwapChainImageFormat = surfaceFormat.format;
 		m_SwapChainExtent = extent;
 	}
@@ -504,7 +456,7 @@ namespace Engine {
 			createInfo.subresourceRange.baseArrayLayer = 0;
 			createInfo.subresourceRange.layerCount = 1;
 
-			if (vkCreateImageView(g_VulkanDevice, &createInfo, nullptr, &m_SwapChainImageViews[i]) != VK_SUCCESS) {
+			if (vkCreateImageView(m_LogicalDevice->GetHandle(), &createInfo, nullptr, &m_SwapChainImageViews[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to create image views");
 			}
 		}
@@ -548,7 +500,7 @@ namespace Engine {
 		renderPassInfo.dependencyCount = 1;
 		renderPassInfo.pDependencies = &dependency;
 
-		if (vkCreateRenderPass(g_VulkanDevice, &renderPassInfo, nullptr, &m_RenderPass) != VK_SUCCESS) {
+		if (vkCreateRenderPass(m_LogicalDevice->GetHandle(), &renderPassInfo, nullptr, &m_RenderPass) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create render pass!");
 		}
 	}
@@ -571,14 +523,14 @@ namespace Engine {
 		return buffer;
 	}
 
-	VkShaderModule createShaderModule(const std::vector<char>& code) {
+	VkShaderModule createShaderModule(const std::vector<char>& code, LogicalDevice* p_LogicalDevice) {
 		VkShaderModuleCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = code.size();
 		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
 		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(g_VulkanDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+		if (vkCreateShaderModule(p_LogicalDevice->GetHandle(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create shader module!");
 		}
 
@@ -598,7 +550,7 @@ namespace Engine {
 		layoutInfo.bindingCount = 1;
 		layoutInfo.pBindings = &uboLayoutBinding;
 
-		if (vkCreateDescriptorSetLayout(g_VulkanDevice, &layoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) {
+		if (vkCreateDescriptorSetLayout(m_LogicalDevice->GetHandle(), &layoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create descriptor set layout");
 		}
 	}
@@ -625,8 +577,8 @@ namespace Engine {
 		auto vertShaderCode = readFile(vertexShaderPath);
 		auto fragShaderCode = readFile(fragShaderPath);
 
-		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, m_LogicalDevice.get());
+		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode, m_LogicalDevice.get());
 
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -746,7 +698,7 @@ namespace Engine {
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 		pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-		if (vkCreatePipelineLayout(g_VulkanDevice, &pipelineLayoutInfo, nullptr, &r_PipelineLayout) != VK_SUCCESS) {
+		if (vkCreatePipelineLayout(m_LogicalDevice->GetHandle(), &pipelineLayoutInfo, nullptr, &r_PipelineLayout) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create pipeline layout!");
 		}
 
@@ -768,13 +720,13 @@ namespace Engine {
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		//pipelineInfo.basePipelineIndex = -1;
 
-		if (vkCreateGraphicsPipelines(g_VulkanDevice, VK_NULL_HANDLE, 1, &pipelineInfo, 
+		if (vkCreateGraphicsPipelines(m_LogicalDevice->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo,
 			nullptr, &r_GraphicsPipeline) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create graphics pipeline!");
 		}
 
-		vkDestroyShaderModule(g_VulkanDevice, vertShaderModule, nullptr);
-		vkDestroyShaderModule(g_VulkanDevice, fragShaderModule, nullptr);
+		vkDestroyShaderModule(m_LogicalDevice->GetHandle(), vertShaderModule, nullptr);
+		vkDestroyShaderModule(m_LogicalDevice->GetHandle(), fragShaderModule, nullptr);
 	}
 
 	void Application::createFramebuffers() {
@@ -792,7 +744,7 @@ namespace Engine {
 			framebufferInfo.height = m_SwapChainExtent.height;
 			framebufferInfo.layers = 1;
 
-			if (vkCreateFramebuffer(g_VulkanDevice, &framebufferInfo, nullptr, &m_SwapChainFramebuffers[i]) != VK_SUCCESS) {
+			if (vkCreateFramebuffer(m_LogicalDevice->GetHandle(), &framebufferInfo, nullptr, &m_SwapChainFramebuffers[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to create framebuffer!");
 			}
 		}
@@ -806,7 +758,7 @@ namespace Engine {
 		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 
-		if (vkCreateCommandPool(g_VulkanDevice, &poolInfo, nullptr, &m_CommandPool) != VK_SUCCESS) {
+		if (vkCreateCommandPool(m_LogicalDevice->GetHandle(), &poolInfo, nullptr, &m_CommandPool) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create Command Pool!");
 		}
 	}
@@ -832,7 +784,7 @@ namespace Engine {
 		allocInfo.commandBufferCount = 1;
 
 		VkCommandBuffer commandBuffer;
-		vkAllocateCommandBuffers(g_VulkanDevice, &allocInfo, &commandBuffer);
+		vkAllocateCommandBuffers(m_LogicalDevice->GetHandle(), &allocInfo, &commandBuffer);
 
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -852,10 +804,10 @@ namespace Engine {
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffer;
 
-		vkQueueSubmit(g_GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(g_GraphicsQueue);
+		vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(m_LogicalDevice->GetGraphicsQueue());
 
-		vkFreeCommandBuffers(g_VulkanDevice, m_CommandPool, 1, &commandBuffer);
+		vkFreeCommandBuffers(m_LogicalDevice->GetHandle(), m_CommandPool, 1, &commandBuffer);
 	}
 
 	void Application::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
@@ -865,23 +817,23 @@ namespace Engine {
 		bufferInfo.usage = usage;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		if (vkCreateBuffer(g_VulkanDevice, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+		if (vkCreateBuffer(m_LogicalDevice->GetHandle(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create buffer!");
 		}
 
 		VkMemoryRequirements memRequirements;
-		vkGetBufferMemoryRequirements(g_VulkanDevice, buffer, &memRequirements);
+		vkGetBufferMemoryRequirements(m_LogicalDevice->GetHandle(), buffer, &memRequirements);
 
 		VkMemoryAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex = findMemoryType(m_PhysicalDevice->GetHandle(), memRequirements.memoryTypeBits, properties);
 	
-		if (vkAllocateMemory(g_VulkanDevice, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+		if (vkAllocateMemory(m_LogicalDevice->GetHandle(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to allocate vertex buffer memory!");
 		}
 
-		vkBindBufferMemory(g_VulkanDevice, buffer, bufferMemory, 0);
+		vkBindBufferMemory(m_LogicalDevice->GetHandle(), buffer, bufferMemory, 0);
 	}
 
 	void Application::createVertexBuffer() {
@@ -907,14 +859,14 @@ namespace Engine {
 			stagingBuffer, stagingBufferMemory);
 
 		void* data;
-		vkMapMemory(g_VulkanDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+		vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
 		memcpy(data, vertices.data(), (size_t)bufferSize);
-		vkUnmapMemory(g_VulkanDevice, stagingBufferMemory);
+		vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
 		
 		copyBuffer(stagingBuffer, m_VertexBuffers[currentImage], bufferSize);
 
-		vkDestroyBuffer(g_VulkanDevice, stagingBuffer, nullptr);
-		vkFreeMemory(g_VulkanDevice, stagingBufferMemory, nullptr);
+		vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
 	}
 
 	void Application::createIndexBuffer() {
@@ -928,17 +880,17 @@ namespace Engine {
 			stagingBuffer, stagingBufferMemory);
 
 		void* data;
-		vkMapMemory(g_VulkanDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+		vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
 		memcpy(data, indices.data(), (size_t)bufferSize);
-		vkUnmapMemory(g_VulkanDevice, stagingBufferMemory);
+		vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
 
 		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_IndexBuffer, m_IndexBufferMemory);
 		
 		copyBuffer(stagingBuffer, m_IndexBuffer, bufferSize);
 
-		vkDestroyBuffer(g_VulkanDevice, stagingBuffer, nullptr);
-		vkFreeMemory(g_VulkanDevice, stagingBufferMemory, nullptr);
+		vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
 	}
 
 	void Application::createShaderStorageBuffers() {
@@ -966,9 +918,9 @@ namespace Engine {
 			stagingBuffer, stagingBufferMemory);
 
 		void* data;
-		vkMapMemory(g_VulkanDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+		vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
 		memcpy(data, particles.data(), (size_t)bufferSize);
-		vkUnmapMemory(g_VulkanDevice, stagingBufferMemory);
+		vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
 
 		m_ShaderStorageBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 		m_ShaderStorageBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
@@ -979,8 +931,8 @@ namespace Engine {
 			copyBuffer(stagingBuffer, m_ShaderStorageBuffers[i], bufferSize);
 		}
 
-		vkDestroyBuffer(g_VulkanDevice, stagingBuffer, nullptr);
-		vkFreeMemory(g_VulkanDevice, stagingBufferMemory, nullptr);
+		vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
 	}
 
 	void Application::createComputeDescriptorSets() {
@@ -993,7 +945,7 @@ namespace Engine {
 
 		m_ComputeDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 
-		if (vkAllocateDescriptorSets(g_VulkanDevice, &allocInfo, m_ComputeDescriptorSets.data()) != VK_SUCCESS) {
+		if (vkAllocateDescriptorSets(m_LogicalDevice->GetHandle(), &allocInfo, m_ComputeDescriptorSets.data()) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to allocate compute descriptor sets!");
 		}
 
@@ -1038,14 +990,14 @@ namespace Engine {
 			descriptorWrites[2].descriptorCount = 1;
 			descriptorWrites[2].pBufferInfo = &storageBufferInfoCurrentFrame;
 
-			vkUpdateDescriptorSets(g_VulkanDevice, 3, descriptorWrites.data(), 0, nullptr);
+			vkUpdateDescriptorSets(m_LogicalDevice->GetHandle(), 3, descriptorWrites.data(), 0, nullptr);
 		}
 	}
 
 	void Application::createComputePipeline() {
 		auto computeShaderCode = readFile("./Assets/Shaders/particle_shader_comp.spv");
 
-		VkShaderModule computeShaderModule = createShaderModule(computeShaderCode);
+		VkShaderModule computeShaderModule = createShaderModule(computeShaderCode, m_LogicalDevice.get());
 
 		VkPipelineShaderStageCreateInfo computeShaderStageInfo = {};
 		computeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1058,7 +1010,7 @@ namespace Engine {
 		pipelineLayoutInfo.setLayoutCount = 1;
 		pipelineLayoutInfo.pSetLayouts = &m_ComputeDescriptorSetLayout;
 
-		if (vkCreatePipelineLayout(g_VulkanDevice, &pipelineLayoutInfo, nullptr, &m_ComputePipelineLayout) != VK_SUCCESS) {
+		if (vkCreatePipelineLayout(m_LogicalDevice->GetHandle(), &pipelineLayoutInfo, nullptr, &m_ComputePipelineLayout) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create Compute pipeline layout!");
 		}
 
@@ -1067,11 +1019,11 @@ namespace Engine {
 		pipelineInfo.layout = m_ComputePipelineLayout;
 		pipelineInfo.stage = computeShaderStageInfo;
 
-		if (vkCreateComputePipelines(g_VulkanDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_ComputePipeline) != VK_SUCCESS) {
+		if (vkCreateComputePipelines(m_LogicalDevice->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_ComputePipeline) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create Compute pipeline!");
 		}
 
-		vkDestroyShaderModule(g_VulkanDevice, computeShaderModule, nullptr);
+		vkDestroyShaderModule(m_LogicalDevice->GetHandle(), computeShaderModule, nullptr);
 	}
 
 	void Application::createComputeDescriptorSetLayout() {
@@ -1099,7 +1051,7 @@ namespace Engine {
 		layoutInfo.bindingCount = 3;
 		layoutInfo.pBindings = layoutBindings.data();
 	
-		if (vkCreateDescriptorSetLayout(g_VulkanDevice, &layoutInfo, nullptr, &m_ComputeDescriptorSetLayout) != VK_SUCCESS) {
+		if (vkCreateDescriptorSetLayout(m_LogicalDevice->GetHandle(), &layoutInfo, nullptr, &m_ComputeDescriptorSetLayout) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create Compute descriptor set layout!");
 		}
 	}
@@ -1131,7 +1083,7 @@ namespace Engine {
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocInfo.commandBufferCount = (uint32_t)m_ComputeCommandBuffers.size();
 
-		if (vkAllocateCommandBuffers(g_VulkanDevice, &allocInfo, m_ComputeCommandBuffers.data()) != VK_SUCCESS) {
+		if (vkAllocateCommandBuffers(m_LogicalDevice->GetHandle(), &allocInfo, m_ComputeCommandBuffers.data()) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to allocate compute command buffers!");
 		}
 	}
@@ -1148,7 +1100,7 @@ namespace Engine {
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
 				m_UniformBuffers[i], m_UniformBuffersMemory[i]);
 
-			vkMapMemory(g_VulkanDevice, m_UniformBuffersMemory[i], 0, bufferSize, 0, &m_UniformBuffersMapped[i]);
+			vkMapMemory(m_LogicalDevice->GetHandle(), m_UniformBuffersMemory[i], 0, bufferSize, 0, &m_UniformBuffersMapped[i]);
 		}
 	}
 
@@ -1174,7 +1126,7 @@ namespace Engine {
 		poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 		poolInfo.flags = 0;
 
-		if (vkCreateDescriptorPool(g_VulkanDevice, &poolInfo, nullptr, &m_ComputeDescriptorPool) != VK_SUCCESS) {
+		if (vkCreateDescriptorPool(m_LogicalDevice->GetHandle(), &poolInfo, nullptr, &m_ComputeDescriptorPool) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create Descriptor Pool!");
 		}
 	}
@@ -1199,7 +1151,7 @@ namespace Engine {
 		poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 		poolInfo.flags = 0;
 
-		if (vkCreateDescriptorPool(g_VulkanDevice, &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS) {
+		if (vkCreateDescriptorPool(m_LogicalDevice->GetHandle(), &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create Descriptor Pool!");
 		}
 	}
@@ -1215,7 +1167,7 @@ namespace Engine {
 
 		m_DescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 
-		if (vkAllocateDescriptorSets(g_VulkanDevice, &allocInfo, m_DescriptorSets.data()) != VK_SUCCESS) {
+		if (vkAllocateDescriptorSets(m_LogicalDevice->GetHandle(), &allocInfo, m_DescriptorSets.data()) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to allocate Descriptor Sets!");
 		}
 
@@ -1236,7 +1188,7 @@ namespace Engine {
 			descriptorWrite.pImageInfo = nullptr;
 			descriptorWrite.pTexelBufferView = nullptr;
 
-			vkUpdateDescriptorSets(g_VulkanDevice, 1, &descriptorWrite, 0, nullptr);
+			vkUpdateDescriptorSets(m_LogicalDevice->GetHandle(), 1, &descriptorWrite, 0, nullptr);
 		}
 	}
 
@@ -1249,7 +1201,7 @@ namespace Engine {
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocInfo.commandBufferCount = (uint32_t)m_CommandBuffers.size();
 	
-		if (vkAllocateCommandBuffers(g_VulkanDevice, &allocInfo, m_CommandBuffers.data()) != VK_SUCCESS) {
+		if (vkAllocateCommandBuffers(m_LogicalDevice->GetHandle(), &allocInfo, m_CommandBuffers.data()) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create Command Buffer!");
 		}
 	}
@@ -1257,25 +1209,25 @@ namespace Engine {
 	void Application::createSyncObjects() {
 		// TODO: The Semaphore and Fence classes are pretty similar, maybe we can turn them into a template instead of two different classes
 
-		m_ImageAvailableSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
-		m_RenderFinishedSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
-		m_ComputeFinishedSemaphores.reset(new class Semaphore(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
+		m_ImageAvailableSemaphores.reset(new class Semaphore(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
+		m_RenderFinishedSemaphores.reset(new class Semaphore(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
+		m_ComputeFinishedSemaphores.reset(new class Semaphore(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
 
-		m_InFlightFences.reset(new class Fence(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
-		m_ComputeInFlightFences.reset(new class Fence(g_VulkanDevice, MAX_FRAMES_IN_FLIGHT));
+		m_InFlightFences.reset(new class Fence(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
+		m_ComputeInFlightFences.reset(new class Fence(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
 	}
 
 	void Application::cleanupSwapChain() {
 
 		for (auto framebuffer : m_SwapChainFramebuffers) {
-			vkDestroyFramebuffer(g_VulkanDevice, framebuffer, nullptr);
+			vkDestroyFramebuffer(m_LogicalDevice->GetHandle(), framebuffer, nullptr);
 		}
 
 		for (auto imageView : m_SwapChainImageViews) {
-			vkDestroyImageView(g_VulkanDevice, imageView, nullptr);
+			vkDestroyImageView(m_LogicalDevice->GetHandle(), imageView, nullptr);
 		}
 
-		vkDestroySwapchainKHR(g_VulkanDevice, m_SwapChain, nullptr);
+		vkDestroySwapchainKHR(m_LogicalDevice->GetHandle(), m_SwapChain, nullptr);
 	}
 
 	void Application::recreateSwapChain() {
@@ -1291,7 +1243,7 @@ namespace Engine {
 			QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
 		}
 
-		vkDeviceWaitIdle(g_VulkanDevice);
+		vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
 
 		cleanupSwapChain();
 
@@ -1300,44 +1252,44 @@ namespace Engine {
 		createFramebuffers();
 		createCommandBuffers();
 
-		g_UI.Resize(g_VulkanDevice, m_SwapChainExtent, m_SwapChainImageViews, g_MinImageCount);
+		g_UI.Resize(m_LogicalDevice->GetHandle(), m_SwapChainExtent, m_SwapChainImageViews, g_MinImageCount);
 	}
 
 	void Application::Shutdown() {
 
-		g_UI.Destroy(g_VulkanDevice);
+		g_UI.Destroy(m_LogicalDevice->GetHandle());
 		cleanupSwapChain();
 
-		vkDestroyPipeline(g_VulkanDevice, m_ComputePipeline, nullptr);
-		vkDestroyPipelineLayout(g_VulkanDevice, m_ComputePipelineLayout, nullptr);
-		vkDestroyDescriptorPool(g_VulkanDevice, m_ComputeDescriptorPool, nullptr);
-		vkDestroyDescriptorSetLayout(g_VulkanDevice, m_ComputeDescriptorSetLayout, nullptr);
+		vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_ComputePipeline, nullptr);
+		vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_ComputePipelineLayout, nullptr);
+		vkDestroyDescriptorPool(m_LogicalDevice->GetHandle(), m_ComputeDescriptorPool, nullptr);
+		vkDestroyDescriptorSetLayout(m_LogicalDevice->GetHandle(), m_ComputeDescriptorSetLayout, nullptr);
 
-		vkDestroyPipeline(g_VulkanDevice, m_RayTracerGraphicsPipeline, nullptr);
-		vkDestroyPipeline(g_VulkanDevice, m_RasterizerGraphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(g_VulkanDevice, m_RayTracerPipelineLayout, nullptr);
-		vkDestroyPipelineLayout(g_VulkanDevice, m_RasterizerPipelineLayout, nullptr);
-		vkDestroyRenderPass(g_VulkanDevice, m_RenderPass, nullptr);
+		vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_RayTracerGraphicsPipeline, nullptr);
+		vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_RasterizerGraphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_RayTracerPipelineLayout, nullptr);
+		vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_RasterizerPipelineLayout, nullptr);
+		vkDestroyRenderPass(m_LogicalDevice->GetHandle(), m_RenderPass, nullptr);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vkDestroyBuffer(g_VulkanDevice, m_UniformBuffers[i], nullptr);
-			vkFreeMemory(g_VulkanDevice, m_UniformBuffersMemory[i], nullptr);
+			vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_UniformBuffers[i], nullptr);
+			vkFreeMemory(m_LogicalDevice->GetHandle(), m_UniformBuffersMemory[i], nullptr);
 		}
 
-		vkDestroyDescriptorPool(g_VulkanDevice, m_DescriptorPool, nullptr);
-		vkDestroyDescriptorSetLayout(g_VulkanDevice, m_DescriptorSetLayout, nullptr);
+		vkDestroyDescriptorPool(m_LogicalDevice->GetHandle(), m_DescriptorPool, nullptr);
+		vkDestroyDescriptorSetLayout(m_LogicalDevice->GetHandle(), m_DescriptorSetLayout, nullptr);
 		
-		vkDestroyBuffer(g_VulkanDevice, m_IndexBuffer, nullptr);
-		vkFreeMemory(g_VulkanDevice, m_IndexBufferMemory, nullptr);
+		vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_IndexBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice->GetHandle(), m_IndexBufferMemory, nullptr);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vkDestroyBuffer(g_VulkanDevice, m_ShaderStorageBuffers[i], nullptr);
-			vkFreeMemory(g_VulkanDevice, m_ShaderStorageBuffersMemory[i], nullptr);
+			vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_ShaderStorageBuffers[i], nullptr);
+			vkFreeMemory(m_LogicalDevice->GetHandle(), m_ShaderStorageBuffersMemory[i], nullptr);
 		}
 
 		for (size_t i = 0; i < m_VertexBuffers.size(); i++) {
-			vkDestroyBuffer(g_VulkanDevice, m_VertexBuffers[i], nullptr);
-			vkFreeMemory(g_VulkanDevice, m_VertexBuffersMemory[i], nullptr);
+			vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_VertexBuffers[i], nullptr);
+			vkFreeMemory(m_LogicalDevice->GetHandle(), m_VertexBuffersMemory[i], nullptr);
 		}
 
 		m_DebugMessenger.reset();
@@ -1349,9 +1301,9 @@ namespace Engine {
 		m_RenderFinishedSemaphores.reset();
 		m_ComputeFinishedSemaphores.reset();
 
-		vkDestroyCommandPool(g_VulkanDevice, m_CommandPool, nullptr);
-		vkDestroyDevice(g_VulkanDevice, nullptr);
+		vkDestroyCommandPool(m_LogicalDevice->GetHandle(), m_CommandPool, nullptr);
 
+		m_LogicalDevice.reset();
 		m_Surface.reset();
 		m_Instance.reset();
 		

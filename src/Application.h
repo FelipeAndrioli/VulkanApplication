@@ -30,6 +30,7 @@
 #include "Instance.h"
 #include "Surface.h"
 #include "PhysicalDevice.h"
+#include "LogicalDevice.h"
 #include "Semaphore.h"
 #include "Fence.h"
 #include "Instance.h"
@@ -111,6 +112,7 @@ namespace Engine {
 		std::unique_ptr<class Instance> m_Instance;
 		std::unique_ptr<class Surface> m_Surface;
 		std::unique_ptr<class PhysicalDevice> m_PhysicalDevice;
+		std::unique_ptr<class LogicalDevice> m_LogicalDevice;
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;
 		std::unique_ptr<class Semaphore> m_RenderFinishedSemaphores;
