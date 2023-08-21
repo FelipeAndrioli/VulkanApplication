@@ -60,14 +60,6 @@ namespace Engine {
 		vkDestroyInstance(m_VulkanInstance, nullptr);
 	}
 
-	VkInstance& Instance::GetHandle() {
-		return m_VulkanInstance;
-	}
-
-	const std::vector<const char*>& Instance::GetValidationLayers() {
-		return m_ValidationLayers;
-	}
-
 	bool Instance::checkValidationLayerSupport() {
 		uint32_t layerCount;
 		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);

@@ -48,14 +48,6 @@ namespace Engine {
 
 	}
 
-	VkPhysicalDevice& PhysicalDevice::GetHandle() {
-		return m_PhysicalDevice;
-	}
-
-	std::vector<VkPhysicalDevice> PhysicalDevice::GetAvailablePhysicalDevices() {
-		return m_AvailablePhysicalDevices;
-	}
-
 	SwapChainSupportDetails PhysicalDevice::QuerySwapChainSupportDetails(VkPhysicalDevice device) {
 		SwapChainSupportDetails details;
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, p_Surface, &details.capabilities);

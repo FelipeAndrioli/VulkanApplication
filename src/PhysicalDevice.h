@@ -13,9 +13,8 @@ namespace Engine {
 		PhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
 		~PhysicalDevice();
 
-		VkPhysicalDevice& GetHandle();
-		std::vector<VkPhysicalDevice> GetAvailablePhysicalDevices();
-
+		inline VkPhysicalDevice& GetHandle() { return m_PhysicalDevice; };
+		inline std::vector<VkPhysicalDevice> GetAvailablePhysicalDevices() { return m_AvailablePhysicalDevices; };
 		inline SwapChainSupportDetails GetSwapChainSupportDetails() { return QuerySwapChainSupportDetails(m_PhysicalDevice); }
 		inline QueueFamilyIndices& GetQueueFamilyIndices() { return m_QueueFamilyIndices; }
 	private:

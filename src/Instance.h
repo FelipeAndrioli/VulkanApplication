@@ -14,8 +14,8 @@ namespace Engine {
 		Instance(const std::vector<const char*> &validationLayers, const bool &enableValidationLayers);
 		~Instance();
 
-		VkInstance& GetHandle();
-		const std::vector<const char*>& GetValidationLayers();
+		inline VkInstance& GetHandle() { return m_VulkanInstance; };
+		inline const std::vector<const char*>& GetValidationLayers() { return m_ValidationLayers; };
 	private:
 
 		const std::vector<const char*> m_ValidationLayers;

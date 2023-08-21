@@ -17,7 +17,7 @@ namespace Engine {
 		bool IsMinimized();
 		void Close();
 
-		GLFWwindow* GetHandle() const;
+		inline GLFWwindow* GetHandle() const { return m_Window; };
 		VkExtent2D GetFramebufferSize() const;
 
 		// function callbacks
