@@ -3,9 +3,9 @@
 namespace Engine {
 	Instance::Instance(const std::vector<const char*> &validationLayers, 
 		const bool &enableValidationLayers) : m_ValidationLayers(validationLayers), 
-		m_EnableValidationLayers(enableValidationLayers) {
+		m_EnabledValidationLayers(enableValidationLayers) {
 
-		if (m_EnableValidationLayers && !checkValidationLayerSupport()) {
+		if (m_EnabledValidationLayers && !checkValidationLayerSupport()) {
 			throw std::runtime_error("Validation layers requested, but not available!");
 		}
 
@@ -26,7 +26,7 @@ namespace Engine {
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(glfwExtensions.size());
 		createInfo.ppEnabledExtensionNames = glfwExtensions.data();
 
-		if (m_EnableValidationLayers) {
+		if (m_EnabledValidationLayers) {
 			createInfo.enabledLayerCount = static_cast<uint32_t>(m_ValidationLayers.size());
 			createInfo.ppEnabledLayerNames = m_ValidationLayers.data();
 		}
@@ -115,7 +115,7 @@ namespace Engine {
 
 		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-		if (m_EnableValidationLayers) {
+		if (m_EnabledValidationLayers) {
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
 
