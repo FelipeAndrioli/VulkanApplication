@@ -275,7 +275,7 @@ namespace Engine {
 		m_Window->OnResize = std::bind(&Application::processResize, this, std::placeholders::_1, std::placeholders::_2);
 		m_Window->Run();
 
-		vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
+		m_LogicalDevice->WaitIdle();
 	}
 
 	void Application::Init() {
@@ -1243,7 +1243,7 @@ namespace Engine {
 			QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
 		}
 
-		vkDeviceWaitIdle(m_LogicalDevice->GetHandle());
+		m_LogicalDevice->WaitIdle();
 
 		cleanupSwapChain();
 

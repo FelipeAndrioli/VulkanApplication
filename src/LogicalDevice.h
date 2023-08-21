@@ -14,6 +14,8 @@ namespace Engine {
 		LogicalDevice(Instance* instance, PhysicalDevice* physicalDevice);
 		~LogicalDevice();
 
+		void WaitIdle();
+
 		inline VkDevice& GetHandle() { return m_VulkanDevice; };
 		inline VkQueue& GetGraphicsQueue() { return m_GraphicsQueue; };
 		inline VkQueue& GetPresentQueue() { return m_PresentQueue; };

@@ -50,4 +50,8 @@ namespace Engine {
 	LogicalDevice::~LogicalDevice() {
 		vkDestroyDevice(m_VulkanDevice, nullptr);
 	}
+
+	void LogicalDevice::WaitIdle() {
+		vkDeviceWaitIdle(m_VulkanDevice);
+	}
 }
