@@ -15,6 +15,7 @@ namespace Engine {
 
 		void Run();
 		bool IsMinimized();
+		void WaitEvents();
 		void Close();
 
 		inline GLFWwindow* GetHandle() const { return m_Window; };

@@ -64,6 +64,10 @@ namespace Engine {
 		return framebufferSize.width == 0 && framebufferSize.height == 0;
 	}
 
+	void Window::WaitEvents() {
+		glfwWaitEvents();
+	}
+
 	VkExtent2D Window::GetFramebufferSize() const {
 		int width;
 		int height;
