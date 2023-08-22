@@ -24,7 +24,7 @@ namespace Engine {
 			const VkFormat& r_SwapChainImageFormat, const int minImageCount);
 		void Destroy(VkDevice &r_LogicalDevice);
 		void RecordCommands(const VkExtent2D &r_SwapChainExtent, const uint32_t currentFrame, const uint32_t imageIndex);
-		void Resize(VkDevice& r_LogicalDevice, VkExtent2D& r_SwapChainExtent, std::vector<VkImageView>& r_SwapChainImageViews,
+		void Resize(VkDevice& r_LogicalDevice, const VkExtent2D& r_SwapChainExtent, const std::vector<VkImageView>& r_SwapChainImageViews,
 			int minImageCount);
 		VkCommandBuffer& GetCommandBuffer(uint32_t currentFrame);
 		void Draw();

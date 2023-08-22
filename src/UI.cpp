@@ -49,7 +49,7 @@ namespace Engine {
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
-	void UI::Resize(VkDevice& r_LogicalDevice, VkExtent2D& r_SwapChainExtent, std::vector<VkImageView>& r_SwapChainImageViews, 
+	void UI::Resize(VkDevice& r_LogicalDevice, const VkExtent2D& r_SwapChainExtent, const std::vector<VkImageView>& r_SwapChainImageViews, 
 		int minImageCount) {
 
 		for (auto framebuffer : m_UIFramebuffers) {
