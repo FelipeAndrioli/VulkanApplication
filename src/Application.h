@@ -31,6 +31,7 @@
 #include "Surface.h"
 #include "PhysicalDevice.h"
 #include "LogicalDevice.h"
+#include "SwapChain.h"
 #include "Semaphore.h"
 #include "Fence.h"
 #include "Instance.h"
@@ -59,11 +60,6 @@ namespace Engine {
 		void InitVulkan();
 		void Shutdown();
 
-		void createVulkanInstance();
-		void setupDebugMessenger();
-		void createSurface();
-		void createLogicalDevice();
-		void createSwapChain();
 		void createImageViews();
 		void createRenderPass();
 		void createDescriptorSetLayout();
@@ -82,7 +78,6 @@ namespace Engine {
 		void createCommandBuffers();
 		void createSyncObjects();
 		void recreateSwapChain();
-		void cleanupSwapChain();
 
 		void createShaderStorageBuffers();
 		void createComputeDescriptorSets();
@@ -113,6 +108,7 @@ namespace Engine {
 		std::unique_ptr<class Surface> m_Surface;
 		std::unique_ptr<class PhysicalDevice> m_PhysicalDevice;
 		std::unique_ptr<class LogicalDevice> m_LogicalDevice;
+		std::unique_ptr<class SwapChain> m_SwapChain;
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;
 		std::unique_ptr<class Semaphore> m_RenderFinishedSemaphores;
@@ -120,18 +116,12 @@ namespace Engine {
 		std::unique_ptr<class Fence> m_InFlightFences;
 		std::unique_ptr<class Fence> m_ComputeInFlightFences;
 		
-		VkSwapchainKHR m_SwapChain;
-		std::vector<VkImage> m_SwapChainImages;
-		std::vector<VkImageView> m_SwapChainImageViews;
-		VkFormat m_SwapChainImageFormat;
-		VkExtent2D m_SwapChainExtent;
 		VkRenderPass m_RenderPass;
 		VkDescriptorSetLayout m_DescriptorSetLayout;
 		VkPipelineLayout m_RayTracerPipelineLayout;
 		VkPipelineLayout m_RasterizerPipelineLayout;
 		VkPipeline m_RayTracerGraphicsPipeline;
 		VkPipeline m_RasterizerGraphicsPipeline;
-		std::vector<VkFramebuffer> m_SwapChainFramebuffers;
 		VkCommandPool m_CommandPool;
 		std::vector<VkCommandBuffer> m_CommandBuffers;
 		WindowSettings m_WindowSettings;

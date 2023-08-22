@@ -33,7 +33,8 @@ namespace Engine {
 		//ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.view = glm::lookAt(glm::vec3(0.0f, 1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.proj = glm::perspective(glm::radians(45.0f), m_SwapChainExtent.width / (float)m_SwapChainExtent.height, 0.1f, 10.0f);
+		ubo.proj = glm::perspective(glm::radians(45.0f), 
+			m_SwapChain->GetSwapChainExtent().width / (float)m_SwapChain->GetSwapChainExtent().height, 0.1f, 10.0f);
 
 		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way
 		// to compensate for that is to flip the sign on the scaling factor of the Y axis in the projection matrix. If we don't 
@@ -75,9 +76,9 @@ namespace Engine {
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = m_RenderPass;
-		renderPassInfo.framebuffer = m_SwapChainFramebuffers[imageIndex];
+		renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = m_SwapChainExtent;
+		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
 
 		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 		renderPassInfo.clearValueCount = 1;
@@ -89,8 +90,8 @@ namespace Engine {
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)m_SwapChainExtent.width;
-		viewport.height = (float)m_SwapChainExtent.height;
+		viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
+		viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -98,7 +99,7 @@ namespace Engine {
 
 		VkRect2D scissor = {};
 		scissor.offset = { 0, 0 };
-		scissor.extent = m_SwapChainExtent;
+		scissor.extent = m_SwapChain->GetSwapChainExtent();
 
 		vkCmdSetScissor(r_CommandBuffer, 0, 1, &scissor);
 
@@ -133,9 +134,9 @@ namespace Engine {
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = m_RenderPass;
-		renderPassInfo.framebuffer = m_SwapChainFramebuffers[imageIndex];
+		renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = m_SwapChainExtent;
+		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
 
 		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 		renderPassInfo.clearValueCount = 1;
@@ -147,8 +148,8 @@ namespace Engine {
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)m_SwapChainExtent.width;
-		viewport.height = (float)m_SwapChainExtent.height;
+		viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
+		viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -156,7 +157,7 @@ namespace Engine {
 
 		VkRect2D scissor = {};
 		scissor.offset = { 0, 0 };
-		scissor.extent = m_SwapChainExtent;
+		scissor.extent = m_SwapChain->GetSwapChainExtent();
 
 		vkCmdSetScissor(r_CommandBuffer, 0, 1, &scissor);
 
@@ -187,7 +188,7 @@ namespace Engine {
 		
 		//vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
 		//recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
-		g_UI.RecordCommands(m_SwapChainExtent, m_CurrentFrame, imageIndex);
+		g_UI.RecordCommands(m_SwapChain->GetSwapChainExtent(), m_CurrentFrame, imageIndex);
 
 		VkSemaphore waitSemaphores[] = { *m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame), *m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame)};
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -227,7 +228,7 @@ namespace Engine {
 		VkResult result;
 
 		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
-		result = vkAcquireNextImageKHR(m_LogicalDevice->GetHandle(), m_SwapChain, UINT64_MAX, 
+		result = vkAcquireNextImageKHR(m_LogicalDevice->GetHandle(), m_SwapChain->GetHandle(), UINT64_MAX,
 			*m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame), VK_NULL_HANDLE, &imageIndex);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -246,7 +247,7 @@ namespace Engine {
 			presentInfo.waitSemaphoreCount = 1;
 			presentInfo.pWaitSemaphores = m_RenderFinishedSemaphores->GetHandle(m_CurrentFrame);
 			
-			VkSwapchainKHR swapChains[] = { m_SwapChain };
+			VkSwapchainKHR swapChains[] = { m_SwapChain->GetHandle() };
 			presentInfo.swapchainCount = 1;
 			presentInfo.pSwapchains = swapChains;
 			presentInfo.pImageIndices = &imageIndex;
@@ -284,8 +285,8 @@ namespace Engine {
 		// TODO: clean a bit this GUI initializer
 		g_UI.Init(*m_Window->GetHandle(), m_Instance->GetHandle(), m_PhysicalDevice->GetHandle(),
 			m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices(), m_LogicalDevice->GetGraphicsQueue(),
-			m_SwapChainExtent, m_SwapChainImageViews,m_SwapChainImageFormat, 
-			g_MinImageCount);
+			m_SwapChain->GetSwapChainExtent(), m_SwapChain->GetSwapChainImageViews(), 
+			m_SwapChain->GetSwapChainImageFormat(), g_MinImageCount);
 	}
 
 	void Application::processResize(int width, int height) {
@@ -304,10 +305,10 @@ namespace Engine {
 		m_Surface.reset(new class Surface(m_Instance->GetHandle(), *m_Window->GetHandle()));
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
-
-		createSwapChain();
-		createImageViews();
+		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle(), m_RenderPass));
 		createRenderPass();
+		m_SwapChain->CreateFramebuffers();
+
 		createComputeDescriptorSetLayout();
 		createDescriptorSetLayout();
 		createGraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
@@ -319,7 +320,6 @@ namespace Engine {
 			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_RasterizerPipelineLayout, m_RasterizerGraphicsPipeline, 
 			1, m_DescriptorSetLayout);
 		createComputePipeline();
-		createFramebuffers();
 		createCommandPool();
 		createVertexBuffer();
 		createIndexBuffer();
@@ -333,138 +333,10 @@ namespace Engine {
 		createComputeCommandBuffers();
 		createSyncObjects();
 	}
-	
-	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
-		for (const auto& availableFormat : availableFormats) {
-			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-				return availableFormat;
-			}
-		}
-
-		return availableFormats[0];
-	}
-
-	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
-		for (const auto& availablePresentMode : availablePresentModes) {
-			if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-				return availablePresentMode;
-			}
-		}
-
-		return VK_PRESENT_MODE_FIFO_KHR;
-	}
-
-	VkExtent2D Application::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-		if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
-			return capabilities.currentExtent;
-		} else {
-			int width;
-			int height;
-
-			glfwGetFramebufferSize(m_Window->GetHandle(), &width, &height);
-
-			VkExtent2D actualExtent = {
-				static_cast<uint32_t>(width), static_cast<uint32_t>(height)
-			};
-
-			actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-			actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height , capabilities.maxImageExtent.height);
-
-			return actualExtent;
-		}
-	}
-
-	void Application::createSwapChain() {
-		SwapChainSupportDetails swapChainSupport = m_PhysicalDevice->GetSwapChainSupportDetails();
-
-		VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-		VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-		VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
-
-		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-
-		if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-			imageCount = swapChainSupport.capabilities.maxImageCount;
-		}
-
-		VkSwapchainCreateInfoKHR createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		createInfo.surface = m_Surface->GetHandle();
-		createInfo.minImageCount = imageCount;
-		createInfo.imageFormat = surfaceFormat.format;
-		createInfo.imageColorSpace = surfaceFormat.colorSpace;
-		createInfo.imageExtent = extent;
-		createInfo.imageArrayLayers = 1;
-		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-		QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
-		uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
-
-		if (indices.graphicsFamily != indices.presentFamily) {
-			// VK_SHARING_MODE_CONCURRENT - Images can be used across multiple queue familes without 
-			// explicit ownership transfers.
-
-			createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-			createInfo.queueFamilyIndexCount = 2;
-			createInfo.pQueueFamilyIndices = queueFamilyIndices;
-		} else {
-			// VK_SHARING_MODE_EXCLUSIVE - An image is owned by one queue family at a time and ownership 
-			// must be explicitly transferred before using it in another queue family. This option offers 
-			// the best performance
-
-			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-			createInfo.queueFamilyIndexCount = 0;
-			createInfo.pQueueFamilyIndices = nullptr;
-		}
-
-		createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-		createInfo.presentMode = presentMode;
-		createInfo.clipped = VK_TRUE;
-		createInfo.oldSwapchain = VK_NULL_HANDLE;
-
-		if (vkCreateSwapchainKHR(m_LogicalDevice->GetHandle(), &createInfo, nullptr, &m_SwapChain) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create swap chain!");
-		}
-
-		vkGetSwapchainImagesKHR(m_LogicalDevice->GetHandle(), m_SwapChain, &imageCount, nullptr);
-		m_SwapChainImages.resize(imageCount);
-		vkGetSwapchainImagesKHR(m_LogicalDevice->GetHandle(), m_SwapChain, &imageCount, m_SwapChainImages.data());
-		m_SwapChainImageFormat = surfaceFormat.format;
-		m_SwapChainExtent = extent;
-	}
-
-
-	void Application::createImageViews() {
-		m_SwapChainImageViews.resize(m_SwapChainImages.size());
-
-		for (size_t i = 0; i < m_SwapChainImages.size(); i++) {
-			VkImageViewCreateInfo createInfo{};
-			createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			createInfo.image = m_SwapChainImages[i];
-			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			createInfo.format = m_SwapChainImageFormat;
-
-			createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-			createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			createInfo.subresourceRange.baseMipLevel = 0;
-			createInfo.subresourceRange.levelCount = 1;
-			createInfo.subresourceRange.baseArrayLayer = 0;
-			createInfo.subresourceRange.layerCount = 1;
-
-			if (vkCreateImageView(m_LogicalDevice->GetHandle(), &createInfo, nullptr, &m_SwapChainImageViews[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to create image views");
-			}
-		}
-	}
 
 	void Application::createRenderPass() {
 		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = m_SwapChainImageFormat;
+		colorAttachment.format = m_SwapChain->GetSwapChainImageFormat();
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -622,14 +494,14 @@ namespace Engine {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)m_SwapChainExtent.width;
-		viewport.height = (float)m_SwapChainExtent.height;
+		viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
+		viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
-		scissor.extent = m_SwapChainExtent;
+		scissor.extent = m_SwapChain->GetSwapChainExtent();
 
 		VkPipelineViewportStateCreateInfo viewportState{};
 		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -727,27 +599,6 @@ namespace Engine {
 
 		vkDestroyShaderModule(m_LogicalDevice->GetHandle(), vertShaderModule, nullptr);
 		vkDestroyShaderModule(m_LogicalDevice->GetHandle(), fragShaderModule, nullptr);
-	}
-
-	void Application::createFramebuffers() {
-		m_SwapChainFramebuffers.resize(m_SwapChainImageViews.size());
-
-		for (size_t i = 0; i < m_SwapChainImageViews.size(); i++) {
-			VkImageView attachments[] = { m_SwapChainImageViews[i] };
-
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = m_RenderPass;
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
-			framebufferInfo.width = m_SwapChainExtent.width;
-			framebufferInfo.height = m_SwapChainExtent.height;
-			framebufferInfo.layers = 1;
-
-			if (vkCreateFramebuffer(m_LogicalDevice->GetHandle(), &framebufferInfo, nullptr, &m_SwapChainFramebuffers[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to create framebuffer!");
-			}
-		}
 	}
 
 	void Application::createCommandPool() {
@@ -902,7 +753,7 @@ namespace Engine {
 		for (auto& particle : particles) {
 			float r = 0.25f * sqrt(rndDist(rndEngine));
 			float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
-			float x = r * cos(theta) * m_SwapChainExtent.height / m_SwapChainExtent.height;
+			float x = r * cos(theta) * m_SwapChain->GetSwapChainExtent().height / m_SwapChain->GetSwapChainExtent().height;
 			float y = r * sin(theta);
 			particle.position = glm::vec2(x, y);
 			particle.velocity = glm::normalize(glm::vec2(x, y)) * 0.00025f;
@@ -1217,48 +1068,17 @@ namespace Engine {
 		m_ComputeInFlightFences.reset(new class Fence(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
 	}
 
-	void Application::cleanupSwapChain() {
-
-		for (auto framebuffer : m_SwapChainFramebuffers) {
-			vkDestroyFramebuffer(m_LogicalDevice->GetHandle(), framebuffer, nullptr);
-		}
-
-		for (auto imageView : m_SwapChainImageViews) {
-			vkDestroyImageView(m_LogicalDevice->GetHandle(), imageView, nullptr);
-		}
-
-		vkDestroySwapchainKHR(m_LogicalDevice->GetHandle(), m_SwapChain, nullptr);
-	}
-
 	void Application::recreateSwapChain() {
-		int width = 0;
-		int height = 0;
 
-		glfwGetFramebufferSize(m_Window->GetHandle(), &width, &height);
-
-		while (width == 0 || height == 0) {
-			glfwGetFramebufferSize(m_Window->GetHandle(), &width, &height);
-			glfwWaitEvents();
-
-			QueueFamilyIndices indices = m_PhysicalDevice->GetQueueFamilyIndices();
-		}
-
-		m_LogicalDevice->WaitIdle();
-
-		cleanupSwapChain();
-
-		createSwapChain();
-		createImageViews();
-		createFramebuffers();
+		m_SwapChain->ReCreate();
 		createCommandBuffers();
-
-		g_UI.Resize(m_LogicalDevice->GetHandle(), m_SwapChainExtent, m_SwapChainImageViews, g_MinImageCount);
+		g_UI.Resize(m_LogicalDevice->GetHandle(), m_SwapChain->GetSwapChainExtent(), 
+			m_SwapChain->GetSwapChainImageViews(), g_MinImageCount);
 	}
 
 	void Application::Shutdown() {
-
 		g_UI.Destroy(m_LogicalDevice->GetHandle());
-		cleanupSwapChain();
+		m_SwapChain.reset();
 
 		vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_ComputePipeline, nullptr);
 		vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_ComputePipelineLayout, nullptr);
