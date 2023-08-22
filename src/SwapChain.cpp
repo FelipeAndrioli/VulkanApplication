@@ -1,8 +1,10 @@
 #include "SwapChain.h"
+#include "LogicalDevice.h"
+#include "RenderPass.h"
 
 namespace Engine {
-	SwapChain::SwapChain(PhysicalDevice* physicalDevice, Window* window, LogicalDevice* logicalDevice, VkSurfaceKHR& surface, VkRenderPass& renderPass) 
-		: p_PhysicalDevice(physicalDevice), p_Window(window), p_LogicalDevice(logicalDevice), p_Surface(surface), p_RenderPass(renderPass) {
+	SwapChain::SwapChain(PhysicalDevice* physicalDevice, Window* window, LogicalDevice* logicalDevice, VkSurfaceKHR& surface) 
+		: p_PhysicalDevice(physicalDevice), p_Window(window), p_LogicalDevice(logicalDevice), p_Surface(surface) {
 
 		CreateSwapChain();
 		CreateImageViews();
@@ -12,7 +14,7 @@ namespace Engine {
 		CleanUp();
 	}
 
-	void SwapChain::ReCreate() {
+	void SwapChain::ReCreate(VkRenderPass& renderPass) {
 		VkExtent2D currentExtent = p_Window->GetFramebufferSize();
 
 		while (currentExtent.width == 0 || currentExtent.height == 0) {
@@ -27,7 +29,7 @@ namespace Engine {
 		CleanUp();
 		CreateSwapChain();
 		CreateImageViews();
-		CreateFramebuffers();
+		CreateFramebuffers(renderPass);
 	}
 
 	VkFramebuffer& SwapChain::GetSwapChainFramebuffer(int index) {
@@ -137,7 +139,7 @@ namespace Engine {
 		}
 	}
 
-	void SwapChain::CreateFramebuffers() {
+	void SwapChain::CreateFramebuffers(VkRenderPass& renderPass) {
 		m_SwapChainFramebuffers.resize(m_SwapChainImageViews.size());
 
 		for (size_t i = 0; i < m_SwapChainImageViews.size(); i++) {
@@ -145,7 +147,7 @@ namespace Engine {
 
 			VkFramebufferCreateInfo framebufferInfo{};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = p_RenderPass;
+			framebufferInfo.renderPass = renderPass;
 			framebufferInfo.attachmentCount = 1;
 			framebufferInfo.pAttachments = attachments;
 			framebufferInfo.width = m_SwapChainExtent.width;

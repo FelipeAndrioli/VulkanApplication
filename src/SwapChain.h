@@ -4,7 +4,6 @@
 
 #include "Vulkan.h"
 #include "Common.h"
-
 #include "PhysicalDevice.h"
 #include "LogicalDevice.h"
 #include "Window.h"
@@ -13,12 +12,12 @@ namespace Engine {
 	class SwapChain {
 	public:
 		SwapChain(PhysicalDevice *physicalDevice, Window* window, LogicalDevice* logicalDevice, 
-			VkSurfaceKHR& surface, VkRenderPass &renderPass);
+			VkSurfaceKHR& surface);
 		~SwapChain();
 	
-		void ReCreate();
+		void ReCreate(VkRenderPass& renderPass);
 		void CleanUp();
-		void CreateFramebuffers();
+		void CreateFramebuffers(VkRenderPass& renderPass);
 
 		VkFramebuffer& GetSwapChainFramebuffer(int index);
 
@@ -48,6 +47,5 @@ namespace Engine {
 		Window* p_Window;
 
 		VkSurfaceKHR& p_Surface;
-		VkRenderPass& p_RenderPass;
 	};
 }

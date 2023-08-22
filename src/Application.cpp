@@ -75,7 +75,7 @@ namespace Engine {
 
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = m_RenderPass;
+		renderPassInfo.renderPass = m_RenderPass->GetHandle();
 		renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
@@ -133,7 +133,7 @@ namespace Engine {
 
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = m_RenderPass;
+		renderPassInfo.renderPass = m_RenderPass->GetHandle();
 		renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
@@ -305,9 +305,9 @@ namespace Engine {
 		m_Surface.reset(new class Surface(m_Instance->GetHandle(), *m_Window->GetHandle()));
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
-		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle(), m_RenderPass));
-		createRenderPass();
-		m_SwapChain->CreateFramebuffers();
+		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
+		m_RenderPass.reset(new class RenderPass(m_SwapChain.get(), m_LogicalDevice->GetHandle()));
+		m_SwapChain->CreateFramebuffers(m_RenderPass->GetHandle());
 
 		createComputeDescriptorSetLayout();
 		createDescriptorSetLayout();
@@ -332,49 +332,6 @@ namespace Engine {
 		createCommandBuffers();
 		createComputeCommandBuffers();
 		createSyncObjects();
-	}
-
-	void Application::createRenderPass() {
-		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = m_SwapChain->GetSwapChainImageFormat();
-		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		//colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentReference colorAttachmentRef{};
-		colorAttachmentRef.attachment = 0;
-		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDescription subpass{};
-		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments = &colorAttachmentRef;
-
-		VkSubpassDependency dependency{};
-		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		dependency.dstSubpass = 0;
-		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependency.srcAccessMask = 0;
-		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-		VkRenderPassCreateInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = 1;
-		renderPassInfo.pAttachments = &colorAttachment;
-		renderPassInfo.subpassCount = 1;
-		renderPassInfo.pSubpasses = &subpass;
-		renderPassInfo.dependencyCount = 1;
-		renderPassInfo.pDependencies = &dependency;
-
-		if (vkCreateRenderPass(m_LogicalDevice->GetHandle(), &renderPassInfo, nullptr, &m_RenderPass) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create render pass!");
-		}
 	}
 
 	static std::vector<char> readFile(const std::string& filename) {
@@ -587,7 +544,7 @@ namespace Engine {
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDynamicState = &dynamicState;
 		pipelineInfo.layout = r_PipelineLayout;
-		pipelineInfo.renderPass = m_RenderPass;
+		pipelineInfo.renderPass = m_RenderPass->GetHandle();
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		//pipelineInfo.basePipelineIndex = -1;
@@ -1070,7 +1027,7 @@ namespace Engine {
 
 	void Application::recreateSwapChain() {
 
-		m_SwapChain->ReCreate();
+		m_SwapChain->ReCreate(m_RenderPass->GetHandle());
 		createCommandBuffers();
 		g_UI.Resize(m_LogicalDevice->GetHandle(), m_SwapChain->GetSwapChainExtent(), 
 			m_SwapChain->GetSwapChainImageViews(), g_MinImageCount);
@@ -1089,7 +1046,7 @@ namespace Engine {
 		vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_RasterizerGraphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_RayTracerPipelineLayout, nullptr);
 		vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_RasterizerPipelineLayout, nullptr);
-		vkDestroyRenderPass(m_LogicalDevice->GetHandle(), m_RenderPass, nullptr);
+		m_RenderPass.reset();
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_UniformBuffers[i], nullptr);
