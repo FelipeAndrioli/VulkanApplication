@@ -44,6 +44,7 @@ namespace Engine {
 		memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 	}
 
+	/* Disabled due to the new architecture, will think in a way to make it work later
 	void Application::drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex) {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -114,6 +115,7 @@ namespace Engine {
 			throw std::runtime_error("Failed to record command buffer!");
 		}
 	}
+	*/
 
 	void Application::drawRasterized(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex) {
 		updateUniformBuffer(m_CurrentFrame);
@@ -133,7 +135,7 @@ namespace Engine {
 
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = m_RenderPass->GetHandle();
+		renderPassInfo.renderPass = m_GraphicsPipeline->GetRenderPass().GetHandle();
 		renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
@@ -143,7 +145,7 @@ namespace Engine {
 		renderPassInfo.pClearValues = &clearColor;
 
 		vkCmdBeginRenderPass(r_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_RasterizerGraphicsPipeline);
+		vkCmdBindPipeline(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetHandle());
 
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
@@ -165,8 +167,8 @@ namespace Engine {
 
 		vkCmdBindVertexBuffers(r_CommandBuffer, 0, 1, &m_VertexBuffers[m_CurrentFrame], offsets);
 		vkCmdBindIndexBuffer(r_CommandBuffer, m_IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
-		vkCmdBindDescriptorSets(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_RasterizerPipelineLayout, 0, 1, 
-			&m_DescriptorSets[m_CurrentFrame], 0, nullptr);
+		vkCmdBindDescriptorSets(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
+			0, 1, &m_DescriptorSets[m_CurrentFrame], 0, nullptr);
 
 		vkCmdDrawIndexed(r_CommandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
@@ -183,9 +185,11 @@ namespace Engine {
 		
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame));
 
-		m_UserSettings.IsRayTraced ? drawRayTraced(m_CommandBuffers[m_CurrentFrame], imageIndex) : 
-			drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
-		
+		//m_UserSettings.IsRayTraced ? drawRayTraced(m_CommandBuffers[m_CurrentFrame], imageIndex) : 
+		//	drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
+
+		drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
+
 		//vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
 		//recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
 		g_UI.RecordCommands(m_SwapChain->GetSwapChainExtent(), m_CurrentFrame, imageIndex);
@@ -198,14 +202,8 @@ namespace Engine {
 		submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
-		if (m_UserSettings.IsRayTraced) {
-			submitInfo.waitSemaphoreCount = 2;
-			submitInfo.pWaitSemaphores = waitSemaphores;
-		}
-		else {
-			submitInfo.waitSemaphoreCount = 1;
-			submitInfo.pWaitSemaphores = m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame);
-		}
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame);
 
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
@@ -305,12 +303,16 @@ namespace Engine {
 		m_Surface.reset(new class Surface(m_Instance->GetHandle(), *m_Window->GetHandle()));
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
+
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
-		m_RenderPass.reset(new class RenderPass(m_SwapChain.get(), m_LogicalDevice->GetHandle()));
-		m_SwapChain->CreateFramebuffers(m_RenderPass->GetHandle());
 
 		createComputeDescriptorSetLayout();
-		createDescriptorSetLayout();
+		m_GraphicsPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/vert.spv", "Assets/Shaders/frag.spv",
+			m_LogicalDevice.get(), m_SwapChain.get()));
+		
+		m_SwapChain->CreateFramebuffers(m_GraphicsPipeline->GetRenderPass().GetHandle());
+
+		/*
 		createGraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
 			Particle::getBindindDescription(), Particle::getAttributeDescriptions(), 
 			VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_RayTracerPipelineLayout, m_RayTracerGraphicsPipeline, 
@@ -319,6 +321,7 @@ namespace Engine {
 			Vertex::getBindingDescription(), Vertex::getAttributeDescriptions(), 
 			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_RasterizerPipelineLayout, m_RasterizerGraphicsPipeline, 
 			1, m_DescriptorSetLayout);
+		*/
 		createComputePipeline();
 		createCommandPool();
 		createVertexBuffer();
@@ -364,198 +367,6 @@ namespace Engine {
 		}
 
 		return shaderModule;
-	}
-
-	void Application::createDescriptorSetLayout() {
-		VkDescriptorSetLayoutBinding uboLayoutBinding{};
-		uboLayoutBinding.binding = 0;
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBinding.descriptorCount = 1;
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-		uboLayoutBinding.pImmutableSamplers = nullptr;
-
-		VkDescriptorSetLayoutCreateInfo layoutInfo{};
-		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = 1;
-		layoutInfo.pBindings = &uboLayoutBinding;
-
-		if (vkCreateDescriptorSetLayout(m_LogicalDevice->GetHandle(), &layoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create descriptor set layout");
-		}
-	}
-
-	void Application::createGraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath, 
-		VkVertexInputBindingDescription desiredBindingDescription, std::array<VkVertexInputAttributeDescription, 2> desiredAttributeDescriptions,
-		VkPrimitiveTopology topology, VkPipelineLayout &r_PipelineLayout, VkPipeline &r_GraphicsPipeline, uint32_t layoutCount, 
-		VkDescriptorSetLayout &r_DescriptorSetLayout) {
-		/*
-		auto vertShaderCode = readFile("./Assets/Shaders/vert.spv");
-		auto fragShaderCode = readFile("./Assets/Shaders/frag.spv");
-		
-		auto vertShaderCode = readFile("./Assets/Shaders/particle_shader_vert.spv");
-		auto fragShaderCode = readFile("./Assets/Shaders/particle_shader_frag.spv");
-		*/
-
-		/*
-			The compilation and linking of the SPIR-V bytecode to machine code for execution by the GPU
-			doesn't happen until the graphics pipeline is created. That means that we're allowed to destroy
-			the shader modules again as soon as the pipeline creation is finished, which is why we'll make
-			them local variables in the createGraphicsPipeline function instead of class members.
-		*/
-
-		auto vertShaderCode = readFile(vertexShaderPath);
-		auto fragShaderCode = readFile(fragShaderPath);
-
-		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, m_LogicalDevice.get());
-		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode, m_LogicalDevice.get());
-
-		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-		vertShaderStageInfo.module = vertShaderModule;
-		vertShaderStageInfo.pName = "main";
-
-		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-		fragShaderStageInfo.module = fragShaderModule;
-		fragShaderStageInfo.pName = "main";
-
-		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
-
-		/*
-		auto bindingDescription = Vertex::getBindingDescription();
-		auto attributeDescriptions = Vertex::getAttributeDescriptions();
-
-		auto bindingDescription = Particle::getBindindDescription();
-		auto attributeDescriptions = Particle::getAttributeDescriptions();
-		*/
-
-		auto bindingDescription = desiredBindingDescription;
-		auto attributeDescriptions = desiredAttributeDescriptions;
-
-		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputInfo.vertexBindingDescriptionCount = 1;
-		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
-		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		//inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		//inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-		inputAssembly.topology = topology;
-		inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-		VkViewport viewport{};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
-		viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		VkRect2D scissor{};
-		scissor.offset = { 0, 0 };
-		scissor.extent = m_SwapChain->GetSwapChainExtent();
-
-		VkPipelineViewportStateCreateInfo viewportState{};
-		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-		viewportState.viewportCount = 1;
-		viewportState.pViewports = &viewport;
-		viewportState.scissorCount = 1;
-		viewportState.pScissors = &scissor;
-
-		VkPipelineRasterizationStateCreateInfo rasterizer{};
-		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rasterizer.depthClampEnable = VK_FALSE;
-		rasterizer.rasterizerDiscardEnable = VK_FALSE;
-		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-		rasterizer.lineWidth = 1.0f;
-		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-		rasterizer.depthBiasEnable = VK_FALSE;
-		rasterizer.depthBiasConstantFactor = 0.0f;
-		rasterizer.depthBiasClamp = 0.0f;
-		rasterizer.depthBiasSlopeFactor = 0.0f;
-
-		VkPipelineMultisampleStateCreateInfo multisampling{};
-		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		multisampling.sampleShadingEnable = VK_FALSE;
-		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-		multisampling.minSampleShading = 1.0f;
-		multisampling.pSampleMask = nullptr;
-		multisampling.alphaToCoverageEnable = VK_FALSE;
-		multisampling.alphaToOneEnable = VK_FALSE;
-
-		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT 
-			| VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		colorBlendAttachment.blendEnable = VK_FALSE;
-
-		VkPipelineColorBlendStateCreateInfo colorBlending{};
-		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		colorBlending.logicOpEnable = VK_FALSE;
-		colorBlending.logicOp = VK_LOGIC_OP_COPY;
-		colorBlending.attachmentCount = 1;
-		colorBlending.pAttachments = &colorBlendAttachment;
-		colorBlending.blendConstants[0] = 0.0f;
-		colorBlending.blendConstants[1] = 0.0f;
-		colorBlending.blendConstants[2] = 0.0f;
-		colorBlending.blendConstants[3] = 0.0f;
-
-		std::vector<VkDynamicState> dynamicStates = {
-			VK_DYNAMIC_STATE_VIEWPORT,
-			VK_DYNAMIC_STATE_SCISSOR
-		};
-
-		VkPipelineDynamicStateCreateInfo dynamicState{};
-		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-		dynamicState.pDynamicStates = dynamicStates.data();
-
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		//pipelineLayoutInfo.setLayoutCount = 1;
-		//pipelineLayoutInfo.pSetLayouts = &m_DescriptorSetLayout;
-		//pipelineLayoutInfo.setLayoutCount = 0;
-		//pipelineLayoutInfo.pSetLayouts = nullptr;
-		pipelineLayoutInfo.setLayoutCount = layoutCount;
-		layoutCount > 0 ? pipelineLayoutInfo.pSetLayouts = &r_DescriptorSetLayout : pipelineLayoutInfo.pSetLayouts = nullptr;
-
-		pipelineLayoutInfo.pushConstantRangeCount = 0;
-		pipelineLayoutInfo.pPushConstantRanges = nullptr;
-
-		if (vkCreatePipelineLayout(m_LogicalDevice->GetHandle(), &pipelineLayoutInfo, nullptr, &r_PipelineLayout) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create pipeline layout!");
-		}
-
-		VkGraphicsPipelineCreateInfo pipelineInfo{};
-		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipelineInfo.stageCount = 2;
-		pipelineInfo.pStages = shaderStages;
-		pipelineInfo.pVertexInputState = &vertexInputInfo;
-		pipelineInfo.pInputAssemblyState = &inputAssembly;
-		pipelineInfo.pViewportState = &viewportState;
-		pipelineInfo.pRasterizationState = &rasterizer;
-		pipelineInfo.pMultisampleState = &multisampling;
-		pipelineInfo.pDepthStencilState = nullptr;
-		pipelineInfo.pColorBlendState = &colorBlending;
-		pipelineInfo.pDynamicState = &dynamicState;
-		pipelineInfo.layout = r_PipelineLayout;
-		pipelineInfo.renderPass = m_RenderPass->GetHandle();
-		pipelineInfo.subpass = 0;
-		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-		//pipelineInfo.basePipelineIndex = -1;
-
-		if (vkCreateGraphicsPipelines(m_LogicalDevice->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo,
-			nullptr, &r_GraphicsPipeline) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create graphics pipeline!");
-		}
-
-		vkDestroyShaderModule(m_LogicalDevice->GetHandle(), vertShaderModule, nullptr);
-		vkDestroyShaderModule(m_LogicalDevice->GetHandle(), fragShaderModule, nullptr);
 	}
 
 	void Application::createCommandPool() {
@@ -965,7 +776,7 @@ namespace Engine {
 	}
 
 	void Application::createDescriptorSets() {
-		std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_DescriptorSetLayout);
+		std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_GraphicsPipeline->GetDescriptorSetLayout().GetHandle());
 
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1027,7 +838,7 @@ namespace Engine {
 
 	void Application::recreateSwapChain() {
 
-		m_SwapChain->ReCreate(m_RenderPass->GetHandle());
+		m_SwapChain->ReCreate(m_GraphicsPipeline->GetRenderPass().GetHandle());
 		createCommandBuffers();
 		g_UI.Resize(m_LogicalDevice->GetHandle(), m_SwapChain->GetSwapChainExtent(), 
 			m_SwapChain->GetSwapChainImageViews(), g_MinImageCount);
@@ -1042,11 +853,9 @@ namespace Engine {
 		vkDestroyDescriptorPool(m_LogicalDevice->GetHandle(), m_ComputeDescriptorPool, nullptr);
 		vkDestroyDescriptorSetLayout(m_LogicalDevice->GetHandle(), m_ComputeDescriptorSetLayout, nullptr);
 
-		vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_RayTracerGraphicsPipeline, nullptr);
-		vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_RasterizerGraphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_RayTracerPipelineLayout, nullptr);
-		vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_RasterizerPipelineLayout, nullptr);
-		m_RenderPass.reset();
+		//vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_RayTracerGraphicsPipeline, nullptr);
+		//vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_RayTracerPipelineLayout, nullptr);
+		m_GraphicsPipeline.reset();
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_UniformBuffers[i], nullptr);
@@ -1054,7 +863,6 @@ namespace Engine {
 		}
 
 		vkDestroyDescriptorPool(m_LogicalDevice->GetHandle(), m_DescriptorPool, nullptr);
-		vkDestroyDescriptorSetLayout(m_LogicalDevice->GetHandle(), m_DescriptorSetLayout, nullptr);
 		
 		vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_IndexBuffer, nullptr);
 		vkFreeMemory(m_LogicalDevice->GetHandle(), m_IndexBufferMemory, nullptr);

@@ -33,6 +33,7 @@
 #include "LogicalDevice.h"
 #include "SwapChain.h"
 #include "RenderPass.h"
+#include "GraphicsPipeline.h"
 #include "Semaphore.h"
 #include "Fence.h"
 #include "Instance.h"
@@ -61,8 +62,6 @@ namespace Engine {
 		void InitVulkan();
 		void Shutdown();
 
-		void createImageViews();
-		void createRenderPass();
 		void createDescriptorSetLayout();
 		void createGraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath,
 			VkVertexInputBindingDescription desiredBindingDescription, std::array<VkVertexInputAttributeDescription, 2> desiredAttributeDescriptions,
@@ -110,19 +109,22 @@ namespace Engine {
 		std::unique_ptr<class PhysicalDevice> m_PhysicalDevice;
 		std::unique_ptr<class LogicalDevice> m_LogicalDevice;
 		std::unique_ptr<class SwapChain> m_SwapChain;
-		std::unique_ptr<class RenderPass> m_RenderPass;
+		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;
 		std::unique_ptr<class Semaphore> m_RenderFinishedSemaphores;
 		std::unique_ptr<class Semaphore> m_ComputeFinishedSemaphores;
 		std::unique_ptr<class Fence> m_InFlightFences;
 		std::unique_ptr<class Fence> m_ComputeInFlightFences;
-		
+
+		/*
 		VkDescriptorSetLayout m_DescriptorSetLayout;
 		VkPipelineLayout m_RayTracerPipelineLayout;
 		VkPipelineLayout m_RasterizerPipelineLayout;
 		VkPipeline m_RayTracerGraphicsPipeline;
 		VkPipeline m_RasterizerGraphicsPipeline;
+		*/
+
 		VkCommandPool m_CommandPool;
 		std::vector<VkCommandBuffer> m_CommandBuffers;
 		WindowSettings m_WindowSettings;
