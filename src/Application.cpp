@@ -2,11 +2,8 @@
 
 static bool g_FramebufferResized = false;
 
-static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
 static int g_MinImageCount = 2;
-
 static Engine::UI g_UI;
-
 const uint32_t PARTICLE_COUNT = 8192;
 
 namespace Engine {
@@ -312,7 +309,8 @@ namespace Engine {
 			m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST));
 		m_ComputePipeline.reset(new class ComputePipeline("./Assets/Shaders/particle_shader_comp.spv", m_LogicalDevice.get(), m_SwapChain.get()));
 
-		createCommandPool();
+		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));
+		
 		createVertexBuffer();
 		createIndexBuffer();
 		createShaderStorageBuffers();
@@ -324,19 +322,6 @@ namespace Engine {
 		createCommandBuffers();
 		createComputeCommandBuffers();
 		createSyncObjects();
-	}
-
-	void Application::createCommandPool() {
-		QueueFamilyIndices queueFamilyIndices = m_PhysicalDevice->GetQueueFamilyIndices();
-
-		VkCommandPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-
-		if (vkCreateCommandPool(m_LogicalDevice->GetHandle(), &poolInfo, nullptr, &m_CommandPool) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create Command Pool!");
-		}
 	}
 
 	uint32_t findMemoryType(VkPhysicalDevice& physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -356,7 +341,7 @@ namespace Engine {
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool = m_CommandPool;
+		allocInfo.commandPool = m_CommandPool->GetHandle();
 		allocInfo.commandBufferCount = 1;
 
 		VkCommandBuffer commandBuffer;
@@ -383,7 +368,7 @@ namespace Engine {
 		vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
 		vkQueueWaitIdle(m_LogicalDevice->GetGraphicsQueue());
 
-		vkFreeCommandBuffers(m_LogicalDevice->GetHandle(), m_CommandPool, 1, &commandBuffer);
+		vkFreeCommandBuffers(m_LogicalDevice->GetHandle(), m_CommandPool->GetHandle(), 1, &commandBuffer);
 	}
 
 	void Application::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
@@ -594,7 +579,7 @@ namespace Engine {
 
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = m_CommandPool;
+		allocInfo.commandPool = m_CommandPool->GetHandle();
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocInfo.commandBufferCount = (uint32_t)m_ComputeCommandBuffers.size();
 
@@ -712,7 +697,7 @@ namespace Engine {
 
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = m_CommandPool;
+		allocInfo.commandPool = m_CommandPool->GetHandle();
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocInfo.commandBufferCount = (uint32_t)m_CommandBuffers.size();
 	
@@ -781,7 +766,7 @@ namespace Engine {
 		m_RenderFinishedSemaphores.reset();
 		m_ComputeFinishedSemaphores.reset();
 
-		vkDestroyCommandPool(m_LogicalDevice->GetHandle(), m_CommandPool, nullptr);
+		m_CommandPool.reset();
 
 		m_LogicalDevice.reset();
 		m_Surface.reset();

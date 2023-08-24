@@ -35,6 +35,7 @@
 #include "RenderPass.h"
 #include "GraphicsPipeline.h"
 #include "ComputePipeline.h"
+#include "CommandPool.h"
 #include "Semaphore.h"
 #include "Fence.h"
 #include "Instance.h"
@@ -63,13 +64,7 @@ namespace Engine {
 		void InitVulkan();
 		void Shutdown();
 
-		void createDescriptorSetLayout();
-		void createGraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath,
-			VkVertexInputBindingDescription desiredBindingDescription, std::array<VkVertexInputAttributeDescription, 2> desiredAttributeDescriptions,
-			VkPrimitiveTopology topology, VkPipelineLayout& r_PipelineLayout, VkPipeline& r_GraphicsPipeline,
-			uint32_t layoutCount, VkDescriptorSetLayout &layout);
 		void createFramebuffers();
-		void createCommandPool();
 		void createVertexBuffer();
 		void createIndexBuffer();
 		void createUniformBuffers();
@@ -82,8 +77,6 @@ namespace Engine {
 
 		void createShaderStorageBuffers();
 		void createComputeDescriptorSets();
-		void createComputeDescriptorSetLayout();
-		void createComputePipeline();
 		
 		VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
@@ -113,6 +106,7 @@ namespace Engine {
 		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
 		std::unique_ptr<class GraphicsPipeline> m_TempRayTracerPipeline;
 		std::unique_ptr<class ComputePipeline> m_ComputePipeline;
+		std::unique_ptr<class CommandPool> m_CommandPool;
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;
 		std::unique_ptr<class Semaphore> m_RenderFinishedSemaphores;
@@ -120,15 +114,6 @@ namespace Engine {
 		std::unique_ptr<class Fence> m_InFlightFences;
 		std::unique_ptr<class Fence> m_ComputeInFlightFences;
 
-		/*
-		VkDescriptorSetLayout m_DescriptorSetLayout;
-		VkPipelineLayout m_RayTracerPipelineLayout;
-		VkPipelineLayout m_RasterizerPipelineLayout;
-		VkPipeline m_RayTracerGraphicsPipeline;
-		VkPipeline m_RasterizerGraphicsPipeline;
-		*/
-
-		VkCommandPool m_CommandPool;
 		std::vector<VkCommandBuffer> m_CommandBuffers;
 		WindowSettings m_WindowSettings;
 		UserSettings m_UserSettings;
