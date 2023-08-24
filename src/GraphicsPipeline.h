@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <array>
 #include <string>
 #include <stdexcept>
 
@@ -9,6 +10,7 @@
 #include "PipelineLayout.h"
 #include "DescriptorSetLayout.h"
 #include "ShaderModule.h"
+#include "DescriptorBinding.h"
 
 #include "../Assets/Vertex.h"
 
@@ -18,7 +20,8 @@ namespace Engine {
 
 	class GraphicsPipeline {
 	public:
-		GraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain);
+		GraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain,
+			VkVertexInputBindingDescription _bindingDescription, std::array<VkVertexInputAttributeDescription, 2> _attributeDescriptions, VkPrimitiveTopology topology);
 		~GraphicsPipeline();
 
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };

@@ -44,7 +44,7 @@ namespace Engine {
 		memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 	}
 
-	/* Disabled due to the new architecture, will think in a way to make it work later
+	/* Disabled due to the new architecture, will think in a way to make it work later*/
 	void Application::drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex) {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -76,7 +76,7 @@ namespace Engine {
 
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = m_RenderPass->GetHandle();
+		renderPassInfo.renderPass = m_TempRayTracerPipeline->GetRenderPass().GetHandle();
 		renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
@@ -86,7 +86,7 @@ namespace Engine {
 		renderPassInfo.pClearValues = &clearColor;
 
 		vkCmdBeginRenderPass(r_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_RayTracerGraphicsPipeline);
+		vkCmdBindPipeline(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TempRayTracerPipeline->GetHandle());
 
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
@@ -115,7 +115,6 @@ namespace Engine {
 			throw std::runtime_error("Failed to record command buffer!");
 		}
 	}
-	*/
 
 	void Application::drawRasterized(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex) {
 		updateUniformBuffer(m_CurrentFrame);
@@ -185,13 +184,9 @@ namespace Engine {
 		
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame));
 
-		//m_UserSettings.IsRayTraced ? drawRayTraced(m_CommandBuffers[m_CurrentFrame], imageIndex) : 
-		//	drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
+		m_UserSettings.rayTraced ? drawRayTraced(m_CommandBuffers[m_CurrentFrame], imageIndex) : 
+			drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
 
-		drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
-
-		//vkResetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0);
-		//recordCommandBuffer(m_CommandBuffers[m_CurrentFrame], imageIndex);
 		g_UI.RecordCommands(m_SwapChain->GetSwapChainExtent(), m_CurrentFrame, imageIndex);
 
 		VkSemaphore waitSemaphores[] = { *m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame), *m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame)};
@@ -201,9 +196,15 @@ namespace Engine {
 
 		submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame);
+	
+		if (m_UserSettings.rayTraced) {
+			submitInfo.waitSemaphoreCount = 2;
+			submitInfo.pWaitSemaphores = waitSemaphores;
+		}
+		else {
+			submitInfo.waitSemaphoreCount = 1;
+			submitInfo.pWaitSemaphores = m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame);
+		}
 
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
@@ -303,26 +304,14 @@ namespace Engine {
 		m_Surface.reset(new class Surface(m_Instance->GetHandle(), *m_Window->GetHandle()));
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
-
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
-
-		createComputeDescriptorSetLayout();
 		m_GraphicsPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/vert.spv", "Assets/Shaders/frag.spv",
-			m_LogicalDevice.get(), m_SwapChain.get()));
-		
+			m_LogicalDevice.get(), m_SwapChain.get(), Assets::Vertex::getBindingDescription(), Assets::Vertex::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST));
 		m_SwapChain->CreateFramebuffers(m_GraphicsPipeline->GetRenderPass().GetHandle());
+		m_TempRayTracerPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
+			m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST));
+		m_ComputePipeline.reset(new class ComputePipeline("./Assets/Shaders/particle_shader_comp.spv", m_LogicalDevice.get(), m_SwapChain.get()));
 
-		/*
-		createGraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
-			Particle::getBindindDescription(), Particle::getAttributeDescriptions(), 
-			VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_RayTracerPipelineLayout, m_RayTracerGraphicsPipeline, 
-			0, m_DescriptorSetLayout);
-		createGraphicsPipeline("./Assets/Shaders/vert.spv", "./Assets/Shaders/frag.spv",
-			Vertex::getBindingDescription(), Vertex::getAttributeDescriptions(), 
-			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_RasterizerPipelineLayout, m_RasterizerGraphicsPipeline, 
-			1, m_DescriptorSetLayout);
-		*/
-		createComputePipeline();
 		createCommandPool();
 		createVertexBuffer();
 		createIndexBuffer();
@@ -335,38 +324,6 @@ namespace Engine {
 		createCommandBuffers();
 		createComputeCommandBuffers();
 		createSyncObjects();
-	}
-
-	static std::vector<char> readFile(const std::string& filename) {
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-		if (!file.is_open()) {
-			throw std::runtime_error("Failed to open file!");
-		}
-
-		size_t fileSize = (size_t)file.tellg();
-		std::vector<char> buffer(fileSize);
-
-		file.seekg(0);
-		file.read(buffer.data(), fileSize);
-
-		file.close();
-
-		return buffer;
-	}
-
-	VkShaderModule createShaderModule(const std::vector<char>& code, LogicalDevice* p_LogicalDevice) {
-		VkShaderModuleCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		createInfo.codeSize = code.size();
-		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(p_LogicalDevice->GetHandle(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create shader module!");
-		}
-
-		return shaderModule;
 	}
 
 	void Application::createCommandPool() {
@@ -555,7 +512,8 @@ namespace Engine {
 	}
 
 	void Application::createComputeDescriptorSets() {
-		std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_ComputeDescriptorSetLayout);
+		//std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_ComputeDescriptorSetLayout);
+		std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_ComputePipeline->GetDescriptorSetLayout().GetHandle());
 		VkDescriptorSetAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocInfo.descriptorPool = m_ComputeDescriptorPool;
@@ -613,68 +571,6 @@ namespace Engine {
 		}
 	}
 
-	void Application::createComputePipeline() {
-		auto computeShaderCode = readFile("./Assets/Shaders/particle_shader_comp.spv");
-
-		VkShaderModule computeShaderModule = createShaderModule(computeShaderCode, m_LogicalDevice.get());
-
-		VkPipelineShaderStageCreateInfo computeShaderStageInfo = {};
-		computeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		computeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-		computeShaderStageInfo.module = computeShaderModule;
-		computeShaderStageInfo.pName = "main";
-
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1;
-		pipelineLayoutInfo.pSetLayouts = &m_ComputeDescriptorSetLayout;
-
-		if (vkCreatePipelineLayout(m_LogicalDevice->GetHandle(), &pipelineLayoutInfo, nullptr, &m_ComputePipelineLayout) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create Compute pipeline layout!");
-		}
-
-		VkComputePipelineCreateInfo pipelineInfo = {};
-		pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-		pipelineInfo.layout = m_ComputePipelineLayout;
-		pipelineInfo.stage = computeShaderStageInfo;
-
-		if (vkCreateComputePipelines(m_LogicalDevice->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_ComputePipeline) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create Compute pipeline!");
-		}
-
-		vkDestroyShaderModule(m_LogicalDevice->GetHandle(), computeShaderModule, nullptr);
-	}
-
-	void Application::createComputeDescriptorSetLayout() {
-		std::array<VkDescriptorSetLayoutBinding, 3> layoutBindings = {};
-		layoutBindings[0].binding = 0;
-		layoutBindings[0].descriptorCount = 1;
-		layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		layoutBindings[0].pImmutableSamplers = nullptr;
-		layoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-		layoutBindings[1].binding = 1;
-		layoutBindings[1].descriptorCount = 1;
-		layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		layoutBindings[1].pImmutableSamplers = nullptr;
-		layoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-		layoutBindings[2].binding = 2;
-		layoutBindings[2].descriptorCount = 1;
-		layoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		layoutBindings[2].pImmutableSamplers = nullptr;
-		layoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-		VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = 3;
-		layoutInfo.pBindings = layoutBindings.data();
-	
-		if (vkCreateDescriptorSetLayout(m_LogicalDevice->GetHandle(), &layoutInfo, nullptr, &m_ComputeDescriptorSetLayout) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create Compute descriptor set layout!");
-		}
-	}
-
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
 		VkCommandBufferBeginInfo beginInfo = {};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -683,9 +579,9 @@ namespace Engine {
 			throw std::runtime_error("Failed to begin recording compute command buffer!");
 		}
 
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline);
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipelineLayout, 0, 1,
-			&m_ComputeDescriptorSets[m_CurrentFrame], 0, nullptr);
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetHandle());
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetPipelineLayout().GetHandle(), 
+			0, 1,&m_ComputeDescriptorSets[m_CurrentFrame], 0, nullptr);
 		vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
 
 		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
@@ -848,14 +744,13 @@ namespace Engine {
 		g_UI.Destroy(m_LogicalDevice->GetHandle());
 		m_SwapChain.reset();
 
-		vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_ComputePipeline, nullptr);
-		vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_ComputePipelineLayout, nullptr);
+		m_ComputePipeline.reset();
 		vkDestroyDescriptorPool(m_LogicalDevice->GetHandle(), m_ComputeDescriptorPool, nullptr);
-		vkDestroyDescriptorSetLayout(m_LogicalDevice->GetHandle(), m_ComputeDescriptorSetLayout, nullptr);
 
 		//vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_RayTracerGraphicsPipeline, nullptr);
 		//vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_RayTracerPipelineLayout, nullptr);
 		m_GraphicsPipeline.reset();
+		m_TempRayTracerPipeline.reset();
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_UniformBuffers[i], nullptr);

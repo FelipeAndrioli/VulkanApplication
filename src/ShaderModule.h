@@ -13,7 +13,8 @@ namespace Engine {
 	public:
 		ShaderModule(const char* shaderPath, LogicalDevice* logicalDevice, VkShaderStageFlagBits stage);
 		~ShaderModule();
-		
+
+		inline VkShaderModule& GetHandle() { return m_ShaderModule; };
 		inline VkPipelineShaderStageCreateInfo GetShaderStageInfo() { return m_ShaderStageInfo; };
 	private:
 		VkShaderModule createShaderModule(const std::vector<char>& code, LogicalDevice* p_LogicalDevice);

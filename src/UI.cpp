@@ -71,6 +71,7 @@ namespace Engine {
 		ImGui::NewFrame();
 		
 		ImGui::Begin("Settings");
+		ImGui::Checkbox("Ray Traced", &r_UserSettings.rayTraced);
 		ImGui::End();
 		
 		ImGui::Render();

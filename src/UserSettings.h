@@ -1,7 +1,7 @@
 #pragma once
 
 namespace Engine {
-	struct UserSettings{
-
+	struct UserSettings {
+		bool rayTraced = false;
 	};
 }

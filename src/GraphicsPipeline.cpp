@@ -2,11 +2,15 @@
 #include "LogicalDevice.h"
 #include "SwapChain.h"
  namespace Engine {
-	GraphicsPipeline::GraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain) 
+	GraphicsPipeline::GraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain,
+		VkVertexInputBindingDescription _bindingDescription, std::array<VkVertexInputAttributeDescription, 2> _attributeDescriptions, VkPrimitiveTopology topology) 
 		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain) {
 
-		auto bindingDescription = Assets::Vertex::getBindingDescription();
-		auto attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+		// auto bindingDescription = Assets::Vertex::getBindingDescription();
+		// auto attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+
+		auto bindingDescription = _bindingDescription;
+		auto attributeDescriptions = _attributeDescriptions;
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -17,9 +21,9 @@
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		//inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		//inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-		//inputAssembly.topology = topology;
+		inputAssembly.topology = topology;
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 		VkViewport viewport{};
@@ -89,7 +93,11 @@
 		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 		dynamicState.pDynamicStates = dynamicStates.data();
 
-		m_DescriptorSetLayout.reset(new class DescriptorSetLayout(p_LogicalDevice->GetHandle()));
+		std::vector<DescriptorBinding> descriptorBindings = {
+			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT }
+		};
+
+		m_DescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, p_LogicalDevice->GetHandle()));
 		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
 		m_RenderPass.reset(new class RenderPass(p_SwapChain, p_LogicalDevice->GetHandle()));
 

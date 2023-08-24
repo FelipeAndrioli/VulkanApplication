@@ -34,6 +34,7 @@
 #include "SwapChain.h"
 #include "RenderPass.h"
 #include "GraphicsPipeline.h"
+#include "ComputePipeline.h"
 #include "Semaphore.h"
 #include "Fence.h"
 #include "Instance.h"
@@ -110,6 +111,8 @@ namespace Engine {
 		std::unique_ptr<class LogicalDevice> m_LogicalDevice;
 		std::unique_ptr<class SwapChain> m_SwapChain;
 		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
+		std::unique_ptr<class GraphicsPipeline> m_TempRayTracerPipeline;
+		std::unique_ptr<class ComputePipeline> m_ComputePipeline;
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;
 		std::unique_ptr<class Semaphore> m_RenderFinishedSemaphores;
@@ -143,10 +146,7 @@ namespace Engine {
 		std::vector<VkDeviceMemory> m_ShaderStorageBuffersMemory;
 
 		VkDescriptorPool m_ComputeDescriptorPool;
-		VkDescriptorSetLayout m_ComputeDescriptorSetLayout;
 		std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
-		VkPipelineLayout m_ComputePipelineLayout;
-		VkPipeline m_ComputePipeline;
 		std::vector<VkCommandBuffer> m_ComputeCommandBuffers;
 	};
 }

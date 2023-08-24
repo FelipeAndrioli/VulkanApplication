@@ -47,6 +47,7 @@ int main() {
 	windowSettings.Height = 600;
 
 	Engine::UserSettings userSettings;
+	userSettings.rayTraced = true;
 	
 	Engine::Application* app = new Engine::Application(windowSettings, userSettings);
 
