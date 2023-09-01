@@ -36,6 +36,7 @@
 #include "GraphicsPipeline.h"
 #include "ComputePipeline.h"
 #include "CommandPool.h"
+#include "Buffer.h"
 #include "Semaphore.h"
 #include "Fence.h"
 #include "Instance.h"
@@ -114,24 +115,30 @@ namespace Engine {
 		std::unique_ptr<class Fence> m_InFlightFences;
 		std::unique_ptr<class Fence> m_ComputeInFlightFences;
 
+		// Descriptor Pool -> Descriptor Set
 		std::vector<VkCommandBuffer> m_CommandBuffers;
 		WindowSettings m_WindowSettings;
 		UserSettings m_UserSettings;
 		uint32_t m_CurrentFrame = 0;
-		std::vector<VkBuffer> m_VertexBuffers;
-		std::vector<VkDeviceMemory> m_VertexBuffersMemory;
-		VkBuffer m_IndexBuffer;
-		VkDeviceMemory m_IndexBufferMemory;
-		std::vector<VkBuffer> m_UniformBuffers;
-		std::vector<VkDeviceMemory> m_UniformBuffersMemory;
-		std::vector<void*> m_UniformBuffersMapped;
-		VkDescriptorPool m_DescriptorPool;
-		std::vector<VkDescriptorSet> m_DescriptorSets;
-		std::vector<VkBuffer> m_ShaderStorageBuffers;
-		std::vector<VkDeviceMemory> m_ShaderStorageBuffersMemory;
+
+		std::unique_ptr<class Buffer> m_VertexBuffers;
+		std::unique_ptr<class Buffer> m_UniformBuffers;
+		// std::vector<VkBuffer> m_VertexBuffers;
+		// std::vector<VkDeviceMemory> m_VertexBuffersMemory;
+
+		//VkBuffer m_IndexBuffer;
+		//VkDeviceMemory m_IndexBufferMemory;
+		std::unique_ptr<class Buffer> m_IndexBuffer;
+		// std::vector<VkBuffer> m_UniformBuffers;
+		// std::vector<VkDeviceMemory> m_UniformBuffersMemory;
+		// std::vector<void*> m_UniformBuffersMapped;
+		//std::vector<VkDescriptorSet> m_DescriptorSets;
+		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
+		//std::vector<VkBuffer> m_ShaderStorageBuffers;
+		//std::vector<VkDeviceMemory> m_ShaderStorageBuffersMemory;
 
 		VkDescriptorPool m_ComputeDescriptorPool;
-		std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
+		//std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
 		std::vector<VkCommandBuffer> m_ComputeCommandBuffers;
 	};
 }

@@ -1,8 +1,9 @@
 #include "ComputePipeline.h"
 
 namespace Engine {
-	ComputePipeline::ComputePipeline(const char* computeShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain) 
-		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain) {
+	ComputePipeline::ComputePipeline(const char* computeShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain, 
+		Buffer* uniformBuffers, Buffer* shaderStorageBuffers) : p_LogicalDevice(logicalDevice), p_SwapChain(swapChain), 
+		p_UniformBuffers(uniformBuffers), p_ShaderStorageBuffers(shaderStorageBuffers) {
 
 		ShaderModule computeShader(computeShaderPath, p_LogicalDevice, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -20,6 +21,15 @@ namespace Engine {
 
 		m_DescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, p_LogicalDevice->GetHandle()));
 		m_PipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
+
+		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 2 }
+		};
+
+		m_DescriptorPool.reset(new class DescriptorPool(p_LogicalDevice->GetHandle(), poolDescriptorBindings, MAX_FRAMES_IN_FLIGHT));
+		m_DescriptorSets.reset(new class DescriptorSets(p_LogicalDevice->GetHandle(), m_DescriptorPool->GetHandle(), m_DescriptorSetLayout->GetHandle(), 
+			p_UniformBuffers, true, p_ShaderStorageBuffers));
 
 		VkComputePipelineCreateInfo pipelineInfo = {};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;

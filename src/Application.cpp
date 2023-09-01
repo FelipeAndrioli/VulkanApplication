@@ -4,7 +4,6 @@ static bool g_FramebufferResized = false;
 
 static int g_MinImageCount = 2;
 static Engine::UI g_UI;
-const uint32_t PARTICLE_COUNT = 8192;
 
 namespace Engine {
 	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) : m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
@@ -38,7 +37,8 @@ namespace Engine {
 		// do this the image will be rendered upside down
 		ubo.proj[1][1] *= -1;
 
-		memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+		//memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+		memcpy(m_UniformBuffers->GetBufferMemoryMapped(currentImage), &ubo, sizeof(ubo));
 	}
 
 	/* Disabled due to the new architecture, will think in a way to make it work later*/
@@ -102,7 +102,7 @@ namespace Engine {
 		vkCmdSetScissor(r_CommandBuffer, 0, 1, &scissor);
 
 		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(r_CommandBuffer, 0, 1, &m_ShaderStorageBuffers[m_CurrentFrame], offsets);
+		vkCmdBindVertexBuffers(r_CommandBuffer, 0, 1, &m_ShaderStorageBuffers->GetBuffer(m_CurrentFrame), offsets);
 
 		vkCmdDraw(r_CommandBuffer, PARTICLE_COUNT, 1, 0, 0);
 
@@ -161,10 +161,10 @@ namespace Engine {
 
 		VkDeviceSize offsets[] = { 0 };
 
-		vkCmdBindVertexBuffers(r_CommandBuffer, 0, 1, &m_VertexBuffers[m_CurrentFrame], offsets);
-		vkCmdBindIndexBuffer(r_CommandBuffer, m_IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindVertexBuffers(r_CommandBuffer, 0, 1, &m_VertexBuffers->GetBuffer(m_CurrentFrame), offsets);
+		vkCmdBindIndexBuffer(r_CommandBuffer, m_IndexBuffer->GetBuffer(0), 0, VK_INDEX_TYPE_UINT16);
 		vkCmdBindDescriptorSets(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
-			0, 1, &m_DescriptorSets[m_CurrentFrame], 0, nullptr);
+			0, 1, &m_GraphicsPipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 0, nullptr);
 
 		vkCmdDrawIndexed(r_CommandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
@@ -248,14 +248,15 @@ namespace Engine {
 			presentInfo.pSwapchains = swapChains;
 			presentInfo.pImageIndices = &imageIndex;
 			presentInfo.pResults = nullptr;
-		
+
 			result = vkQueuePresentKHR(m_LogicalDevice->GetPresentQueue(), &presentInfo);
-			
+
 			if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || g_FramebufferResized) {
 				g_FramebufferResized = false;
 				recreateSwapChain();
 				//return;
-			} else if (result != VK_SUCCESS) {
+			}
+			else if (result != VK_SUCCESS) {
 				throw std::runtime_error("Failed to present swap chain image!");
 			}
 		}
@@ -263,7 +264,7 @@ namespace Engine {
 		// using modulo operator to ensure that the frame index loops around after every MAX_FRAMES_IN_FLIGHT enqueued frames
 		m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
-	
+
 	void Application::Run() {
 
 		m_Window->DrawFrame = std::bind(&Application::drawFrame, this);
@@ -281,7 +282,7 @@ namespace Engine {
 		// TODO: clean a bit this GUI initializer
 		g_UI.Init(*m_Window->GetHandle(), m_Instance->GetHandle(), m_PhysicalDevice->GetHandle(),
 			m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices(), m_LogicalDevice->GetGraphicsQueue(),
-			m_SwapChain->GetSwapChainExtent(), m_SwapChain->GetSwapChainImageViews(), 
+			m_SwapChain->GetSwapChainExtent(), m_SwapChain->GetSwapChainImageViews(),
 			m_SwapChain->GetSwapChainImageFormat(), g_MinImageCount);
 	}
 
@@ -302,23 +303,112 @@ namespace Engine {
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
+
+		// createUniformBuffers();
+		{
+			VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+			m_UniformBuffers.reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+			m_UniformBuffers->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			m_UniformBuffers->MapMemory();
+		}
+
 		m_GraphicsPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/vert.spv", "Assets/Shaders/frag.spv",
-			m_LogicalDevice.get(), m_SwapChain.get(), Assets::Vertex::getBindingDescription(), Assets::Vertex::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST));
+			m_LogicalDevice.get(), m_SwapChain.get(), Assets::Vertex::getBindingDescription(), Assets::Vertex::getAttributeDescriptions(),
+			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_UniformBuffers.get()));
 		m_SwapChain->CreateFramebuffers(m_GraphicsPipeline->GetRenderPass().GetHandle());
-		m_TempRayTracerPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
-			m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST));
-		m_ComputePipeline.reset(new class ComputePipeline("./Assets/Shaders/particle_shader_comp.spv", m_LogicalDevice.get(), m_SwapChain.get()));
 
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));
 		
-		createVertexBuffer();
-		createIndexBuffer();
-		createShaderStorageBuffers();
-		createUniformBuffers();
-		createDescriptorPool();
-		createComputeDescriptorPool();
-		createComputeDescriptorSets();
-		createDescriptorSets();
+		//createShaderStorageBuffers();
+		{
+			std::default_random_engine rndEngine((unsigned)time(nullptr));
+			std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
+
+			std::vector<Particle> particles(PARTICLE_COUNT);
+			
+			for (auto& particle : particles) {
+				float r = 0.25f * sqrt(rndDist(rndEngine));
+				float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
+				float x = r * cos(theta) * m_SwapChain->GetSwapChainExtent().height / m_SwapChain->GetSwapChainExtent().height;
+				float y = r * sin(theta);
+				particle.position = glm::vec2(x, y);
+				particle.velocity = glm::normalize(glm::vec2(x, y)) * 0.00025f;
+				particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine), 1.0f);
+			}
+
+			VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
+			
+			/*
+			Buffer stagingBuffer = Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(),
+				bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			stagingBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			*/
+
+			VkBuffer stagingBuffer;
+			VkDeviceMemory stagingBufferMemory;
+			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+				stagingBuffer, stagingBufferMemory);
+
+			void* data;
+			//stagingBuffer.MapMemory(&data);
+			vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
+			memcpy(data, particles.data(), (size_t)bufferSize);
+			//stagingBuffer.UnmapMemory();
+			vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
+
+			m_ShaderStorageBuffers.reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(),
+				m_PhysicalDevice.get(), bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+			m_ShaderStorageBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			m_ShaderStorageBuffers->CopyFrom(stagingBuffer, bufferSize,
+				m_CommandPool->GetHandle());
+
+			vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
+			vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
+		}
+
+		m_TempRayTracerPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
+			m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), Particle::getAttributeDescriptions(),
+			VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_UniformBuffers.get()));
+		m_ComputePipeline.reset(new class ComputePipeline("./Assets/Shaders/particle_shader_comp.spv", m_LogicalDevice.get(), 
+			m_SwapChain.get(), m_UniformBuffers.get(), m_ShaderStorageBuffers.get()));
+
+		//createVertexBuffer();
+		{
+			VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+			m_VertexBuffers.reset(new class Buffer(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT), m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+			m_VertexBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		}
+
+		//createIndexBuffer();
+		{
+			VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+			//Buffer stagingBuffer = Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			//stagingBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		
+			VkBuffer stagingBuffer;
+			VkDeviceMemory stagingBufferMemory;
+			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				stagingBuffer, stagingBufferMemory);
+
+			void* data;
+			//stagingBuffer.MapMemory(&data);
+			vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
+			memcpy(data, indices.data(), (size_t)bufferSize);
+			vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
+			//stagingBuffer.UnmapMemory();
+			
+			m_IndexBuffer.reset(new class Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(),
+				bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
+			m_IndexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			m_IndexBuffer->CopyFrom(stagingBuffer, bufferSize,
+				m_CommandPool->GetHandle());
+
+			vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
+			vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
+		}
+
 		createCommandBuffers();
 		createComputeCommandBuffers();
 		createSyncObjects();
@@ -335,6 +425,33 @@ namespace Engine {
 		}
 
 		throw std::runtime_error("Failed to find suitable memory type!");
+	}
+
+	void Application::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, 
+		VkDeviceMemory& bufferMemory) {
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = size;
+		bufferInfo.usage = usage;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		if (vkCreateBuffer(m_LogicalDevice->GetHandle(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create buffer!");
+		}
+
+		VkMemoryRequirements memRequirements;
+		vkGetBufferMemoryRequirements(m_LogicalDevice->GetHandle(), buffer, &memRequirements);
+
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = findMemoryType(m_PhysicalDevice->GetHandle(), memRequirements.memoryTypeBits, properties);
+
+		if (vkAllocateMemory(m_LogicalDevice->GetHandle(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to allocate buffer memory!");
+		}
+
+		vkBindBufferMemory(m_LogicalDevice->GetHandle(), buffer, bufferMemory, 0);
 	}
 
 	void Application::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
@@ -371,44 +488,6 @@ namespace Engine {
 		vkFreeCommandBuffers(m_LogicalDevice->GetHandle(), m_CommandPool->GetHandle(), 1, &commandBuffer);
 	}
 
-	void Application::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
-		VkBufferCreateInfo bufferInfo{};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = size;
-		bufferInfo.usage = usage;
-		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-		if (vkCreateBuffer(m_LogicalDevice->GetHandle(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create buffer!");
-		}
-
-		VkMemoryRequirements memRequirements;
-		vkGetBufferMemoryRequirements(m_LogicalDevice->GetHandle(), buffer, &memRequirements);
-
-		VkMemoryAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = findMemoryType(m_PhysicalDevice->GetHandle(), memRequirements.memoryTypeBits, properties);
-	
-		if (vkAllocateMemory(m_LogicalDevice->GetHandle(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to allocate vertex buffer memory!");
-		}
-
-		vkBindBufferMemory(m_LogicalDevice->GetHandle(), buffer, bufferMemory, 0);
-	}
-
-	void Application::createVertexBuffer() {
-		m_VertexBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-		m_VertexBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-
-		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			createBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_VertexBuffers[i], m_VertexBuffersMemory[i]);
-		}
-	}
-
 	void Application::updateVertexBuffer(uint32_t currentImage) {
 		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 		
@@ -424,136 +503,10 @@ namespace Engine {
 		memcpy(data, vertices.data(), (size_t)bufferSize);
 		vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
 		
-		copyBuffer(stagingBuffer, m_VertexBuffers[currentImage], bufferSize);
+		copyBuffer(stagingBuffer, m_VertexBuffers->GetBuffer(currentImage), bufferSize);
 
 		vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
 		vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
-	}
-
-	void Application::createIndexBuffer() {
-		VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-			stagingBuffer, stagingBufferMemory);
-
-		void* data;
-		vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, indices.data(), (size_t)bufferSize);
-		vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
-
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_IndexBuffer, m_IndexBufferMemory);
-		
-		copyBuffer(stagingBuffer, m_IndexBuffer, bufferSize);
-
-		vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
-		vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
-	}
-
-	void Application::createShaderStorageBuffers() {
-		std::default_random_engine rndEngine((unsigned)time(nullptr));
-		std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
-
-		std::vector<Particle> particles(PARTICLE_COUNT);
-		
-		for (auto& particle : particles) {
-			float r = 0.25f * sqrt(rndDist(rndEngine));
-			float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
-			float x = r * cos(theta) * m_SwapChain->GetSwapChainExtent().height / m_SwapChain->GetSwapChainExtent().height;
-			float y = r * sin(theta);
-			particle.position = glm::vec2(x, y);
-			particle.velocity = glm::normalize(glm::vec2(x, y)) * 0.00025f;
-			particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine), 1.0f);
-		}
-
-		VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
-
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			stagingBuffer, stagingBufferMemory);
-
-		void* data;
-		vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, particles.data(), (size_t)bufferSize);
-		vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
-
-		m_ShaderStorageBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-		m_ShaderStorageBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			createBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_ShaderStorageBuffers[i], m_ShaderStorageBuffersMemory[i]);
-			copyBuffer(stagingBuffer, m_ShaderStorageBuffers[i], bufferSize);
-		}
-
-		vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
-		vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
-	}
-
-	void Application::createComputeDescriptorSets() {
-		//std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_ComputeDescriptorSetLayout);
-		std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_ComputePipeline->GetDescriptorSetLayout().GetHandle());
-		VkDescriptorSetAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = m_ComputeDescriptorPool;
-		allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-		allocInfo.pSetLayouts = layouts.data();
-
-		m_ComputeDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-
-		if (vkAllocateDescriptorSets(m_LogicalDevice->GetHandle(), &allocInfo, m_ComputeDescriptorSets.data()) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to allocate compute descriptor sets!");
-		}
-
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			VkDescriptorBufferInfo uniformBufferInfo = {};
-			uniformBufferInfo.buffer = m_UniformBuffers[i];
-			uniformBufferInfo.offset = 0;
-			uniformBufferInfo.range = sizeof(UniformBufferObject);
-
-			std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
-			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = m_ComputeDescriptorSets[i];
-			descriptorWrites[0].dstBinding = 0;
-			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pBufferInfo = &uniformBufferInfo;
-
-			VkDescriptorBufferInfo storageBufferInfoLastFrame = {};
-			storageBufferInfoLastFrame.buffer = m_ShaderStorageBuffers[(i - 1) % MAX_FRAMES_IN_FLIGHT];
-			storageBufferInfoLastFrame.offset = 0;
-			storageBufferInfoLastFrame.range = sizeof(Particle) * PARTICLE_COUNT;
-
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = m_ComputeDescriptorSets[i];
-			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pBufferInfo = &storageBufferInfoLastFrame;
-
-			VkDescriptorBufferInfo storageBufferInfoCurrentFrame = {};
-			storageBufferInfoCurrentFrame.buffer = m_ShaderStorageBuffers[i];
-			storageBufferInfoCurrentFrame.offset = 0;
-			storageBufferInfoCurrentFrame.range = sizeof(Particle) * PARTICLE_COUNT;
-
-			descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[2].dstSet = m_ComputeDescriptorSets[i];
-			descriptorWrites[2].dstBinding = 2;
-			descriptorWrites[2].dstArrayElement = 0;
-			descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			descriptorWrites[2].descriptorCount = 1;
-			descriptorWrites[2].pBufferInfo = &storageBufferInfoCurrentFrame;
-
-			vkUpdateDescriptorSets(m_LogicalDevice->GetHandle(), 3, descriptorWrites.data(), 0, nullptr);
-		}
 	}
 
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
@@ -566,14 +519,15 @@ namespace Engine {
 
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetHandle());
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetPipelineLayout().GetHandle(), 
-			0, 1,&m_ComputeDescriptorSets[m_CurrentFrame], 0, nullptr);
+			0, 1,&m_ComputePipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 
+			0, nullptr);
 		vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
 
 		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to record compute command buffer!");
 		}
 	}
-
+	
 	void Application::createComputeCommandBuffers() {
 		m_ComputeCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -585,110 +539,6 @@ namespace Engine {
 
 		if (vkAllocateCommandBuffers(m_LogicalDevice->GetHandle(), &allocInfo, m_ComputeCommandBuffers.data()) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to allocate compute command buffers!");
-		}
-	}
-
-	void Application::createUniformBuffers() {
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-		m_UniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-		m_UniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-		m_UniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
-	
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-				m_UniformBuffers[i], m_UniformBuffersMemory[i]);
-
-			vkMapMemory(m_LogicalDevice->GetHandle(), m_UniformBuffersMemory[i], 0, bufferSize, 0, &m_UniformBuffersMapped[i]);
-		}
-	}
-
-	void Application::createComputeDescriptorPool() {
-		// TODO change the create descriptor pool function to receive the descriptor pool as parameter
-
-		std::array<VkDescriptorPoolSize, 2> poolSizes = {};
-		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-		poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-
-		/*
-			We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
-			because our sets reference the SSBOs tof the last and current frame (for now).
-		*/
-		poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 2;
-
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 2;
-		poolInfo.pPoolSizes = poolSizes.data();
-		poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-		poolInfo.flags = 0;
-
-		if (vkCreateDescriptorPool(m_LogicalDevice->GetHandle(), &poolInfo, nullptr, &m_ComputeDescriptorPool) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create Descriptor Pool!");
-		}
-	}
-
-	void Application::createDescriptorPool() {
-		std::array<VkDescriptorPoolSize, 2> poolSizes = {};
-		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-		poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-
-		/*
-			We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
-			because our sets reference the SSBOs tof the last and current frame (for now).
-		*/
-		poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 2;
-
-		VkDescriptorPoolCreateInfo poolInfo{};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 2;
-		poolInfo.pPoolSizes = poolSizes.data();
-		poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-		poolInfo.flags = 0;
-
-		if (vkCreateDescriptorPool(m_LogicalDevice->GetHandle(), &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create Descriptor Pool!");
-		}
-	}
-
-	void Application::createDescriptorSets() {
-		std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_GraphicsPipeline->GetDescriptorSetLayout().GetHandle());
-
-		VkDescriptorSetAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = m_DescriptorPool;
-		allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-		allocInfo.pSetLayouts = layouts.data();
-
-		m_DescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-
-		if (vkAllocateDescriptorSets(m_LogicalDevice->GetHandle(), &allocInfo, m_DescriptorSets.data()) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to allocate Descriptor Sets!");
-		}
-
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = m_UniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
-
-			VkWriteDescriptorSet descriptorWrite{};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = m_DescriptorSets[i];
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &bufferInfo;
-			descriptorWrite.pImageInfo = nullptr;
-			descriptorWrite.pTexelBufferView = nullptr;
-
-			vkUpdateDescriptorSets(m_LogicalDevice->GetHandle(), 1, &descriptorWrite, 0, nullptr);
 		}
 	}
 
@@ -732,33 +582,15 @@ namespace Engine {
 		m_ComputePipeline.reset();
 		vkDestroyDescriptorPool(m_LogicalDevice->GetHandle(), m_ComputeDescriptorPool, nullptr);
 
-		//vkDestroyPipeline(m_LogicalDevice->GetHandle(), m_RayTracerGraphicsPipeline, nullptr);
-		//vkDestroyPipelineLayout(m_LogicalDevice->GetHandle(), m_RayTracerPipelineLayout, nullptr);
 		m_GraphicsPipeline.reset();
 		m_TempRayTracerPipeline.reset();
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_UniformBuffers[i], nullptr);
-			vkFreeMemory(m_LogicalDevice->GetHandle(), m_UniformBuffersMemory[i], nullptr);
-		}
-
-		vkDestroyDescriptorPool(m_LogicalDevice->GetHandle(), m_DescriptorPool, nullptr);
-		
-		vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_IndexBuffer, nullptr);
-		vkFreeMemory(m_LogicalDevice->GetHandle(), m_IndexBufferMemory, nullptr);
-
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_ShaderStorageBuffers[i], nullptr);
-			vkFreeMemory(m_LogicalDevice->GetHandle(), m_ShaderStorageBuffersMemory[i], nullptr);
-		}
-
-		for (size_t i = 0; i < m_VertexBuffers.size(); i++) {
-			vkDestroyBuffer(m_LogicalDevice->GetHandle(), m_VertexBuffers[i], nullptr);
-			vkFreeMemory(m_LogicalDevice->GetHandle(), m_VertexBuffersMemory[i], nullptr);
-		}
+		m_UniformBuffers.reset();
+		m_IndexBuffer.reset();
+		m_ShaderStorageBuffers.reset();
+		m_VertexBuffers.reset();
 
 		m_DebugMessenger.reset();
-
 		m_InFlightFences.reset();
 		m_ComputeInFlightFences.reset();
 

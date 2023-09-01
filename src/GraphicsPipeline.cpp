@@ -1,10 +1,11 @@
 #include "GraphicsPipeline.h"
 #include "LogicalDevice.h"
 #include "SwapChain.h"
- namespace Engine {
+namespace Engine {
 	GraphicsPipeline::GraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain,
-		VkVertexInputBindingDescription _bindingDescription, std::array<VkVertexInputAttributeDescription, 2> _attributeDescriptions, VkPrimitiveTopology topology) 
-		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain) {
+		VkVertexInputBindingDescription _bindingDescription, std::array<VkVertexInputAttributeDescription, 2> _attributeDescriptions, 
+		VkPrimitiveTopology topology, Buffer* uniformBuffers)
+		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain), p_UniformBuffers(uniformBuffers) {
 
 		// auto bindingDescription = Assets::Vertex::getBindingDescription();
 		// auto attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
@@ -68,7 +69,7 @@
 		multisampling.alphaToOneEnable = VK_FALSE;
 
 		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT 
+		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
 			| VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 		colorBlendAttachment.blendEnable = VK_FALSE;
 
@@ -98,6 +99,22 @@
 		};
 
 		m_DescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, p_LogicalDevice->GetHandle()));
+
+		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 }
+
+			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
+			// because our sets reference the SSBOs of the last and current frame (for now).
+		};
+
+		m_DescriptorPool.reset(new class DescriptorPool(p_LogicalDevice->GetHandle(), poolDescriptorBindings, MAX_FRAMES_IN_FLIGHT));
+
+		std::vector<BufferDescriptor> bufferDescriptor = {};
+
+		m_DescriptorSets.reset(new class DescriptorSets(p_LogicalDevice->GetHandle(), m_DescriptorPool->GetHandle(), 
+			m_DescriptorSetLayout->GetHandle(), p_UniformBuffers));
+
 		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
 		m_RenderPass.reset(new class RenderPass(p_SwapChain, p_LogicalDevice->GetHandle()));
 

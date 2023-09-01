@@ -13,6 +13,7 @@
 
 namespace Engine {
 	const int MAX_FRAMES_IN_FLIGHT = 2;
+	const uint32_t PARTICLE_COUNT = 8192;
 
 	const std::vector<const char*> c_DeviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -82,6 +83,7 @@ namespace Engine {
 		alignas(16) glm::mat4 proj;
 	};
 
+	// TODO rework both begin and end single time commands
 	inline VkCommandBuffer beginSingleTimeCommands(VkDevice &r_LogicalDevice, VkCommandPool cmdPool) {
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;

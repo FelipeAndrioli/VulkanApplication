@@ -9,4 +9,15 @@ namespace Engine {
 		VkDescriptorType type;
 		VkShaderStageFlags stage;
 	};
+
+	struct PoolDescriptorBinding {
+		VkDescriptorType type;
+		uint32_t descriptorCount;
+	};
+
+	struct BufferDescriptor {
+		VkBuffer buffer;
+		VkDeviceSize offset;
+		VkDeviceSize range;
+	};
 }
