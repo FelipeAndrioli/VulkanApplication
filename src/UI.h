@@ -11,6 +11,7 @@
 #include "Vulkan.h"
 #include "Common.h"
 #include "UserSettings.h"
+#include "WindowSettings.h"
 
 namespace Engine {
 	class UI {
@@ -27,8 +28,7 @@ namespace Engine {
 		void Resize(VkDevice& r_LogicalDevice, const VkExtent2D& r_SwapChainExtent, const std::vector<VkImageView>& r_SwapChainImageViews,
 			int minImageCount);
 		VkCommandBuffer& GetCommandBuffer(uint32_t currentFrame);
-		void Draw();
-		void DrawUserSettings(UserSettings &r_UserSettings);
+		void Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings);
 	private:
 		void createUIDescriptorPool(VkDevice& r_LogicalDevice);
 		void createUIRenderPass(VkDevice& r_LogicalDevice, const VkFormat& r_SwapChainImageFormat);

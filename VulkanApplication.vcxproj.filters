@@ -96,13 +96,16 @@
     <ClCompile Include="src\CommandPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\DescriptorSets.cpp">
+    <ClCompile Include="src\Buffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\DescriptorPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Buffer.cpp">
+    <ClCompile Include="src\DescriptorSets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Time.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -203,13 +206,16 @@
     <ClInclude Include="src\CommandPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\DescriptorSets.h">
+    <ClInclude Include="src\Buffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\DescriptorPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Buffer.h">
+    <ClInclude Include="src\DescriptorSets.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

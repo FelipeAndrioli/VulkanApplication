@@ -6,11 +6,12 @@
 
 #include "Vulkan.h"
 #include "WindowSettings.h"
+#include "Time.h"
 
 namespace Engine {
 	class Window {
 	public:
-		Window(const WindowSettings &r_WindowSettings);
+		Window(WindowSettings *p_WindowSettings);
 		~Window();
 
 		void Run();
@@ -27,7 +28,9 @@ namespace Engine {
 		std::function<void(int key, int scancode, int action, int mods)> OnKeyPress;
 	private:
 		GLFWwindow* m_Window{};
-		const WindowSettings m_WindowSettings;
+		WindowSettings* p_WindowSettings;
 		bool m_Running;
+
+		std::unique_ptr<class Time> m_Time;
 	};
 }

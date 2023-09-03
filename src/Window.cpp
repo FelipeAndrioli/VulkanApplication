@@ -18,7 +18,7 @@ namespace Engine {
 		}
 	}
 
-	Window::Window(const WindowSettings &r_WindowSettings) : m_WindowSettings(r_WindowSettings) {
+	Window::Window(WindowSettings *windowSettings) : p_WindowSettings(windowSettings) {
 
 		if (!glfwInit()) {
 			throw std::runtime_error("Failed to initialize window!");
@@ -27,8 +27,8 @@ namespace Engine {
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-		m_Window = glfwCreateWindow(m_WindowSettings.Width, m_WindowSettings.Height, 
-			m_WindowSettings.Title.c_str(), nullptr, nullptr);
+		m_Window = glfwCreateWindow(p_WindowSettings->Width, p_WindowSettings->Height, 
+			p_WindowSettings->Title.c_str(), nullptr, nullptr);
 
 		glfwSetWindowUserPointer(m_Window, this);
 		
@@ -36,6 +36,8 @@ namespace Engine {
 		glfwSetKeyCallback(m_Window, keyCallback);
 
 		m_Running = true;
+
+		m_Time.reset(new class Time());
 	}
 
 	Window::~Window() {
@@ -47,6 +49,8 @@ namespace Engine {
 		while (!glfwWindowShouldClose(m_Window) && m_Running) {
 			glfwPollEvents();
 			
+			p_WindowSettings->ms = m_Time->GetElapsedTime();
+
 			if (DrawFrame) {
 				DrawFrame();
 			}

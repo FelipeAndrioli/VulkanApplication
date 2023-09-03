@@ -65,37 +65,14 @@ namespace Engine {
 		return m_UICommandBuffers[currentFrame];
 	}
 
-	void UI::DrawUserSettings(UserSettings &r_UserSettings) {
+	void UI::Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings) {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		
-		ImGui::Begin("Settings");
+
+		ImGui::End();
+		ImGui::Text("milliseconds %f", r_WindowSettings.ms);
 		ImGui::Checkbox("Ray Traced", &r_UserSettings.rayTraced);
-		ImGui::End();
-		
-		ImGui::Render();
-	}
-
-	void UI::Draw() {
-		ImGui_ImplVulkan_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-
-		ImGui::Begin("Settings");
-		ImGui::SliderFloat("Color 0 R", &vertices[0].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("Color 0 G", &vertices[0].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("Color 0 B", &vertices[0].color.b, 0.0f, 1.0f);
-
-		ImGui::SliderFloat("Color 1 R", &vertices[1].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("Color 1 G", &vertices[1].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("Color 1 B", &vertices[1].color.b, 0.0f, 1.0f);
-
-		ImGui::SliderFloat("Color 2 R", &vertices[2].color.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("Color 2 G", &vertices[2].color.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("Color 2 B", &vertices[2].color.b, 0.0f, 1.0f);
-		ImGui::End();
-
 		ImGui::Render();
 	}
 

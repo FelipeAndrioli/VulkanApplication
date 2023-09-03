@@ -151,11 +151,14 @@
     <ClCompile Include="libs\imgui\imgui_tables.cpp" />
     <ClCompile Include="libs\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\Application.cpp" />
+    <ClCompile Include="src\Buffer.cpp" />
     <ClCompile Include="src\CommandPool.cpp" />
     <ClCompile Include="src\Common.cpp" />
     <ClCompile Include="src\ComputePipeline.cpp" />
     <ClCompile Include="src\DebugUtilsMessenger.cpp" />
+    <ClCompile Include="src\DescriptorPool.cpp" />
     <ClCompile Include="src\DescriptorSetLayout.cpp" />
+    <ClCompile Include="src\DescriptorSets.cpp" />
     <ClCompile Include="src\Fence.cpp" />
     <ClCompile Include="src\GraphicsPipeline.cpp" />
     <ClCompile Include="src\Instance.cpp" />
@@ -168,6 +171,7 @@
     <ClCompile Include="src\ShaderModule.cpp" />
     <ClCompile Include="src\Surface.cpp" />
     <ClCompile Include="src\SwapChain.cpp" />
+    <ClCompile Include="src\Time.cpp" />
     <ClCompile Include="src\UI.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>
@@ -181,12 +185,15 @@
     <ClInclude Include="libs\imgui\imstb_textedit.h" />
     <ClInclude Include="libs\imgui\imstb_truetype.h" />
     <ClInclude Include="src\Application.h" />
+    <ClInclude Include="src\Buffer.h" />
     <ClInclude Include="src\CommandPool.h" />
     <ClInclude Include="src\Common.h" />
     <ClInclude Include="src\ComputePipeline.h" />
     <ClInclude Include="src\DebugUtilsMessenger.h" />
     <ClInclude Include="src\DescriptorBinding.h" />
+    <ClInclude Include="src\DescriptorPool.h" />
     <ClInclude Include="src\DescriptorSetLayout.h" />
+    <ClInclude Include="src\DescriptorSets.h" />
     <ClInclude Include="src\Fence.h" />
     <ClInclude Include="src\GraphicsPipeline.h" />
     <ClInclude Include="src\Instance.h" />
@@ -199,6 +206,7 @@
     <ClInclude Include="src\ShaderModule.h" />
     <ClInclude Include="src\Surface.h" />
     <ClInclude Include="src\SwapChain.h" />
+    <ClInclude Include="src\Time.h" />
     <ClInclude Include="src\UI.h" />
     <ClInclude Include="src\UserSettings.h" />
     <ClInclude Include="src\Vulkan.h" />

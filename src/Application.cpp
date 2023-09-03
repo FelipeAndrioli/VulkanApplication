@@ -7,7 +7,7 @@ static Engine::UI g_UI;
 
 namespace Engine {
 	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) : m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
-		m_Window.reset(new class Window(m_WindowSettings));
+		m_Window.reset(new class Window(&m_WindowSettings));
 		m_Instance.reset(new class Instance(c_ValidationLayers, c_EnableValidationLayers));
 		m_DebugMessenger.reset(c_EnableValidationLayers ? new class DebugUtilsMessenger(m_Instance->GetHandle()) : nullptr);
 
@@ -213,10 +213,10 @@ namespace Engine {
 			throw std::runtime_error("Failed to submit draw command buffer!");
 		}
 	}
-
+	
 	void Application::drawFrame() {
 
-		g_UI.DrawUserSettings(m_UserSettings);
+		g_UI.Draw(m_UserSettings, m_WindowSettings);
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
