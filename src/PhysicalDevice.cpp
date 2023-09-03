@@ -13,6 +13,8 @@ namespace Engine {
 		m_AvailablePhysicalDevices.resize(deviceCount);
 		vkEnumeratePhysicalDevices(p_Instance, &deviceCount, m_AvailablePhysicalDevices.data());
 
+		std::cout << "Available Devices:" << '\n';
+
 		for (const auto& device : m_AvailablePhysicalDevices) {
 			VkPhysicalDeviceFeatures device_features;
 			VkPhysicalDeviceProperties device_properties;
@@ -20,24 +22,28 @@ namespace Engine {
 			vkGetPhysicalDeviceFeatures(device, &device_features);
 			vkGetPhysicalDeviceProperties(device, &device_properties);
 
-			std::cout << "Available Devices:" << '\n';
 			std::cout << '\t' << device_properties.deviceName << '\n';
+			std::cout << '\t' << device_properties.deviceType << '\n';
 		}
 		
 		for (const auto& device : m_AvailablePhysicalDevices) {
 			if (isDeviceSuitable(device)) {
-				m_PhysicalDevice = device;
+				
+				VkPhysicalDeviceProperties deviceProperties;
+				vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-				VkPhysicalDeviceProperties device_properties;
-				vkGetPhysicalDeviceProperties(device, &device_properties);
-
-				std::cout << "Selected device: " << device_properties.deviceName << '\n';
-				break;
+				// pick any GPU at first, then priorize a dedicated GPU (device type = 2)
+				if (m_PhysicalDevice == VK_NULL_HANDLE || deviceProperties.deviceType == 2) {
+					m_PhysicalDevice = device;
+					m_PhysicalDeviceProperties = deviceProperties;
+				}
 			}
 		}
 
 		if (m_PhysicalDevice == VK_NULL_HANDLE) {
 			throw std::runtime_error("Failed to find a suitable GPU!");
+		} else {
+			std::cout << "Selected device: " << m_PhysicalDeviceProperties.deviceName << '\n';
 		}
 
 		m_SwapChainSupportDetails = QuerySwapChainSupportDetails(m_PhysicalDevice);

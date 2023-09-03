@@ -25,6 +25,7 @@ namespace Engine {
 	private:
 		std::vector<VkPhysicalDevice> m_AvailablePhysicalDevices;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
+		VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
 		SwapChainSupportDetails m_SwapChainSupportDetails;
 
 		VkInstance& p_Instance;
