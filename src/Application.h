@@ -70,14 +70,12 @@ namespace Engine {
 		void createIndexBuffer();
 		void createUniformBuffers();
 		void createDescriptorPool();
-		void createComputeDescriptorPool();
 		void createDescriptorSets();
 		void createCommandBuffers();
 		void createSyncObjects();
 		void recreateSwapChain();
 
 		void createShaderStorageBuffers();
-		void createComputeDescriptorSets();
 		
 		VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
