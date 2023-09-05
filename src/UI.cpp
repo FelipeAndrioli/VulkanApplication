@@ -69,10 +69,12 @@ namespace Engine {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-
-		ImGui::End();
+	
+		ImGui::Begin("Settings");
 		ImGui::Text("milliseconds %f", r_WindowSettings.ms);
 		ImGui::Checkbox("Ray Traced", &r_UserSettings.rayTraced);
+		ImGui::End();
+		
 		ImGui::Render();
 	}
 
