@@ -77,12 +77,12 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\nandh\Documents\F_Projects\VulkanApplication\libs\imgui;C:\Users\nandh\Documents\F_Projects\VulkanApplication\libs\imgui\backends;C:\VulkanSDK\1.3.261.1\Include;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\glm;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\GLFW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Felipe\Documents\current_projects\VulkanApplication\libs\imgui;C:\Users\Felipe\Documents\current_projects\VulkanApplication\libs\imgui\backends;C:\VulkanSDK\1.3.250.0\Include;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glm;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.261.1\Lib;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\GLFW\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.250.0\Lib;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -95,14 +95,14 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\nandh\Documents\F_Projects\VulkanApplication\libs\imgui;C:\Users\nandh\Documents\F_Projects\VulkanApplication\libs\imgui\backends;C:\VulkanSDK\1.3.261.1\Include;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\glm;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\GLFW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Felipe\Documents\current_projects\VulkanApplication\libs\imgui;C:\Users\Felipe\Documents\current_projects\VulkanApplication\libs\imgui\backends;C:\VulkanSDK\1.3.250.0\Include;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glm;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.261.1\Lib;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\GLFW\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.250.0\Lib;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -113,12 +113,12 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\nandh\Documents\F_Projects\VulkanApplication\libs\imgui;C:\Users\nandh\Documents\F_Projects\VulkanApplication\libs\imgui\backends;C:\VulkanSDK\1.3.261.1\Include;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\glm;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\GLFW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Felipe\Documents\current_projects\VulkanApplication\libs\imgui;C:\Users\Felipe\Documents\current_projects\VulkanApplication\libs\imgui\backends;C:\VulkanSDK\1.3.250.0\Include;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glm;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.261.1\Lib;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\GLFW\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.250.0\Lib;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -131,14 +131,14 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\nandh\Documents\F_Projects\VulkanApplication\libs\imgui;C:\Users\nandh\Documents\F_Projects\VulkanApplication\libs\imgui\backends;C:\VulkanSDK\1.3.261.1\Include;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\glm;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\GLFW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Felipe\Documents\current_projects\VulkanApplication\libs\imgui;C:\Users\Felipe\Documents\current_projects\VulkanApplication\libs\imgui\backends;C:\VulkanSDK\1.3.250.0\Include;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glm;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.261.1\Lib;C:\Users\nandh\Documents\Visual Studio 2022\Libraries\GLFW\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.250.0\Lib;C:\Program Files\Microsoft Visual Studio\2022\Community\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
