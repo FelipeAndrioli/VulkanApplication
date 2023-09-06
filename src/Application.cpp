@@ -292,6 +292,7 @@ namespace Engine {
 		
 		//createShaderStorageBuffers();
 		{
+			// temporary until we setup scenes
 			std::default_random_engine rndEngine((unsigned)time(nullptr));
 			std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 
