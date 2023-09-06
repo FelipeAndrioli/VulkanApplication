@@ -71,8 +71,10 @@ namespace Engine {
 		ImGui::NewFrame();
 	
 		ImGui::Begin("Settings");
-		ImGui::Text("milliseconds %f", r_WindowSettings.ms);
+		ImGui::Text("Last Frame: %f ms", r_WindowSettings.ms);
+		ImGui::Text("Framerate: %.1f fps", r_WindowSettings.frames);
 		ImGui::Checkbox("Ray Traced", &r_UserSettings.rayTraced);
+		ImGui::Checkbox("Limit Framerate", &r_WindowSettings.limitFramerate);
 		ImGui::End();
 		
 		ImGui::Render();

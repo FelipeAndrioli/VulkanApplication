@@ -36,8 +36,6 @@ namespace Engine {
 		glfwSetKeyCallback(m_Window, keyCallback);
 
 		m_Running = true;
-
-		m_Time.reset(new class Time());
 	}
 
 	Window::~Window() {
@@ -48,12 +46,20 @@ namespace Engine {
 	void Window::Run() {
 		while (!glfwWindowShouldClose(m_Window) && m_Running) {
 			glfwPollEvents();
-			
-			p_WindowSettings->ms = m_Time->GetElapsedTime();
 
+			m_CurrentFrameTime = (float)glfwGetTime();
+			Timestep timestep = m_CurrentFrameTime - m_LastFrameTime;
+
+			if (p_WindowSettings->limitFramerate && timestep.GetSeconds() < (1 / 60.0f)) continue;
+			
 			if (DrawFrame) {
 				DrawFrame();
 			}
+
+			m_LastFrameTime = m_CurrentFrameTime;
+
+			p_WindowSettings->ms = timestep.GetMilliseconds();
+			p_WindowSettings->frames = static_cast<float>(1 / timestep.GetSeconds());
 		}
 	}
 

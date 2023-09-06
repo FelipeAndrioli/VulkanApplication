@@ -6,7 +6,7 @@
 
 #include "Vulkan.h"
 #include "WindowSettings.h"
-#include "Time.h"
+#include "Timestep.h"
 
 namespace Engine {
 	class Window {
@@ -31,6 +31,7 @@ namespace Engine {
 		WindowSettings* p_WindowSettings;
 		bool m_Running;
 
-		std::unique_ptr<class Time> m_Time;
+		float m_CurrentFrameTime = 0.0;
+		float m_LastFrameTime = 0.0;
 	};
 }

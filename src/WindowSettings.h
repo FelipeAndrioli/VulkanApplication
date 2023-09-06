@@ -7,6 +7,8 @@ namespace Engine {
 		std::string Title = "VulkanApplication.exe";
 		uint32_t Width = 800;
 		uint32_t Height = 600;
-		double ms;
+		float ms = 0.0f;
+		float frames = 0.0f;
+		bool limitFramerate = false;
 	};
 }

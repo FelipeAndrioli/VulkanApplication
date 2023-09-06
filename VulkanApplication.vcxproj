@@ -171,7 +171,7 @@
     <ClCompile Include="src\ShaderModule.cpp" />
     <ClCompile Include="src\Surface.cpp" />
     <ClCompile Include="src\SwapChain.cpp" />
-    <ClCompile Include="src\Time.cpp" />
+    <ClCompile Include="src\Timestep.cpp" />
     <ClCompile Include="src\UI.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>
@@ -206,7 +206,7 @@
     <ClInclude Include="src\ShaderModule.h" />
     <ClInclude Include="src\Surface.h" />
     <ClInclude Include="src\SwapChain.h" />
-    <ClInclude Include="src\Time.h" />
+    <ClInclude Include="src\Timestep.h" />
     <ClInclude Include="src\UI.h" />
     <ClInclude Include="src\UserSettings.h" />
     <ClInclude Include="src\Vulkan.h" />
