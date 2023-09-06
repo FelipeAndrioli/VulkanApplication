@@ -36,6 +36,7 @@
 #include "GraphicsPipeline.h"
 #include "ComputePipeline.h"
 #include "CommandPool.h"
+#include "CommandBuffer.h"
 #include "Buffer.h"
 #include "Semaphore.h"
 #include "Fence.h"
@@ -113,8 +114,10 @@ namespace Engine {
 		std::unique_ptr<class Fence> m_InFlightFences;
 		std::unique_ptr<class Fence> m_ComputeInFlightFences;
 
+		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
+		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
 		// Descriptor Pool -> Descriptor Set
-		std::vector<VkCommandBuffer> m_CommandBuffers;
+		//std::vector<VkCommandBuffer> m_CommandBuffers;
 		WindowSettings m_WindowSettings;
 		UserSettings m_UserSettings;
 		uint32_t m_CurrentFrame = 0;
@@ -135,8 +138,8 @@ namespace Engine {
 		//std::vector<VkBuffer> m_ShaderStorageBuffers;
 		//std::vector<VkDeviceMemory> m_ShaderStorageBuffersMemory;
 
-		VkDescriptorPool m_ComputeDescriptorPool;
+		//VkDescriptorPool m_ComputeDescriptorPool;
 		//std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
-		std::vector<VkCommandBuffer> m_ComputeCommandBuffers;
+		//std::vector<VkCommandBuffer> m_ComputeCommandBuffers;
 	};
 }

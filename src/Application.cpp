@@ -50,11 +50,11 @@ namespace Engine {
 		updateUniformBuffer(m_CurrentFrame);
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
 
-		vkResetCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame], 0);
-		recordComputeCommandBuffer(m_ComputeCommandBuffers[m_CurrentFrame]);
+		vkResetCommandBuffer(m_ComputeCommandBuffers->GetCommandBuffer(m_CurrentFrame), 0);
+		recordComputeCommandBuffer(m_ComputeCommandBuffers->GetCommandBuffer(m_CurrentFrame));
 
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &m_ComputeCommandBuffers[m_CurrentFrame];
+		submitInfo.pCommandBuffers = &m_ComputeCommandBuffers->GetCommandBuffer(m_CurrentFrame);
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame);
 
@@ -181,15 +181,15 @@ namespace Engine {
 		
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame));
 
-		m_UserSettings.rayTraced ? drawRayTraced(m_CommandBuffers[m_CurrentFrame], imageIndex) : 
-			drawRasterized(m_CommandBuffers[m_CurrentFrame], imageIndex);
+		m_UserSettings.rayTraced ? drawRayTraced(m_CommandBuffers->GetCommandBuffer(m_CurrentFrame), imageIndex) : 
+			drawRasterized(m_CommandBuffers->GetCommandBuffer(m_CurrentFrame), imageIndex);
 
 		g_UI.RecordCommands(m_SwapChain->GetSwapChainExtent(), m_CurrentFrame, imageIndex);
 
 		VkSemaphore waitSemaphores[] = { *m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame), *m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame)};
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 		
-		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers[m_CurrentFrame], g_UI.GetCommandBuffer(m_CurrentFrame) };
+		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers->GetCommandBuffer(m_CurrentFrame), g_UI.GetCommandBuffer(m_CurrentFrame) };
 
 		submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -409,8 +409,13 @@ namespace Engine {
 			vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
 		}
 
-		createCommandBuffers();
-		createComputeCommandBuffers();
+		//createCommandBuffers();
+		//createComputeCommandBuffers();
+		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
+			m_LogicalDevice->GetHandle()));
+		m_ComputeCommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
+			m_LogicalDevice->GetHandle()));
+
 		createSyncObjects();
 	}
 
@@ -527,34 +532,6 @@ namespace Engine {
 			throw std::runtime_error("Failed to record compute command buffer!");
 		}
 	}
-	
-	void Application::createComputeCommandBuffers() {
-		m_ComputeCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = m_CommandPool->GetHandle();
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = (uint32_t)m_ComputeCommandBuffers.size();
-
-		if (vkAllocateCommandBuffers(m_LogicalDevice->GetHandle(), &allocInfo, m_ComputeCommandBuffers.data()) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to allocate compute command buffers!");
-		}
-	}
-
-	void Application::createCommandBuffers() {
-		m_CommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-		VkCommandBufferAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = m_CommandPool->GetHandle();
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = (uint32_t)m_CommandBuffers.size();
-	
-		if (vkAllocateCommandBuffers(m_LogicalDevice->GetHandle(), &allocInfo, m_CommandBuffers.data()) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create Command Buffer!");
-		}
-	}
 
 	void Application::createSyncObjects() {
 		// TODO: The Semaphore and Fence classes are pretty similar, maybe we can turn them into a template instead of two different classes
@@ -570,7 +547,8 @@ namespace Engine {
 	void Application::recreateSwapChain() {
 
 		m_SwapChain->ReCreate(m_GraphicsPipeline->GetRenderPass().GetHandle());
-		createCommandBuffers();
+		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
+			m_LogicalDevice->GetHandle()));
 		g_UI.Resize(m_LogicalDevice->GetHandle(), m_SwapChain->GetSwapChainExtent(), 
 			m_SwapChain->GetSwapChainImageViews(), g_MinImageCount);
 	}
@@ -580,7 +558,9 @@ namespace Engine {
 		m_SwapChain.reset();
 
 		m_ComputePipeline.reset();
-		vkDestroyDescriptorPool(m_LogicalDevice->GetHandle(), m_ComputeDescriptorPool, nullptr);
+
+		m_CommandBuffers.reset();
+		m_ComputeCommandBuffers.reset();
 
 		m_GraphicsPipeline.reset();
 		m_TempRayTracerPipeline.reset();

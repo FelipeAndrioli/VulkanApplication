@@ -152,6 +152,7 @@
     <ClCompile Include="libs\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Buffer.cpp" />
+    <ClCompile Include="src\CommandBuffer.cpp" />
     <ClCompile Include="src\CommandPool.cpp" />
     <ClCompile Include="src\Common.cpp" />
     <ClCompile Include="src\ComputePipeline.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="libs\imgui\imstb_truetype.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\Buffer.h" />
+    <ClInclude Include="src\CommandBuffer.h" />
     <ClInclude Include="src\CommandPool.h" />
     <ClInclude Include="src\Common.h" />
     <ClInclude Include="src\ComputePipeline.h" />
