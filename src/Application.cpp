@@ -37,12 +37,11 @@ namespace Engine {
 		// do this the image will be rendered upside down
 		ubo.proj[1][1] *= -1;
 
-		//memcpy(m_UniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 		memcpy(m_UniformBuffers->GetBufferMemoryMapped(currentImage), &ubo, sizeof(ubo));
 	}
 
 	/* Disabled due to the new architecture, will think in a way to make it work later*/
-	void Application::drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex) {
+	void Application::drawRayTraced(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
@@ -50,8 +49,9 @@ namespace Engine {
 		updateUniformBuffer(m_CurrentFrame);
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
 
-		vkResetCommandBuffer(m_ComputeCommandBuffers->GetCommandBuffer(m_CurrentFrame), 0);
-		recordComputeCommandBuffer(m_ComputeCommandBuffers->GetCommandBuffer(m_CurrentFrame));
+		auto computeCommandBuffer = m_ComputeCommandBuffers->Begin(m_CurrentFrame);
+		recordComputeCommandBuffer(computeCommandBuffer);
+		m_ComputeCommandBuffers->End(m_CurrentFrame);
 
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &m_ComputeCommandBuffers->GetCommandBuffer(m_CurrentFrame);
@@ -60,15 +60,6 @@ namespace Engine {
 
 		if (vkQueueSubmit(m_LogicalDevice->GetComputeQueue(), 1, &submitInfo, *m_ComputeInFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit compute command buffer!");
-		}
-
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		beginInfo.pInheritanceInfo = nullptr;
-
-		if (vkBeginCommandBuffer(r_CommandBuffer, &beginInfo) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to begin recording command buffer!");
 		}
 
 		VkRenderPassBeginInfo renderPassInfo{};
@@ -82,8 +73,8 @@ namespace Engine {
 		renderPassInfo.clearValueCount = 1;
 		renderPassInfo.pClearValues = &clearColor;
 
-		vkCmdBeginRenderPass(r_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TempRayTracerPipeline->GetHandle());
+		vkCmdBeginRenderPass(p_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TempRayTracerPipeline->GetHandle());
 
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
@@ -93,42 +84,25 @@ namespace Engine {
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
-		vkCmdSetViewport(r_CommandBuffer, 0, 1, &viewport);
+		vkCmdSetViewport(p_CommandBuffer, 0, 1, &viewport);
 
 		VkRect2D scissor = {};
 		scissor.offset = { 0, 0 };
 		scissor.extent = m_SwapChain->GetSwapChainExtent();
 
-		vkCmdSetScissor(r_CommandBuffer, 0, 1, &scissor);
+		vkCmdSetScissor(p_CommandBuffer, 0, 1, &scissor);
 
 		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(r_CommandBuffer, 0, 1, &m_ShaderStorageBuffers->GetBuffer(m_CurrentFrame), offsets);
 
-		vkCmdDraw(r_CommandBuffer, PARTICLE_COUNT, 1, 0, 0);
-
-		vkCmdEndRenderPass(r_CommandBuffer);
-
-		if (vkEndCommandBuffer(r_CommandBuffer) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to record command buffer!");
-		}
+		vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, &m_ShaderStorageBuffers->GetBuffer(m_CurrentFrame), offsets);
+		vkCmdDraw(p_CommandBuffer, PARTICLE_COUNT, 1, 0, 0);
+		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
-	void Application::drawRasterized(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex) {
+	void Application::drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
 		updateUniformBuffer(m_CurrentFrame);
 		updateVertexBuffer(m_CurrentFrame);
 		
-		VkSubmitInfo submitInfo = {};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		beginInfo.pInheritanceInfo = nullptr;
-
-		if (vkBeginCommandBuffer(r_CommandBuffer, &beginInfo) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to begin recording command buffer!");
-		}
-
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = m_GraphicsPipeline->GetRenderPass().GetHandle();
@@ -140,8 +114,8 @@ namespace Engine {
 		renderPassInfo.clearValueCount = 1;
 		renderPassInfo.pClearValues = &clearColor;
 
-		vkCmdBeginRenderPass(r_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetHandle());
+		vkCmdBeginRenderPass(p_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetHandle());
 
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
@@ -151,28 +125,22 @@ namespace Engine {
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
-		vkCmdSetViewport(r_CommandBuffer, 0, 1, &viewport);
+		vkCmdSetViewport(p_CommandBuffer, 0, 1, &viewport);
 
 		VkRect2D scissor = {};
 		scissor.offset = { 0, 0 };
 		scissor.extent = m_SwapChain->GetSwapChainExtent();
 
-		vkCmdSetScissor(r_CommandBuffer, 0, 1, &scissor);
+		vkCmdSetScissor(p_CommandBuffer, 0, 1, &scissor);
 
 		VkDeviceSize offsets[] = { 0 };
 
-		vkCmdBindVertexBuffers(r_CommandBuffer, 0, 1, &m_VertexBuffers->GetBuffer(m_CurrentFrame), offsets);
-		vkCmdBindIndexBuffer(r_CommandBuffer, m_IndexBuffer->GetBuffer(0), 0, VK_INDEX_TYPE_UINT16);
-		vkCmdBindDescriptorSets(r_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
+		vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, &m_VertexBuffers->GetBuffer(m_CurrentFrame), offsets);
+		vkCmdBindIndexBuffer(p_CommandBuffer, m_IndexBuffer->GetBuffer(0), 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
 			0, 1, &m_GraphicsPipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 0, nullptr);
-
-		vkCmdDrawIndexed(r_CommandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
-		vkCmdEndRenderPass(r_CommandBuffer);
-
-		if (vkEndCommandBuffer(r_CommandBuffer) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to record command buffer!");
-		}
+		vkCmdDrawIndexed(p_CommandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
 	void Application::handleDraw(uint32_t imageIndex) {
@@ -181,8 +149,10 @@ namespace Engine {
 		
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame));
 
-		m_UserSettings.rayTraced ? drawRayTraced(m_CommandBuffers->GetCommandBuffer(m_CurrentFrame), imageIndex) : 
-			drawRasterized(m_CommandBuffers->GetCommandBuffer(m_CurrentFrame), imageIndex);
+		auto commandBuffer = m_CommandBuffers->Begin(m_CurrentFrame);
+		m_UserSettings.rayTraced ? drawRayTraced(commandBuffer, imageIndex) : 
+			drawRasterized(commandBuffer, imageIndex);
+		m_CommandBuffers->End(m_CurrentFrame);
 
 		g_UI.RecordCommands(m_SwapChain->GetSwapChainExtent(), m_CurrentFrame, imageIndex);
 
@@ -515,22 +485,11 @@ namespace Engine {
 	}
 
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		
-		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to begin recording compute command buffer!");
-		}
-
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetHandle());
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetPipelineLayout().GetHandle(), 
 			0, 1,&m_ComputePipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 
 			0, nullptr);
 		vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
-
-		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to record compute command buffer!");
-		}
 	}
 
 	void Application::createSyncObjects() {

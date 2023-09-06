@@ -12,6 +12,10 @@ namespace Engine {
 		~CommandBuffer();
 
 		VkCommandBuffer& GetCommandBuffer(uint32_t index);
+		VkCommandBuffer& Begin(uint32_t index);
+		void End(uint32_t index);
+	private:
+		void ValidateIndex(uint32_t index);
 	private:
 		std::vector<VkCommandBuffer> m_CommandBuffers;
 
