@@ -1,9 +1,6 @@
 /*
 	TODO list to when the setup is finihed
 
-	- Time class
-		- Milliseconds per frame
-		- Frames per seconds
 	- Compile the shaders inside the code instead of using glslc.exe
 	- Future Challenges
 */
