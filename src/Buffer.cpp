@@ -1,8 +1,8 @@
 #include "Buffer.h"
 
 namespace Engine {
-	Buffer::Buffer(const int bufferSize, LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, const size_t size, const VkBufferUsageFlags usage) 
-		: p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice) {
+	Buffer::Buffer(const int bufferSize, LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, const size_t size, 
+		const VkBufferUsageFlags usage) : p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice) {
 
 		m_BufferSize = bufferSize;
 		m_Buffer.resize(m_BufferSize);

@@ -2,7 +2,7 @@
 	TODO list to when the setup is finihed
 
 	- Next steps
-		- Refactor Buffers to support staging
+		- Refactor update functions
 		- Refactor UI
 		- Code cleanup
 		- Start to design Scenes

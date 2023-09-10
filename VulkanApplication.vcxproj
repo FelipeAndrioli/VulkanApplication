@@ -187,6 +187,7 @@
     <ClInclude Include="libs\imgui\imstb_truetype.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\Buffer.h" />
+    <ClInclude Include="src\BufferHelper.h" />
     <ClInclude Include="src\CommandBuffer.h" />
     <ClInclude Include="src\CommandPool.h" />
     <ClInclude Include="src\Common.h" />

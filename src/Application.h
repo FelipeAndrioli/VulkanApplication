@@ -38,6 +38,7 @@
 #include "CommandPool.h"
 #include "CommandBuffer.h"
 #include "Buffer.h"
+#include "BufferHelper.h"
 #include "Semaphore.h"
 #include "Fence.h"
 #include "Instance.h"

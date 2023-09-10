@@ -290,9 +290,8 @@ namespace Engine {
 
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));
 		
-		//createShaderStorageBuffers();
+		// create shader storage buffers (temporary hardcoded)
 		{
-			// temporary until we setup scenes
 			std::default_random_engine rndEngine((unsigned)time(nullptr));
 			std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 
@@ -309,33 +308,14 @@ namespace Engine {
 			}
 
 			VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
-			
-			/*
-			Buffer stagingBuffer = Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(),
-				bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			stagingBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			*/
-
-			VkBuffer stagingBuffer;
-			VkDeviceMemory stagingBufferMemory;
-			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-				stagingBuffer, stagingBufferMemory);
-
-			void* data;
-			//stagingBuffer.MapMemory(&data);
-			vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
-			memcpy(data, particles.data(), (size_t)bufferSize);
-			//stagingBuffer.UnmapMemory();
-			vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
 
 			m_ShaderStorageBuffers.reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(),
 				m_PhysicalDevice.get(), bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 			m_ShaderStorageBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			m_ShaderStorageBuffers->CopyFrom(stagingBuffer, bufferSize,
-				m_CommandPool->GetHandle());
 
-			vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
-			vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
+			BufferHelper bufferHelper;
+			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
+				particles, m_ShaderStorageBuffers.get());
 		}
 
 		m_TempRayTracerPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
@@ -352,36 +332,20 @@ namespace Engine {
 			m_VertexBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		}
 
-		//createIndexBuffer();
+
+		// create index buffer (temporary hardcoded)
 		{
 			VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-			//Buffer stagingBuffer = Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			//stagingBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		
-			VkBuffer stagingBuffer;
-			VkDeviceMemory stagingBufferMemory;
-			createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-				stagingBuffer, stagingBufferMemory);
 
-			void* data;
-			//stagingBuffer.MapMemory(&data);
-			vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
-			memcpy(data, indices.data(), (size_t)bufferSize);
-			vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
-			//stagingBuffer.UnmapMemory();
-			
 			m_IndexBuffer.reset(new class Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(),
 				bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
 			m_IndexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			m_IndexBuffer->CopyFrom(stagingBuffer, bufferSize,
-				m_CommandPool->GetHandle());
 
-			vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
-			vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
+			BufferHelper bufferHelper;
+			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(), 
+				indices, m_IndexBuffer.get());
 		}
 
-		//createCommandBuffers();
-		//createComputeCommandBuffers();
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
 		m_ComputeCommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
