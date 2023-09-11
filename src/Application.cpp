@@ -3,7 +3,6 @@
 static bool g_FramebufferResized = false;
 
 static int g_MinImageCount = 2;
-static Engine::UI g_UI;
 
 namespace Engine {
 	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) : m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
@@ -18,6 +17,7 @@ namespace Engine {
 		Shutdown();
 	}
 
+	// temporary while scenes are not implemented yet
 	void Application::updateUniformBuffer(uint32_t currentImage) {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -154,12 +154,12 @@ namespace Engine {
 			drawRasterized(commandBuffer, imageIndex);
 		m_CommandBuffers->End(m_CurrentFrame);
 
-		g_UI.RecordCommands(m_SwapChain->GetSwapChainExtent(), m_CurrentFrame, imageIndex);
+		m_UI->RecordCommands(m_CurrentFrame, imageIndex);
 
 		VkSemaphore waitSemaphores[] = { *m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame), *m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame)};
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 		
-		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers->GetCommandBuffer(m_CurrentFrame), g_UI.GetCommandBuffer(m_CurrentFrame) };
+		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers->GetCommandBuffer(m_CurrentFrame), m_UI->GetCommandBuffer(m_CurrentFrame) };
 
 		submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -186,7 +186,7 @@ namespace Engine {
 	
 	void Application::drawFrame() {
 
-		g_UI.Draw(m_UserSettings, m_WindowSettings);
+		m_UI->Draw(m_UserSettings, m_WindowSettings);
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -249,11 +249,8 @@ namespace Engine {
 	void Application::Init() {
 		InitVulkan();
 
-		// TODO: clean a bit this GUI initializer
-		g_UI.Init(*m_Window->GetHandle(), m_Instance->GetHandle(), m_PhysicalDevice->GetHandle(),
-			m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices(), m_LogicalDevice->GetGraphicsQueue(),
-			m_SwapChain->GetSwapChainExtent(), m_SwapChain->GetSwapChainImageViews(),
-			m_SwapChain->GetSwapChainImageFormat(), g_MinImageCount);
+		m_UI.reset(new class UI(m_Window->GetHandle(), m_Instance.get(), m_PhysicalDevice.get(), m_LogicalDevice.get(),
+			m_SwapChain.get(), g_MinImageCount));
 	}
 
 	void Application::processResize(int width, int height) {
@@ -354,99 +351,12 @@ namespace Engine {
 		createSyncObjects();
 	}
 
-	uint32_t findMemoryType(VkPhysicalDevice& physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-				return i;
-			}
-		}
-
-		throw std::runtime_error("Failed to find suitable memory type!");
-	}
-
-	void Application::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, 
-		VkDeviceMemory& bufferMemory) {
-		VkBufferCreateInfo bufferInfo{};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = size;
-		bufferInfo.usage = usage;
-		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-		if (vkCreateBuffer(m_LogicalDevice->GetHandle(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create buffer!");
-		}
-
-		VkMemoryRequirements memRequirements;
-		vkGetBufferMemoryRequirements(m_LogicalDevice->GetHandle(), buffer, &memRequirements);
-
-		VkMemoryAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = findMemoryType(m_PhysicalDevice->GetHandle(), memRequirements.memoryTypeBits, properties);
-
-		if (vkAllocateMemory(m_LogicalDevice->GetHandle(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to allocate buffer memory!");
-		}
-
-		vkBindBufferMemory(m_LogicalDevice->GetHandle(), buffer, bufferMemory, 0);
-	}
-
-	void Application::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-		VkCommandBufferAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool = m_CommandPool->GetHandle();
-		allocInfo.commandBufferCount = 1;
-
-		VkCommandBuffer commandBuffer;
-		vkAllocateCommandBuffers(m_LogicalDevice->GetHandle(), &allocInfo, &commandBuffer);
-
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-		VkBufferCopy copyRegion{};
-		copyRegion.srcOffset = 0;
-		copyRegion.dstOffset = 0;
-		copyRegion.size = size;
-		vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-		vkEndCommandBuffer(commandBuffer);
-
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffer;
-
-		vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(m_LogicalDevice->GetGraphicsQueue());
-
-		vkFreeCommandBuffers(m_LogicalDevice->GetHandle(), m_CommandPool->GetHandle(), 1, &commandBuffer);
-	}
-
 	void Application::updateVertexBuffer(uint32_t currentImage) {
 		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-		
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-			stagingBuffer, stagingBufferMemory);
-
-		void* data;
-		vkMapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, vertices.data(), (size_t)bufferSize);
-		vkUnmapMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory);
-		
-		copyBuffer(stagingBuffer, m_VertexBuffers->GetBuffer(currentImage), bufferSize);
-
-		vkDestroyBuffer(m_LogicalDevice->GetHandle(), stagingBuffer, nullptr);
-		vkFreeMemory(m_LogicalDevice->GetHandle(), stagingBufferMemory, nullptr);
+	
+		BufferHelper bufferHelper;
+		bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
+			vertices, m_VertexBuffers.get());
 	}
 
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
@@ -473,12 +383,11 @@ namespace Engine {
 		m_SwapChain->ReCreate(m_GraphicsPipeline->GetRenderPass().GetHandle());
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));
-		g_UI.Resize(m_LogicalDevice->GetHandle(), m_SwapChain->GetSwapChainExtent(), 
-			m_SwapChain->GetSwapChainImageViews(), g_MinImageCount);
+		m_UI->Resize(m_SwapChain.get());
 	}
 
 	void Application::Shutdown() {
-		g_UI.Destroy(m_LogicalDevice->GetHandle());
+		m_UI.reset();
 		m_SwapChain.reset();
 
 		m_ComputePipeline.reset();

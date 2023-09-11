@@ -2,8 +2,6 @@
 	TODO list to when the setup is finihed
 
 	- Next steps
-		- Refactor update functions
-		- Refactor UI
 		- Code cleanup
 		- Start to design Scenes
 	- Compile the shaders inside the code instead of using glslc.exe

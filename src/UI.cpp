@@ -1,68 +1,80 @@
 #include "UI.h"
 
 namespace Engine {
-	UI::UI() {
+
+	UI::UI(GLFWwindow* window, Instance* instance, PhysicalDevice* physicalDevice, LogicalDevice* logicalDevice, SwapChain* swapChain, 
+		const int minImageCount) : p_Window(window), p_Instance(instance), p_PhysicalDevice(physicalDevice), 
+		p_LogicalDevice(logicalDevice), p_SwapChain(swapChain), m_MinImageCount(minImageCount) {
+
 		m_UIDescriptorPool = VK_NULL_HANDLE;
 		m_UIRenderPass = VK_NULL_HANDLE;
 		m_UICommandPool = VK_NULL_HANDLE;
-	};
 
-	void UI::Init(GLFWwindow &r_Window, const VkInstance &r_VulkanInstance, const VkPhysicalDevice &r_PhysicalDevice, 
-		VkDevice &r_LogicalDevice, const QueueFamilyIndices &r_QueueFamilyIndices, VkQueue &r_GraphicsQueue,
-		const VkExtent2D &r_SwapChainExtent, const std::vector<VkImageView> &r_SwapChainImageViews, 
-		const VkFormat &r_SwapChainImageFormat, const int minImageCount) {
+		Init();
+	}
+
+	void UI::Init() {
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();
 	
-		createUIDescriptorPool(r_LogicalDevice);
-		createUIRenderPass(r_LogicalDevice, r_SwapChainImageFormat);
-		createUICommandPool(r_LogicalDevice, r_QueueFamilyIndices.graphicsFamily.value());
-		createUICommandBuffers(r_LogicalDevice);
-		createUIFrameBuffers(r_LogicalDevice, r_SwapChainExtent, r_SwapChainImageViews);
+		createUIDescriptorPool(p_LogicalDevice->GetHandle());
+		createUIRenderPass(p_LogicalDevice->GetHandle(), p_SwapChain->GetSwapChainImageFormat());
+		createUICommandPool(p_LogicalDevice->GetHandle(), 
+			p_PhysicalDevice->GetQueueFamilyIndices().graphicsFamily.value());
+		createUICommandBuffers(p_LogicalDevice->GetHandle());
+		createUIFrameBuffers(p_LogicalDevice->GetHandle(), p_SwapChain->GetSwapChainExtent(), 
+			p_SwapChain->GetSwapChainImageViews());
 
 		ImGuiIO& io = ImGui::GetIO();
 		(void)io;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
 
-		ImGui_ImplGlfw_InitForVulkan(&r_Window, true);
+		ImGui_ImplGlfw_InitForVulkan(p_Window, true);
 		ImGui_ImplVulkan_InitInfo init_info = {};
-		init_info.Instance = r_VulkanInstance;
-		init_info.PhysicalDevice = r_PhysicalDevice;
-		init_info.Device = r_LogicalDevice;
-		init_info.QueueFamily = r_QueueFamilyIndices.graphicsFamily.value();
-		init_info.Queue = r_GraphicsQueue;
+		init_info.Instance = p_Instance->GetHandle();
+		init_info.PhysicalDevice = p_PhysicalDevice->GetHandle();;
+		init_info.Device = p_LogicalDevice->GetHandle();
+		init_info.QueueFamily = p_PhysicalDevice->GetQueueFamilyIndices().graphicsFamily.value();
+		init_info.Queue = p_LogicalDevice->GetGraphicsQueue();
 		//init_info.PipelineCache = g_PipelineCache;
 		init_info.PipelineCache = VK_NULL_HANDLE;
 		init_info.DescriptorPool = m_UIDescriptorPool;
-		init_info.MinImageCount = minImageCount;
-		init_info.ImageCount = minImageCount;
+		init_info.MinImageCount = m_MinImageCount;
+		init_info.ImageCount = m_MinImageCount;
 		init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 		init_info.Allocator = nullptr;
 		init_info.CheckVkResultFn = check_vk_result;
 		ImGui_ImplVulkan_Init(&init_info, m_UIRenderPass);
 
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands(r_LogicalDevice, m_UICommandPool);
+		VkCommandBuffer commandBuffer = beginSingleTimeCommands(p_LogicalDevice->GetHandle(), m_UICommandPool);
 		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-		endSingleTimeCommands(r_LogicalDevice, r_GraphicsQueue, commandBuffer, m_UICommandPool);
+		endSingleTimeCommands(p_LogicalDevice->GetHandle(), p_LogicalDevice->GetGraphicsQueue(), 
+			commandBuffer, m_UICommandPool);
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
-	void UI::Resize(VkDevice& r_LogicalDevice, const VkExtent2D& r_SwapChainExtent, const std::vector<VkImageView>& r_SwapChainImageViews, 
-		int minImageCount) {
+	void UI::Resize(SwapChain* swapChain) {
+
+		p_SwapChain = swapChain;
 
 		for (auto framebuffer : m_UIFramebuffers) {
-			vkDestroyFramebuffer(r_LogicalDevice, framebuffer, nullptr);
+			vkDestroyFramebuffer(p_LogicalDevice->GetHandle(), framebuffer, nullptr);
 		}
 
-		ImGui_ImplVulkan_SetMinImageCount(minImageCount);
-		createUICommandBuffers(r_LogicalDevice);
-		createUIFrameBuffers(r_LogicalDevice, r_SwapChainExtent, r_SwapChainImageViews);
+		ImGui_ImplVulkan_SetMinImageCount(m_MinImageCount);
+		createUICommandBuffers(p_LogicalDevice->GetHandle());
+		createUIFrameBuffers(p_LogicalDevice->GetHandle(), p_SwapChain->GetSwapChainExtent(), 
+			p_SwapChain->GetSwapChainImageViews());
 	}
 
-	VkCommandBuffer& UI::GetCommandBuffer(uint32_t currentFrame) {
-		return m_UICommandBuffers[currentFrame];
+	VkCommandBuffer& UI::GetCommandBuffer(uint32_t index) {
+		if (index > m_UICommandBuffers.size() || index < 0) {
+			throw std::runtime_error("Index to access UI command buffer out of bounds!");
+		}
+
+		return m_UICommandBuffers[index];
 	}
 
 	void UI::Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings) {
@@ -80,7 +92,7 @@ namespace Engine {
 		ImGui::Render();
 	}
 
-	void UI::RecordCommands(const VkExtent2D &r_SwapChainExtent, const uint32_t currentFrame, const uint32_t imageIndex) {
+	void UI::RecordCommands(const uint32_t currentFrame, const uint32_t imageIndex) {
 		VkCommandBufferBeginInfo cmdBufferInfo = {};
 		cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		cmdBufferInfo.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -95,8 +107,8 @@ namespace Engine {
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = m_UIRenderPass;
 		renderPassInfo.framebuffer = m_UIFramebuffers[imageIndex];
-		renderPassInfo.renderArea.extent.width = r_SwapChainExtent.width;
-		renderPassInfo.renderArea.extent.height = r_SwapChainExtent.height;
+		renderPassInfo.renderArea.extent.width = p_SwapChain->GetSwapChainExtent().width;
+		renderPassInfo.renderArea.extent.height = p_SwapChain->GetSwapChainExtent().height;
 		renderPassInfo.clearValueCount = 1;
 		renderPassInfo.pClearValues = &clearColor;
 
@@ -109,26 +121,25 @@ namespace Engine {
 		}
 	}
 
-	void UI::Destroy(VkDevice& r_LogicalDevice) {
+	UI::~UI() {
+		std::cout << "Destroying UI" << '\n';
+
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 
-		vkDestroyRenderPass(r_LogicalDevice, m_UIRenderPass, nullptr);
+		vkDestroyRenderPass(p_LogicalDevice->GetHandle(), m_UIRenderPass, nullptr);
 
 		for (auto uiFrameBuffer : m_UIFramebuffers) {
-			vkDestroyFramebuffer(r_LogicalDevice, uiFrameBuffer, nullptr);
+			vkDestroyFramebuffer(p_LogicalDevice->GetHandle(), uiFrameBuffer, nullptr);
 		}
 
-		vkFreeCommandBuffers(r_LogicalDevice, m_UICommandPool, 
+		vkFreeCommandBuffers(p_LogicalDevice->GetHandle(), m_UICommandPool,
 			static_cast<uint32_t>(m_UICommandBuffers.size()), m_UICommandBuffers.data());
 
-		vkDestroyDescriptorPool(r_LogicalDevice, m_UIDescriptorPool, nullptr);
-		vkDestroyCommandPool(r_LogicalDevice, m_UICommandPool, nullptr);
-	}
+		vkDestroyDescriptorPool(p_LogicalDevice->GetHandle(), m_UIDescriptorPool, nullptr);
+		vkDestroyCommandPool(p_LogicalDevice->GetHandle(), m_UICommandPool, nullptr);
 
-	UI::~UI() {
-		std::cout << "Destroying UI" << '\n';
 	}
 
 	void UI::createUIDescriptorPool(VkDevice &r_LogicalDevice) {

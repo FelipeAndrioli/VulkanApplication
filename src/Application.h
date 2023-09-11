@@ -87,7 +87,6 @@ namespace Engine {
 		void updateUniformBuffer(uint32_t currentImage);
 		void updateVertexBuffer(uint32_t currentImage);
 		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
-		void createComputeCommandBuffers();
 
 		void drawFrame();
 		void handleDraw(uint32_t imageIndex);
@@ -115,32 +114,17 @@ namespace Engine {
 		std::unique_ptr<class Fence> m_InFlightFences;
 		std::unique_ptr<class Fence> m_ComputeInFlightFences;
 
-		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
-		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
-		// Descriptor Pool -> Descriptor Set
-		//std::vector<VkCommandBuffer> m_CommandBuffers;
+		std::unique_ptr<class UI> m_UI;
+		
 		WindowSettings m_WindowSettings;
 		UserSettings m_UserSettings;
 		uint32_t m_CurrentFrame = 0;
 
+		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
+		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
 		std::unique_ptr<class Buffer> m_VertexBuffers;
 		std::unique_ptr<class Buffer> m_UniformBuffers;
-		// std::vector<VkBuffer> m_VertexBuffers;
-		// std::vector<VkDeviceMemory> m_VertexBuffersMemory;
-
-		//VkBuffer m_IndexBuffer;
-		//VkDeviceMemory m_IndexBufferMemory;
 		std::unique_ptr<class Buffer> m_IndexBuffer;
-		// std::vector<VkBuffer> m_UniformBuffers;
-		// std::vector<VkDeviceMemory> m_UniformBuffersMemory;
-		// std::vector<void*> m_UniformBuffersMapped;
-		//std::vector<VkDescriptorSet> m_DescriptorSets;
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
-		//std::vector<VkBuffer> m_ShaderStorageBuffers;
-		//std::vector<VkDeviceMemory> m_ShaderStorageBuffersMemory;
-
-		//VkDescriptorPool m_ComputeDescriptorPool;
-		//std::vector<VkDescriptorSet> m_ComputeDescriptorSets;
-		//std::vector<VkCommandBuffer> m_ComputeCommandBuffers;
 	};
 }

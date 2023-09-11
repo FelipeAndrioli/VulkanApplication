@@ -12,21 +12,21 @@
 #include "Common.h"
 #include "UserSettings.h"
 #include "WindowSettings.h"
+#include "Instance.h"
+#include "PhysicalDevice.h"
+#include "LogicalDevice.h"
+#include "SwapChain.h"
 
 namespace Engine {
 	class UI {
 	public:
-		UI();
+		UI(GLFWwindow* window, Instance* instance, PhysicalDevice* physicalDevice, LogicalDevice* logicalDevice,
+			SwapChain* swapChain, const int minImageCount);
 		~UI();
 
-		void Init(GLFWwindow& r_Window, const VkInstance& r_VulkanInstance, const VkPhysicalDevice& r_PhysicalDevice,
-			VkDevice& r_LogicalDevice, const QueueFamilyIndices& r_QueueFamilyIndices, VkQueue& r_GraphicsQueue,
-			const VkExtent2D& r_SwapChainExtent, const std::vector<VkImageView>& r_SwapChainImageViews,
-			const VkFormat& r_SwapChainImageFormat, const int minImageCount);
-		void Destroy(VkDevice &r_LogicalDevice);
-		void RecordCommands(const VkExtent2D &r_SwapChainExtent, const uint32_t currentFrame, const uint32_t imageIndex);
-		void Resize(VkDevice& r_LogicalDevice, const VkExtent2D& r_SwapChainExtent, const std::vector<VkImageView>& r_SwapChainImageViews,
-			int minImageCount);
+		void Init();
+		void RecordCommands(const uint32_t currentFrame, const uint32_t imageIndex);
+		void Resize(SwapChain* swapChain);
 		VkCommandBuffer& GetCommandBuffer(uint32_t currentFrame);
 		void Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings);
 	private:
@@ -43,5 +43,13 @@ namespace Engine {
 		VkCommandPool m_UICommandPool;
 		std::vector<VkCommandBuffer> m_UICommandBuffers;
 		std::vector<VkFramebuffer> m_UIFramebuffers;
+
+		GLFWwindow* p_Window;
+		Instance* p_Instance;
+		PhysicalDevice* p_PhysicalDevice;
+		LogicalDevice* p_LogicalDevice;
+		SwapChain* p_SwapChain;
+
+		int m_MinImageCount;
 	};
 };
