@@ -143,6 +143,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Assets\Model.cpp" />
+    <ClCompile Include="Assets\Scene.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="libs\imgui\imgui.cpp" />
@@ -177,6 +179,8 @@
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Assets\Model.h" />
+    <ClInclude Include="Assets\Scene.h" />
     <ClInclude Include="Assets\Vertex.h" />
     <ClInclude Include="libs\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="libs\imgui\backends\imgui_impl_vulkan.h" />
