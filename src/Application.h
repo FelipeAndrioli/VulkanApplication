@@ -44,6 +44,8 @@
 #include "Instance.h"
 #include "DebugUtilsMessenger.h"
 
+#include "../Assets/Scene.h"
+
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
 #else
@@ -61,9 +63,10 @@ namespace Engine {
 			const UserSettings &userSettings = UserSettings());
 		~Application();
 
+		void SetActiveScene(Assets::Scene* scene);
+		void Init();
 		void Run();
 	private:
-		void Init();
 		void InitVulkan();
 		void Shutdown();
 
@@ -126,5 +129,7 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_UniformBuffers;
 		std::unique_ptr<class Buffer> m_IndexBuffer;
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
+
+		Assets::Scene* m_ActiveScene = nullptr;
 	};
 }

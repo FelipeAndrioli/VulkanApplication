@@ -2,7 +2,6 @@
 	TODO list to when the setup is finihed
 
 	- Next steps
-		- Code cleanup
 		- Start to design Scenes
 	- Compile the shaders inside the code instead of using glslc.exe
 	- Future Challenges
@@ -38,6 +37,7 @@
 
 */
 
+/*
 #include "Application.h"
 
 int main() {
@@ -61,6 +61,93 @@ int main() {
 	}
 
 	delete(app);
+
+	return EXIT_SUCCESS;
+}
+*/
+
+#include "Application.h"
+#include "../Assets/Scene.h"
+#include "../Assets/Model.h"
+
+class MyScene : public Assets::Scene {
+public:
+	~MyScene() {
+		DeleteModels();
+	}
+
+	struct Uniforms {
+
+	};
+
+	struct UBO {
+
+	};
+
+	Uniforms m_Uniforms;
+	UBO m_UBO;
+
+	void OnCreate() {
+		Assets::Model* square = new Assets::Model();
+
+		std::vector<Assets::Vertex> v = { 
+			{ {0.0f, -0.5f}, {1.0f, 0.0f, 0.0f} },
+			{ {0.5f, 0.5f}, {0.0f, 1.0f, 0.0f} },
+			{ {-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} }
+		};
+
+		std::vector<uint16_t> i = {
+			0, 1, 2, 2, 3, 0
+		};
+
+		square->SetVertices(v);
+		square->SetIndices(i);
+
+		AddModel(square);
+
+		SetupScene();
+	}
+
+	void OnUIRender() {
+
+	}
+
+	void OnUpdate(float time) {
+
+	}
+
+	void OnDestroy() {
+
+	}
+};
+
+int main() {
+	Engine::WindowSettings windowSettings;
+	windowSettings.Title = "VulkanApplication.exe";
+	windowSettings.Width = 800;
+	windowSettings.Height = 600;
+
+	Engine::UserSettings userSettings;
+	userSettings.rayTraced = false;
+	
+	Engine::Application* app = new Engine::Application(windowSettings, userSettings);
+
+	MyScene* myScene = new MyScene();
+	myScene->OnCreate();
+
+	app->SetActiveScene(myScene);
+	app->Init();
+
+	try {
+		app->Run();
+	}
+	catch (const std::exception& e) {
+		std::cerr << e.what() << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	delete myScene;
+	delete app;
 
 	return EXIT_SUCCESS;
 }

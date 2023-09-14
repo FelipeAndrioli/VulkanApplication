@@ -10,34 +10,11 @@ namespace Engine {
 		m_Instance.reset(new class Instance(c_ValidationLayers, c_EnableValidationLayers));
 		m_DebugMessenger.reset(c_EnableValidationLayers ? new class DebugUtilsMessenger(m_Instance->GetHandle()) : nullptr);
 
-		Init();
+		//Init();
 	}
 
 	Application::~Application() {
 		Shutdown();
-	}
-
-	// temporary while scenes are not implemented yet
-	void Application::updateUniformBuffer(uint32_t currentImage) {
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-		UniformBufferObject ubo{};
-		//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		//ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.view = glm::lookAt(glm::vec3(0.0f, 1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.proj = glm::perspective(glm::radians(45.0f), 
-			m_SwapChain->GetSwapChainExtent().width / (float)m_SwapChain->GetSwapChainExtent().height, 0.1f, 10.0f);
-
-		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way
-		// to compensate for that is to flip the sign on the scaling factor of the Y axis in the projection matrix. If we don't 
-		// do this the image will be rendered upside down
-		ubo.proj[1][1] *= -1;
-
-		memcpy(m_UniformBuffers->GetBufferMemoryMapped(currentImage), &ubo, sizeof(ubo));
 	}
 
 	/* Disabled due to the new architecture, will think in a way to make it work later*/
@@ -100,8 +77,6 @@ namespace Engine {
 	}
 
 	void Application::drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
-		updateUniformBuffer(m_CurrentFrame);
-		updateVertexBuffer(m_CurrentFrame);
 		
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -135,11 +110,29 @@ namespace Engine {
 
 		VkDeviceSize offsets[] = { 0 };
 
+		updateUniformBuffer(m_CurrentFrame);
+		//updateVertexBuffer(m_CurrentFrame);
+
 		vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, &m_VertexBuffers->GetBuffer(m_CurrentFrame), offsets);
-		vkCmdBindIndexBuffer(p_CommandBuffer, m_IndexBuffer->GetBuffer(0), 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindIndexBuffer(p_CommandBuffer, m_IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 		vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
 			0, 1, &m_GraphicsPipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 0, nullptr);
-		vkCmdDrawIndexed(p_CommandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+		uint32_t vertexOffset = 0;
+		uint32_t indexOffset = 0;
+
+		for (auto model : m_ActiveScene->GetSceneModels()) {
+
+			auto modelVertexCount = model->GetSizeVertices();
+			auto modelIndexCount = model->GetSizeIndices();
+
+			//vkCmdDrawIndexed(p_CommandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(p_CommandBuffer, modelIndexCount, 1, indexOffset, vertexOffset, 0);
+		
+			vertexOffset += modelVertexCount;
+			indexOffset += modelIndexCount;
+		}
+		
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
@@ -323,16 +316,35 @@ namespace Engine {
 
 		//createVertexBuffer();
 		{
-			VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+			uint32_t totalVerticesSize = 0;
+
+			for (auto model : m_ActiveScene->GetSceneModels()) {
+				totalVerticesSize += model->GetSizeVertices();
+			}
+
+			//VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+			VkDeviceSize bufferSize = sizeof(Assets::Vertex) * totalVerticesSize;
+			
 			m_VertexBuffers.reset(new class Buffer(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT), m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 			m_VertexBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+			BufferHelper bufferHelper;
+			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
+				m_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
 		}
 
 
 		// create index buffer (temporary hardcoded)
 		{
-			VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+			uint32_t totalIndicesSize = 0;
+
+			for (auto model : m_ActiveScene->GetSceneModels()) {
+				totalIndicesSize += model->GetSizeIndices();
+			}
+
+			//VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+			VkDeviceSize bufferSize = sizeof(uint16_t) * totalIndicesSize;
 
 			m_IndexBuffer.reset(new class Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(),
 				bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
@@ -340,7 +352,7 @@ namespace Engine {
 
 			BufferHelper bufferHelper;
 			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(), 
-				indices, m_IndexBuffer.get());
+				m_ActiveScene->GetSceneIndices(), m_IndexBuffer.get());
 		}
 
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
@@ -349,14 +361,6 @@ namespace Engine {
 			m_LogicalDevice->GetHandle()));
 
 		createSyncObjects();
-	}
-
-	void Application::updateVertexBuffer(uint32_t currentImage) {
-		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-	
-		BufferHelper bufferHelper;
-		bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
-			vertices, m_VertexBuffers.get());
 	}
 
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
@@ -379,11 +383,53 @@ namespace Engine {
 	}
 
 	void Application::recreateSwapChain() {
-
 		m_SwapChain->ReCreate(m_GraphicsPipeline->GetRenderPass().GetHandle());
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));
 		m_UI->Resize(m_SwapChain.get());
+	}
+
+	void Application::SetActiveScene(Assets::Scene* scene) {
+		m_ActiveScene = scene;
+	}
+
+	// temporary while scenes are not implemented yet
+	void Application::updateUniformBuffer(uint32_t currentImage) {
+		static auto startTime = std::chrono::high_resolution_clock::now();
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		UniformBufferObject ubo{};
+		//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		//ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = glm::lookAt(glm::vec3(0.0f, 1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.proj = glm::perspective(glm::radians(45.0f), 
+			m_SwapChain->GetSwapChainExtent().width / (float)m_SwapChain->GetSwapChainExtent().height, 0.1f, 10.0f);
+
+		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way
+		// to compensate for that is to flip the sign on the scaling factor of the Y axis in the projection matrix. If we don't 
+		// do this the image will be rendered upside down
+		ubo.proj[1][1] *= -1;
+
+		memcpy(m_UniformBuffers->GetBufferMemoryMapped(currentImage), &ubo, sizeof(ubo));
+	}
+
+	void Application::updateVertexBuffer(uint32_t currentImage) {
+
+		uint32_t totalVertexSize = 0;
+
+		for (auto model : m_ActiveScene->GetSceneModels()) {
+			totalVertexSize += model->GetSizeVertices();
+		}
+
+		//VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * totalVertexSize;
+	
+		BufferHelper bufferHelper;
+		bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
+			m_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
 	}
 
 	void Application::Shutdown() {
