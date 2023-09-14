@@ -22,6 +22,8 @@ namespace Engine {
 		VkBuffer& GetBuffer(uint32_t index);
 		VkDeviceMemory& GetBufferMemory(uint32_t index);
 		void* GetBufferMemoryMapped(uint32_t index);
+
+		inline VkBuffer& GetBuffer() { return m_Buffer[0]; };
 	private:
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 		VkMemoryRequirements GetMemoryRequirements(VkBuffer& buffer);
