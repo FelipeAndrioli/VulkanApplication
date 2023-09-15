@@ -8,7 +8,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 ## Current Work
 
 [X] - Render from Scene
-[ ] - Render more than one model from the scene
+[X] - Render more than one model from the scene
 [ ] - Change models from the scene
 
 ## Future Work
