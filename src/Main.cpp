@@ -88,22 +88,48 @@ public:
 	UBO m_UBO;
 
 	void OnCreate() {
-		Assets::Model* square = new Assets::Model();
+
+		/*
+			{ {-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f} },
+			{ {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f} },
+			{ {0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} },
+			{ {-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f} }
+		*/
+		Assets::Model* q1 = new Assets::Model();
 
 		std::vector<Assets::Vertex> v = { 
-			{ {0.0f, -0.5f}, {1.0f, 0.0f, 0.0f} },
-			{ {0.5f, 0.5f}, {0.0f, 1.0f, 0.0f} },
-			{ {-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} }
+			{ {-1.0f, -1.0f}, {1.0f, 0.0f, 0.0f} },
+			{ {0.0f, -1.0f}, {0.0f, 1.0f, 0.0f} },
+			{ {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f} },
+			{ {-1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} }
 		};
 
 		std::vector<uint16_t> i = {
 			0, 1, 2, 2, 3, 0
 		};
 
-		square->SetVertices(v);
-		square->SetIndices(i);
+		q1->SetVertices(v);
+		q1->SetIndices(i);
 
-		AddModel(square);
+		AddModel(q1);
+
+		Assets::Model* q2 = new Assets::Model();
+
+		std::vector<Assets::Vertex> v2 = { 
+			{ {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} },
+			{ {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} },
+			{ {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f} },
+			{ {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f} }
+		};
+
+		std::vector<uint16_t> i2 = {
+			0, 1, 2, 2, 3, 0
+		};
+
+		q2->SetVertices(v2);
+		q2->SetIndices(i2);
+
+		AddModel(q2); 
 
 		SetupScene();
 	}
