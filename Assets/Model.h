@@ -2,20 +2,23 @@
 
 #include <vector>
 
+#include "glm/gtc/matrix_transform.hpp"
 #include "Vertex.h"
 
 namespace Assets {
 
 	struct Transform {
-		glm::mat4 translation;
-		glm::mat4 rotation;
-		glm::mat4 scalation;
+		glm::vec3 translation;
+		glm::vec3 rotation;
+		glm::vec3 scalation;
 	};
 
 	class Model {
 	public:
 		Model();
 		~Model();
+
+		glm::mat4 GetModelMatrix();
 
 		inline uint32_t GetSizeVertices() { return static_cast<uint32_t>(m_Vertices.size()); };
 		inline uint32_t GetSizeIndices() { return static_cast<uint32_t>(m_Indices.size()); };
@@ -30,6 +33,6 @@ namespace Assets {
 		std::vector<Vertex> m_Vertices;
 		std::vector<uint16_t> m_Indices;
 
-		Transform m_Transformation;
+		Transform m_Transform{};
 	};
 }

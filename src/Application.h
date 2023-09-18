@@ -87,7 +87,7 @@ namespace Engine {
 		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-		void updateUniformBuffer(uint32_t currentImage);
+		void updateUniformBuffer(uint32_t currentImage, glm::mat4 modelMatrix);
 		void updateVertexBuffer(uint32_t currentImage);
 		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
