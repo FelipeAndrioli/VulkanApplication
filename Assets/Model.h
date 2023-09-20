@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 #include "glm/gtc/matrix_transform.hpp"
 #include "Vertex.h"
@@ -29,10 +30,11 @@ namespace Assets {
 		inline void SetVertices(std::vector<Vertex> vertices) { m_Vertices = vertices; };
 		inline void SetIndices(std::vector<uint16_t> indices) { m_Indices = indices; };
 
+		Transform m_Transform{};
+		std::string m_ID;
 	private:
 		std::vector<Vertex> m_Vertices;
 		std::vector<uint16_t> m_Indices;
 
-		Transform m_Transform{};
 	};
 }

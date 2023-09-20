@@ -115,14 +115,19 @@ namespace Engine {
 
 		vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, &m_VertexBuffers->GetBuffer(m_CurrentFrame), offsets);
 		vkCmdBindIndexBuffer(p_CommandBuffer, m_IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
-		vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
-			0, 1, &m_GraphicsPipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 0, nullptr);
+		//vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
+		//	0, 1, &m_GraphicsPipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 0, nullptr);
 
 		uint32_t vertexOffset = 0;
 		uint32_t indexOffset = 0;
 
-		for (auto model : m_ActiveScene->GetSceneModels()) {
-			updateUniformBuffer(m_CurrentFrame, model->GetModelMatrix());
+		//for (auto model : m_ActiveScene->GetSceneModels()) {
+		for (size_t i = 0; i < m_ActiveScene->GetSceneModels().size(); i++) {
+			auto model = m_ActiveScene->GetSceneModels()[i];
+			vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
+				0, 1, &m_DescriptorSets[i]->GetDescriptorSet(m_CurrentFrame), 
+				0, nullptr);
+			updateUniformBuffer(i, m_CurrentFrame, model->GetModelMatrix());
 
 			auto modelVertexCount = model->GetSizeVertices();
 			auto modelIndexCount = model->GetSizeIndices();
@@ -180,7 +185,7 @@ namespace Engine {
 	
 	void Application::drawFrame() {
 
-		m_UI->Draw(m_UserSettings, m_WindowSettings);
+		m_UI->Draw(m_UserSettings, m_WindowSettings, m_ActiveScene);
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -267,16 +272,49 @@ namespace Engine {
 
 		// createUniformBuffers();
 		{
-			VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-			m_UniformBuffers.reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-			m_UniformBuffers->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			m_UniformBuffers->MapMemory();
+			m_UniformBuffers.resize(m_ActiveScene->GetSceneModels().size());
+
+			for (size_t i = 0; i < m_ActiveScene->GetSceneModels().size(); i++) {
+				VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+				m_UniformBuffers[i].reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
+					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+				m_UniformBuffers[i]->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+				m_UniformBuffers[i]->MapMemory();
+			}
+		}
+
+		std::vector<DescriptorBinding> descriptorBindings = {
+			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT }
+		};
+
+		m_DescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, m_LogicalDevice->GetHandle()));
+		
+		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 },
+
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 }
+
+			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
+			// because our sets reference the SSBOs of the last and current frame (for now).
+		};
+
+		m_DescriptorPool.reset(new class DescriptorPool(m_LogicalDevice->GetHandle(), poolDescriptorBindings, 
+			static_cast<uint32_t>(m_ActiveScene->GetSceneModels().size() * MAX_FRAMES_IN_FLIGHT)));
+
+		// TODO finish to implement descriptor sets per model to be able to render and move more than one model 
+
+		m_DescriptorSets.resize(m_ActiveScene->GetSceneModels().size());
+
+		for (size_t i = 0; i < m_ActiveScene->GetSceneModels().size(); i++) {
+			m_DescriptorSets[i].reset(new class DescriptorSets(m_LogicalDevice->GetHandle(), m_DescriptorPool->GetHandle(),
+				m_DescriptorSetLayout->GetHandle(), m_UniformBuffers[i].get()));
 		}
 
 		m_GraphicsPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/vert.spv", "Assets/Shaders/frag.spv",
 			m_LogicalDevice.get(), m_SwapChain.get(), Assets::Vertex::getBindingDescription(), Assets::Vertex::getAttributeDescriptions(),
-			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_UniformBuffers.get()));
+			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_DescriptorSetLayout.get()));
 		m_SwapChain->CreateFramebuffers(m_GraphicsPipeline->GetRenderPass().GetHandle());
 
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));
@@ -309,11 +347,11 @@ namespace Engine {
 				particles, m_ShaderStorageBuffers.get());
 		}
 
-		m_TempRayTracerPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", "./Assets/Shaders/particle_shader_frag.spv",
-			m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), Particle::getAttributeDescriptions(),
-			VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_UniformBuffers.get()));
+		m_TempRayTracerPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", 
+			"./Assets/Shaders/particle_shader_frag.spv", m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), 
+			Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_DescriptorSetLayout.get()));
 		m_ComputePipeline.reset(new class ComputePipeline("./Assets/Shaders/particle_shader_comp.spv", m_LogicalDevice.get(), 
-			m_SwapChain.get(), m_UniformBuffers.get(), m_ShaderStorageBuffers.get()));
+			m_SwapChain.get(), m_ShaderStorageBuffers.get()));
 
 		//createVertexBuffer();
 		{
@@ -395,7 +433,7 @@ namespace Engine {
 	}
 
 	// temporary while scenes are not implemented yet
-	void Application::updateUniformBuffer(uint32_t currentImage, glm::mat4 modelMatrix) {
+	void Application::updateUniformBuffer(size_t modelIndex, uint32_t currentImage, glm::mat4 modelMatrix) {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 
 		auto currentTime = std::chrono::high_resolution_clock::now();
@@ -415,7 +453,7 @@ namespace Engine {
 		// do this the image will be rendered upside down
 		ubo.proj[1][1] *= -1;
 
-		memcpy(m_UniformBuffers->GetBufferMemoryMapped(currentImage), &ubo, sizeof(ubo));
+		memcpy(m_UniformBuffers[modelIndex]->GetBufferMemoryMapped(currentImage), &ubo, sizeof(ubo));
 	}
 
 	void Application::updateVertexBuffer(uint32_t currentImage) {
@@ -438,6 +476,13 @@ namespace Engine {
 		m_UI.reset();
 		m_SwapChain.reset();
 
+		m_DescriptorPool.reset();
+		m_DescriptorSetLayout.reset();
+
+		for (size_t i = 0; i < m_DescriptorSets.size(); i++) {
+			m_DescriptorSets[i].reset();
+		}
+
 		m_ComputePipeline.reset();
 
 		m_CommandBuffers.reset();
@@ -446,7 +491,10 @@ namespace Engine {
 		m_GraphicsPipeline.reset();
 		m_TempRayTracerPipeline.reset();
 
-		m_UniformBuffers.reset();
+		for (size_t i = 0; i < m_UniformBuffers.size(); i++) {
+			m_UniformBuffers[i].reset();
+		}
+
 		m_IndexBuffer.reset();
 		m_ShaderStorageBuffers.reset();
 		m_VertexBuffers.reset();

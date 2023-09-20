@@ -77,7 +77,7 @@ namespace Engine {
 		return m_UICommandBuffers[index];
 	}
 
-	void UI::Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings) {
+	void UI::Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings, Assets::Scene* scene) {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
@@ -87,6 +87,9 @@ namespace Engine {
 		ImGui::Text("Framerate: %.1f fps", r_WindowSettings.frames);
 		ImGui::Checkbox("Ray Traced", &r_UserSettings.rayTraced);
 		ImGui::Checkbox("Limit Framerate", &r_WindowSettings.limitFramerate);
+
+		scene->OnUIRender();
+
 		ImGui::End();
 		
 		ImGui::Render();

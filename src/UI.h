@@ -16,6 +16,7 @@
 #include "PhysicalDevice.h"
 #include "LogicalDevice.h"
 #include "SwapChain.h"
+#include "../Assets/Scene.h"
 
 namespace Engine {
 	class UI {
@@ -28,7 +29,7 @@ namespace Engine {
 		void RecordCommands(const uint32_t currentFrame, const uint32_t imageIndex);
 		void Resize(SwapChain* swapChain);
 		VkCommandBuffer& GetCommandBuffer(uint32_t currentFrame);
-		void Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings);
+		void Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings, Assets::Scene* scene);
 	private:
 		void createUIDescriptorPool(VkDevice& r_LogicalDevice);
 		void createUIRenderPass(VkDevice& r_LogicalDevice, const VkFormat& r_SwapChainImageFormat);

@@ -10,6 +10,8 @@
 /*
 	Future Challenges
 
+	- Implement a dynamic uniform buffer 
+
 	- Use a different queue family specifically for transfer operations
 		It will require the following modifications to the program:
 
@@ -110,7 +112,7 @@ public:
 
 		q1->SetVertices(v);
 		q1->SetIndices(i);
-
+		q1->m_ID = "q1";
 		AddModel(q1);
 
 		Assets::Model* q2 = new Assets::Model();
@@ -129,13 +131,29 @@ public:
 		q2->SetVertices(v2);
 		q2->SetIndices(i2);
 
+		q2->m_ID = "q2";
 		AddModel(q2); 
 
 		SetupScene();
 	}
 
 	void OnUIRender() {
+		for (auto model : GetSceneModels()) {
+			std::string modelId = model->m_ID;
 
+			std::string t = "Transformations " + modelId;
+
+			if (ImGui::TreeNode(t.c_str())) {
+				std::string t_label_x = "Translation x " + modelId;
+				std::string t_label_y = "Translation y " + modelId;
+				std::string t_label_z = "Translation z " + modelId;
+
+				ImGui::SliderFloat(t_label_x.c_str(), &model->m_Transform.translation.x, 0.0f, 1.0f);
+				ImGui::SliderFloat(t_label_y.c_str(), &model->m_Transform.translation.y, 0.0f, 1.0f);
+				ImGui::SliderFloat(t_label_z.c_str(), &model->m_Transform.translation.z, 0.0f, 1.0f);
+				ImGui::TreePop();
+			}
+		}
 	}
 
 	void OnUpdate(float time) {

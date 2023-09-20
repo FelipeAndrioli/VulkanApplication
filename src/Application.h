@@ -34,6 +34,7 @@
 #include "SwapChain.h"
 #include "RenderPass.h"
 #include "GraphicsPipeline.h"
+#include "DescriptorSets.h"
 #include "ComputePipeline.h"
 #include "CommandPool.h"
 #include "CommandBuffer.h"
@@ -87,7 +88,7 @@ namespace Engine {
 		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-		void updateUniformBuffer(uint32_t currentImage, glm::mat4 modelMatrix);
+		void updateUniformBuffer(size_t indexModel, uint32_t currentImage, glm::mat4 modelMatrix);
 		void updateVertexBuffer(uint32_t currentImage);
 		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
@@ -123,10 +124,16 @@ namespace Engine {
 		UserSettings m_UserSettings;
 		uint32_t m_CurrentFrame = 0;
 
+		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
+		std::unique_ptr<class DescriptorSetLayout> m_DescriptorSetLayout;
+
+		std::vector<std::unique_ptr<class DescriptorSets>> m_DescriptorSets;
+
 		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
 		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
 		std::unique_ptr<class Buffer> m_VertexBuffers;
-		std::unique_ptr<class Buffer> m_UniformBuffers;
+		//std::unique_ptr<class Buffer> m_UniformBuffers;
+		std::vector<std::unique_ptr<class Buffer>> m_UniformBuffers;
 		std::unique_ptr<class Buffer> m_IndexBuffer;
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 
