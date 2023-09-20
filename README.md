@@ -9,9 +9,19 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 
 [X] - Render from Scene
 [X] - Render more than one model from the scene
-[ ] - Change models from the scene
+[X] - Change models from the scene
+[X] - Render UI components from scene
+[ ] - Multiple objects rendering
+	[ ] - Change the graphics pipeline to support it
+	[ ] - Move the descriptor set layout back to graphics pipeline
+	[ ] - Move the descriptor pool back to the graphics pipeline
+[ ] - Fix Compute pipeline
 
-## Future Work
+## Future Work (not in order)
 
-[ ] - Render UI components from scene
 [ ] - Load uniforms from the scene
+[ ] - Multiple flows from scene controlled by the scene layout
+	[ ] - Scene layout
+	[ ] - Rasterization
+	[ ] - Custom rendering
+[ ] - Ray Tracer??
