@@ -127,7 +127,7 @@ namespace Engine {
 			vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
 				0, 1, &m_DescriptorSets[i]->GetDescriptorSet(m_CurrentFrame), 
 				0, nullptr);
-			updateUniformBuffer(i, m_CurrentFrame, model->GetModelMatrix());
+			updateUniformBuffer(model->m_UniformBuffer.get(), m_CurrentFrame, model->GetModelMatrix());
 
 			auto modelVertexCount = model->GetSizeVertices();
 			auto modelIndexCount = model->GetSizeIndices();
@@ -270,7 +270,9 @@ namespace Engine {
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
 
+		m_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get());
 		// createUniformBuffers();
+		/*
 		{
 			m_UniformBuffers.resize(m_ActiveScene->GetSceneModels().size());
 
@@ -282,6 +284,7 @@ namespace Engine {
 				m_UniformBuffers[i]->MapMemory();
 			}
 		}
+		*/
 
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT }
@@ -308,8 +311,10 @@ namespace Engine {
 		m_DescriptorSets.resize(m_ActiveScene->GetSceneModels().size());
 
 		for (size_t i = 0; i < m_ActiveScene->GetSceneModels().size(); i++) {
+			auto model = m_ActiveScene->GetSceneModels()[i];
+
 			m_DescriptorSets[i].reset(new class DescriptorSets(m_LogicalDevice->GetHandle(), m_DescriptorPool->GetHandle(),
-				m_DescriptorSetLayout->GetHandle(), m_UniformBuffers[i].get()));
+				m_DescriptorSetLayout->GetHandle(), model->m_UniformBuffer.get()));
 		}
 
 		m_GraphicsPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/vert.spv", "Assets/Shaders/frag.spv",
@@ -433,7 +438,7 @@ namespace Engine {
 	}
 
 	// temporary while scenes are not implemented yet
-	void Application::updateUniformBuffer(size_t modelIndex, uint32_t currentImage, glm::mat4 modelMatrix) {
+	void Application::updateUniformBuffer(Buffer* uniformBuffer, uint32_t currentImage, glm::mat4 modelMatrix) {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 
 		auto currentTime = std::chrono::high_resolution_clock::now();
@@ -453,7 +458,7 @@ namespace Engine {
 		// do this the image will be rendered upside down
 		ubo.proj[1][1] *= -1;
 
-		memcpy(m_UniformBuffers[modelIndex]->GetBufferMemoryMapped(currentImage), &ubo, sizeof(ubo));
+		memcpy(uniformBuffer->GetBufferMemoryMapped(currentImage), &ubo, sizeof(ubo));
 	}
 
 	void Application::updateVertexBuffer(uint32_t currentImage) {
@@ -490,10 +495,6 @@ namespace Engine {
 
 		m_GraphicsPipeline.reset();
 		m_TempRayTracerPipeline.reset();
-
-		for (size_t i = 0; i < m_UniformBuffers.size(); i++) {
-			m_UniformBuffers[i].reset();
-		}
 
 		m_IndexBuffer.reset();
 		m_ShaderStorageBuffers.reset();

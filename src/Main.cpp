@@ -133,8 +133,6 @@ public:
 
 		q2->m_ID = "q2";
 		AddModel(q2); 
-
-		SetupScene();
 	}
 
 	void OnUIRender() {

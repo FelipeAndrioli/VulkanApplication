@@ -88,7 +88,7 @@ namespace Engine {
 		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-		void updateUniformBuffer(size_t indexModel, uint32_t currentImage, glm::mat4 modelMatrix);
+		void updateUniformBuffer(Buffer* uniformBuffer, uint32_t currentImage, glm::mat4 modelMatrix);
 		void updateVertexBuffer(uint32_t currentImage);
 		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
@@ -133,7 +133,7 @@ namespace Engine {
 		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
 		std::unique_ptr<class Buffer> m_VertexBuffers;
 		//std::unique_ptr<class Buffer> m_UniformBuffers;
-		std::vector<std::unique_ptr<class Buffer>> m_UniformBuffers;
+		//std::vector<std::unique_ptr<class Buffer>> m_UniformBuffers;
 		std::unique_ptr<class Buffer> m_IndexBuffer;
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 

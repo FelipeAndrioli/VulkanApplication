@@ -9,7 +9,8 @@ namespace Assets {
 	}
 
 	Model::~Model() {
-
+		m_UniformBuffer.reset();
+		m_DescriptorSets.reset();
 	}
 
 	glm::mat4 Model::GetModelMatrix() {

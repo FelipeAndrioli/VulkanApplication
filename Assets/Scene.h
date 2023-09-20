@@ -5,6 +5,11 @@
 
 #include "Model.h"
 
+#include "../src/Buffer.h"
+#include "../src/DescriptorSets.h"
+#include "../src/LogicalDevice.h"
+#include "../src/PhysicalDevice.h"
+
 namespace Assets {
 	class Scene {
 	public:
@@ -21,7 +26,7 @@ namespace Assets {
 
 		void AddModel(Model* model);
 		void DeleteModels();
-		void SetupScene();
+		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice);
 
 		inline std::vector<Model*>& GetSceneModels() { return m_SceneModels; };
 		inline std::vector<Vertex>& GetSceneVertices() { return m_SceneVertices; };
