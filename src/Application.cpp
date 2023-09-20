@@ -121,18 +121,15 @@ namespace Engine {
 		uint32_t vertexOffset = 0;
 		uint32_t indexOffset = 0;
 
-		//for (auto model : m_ActiveScene->GetSceneModels()) {
-		for (size_t i = 0; i < m_ActiveScene->GetSceneModels().size(); i++) {
-			auto model = m_ActiveScene->GetSceneModels()[i];
+		for (auto model : m_ActiveScene->GetSceneModels()) {
 			vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
-				0, 1, &m_DescriptorSets[i]->GetDescriptorSet(m_CurrentFrame), 
+				0, 1, &model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
 				0, nullptr);
 			updateUniformBuffer(model->m_UniformBuffer.get(), m_CurrentFrame, model->GetModelMatrix());
 
 			auto modelVertexCount = model->GetSizeVertices();
 			auto modelIndexCount = model->GetSizeIndices();
 
-			//vkCmdDrawIndexed(p_CommandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 			vkCmdDrawIndexed(p_CommandBuffer, modelIndexCount, 1, indexOffset, vertexOffset, 0);
 		
 			vertexOffset += modelVertexCount;
@@ -270,7 +267,6 @@ namespace Engine {
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
 
-		m_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get());
 		// createUniformBuffers();
 		/*
 		{
@@ -308,6 +304,7 @@ namespace Engine {
 
 		// TODO finish to implement descriptor sets per model to be able to render and move more than one model 
 
+		/*
 		m_DescriptorSets.resize(m_ActiveScene->GetSceneModels().size());
 
 		for (size_t i = 0; i < m_ActiveScene->GetSceneModels().size(); i++) {
@@ -316,7 +313,10 @@ namespace Engine {
 			m_DescriptorSets[i].reset(new class DescriptorSets(m_LogicalDevice->GetHandle(), m_DescriptorPool->GetHandle(),
 				m_DescriptorSetLayout->GetHandle(), model->m_UniformBuffer.get()));
 		}
+		*/
 
+		m_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_DescriptorPool.get(), m_DescriptorSetLayout.get());
+		
 		m_GraphicsPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/vert.spv", "Assets/Shaders/frag.spv",
 			m_LogicalDevice.get(), m_SwapChain.get(), Assets::Vertex::getBindingDescription(), Assets::Vertex::getAttributeDescriptions(),
 			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_DescriptorSetLayout.get()));
@@ -424,6 +424,7 @@ namespace Engine {
 
 		m_InFlightFences.reset(new class Fence(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
 		m_ComputeInFlightFences.reset(new class Fence(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
+
 	}
 
 	void Application::recreateSwapChain() {
@@ -483,10 +484,6 @@ namespace Engine {
 
 		m_DescriptorPool.reset();
 		m_DescriptorSetLayout.reset();
-
-		for (size_t i = 0; i < m_DescriptorSets.size(); i++) {
-			m_DescriptorSets[i].reset();
-		}
 
 		m_ComputePipeline.reset();
 

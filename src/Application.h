@@ -127,7 +127,7 @@ namespace Engine {
 		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
 		std::unique_ptr<class DescriptorSetLayout> m_DescriptorSetLayout;
 
-		std::vector<std::unique_ptr<class DescriptorSets>> m_DescriptorSets;
+		//std::vector<std::unique_ptr<class DescriptorSets>> m_DescriptorSets;
 
 		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
 		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;

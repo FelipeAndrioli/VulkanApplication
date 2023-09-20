@@ -9,6 +9,8 @@
 #include "../src/DescriptorSets.h"
 #include "../src/LogicalDevice.h"
 #include "../src/PhysicalDevice.h"
+#include "../src/DescriptorSetLayout.h"
+#include "../src/DescriptorPool.h"
 
 namespace Assets {
 	class Scene {
@@ -26,7 +28,8 @@ namespace Assets {
 
 		void AddModel(Model* model);
 		void DeleteModels();
-		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice);
+		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
+			Engine::DescriptorPool* descriptorPool, Engine::DescriptorSetLayout* descriptorSetLayout);
 
 		inline std::vector<Model*>& GetSceneModels() { return m_SceneModels; };
 		inline std::vector<Vertex>& GetSceneVertices() { return m_SceneVertices; };
