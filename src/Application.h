@@ -125,6 +125,7 @@ namespace Engine {
 		uint32_t m_CurrentFrame = 0;
 
 		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
+		std::unique_ptr<class Buffer> m_ComputeUniformBuffers;
 		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
 		std::unique_ptr<class Buffer> m_VertexBuffers;
 		std::unique_ptr<class Buffer> m_IndexBuffer;

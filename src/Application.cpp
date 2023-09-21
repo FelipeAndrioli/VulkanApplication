@@ -23,7 +23,7 @@ namespace Engine {
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
 		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
-		//updateUniformBuffer(m_CurrentFrame);
+		updateUniformBuffer(m_ComputeUniformBuffers.get(), m_CurrentFrame, glm::mat4(1.0f));
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
 
 		auto computeCommandBuffer = m_ComputeCommandBuffers->Begin(m_CurrentFrame);
@@ -296,6 +296,11 @@ namespace Engine {
 
 			VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
 
+			m_ComputeUniformBuffers.reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+			m_ComputeUniformBuffers->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			m_ComputeUniformBuffers->MapMemory();
+
 			m_ShaderStorageBuffers.reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(),
 				m_PhysicalDevice.get(), bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 			m_ShaderStorageBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -309,7 +314,7 @@ namespace Engine {
 			"./Assets/Shaders/particle_shader_frag.spv", m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), 
 			Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_ActiveScene->GetSceneModels().size()));
 		m_ComputePipeline.reset(new class ComputePipeline("./Assets/Shaders/particle_shader_comp.spv", m_LogicalDevice.get(), 
-			m_SwapChain.get(), m_ShaderStorageBuffers.get()));
+			m_SwapChain.get(), m_ShaderStorageBuffers.get(), m_ComputeUniformBuffers.get()));
 
 		//createVertexBuffer();
 		{
@@ -435,6 +440,7 @@ namespace Engine {
 		m_UI.reset();
 		m_SwapChain.reset();
 
+		m_ComputeUniformBuffers.reset();
 		m_ComputePipeline.reset();
 
 		m_CommandBuffers.reset();

@@ -13,7 +13,7 @@ namespace Engine {
 	class ComputePipeline {
 	public:
 		ComputePipeline(const char* computeShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain, 
-			Buffer* shaderStorageBuffers);
+			Buffer* shaderStorageBuffers, Buffer* uniformBuffers);
 		~ComputePipeline();
 
 		inline VkPipeline& GetHandle() { return m_ComputePipeline; };
@@ -30,7 +30,7 @@ namespace Engine {
 
 		LogicalDevice* p_LogicalDevice;
 		SwapChain* p_SwapChain;
-		//Buffer* p_UniformBuffers;
+		Buffer* p_UniformBuffers;
 		Buffer* p_ShaderStorageBuffers;
 	};
 }
