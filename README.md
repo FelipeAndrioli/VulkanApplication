@@ -15,14 +15,15 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	[X] - Change the graphics pipeline to support it
 	[X] - Move the descriptor set layout back to graphics pipeline
 	[X] - Move the descriptor pool back to the graphics pipeline
-[IN PROGRESS] - Fix Compute pipeline
-	[ ] - Fix pipeline
-
+[X] - Fix Compute pipeline
+[IN PROGRESS] - Make render/compute flow editable from scene
+	[ ] - Load uniforms from the scene
+	[ ] - Load UBOs from the scene
+	[ ] - Multiple flows from scene controlled by the scene layout
+		[ ] - Scene layout
+		[ ] - Rasterization
+		[ ] - Custom rendering
+		[ ] - Compute
 ## Future Work (not in order)
 
-[ ] - Load uniforms from the scene
-[ ] - Multiple flows from scene controlled by the scene layout
-	[ ] - Scene layout
-	[ ] - Rasterization
-	[ ] - Custom rendering
 [ ] - Ray Tracer??
