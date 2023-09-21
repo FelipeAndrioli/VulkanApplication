@@ -11,11 +11,11 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 [X] - Render more than one model from the scene
 [X] - Change models from the scene
 [X] - Render UI components from scene
-[ ] - Multiple objects rendering
-	[ ] - Change the graphics pipeline to support it
-	[ ] - Move the descriptor set layout back to graphics pipeline
-	[ ] - Move the descriptor pool back to the graphics pipeline
-[ ] - Fix Compute pipeline
+[X] - Multiple objects rendering
+	[X] - Change the graphics pipeline to support it
+	[X] - Move the descriptor set layout back to graphics pipeline
+	[X] - Move the descriptor pool back to the graphics pipeline
+[IN PROGRESS] - Fix Compute pipeline
 
 ## Future Work (not in order)
 
