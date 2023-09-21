@@ -19,6 +19,7 @@ namespace Engine {
 		void WaitEvents();
 		void Close();
 
+		inline float GetLastFrameTime() { return m_LastFrameTime; };
 		inline GLFWwindow* GetHandle() const { return m_Window; };
 		VkExtent2D GetFramebufferSize() const;
 
