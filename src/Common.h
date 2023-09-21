@@ -35,6 +35,10 @@ namespace Engine {
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
+	struct ComputeUniformBufferObject {
+		float deltaTime = 1.0f;
+	};
+
 	struct Particle {
 		glm::vec2 position;
 		glm::vec2 velocity;

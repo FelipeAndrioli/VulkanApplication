@@ -23,7 +23,7 @@ namespace Engine {
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
 		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
-		updateUniformBuffer(m_ComputeUniformBuffers.get(), m_CurrentFrame, glm::mat4(1.0f));
+		updateComputeUniformBuffer(m_CurrentFrame);
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
 
 		auto computeCommandBuffer = m_ComputeCommandBuffers->Begin(m_CurrentFrame);
@@ -394,6 +394,14 @@ namespace Engine {
 
 	void Application::SetActiveScene(Assets::Scene* scene) {
 		m_ActiveScene = scene;
+	}
+
+	// temporary
+	void Application::updateComputeUniformBuffer(uint32_t currentImage) {
+		ComputeUniformBufferObject cubo{};
+		cubo.deltaTime = m_Window->GetLastFrameTime() * 0.1f;
+
+		memcpy(m_ComputeUniformBuffers->GetBufferMemoryMapped(currentImage), &cubo, sizeof(cubo));
 	}
 
 	// temporary while scenes are not implemented yet
