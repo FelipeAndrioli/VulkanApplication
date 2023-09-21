@@ -4,8 +4,8 @@
 namespace Engine {
 	GraphicsPipeline::GraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain,
 		VkVertexInputBindingDescription _bindingDescription, std::array<VkVertexInputAttributeDescription, 2> _attributeDescriptions, 
-		VkPrimitiveTopology topology, DescriptorSetLayout* descriptorSetLayout)
-		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain), p_DescriptorSetLayout(descriptorSetLayout) {
+		VkPrimitiveTopology topology, size_t maxDescriptorSets)
+		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain) {
 
 		// auto bindingDescription = Assets::Vertex::getBindingDescription();
 		// auto attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
@@ -94,35 +94,28 @@ namespace Engine {
 		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 		dynamicState.pDynamicStates = dynamicStates.data();
 
-		/*
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT }
 		};
 
 		m_DescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, p_LogicalDevice->GetHandle()));
-		*/
 
-		/*
-		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 }
+		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
+
+		for (size_t i = 0; i < maxDescriptorSets; i++) {
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
 
 			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
 			// because our sets reference the SSBOs of the last and current frame (for now).
-		};
+		}
 
-		m_DescriptorPool.reset(new class DescriptorPool(p_LogicalDevice->GetHandle(), poolDescriptorBindings, MAX_FRAMES_IN_FLIGHT));
-		*/
+		m_DescriptorPool.reset(new class DescriptorPool(p_LogicalDevice->GetHandle(), poolDescriptorBindings, 
+			maxDescriptorSets * MAX_FRAMES_IN_FLIGHT));
 
 		std::vector<BufferDescriptor> bufferDescriptor = {};
 
-		/*
-		m_DescriptorSets.reset(new class DescriptorSets(p_LogicalDevice->GetHandle(), m_DescriptorPool->GetHandle(), 
-			m_DescriptorSetLayout->GetHandle(), p_UniformBuffers));
-		*/
-
-		// m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
-		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), p_DescriptorSetLayout));
+		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
 		m_RenderPass.reset(new class RenderPass(p_SwapChain, p_LogicalDevice->GetHandle()));
 
 		ShaderModule vertShaderModule(vertexShaderPath, p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
@@ -159,6 +152,6 @@ namespace Engine {
 
 		m_RenderPass.reset();
 		m_GraphicsPipelineLayout.reset();
-		//m_DescriptorSetLayout.reset();
+		m_DescriptorSetLayout.reset();
 	}
 }

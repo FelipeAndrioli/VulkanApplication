@@ -267,59 +267,12 @@ namespace Engine {
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
 
-		// createUniformBuffers();
-		/*
-		{
-			m_UniformBuffers.resize(m_ActiveScene->GetSceneModels().size());
-
-			for (size_t i = 0; i < m_ActiveScene->GetSceneModels().size(); i++) {
-				VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-				m_UniformBuffers[i].reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
-					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-				m_UniformBuffers[i]->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-				m_UniformBuffers[i]->MapMemory();
-			}
-		}
-		*/
-
-		std::vector<DescriptorBinding> descriptorBindings = {
-			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT }
-		};
-
-		m_DescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, m_LogicalDevice->GetHandle()));
-		
-		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 },
-
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 }
-
-			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
-			// because our sets reference the SSBOs of the last and current frame (for now).
-		};
-
-		m_DescriptorPool.reset(new class DescriptorPool(m_LogicalDevice->GetHandle(), poolDescriptorBindings, 
-			static_cast<uint32_t>(m_ActiveScene->GetSceneModels().size() * MAX_FRAMES_IN_FLIGHT)));
-
-		// TODO finish to implement descriptor sets per model to be able to render and move more than one model 
-
-		/*
-		m_DescriptorSets.resize(m_ActiveScene->GetSceneModels().size());
-
-		for (size_t i = 0; i < m_ActiveScene->GetSceneModels().size(); i++) {
-			auto model = m_ActiveScene->GetSceneModels()[i];
-
-			m_DescriptorSets[i].reset(new class DescriptorSets(m_LogicalDevice->GetHandle(), m_DescriptorPool->GetHandle(),
-				m_DescriptorSetLayout->GetHandle(), model->m_UniformBuffer.get()));
-		}
-		*/
-
-		m_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_DescriptorPool.get(), m_DescriptorSetLayout.get());
-		
 		m_GraphicsPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/vert.spv", "Assets/Shaders/frag.spv",
 			m_LogicalDevice.get(), m_SwapChain.get(), Assets::Vertex::getBindingDescription(), Assets::Vertex::getAttributeDescriptions(),
-			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_DescriptorSetLayout.get()));
+			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_ActiveScene->GetSceneModels().size()));
+
+		m_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), 
+			&m_GraphicsPipeline->GetDescriptorPool(), &m_GraphicsPipeline->GetDescriptorSetLayout());
 		m_SwapChain->CreateFramebuffers(m_GraphicsPipeline->GetRenderPass().GetHandle());
 
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));
@@ -354,7 +307,7 @@ namespace Engine {
 
 		m_TempRayTracerPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", 
 			"./Assets/Shaders/particle_shader_frag.spv", m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), 
-			Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_DescriptorSetLayout.get()));
+			Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_ActiveScene->GetSceneModels().size()));
 		m_ComputePipeline.reset(new class ComputePipeline("./Assets/Shaders/particle_shader_comp.spv", m_LogicalDevice.get(), 
 			m_SwapChain.get(), m_ShaderStorageBuffers.get()));
 
@@ -481,9 +434,6 @@ namespace Engine {
 	void Application::Shutdown() {
 		m_UI.reset();
 		m_SwapChain.reset();
-
-		m_DescriptorPool.reset();
-		m_DescriptorSetLayout.reset();
 
 		m_ComputePipeline.reset();
 

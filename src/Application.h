@@ -124,16 +124,9 @@ namespace Engine {
 		UserSettings m_UserSettings;
 		uint32_t m_CurrentFrame = 0;
 
-		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
-		std::unique_ptr<class DescriptorSetLayout> m_DescriptorSetLayout;
-
-		//std::vector<std::unique_ptr<class DescriptorSets>> m_DescriptorSets;
-
 		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
 		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
 		std::unique_ptr<class Buffer> m_VertexBuffers;
-		//std::unique_ptr<class Buffer> m_UniformBuffers;
-		//std::vector<std::unique_ptr<class Buffer>> m_UniformBuffers;
 		std::unique_ptr<class Buffer> m_IndexBuffer;
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 
