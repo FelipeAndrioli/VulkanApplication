@@ -18,7 +18,7 @@ namespace Engine {
 	}
 
 	CommandBuffer::~CommandBuffer() {
-		vkFreeCommandBuffers(p_LogicalDevice, p_CommandPool, m_CommandBuffers.size(), m_CommandBuffers.data());
+		vkFreeCommandBuffers(p_LogicalDevice, p_CommandPool, static_cast<uint32_t>(m_CommandBuffers.size()), m_CommandBuffers.data());
 	}
 
 	VkCommandBuffer& CommandBuffer::GetCommandBuffer(uint32_t index) {
