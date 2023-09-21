@@ -16,6 +16,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	[X] - Move the descriptor set layout back to graphics pipeline
 	[X] - Move the descriptor pool back to the graphics pipeline
 [IN PROGRESS] - Fix Compute pipeline
+	[ ] - Fix pipeline
 
 ## Future Work (not in order)
 
