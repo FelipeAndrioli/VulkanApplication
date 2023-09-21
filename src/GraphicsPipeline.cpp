@@ -111,7 +111,7 @@ namespace Engine {
 		}
 
 		m_DescriptorPool.reset(new class DescriptorPool(p_LogicalDevice->GetHandle(), poolDescriptorBindings, 
-			maxDescriptorSets * MAX_FRAMES_IN_FLIGHT));
+			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
 
 		std::vector<BufferDescriptor> bufferDescriptor = {};
 
