@@ -39,35 +39,6 @@
 
 */
 
-/*
-#include "Application.h"
-
-int main() {
-	
-	Engine::WindowSettings windowSettings;
-	windowSettings.Title = "VulkanApplication.exe";
-	windowSettings.Width = 800;
-	windowSettings.Height = 600;
-
-	Engine::UserSettings userSettings;
-	userSettings.rayTraced = true;
-	
-	Engine::Application* app = new Engine::Application(windowSettings, userSettings);
-
-	try {
-		app->Run();
-	}
-	catch (const std::exception& e) {
-		std::cerr << e.what() << std::endl;
-		return EXIT_FAILURE;
-	}
-
-	delete(app);
-
-	return EXIT_SUCCESS;
-}
-*/
-
 #include "Application.h"
 #include "../Assets/Scene.h"
 #include "../Assets/Model.h"
@@ -77,17 +48,6 @@ public:
 	~MyScene() {
 		DeleteModels();
 	}
-
-	struct Uniforms {
-
-	};
-
-	struct UBO {
-
-	};
-
-	Uniforms m_Uniforms;
-	UBO m_UBO;
 
 	void OnCreate() {
 
@@ -161,6 +121,36 @@ public:
 	void OnDestroy() {
 
 	}
+};
+
+class RenderLayout {
+	struct GraphicsPipeline {
+		/* Resources required from graphics pipeline
+			- binding description
+			- attribute description
+			- the graphics pipeline always need a vertex input state?
+			- topology
+			- polygon mode
+				- fill
+				- line
+				- point
+				- rectangle fill
+			- cull mode
+				- cull back
+				- cull front
+				- cull front and back
+			- front face
+				- counter clockwise
+				- clockwise
+			- multisampling
+
+			- resources inside the graphics pipeline to make dynamic
+				- descriptor set layout
+				- descriptor pool
+				- graphics pipeline layout
+				- render pass
+		*/
+	};
 };
 
 int main() {
