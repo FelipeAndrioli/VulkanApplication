@@ -40,6 +40,8 @@
 */
 
 #include "Application.h"
+#include "GraphicsPipelineLayout.h"
+#include "RenderLayout.h"
 #include "../Assets/Scene.h"
 #include "../Assets/Model.h"
 
@@ -123,37 +125,16 @@ public:
 	}
 };
 
-class RenderLayout {
-	struct GraphicsPipeline {
-		/* Resources required from graphics pipeline
-			- binding description
-			- attribute description
-			- the graphics pipeline always need a vertex input state?
-			- topology
-			- polygon mode
-				- fill
-				- line
-				- point
-				- rectangle fill
-			- cull mode
-				- cull back
-				- cull front
-				- cull front and back
-			- front face
-				- counter clockwise
-				- clockwise
-			- multisampling
-
-			- resources inside the graphics pipeline to make dynamic
-				- descriptor set layout
-				- descriptor pool
-				- graphics pipeline layout
-				- render pass
-		*/
-	};
-};
-
 int main() {
+
+	Engine::RenderLayout* renderLayout = new Engine::RenderLayout();
+
+	Engine::GraphicsPipelineLayout defaultLayout;
+	defaultLayout.vertexShaderPath = "./Assets/Shaders/vert.spv";
+	defaultLayout.fragmentShaderPath = "./Assets/Shaders/frag.spv";
+
+	renderLayout->AddGraphicsPipelineLayout(defaultLayout);
+
 	Engine::WindowSettings windowSettings;
 	windowSettings.Title = "VulkanApplication.exe";
 	windowSettings.Width = 800;
