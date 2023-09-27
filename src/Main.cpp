@@ -1,13 +1,4 @@
 /*
-	TODO list to when the setup is finihed
-
-	- Next steps
-		- Start to design Scenes
-	- Compile the shaders inside the code instead of using glslc.exe
-	- Future Challenges
-*/
-
-/*
 	Future Challenges
 
 	- Implement a dynamic uniform buffer 
@@ -127,11 +118,18 @@ public:
 
 int main() {
 
+	MyScene* myScene = new MyScene();
+	myScene->OnCreate();
+	
 	Engine::RenderLayout* renderLayout = new Engine::RenderLayout();
 
 	Engine::GraphicsPipelineLayout defaultLayout;
+
+	defaultLayout.bindingDescription = Assets::Vertex::getBindingDescription();
+	defaultLayout.attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 	defaultLayout.vertexShaderPath = "./Assets/Shaders/vert.spv";
 	defaultLayout.fragmentShaderPath = "./Assets/Shaders/frag.spv";
+	defaultLayout.maxDescriptorSets = myScene->GetSceneModels().size();
 
 	renderLayout->AddGraphicsPipelineLayout(defaultLayout);
 
@@ -141,12 +139,10 @@ int main() {
 	windowSettings.Height = 600;
 
 	Engine::UserSettings userSettings;
-	userSettings.rayTraced = true;
+	userSettings.rayTraced = false;
 	
-	Engine::Application* app = new Engine::Application(windowSettings, userSettings);
+	Engine::Application* app = new Engine::Application(windowSettings, userSettings, renderLayout);
 
-	MyScene* myScene = new MyScene();
-	myScene->OnCreate();
 
 	app->SetActiveScene(myScene);
 	app->Init();

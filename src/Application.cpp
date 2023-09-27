@@ -5,7 +5,8 @@ static bool g_FramebufferResized = false;
 static int g_MinImageCount = 2;
 
 namespace Engine {
-	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) : m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
+	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings, RenderLayout* renderLayout) 
+		: m_WindowSettings(windowSettings), m_UserSettings(userSettings), p_RenderLayout(renderLayout) {
 		m_Window.reset(new class Window(&m_WindowSettings));
 		m_Instance.reset(new class Instance(c_ValidationLayers, c_EnableValidationLayers));
 		m_DebugMessenger.reset(c_EnableValidationLayers ? new class DebugUtilsMessenger(m_Instance->GetHandle()) : nullptr);
@@ -267,9 +268,13 @@ namespace Engine {
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
 
+		/*
 		m_GraphicsPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/vert.spv", "Assets/Shaders/frag.spv",
 			m_LogicalDevice.get(), m_SwapChain.get(), Assets::Vertex::getBindingDescription(), Assets::Vertex::getAttributeDescriptions(),
 			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_ActiveScene->GetSceneModels().size()));
+		*/
+		m_GraphicsPipeline.reset(new class GraphicsPipeline(&p_RenderLayout->GetGraphicsPipelineLayout(0), m_LogicalDevice.get(),
+			m_SwapChain.get()));
 
 		m_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), 
 			&m_GraphicsPipeline->GetDescriptorPool(), &m_GraphicsPipeline->GetDescriptorSetLayout());
@@ -310,11 +315,13 @@ namespace Engine {
 				particles, m_ShaderStorageBuffers.get());
 		}
 
+		/*
 		m_TempRayTracerPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", 
 			"./Assets/Shaders/particle_shader_frag.spv", m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), 
 			Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_ActiveScene->GetSceneModels().size()));
 		m_ComputePipeline.reset(new class ComputePipeline("./Assets/Shaders/particle_shader_comp.spv", m_LogicalDevice.get(), 
 			m_SwapChain.get(), m_ShaderStorageBuffers.get(), m_ComputeUniformBuffers.get()));
+		*/
 
 		//createVertexBuffer();
 		{
@@ -335,7 +342,6 @@ namespace Engine {
 			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
 				m_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
 		}
-
 
 		// create index buffer (temporary hardcoded)
 		{

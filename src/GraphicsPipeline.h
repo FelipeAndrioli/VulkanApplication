@@ -14,6 +14,7 @@
 #include "DescriptorSets.h"
 #include "DescriptorPool.h"
 #include "Buffer.h"
+#include "GraphicsPipelineLayout.h"
 
 #include "../Assets/Vertex.h"
 
@@ -23,9 +24,7 @@ namespace Engine {
 
 	class GraphicsPipeline {
 	public:
-		GraphicsPipeline(const char* vertexShaderPath, const char* fragShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain,
-			VkVertexInputBindingDescription _bindingDescription, std::array<VkVertexInputAttributeDescription, 2> _attributeDescriptions,
-			VkPrimitiveTopology topology, size_t maxDescriptorSets);
+		GraphicsPipeline(GraphicsPipelineLayout* graphicsPipelineLayout, LogicalDevice* logicalDevice, SwapChain* swapChain);
 		~GraphicsPipeline();
 
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };

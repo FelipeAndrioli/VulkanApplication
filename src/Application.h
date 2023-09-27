@@ -44,6 +44,7 @@
 #include "Fence.h"
 #include "Instance.h"
 #include "DebugUtilsMessenger.h"
+#include "RenderLayout.h"
 
 #include "../Assets/Scene.h"
 
@@ -61,23 +62,17 @@ namespace Engine {
 	class Application {
 	public:
 		Application(const WindowSettings &windowSettings = WindowSettings(), 
-			const UserSettings &userSettings = UserSettings());
+			const UserSettings &userSettings = UserSettings(), RenderLayout* renderLayout = nullptr);
 		~Application();
 
 		void SetActiveScene(Assets::Scene* scene);
+
 		void Init();
 		void Run();
 	private:
 		void InitVulkan();
 		void Shutdown();
 
-		void createFramebuffers();
-		void createVertexBuffer();
-		void createIndexBuffer();
-		void createUniformBuffers();
-		void createDescriptorPool();
-		void createDescriptorSets();
-		void createCommandBuffers();
 		void createSyncObjects();
 		void recreateSwapChain();
 
@@ -134,5 +129,6 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 
 		Assets::Scene* m_ActiveScene = nullptr;
+		RenderLayout* p_RenderLayout = nullptr;
 	};
 }

@@ -1,9 +1,13 @@
 #pragma once
 
+#include <array>
+
+#include "Vulkan.h"
+
+#include "../Assets/Vertex.h"
+
 namespace Engine {
 	struct GraphicsPipelineLayout {
-		//binding description
-		//attribute descripion
 		enum Topology {
 			POINT_LIST = 0,
 			LINE_LIST = 1,
@@ -36,12 +40,17 @@ namespace Engine {
 			CLOCKWISE = 1
 		};
 
+		VkVertexInputBindingDescription bindingDescription = Assets::Vertex::getBindingDescription();
+		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+
 		Topology topology = TRIANGLE_LIST;
 		PolygonMode polygonMode = FILL;
 		CullMode cullMode = CULL_BACK;
 		FrontFace frontFace = COUNTER_CLOCKWISE;
 
 		float lineWidth = 1.0f;
+		size_t maxDescriptorSets = 2;
+		
 		const char* vertexShaderPath = "";
 		const char* fragmentShaderPath = "";
 	};
