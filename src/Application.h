@@ -89,13 +89,15 @@ namespace Engine {
 		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
 		void drawFrame();
-		void handleDraw(uint32_t imageIndex);
+		void handleDraw(uint32_t imageIndex, GraphicsPipelineLayout* graphicsPipelineLayout);
 		void drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
 		void drawRasterized(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
 	
 		void processKey(int key, int scancode, int action, int mods);
 		void processResize(int width, int height);
 
+		void setVertexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout);
+		void setIndexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout);
 	private:
 		std::unique_ptr<class Window> m_Window;
 		std::unique_ptr<class Instance> m_Instance;

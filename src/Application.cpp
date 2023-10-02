@@ -140,15 +140,18 @@ namespace Engine {
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
-	void Application::handleDraw(uint32_t imageIndex) {
+	void Application::handleDraw(uint32_t imageIndex, GraphicsPipelineLayout* graphicsPipelineLayout) {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame));
 
 		auto commandBuffer = m_CommandBuffers->Begin(m_CurrentFrame);
-		m_UserSettings.rayTraced ? drawRayTraced(commandBuffer, imageIndex) : 
+
+		if (graphicsPipelineLayout->renderType == GraphicsPipelineLayout::RenderType::DEFAULT_RENDER) {
 			drawRasterized(commandBuffer, imageIndex);
+		}
+
 		m_CommandBuffers->End(m_CurrentFrame);
 
 		m_UI->RecordCommands(m_CurrentFrame, imageIndex);
@@ -201,7 +204,9 @@ namespace Engine {
 			throw std::runtime_error("Failed to acquire swap chain image!");
 		}
 
-		handleDraw(imageIndex);
+		for (size_t i = 0; i < p_RenderLayout->GetGraphicsPipelineLayout().size(); i++) {
+			handleDraw(imageIndex, p_RenderLayout->GetGraphicsPipelineLayout(i));
+		}
 
 		// Present submit
 		{
@@ -254,16 +259,55 @@ namespace Engine {
 			m_SwapChain.get(), g_MinImageCount));
 	}
 
-	void Application::processResize(int width, int height) {
-		g_FramebufferResized = true;
-		std::cout << "width - " << width << " height - " << height << '\n';
-	}
-
 	void Application::processKey(int key, int scancode, int action, int mods) {
 		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 			std::cout << "Closing application" << '\n';
 			m_Window->Close();
 		}
+	}
+
+	void Application::processResize(int width, int height) {
+		g_FramebufferResized = true;
+		std::cout << "width - " << width << " height - " << height << '\n';
+	}
+
+	void Application::setVertexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout) {
+		// TODO create vertex buffer based on given graphics pipeline layout
+		uint32_t totalVerticesSize = 0;
+
+		for (auto model : p_ActiveScene->GetSceneModels()) {
+			totalVerticesSize += model->GetSizeVertices();
+		}
+
+		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * totalVerticesSize;
+		
+		m_VertexBuffers.reset(new class Buffer(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT), m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+		m_VertexBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		BufferHelper bufferHelper;
+		bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
+			p_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
+
+	}
+
+	void Application::setIndexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout) {
+		// TODO create index buffer based on given graphics pipeline layout
+		uint32_t totalIndicesSize = 0;
+
+		for (auto model : p_ActiveScene->GetSceneModels()) {
+			totalIndicesSize += model->GetSizeIndices();
+		}
+
+		VkDeviceSize bufferSize = sizeof(uint16_t) * totalIndicesSize;
+
+		m_IndexBuffer.reset(new class Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(),
+			bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
+		m_IndexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		BufferHelper bufferHelper;
+		bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(), 
+			p_ActiveScene->GetSceneIndices(), m_IndexBuffer.get());
 	}
 
 	void Application::InitVulkan() {
@@ -272,7 +316,7 @@ namespace Engine {
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
 
-		m_GraphicsPipeline.reset(new class GraphicsPipeline(&p_RenderLayout->GetGraphicsPipelineLayout(0), m_LogicalDevice.get(),
+		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_RenderLayout->GetGraphicsPipelineLayout(0), m_LogicalDevice.get(),
 			m_SwapChain.get()));
 
 		p_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), 
@@ -281,46 +325,9 @@ namespace Engine {
 
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));
 	
-		if (p_RenderLayout->GetGraphicsPipelineLayout(0).renderType == GraphicsPipelineLayout::RenderType::DEFAULT_RENDER) {
-
-		}
-		{
-			uint32_t totalVerticesSize = 0;
-
-			for (auto model : p_ActiveScene->GetSceneModels()) {
-				totalVerticesSize += model->GetSizeVertices();
-			}
-
-			//VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-			VkDeviceSize bufferSize = sizeof(Assets::Vertex) * totalVerticesSize;
-			
-			m_VertexBuffers.reset(new class Buffer(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT), m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
-				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
-			m_VertexBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-			BufferHelper bufferHelper;
-			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
-				p_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
-		}
-
-		// create index buffer (temporary hardcoded)
-		{
-			uint32_t totalIndicesSize = 0;
-
-			for (auto model : p_ActiveScene->GetSceneModels()) {
-				totalIndicesSize += model->GetSizeIndices();
-			}
-
-			//VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-			VkDeviceSize bufferSize = sizeof(uint16_t) * totalIndicesSize;
-
-			m_IndexBuffer.reset(new class Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(),
-				bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
-			m_IndexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-			BufferHelper bufferHelper;
-			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(), 
-				p_ActiveScene->GetSceneIndices(), m_IndexBuffer.get());
+		if (p_RenderLayout->GetGraphicsPipelineLayout(0)->renderType == GraphicsPipelineLayout::RenderType::DEFAULT_RENDER) {
+			setVertexBuffers(p_RenderLayout->GetGraphicsPipelineLayout(0));
+			setIndexBuffers(p_RenderLayout->GetGraphicsPipelineLayout(0));
 		}
 
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
