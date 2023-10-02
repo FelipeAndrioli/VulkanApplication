@@ -122,7 +122,7 @@ namespace Engine {
 		uint32_t vertexOffset = 0;
 		uint32_t indexOffset = 0;
 
-		for (auto model : m_ActiveScene->GetSceneModels()) {
+		for (auto model : p_ActiveScene->GetSceneModels()) {
 			vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
 				0, 1, &model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
 				0, nullptr);
@@ -183,7 +183,7 @@ namespace Engine {
 	
 	void Application::drawFrame() {
 
-		m_UI->Draw(m_UserSettings, m_WindowSettings, m_ActiveScene);
+		m_UI->Draw(m_UserSettings, m_WindowSettings, p_ActiveScene);
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -232,6 +232,10 @@ namespace Engine {
 		m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
+	void Application::SetActiveScene(Assets::Scene* scene) {
+		p_ActiveScene = scene;
+	}
+
 	void Application::Run() {
 
 		m_Window->DrawFrame = std::bind(&Application::drawFrame, this);
@@ -268,66 +272,22 @@ namespace Engine {
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
 
-		/*
-		m_GraphicsPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/vert.spv", "Assets/Shaders/frag.spv",
-			m_LogicalDevice.get(), m_SwapChain.get(), Assets::Vertex::getBindingDescription(), Assets::Vertex::getAttributeDescriptions(),
-			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, m_ActiveScene->GetSceneModels().size()));
-		*/
 		m_GraphicsPipeline.reset(new class GraphicsPipeline(&p_RenderLayout->GetGraphicsPipelineLayout(0), m_LogicalDevice.get(),
 			m_SwapChain.get()));
 
-		m_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), 
+		p_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), 
 			&m_GraphicsPipeline->GetDescriptorPool(), &m_GraphicsPipeline->GetDescriptorSetLayout());
 		m_SwapChain->CreateFramebuffers(m_GraphicsPipeline->GetRenderPass().GetHandle());
 
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));
-		
-		// create shader storage buffers (temporary hardcoded)
-		{
-			std::default_random_engine rndEngine((unsigned)time(nullptr));
-			std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
+	
+		if (p_RenderLayout->GetGraphicsPipelineLayout(0).renderType == GraphicsPipelineLayout::RenderType::DEFAULT_RENDER) {
 
-			std::vector<Particle> particles(PARTICLE_COUNT);
-			
-			for (auto& particle : particles) {
-				float r = 0.25f * sqrt(rndDist(rndEngine));
-				float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
-				float x = r * cos(theta) * m_SwapChain->GetSwapChainExtent().height / m_SwapChain->GetSwapChainExtent().height;
-				float y = r * sin(theta);
-				particle.position = glm::vec2(x, y);
-				particle.velocity = glm::normalize(glm::vec2(x, y)) * 0.00025f;
-				particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine), 1.0f);
-			}
-
-			VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
-
-			m_ComputeUniformBuffers.reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-			m_ComputeUniformBuffers->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			m_ComputeUniformBuffers->MapMemory();
-
-			m_ShaderStorageBuffers.reset(new class Buffer(MAX_FRAMES_IN_FLIGHT, m_LogicalDevice.get(),
-				m_PhysicalDevice.get(), bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
-			m_ShaderStorageBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-			BufferHelper bufferHelper;
-			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
-				particles, m_ShaderStorageBuffers.get());
 		}
-
-		/*
-		m_TempRayTracerPipeline.reset(new class GraphicsPipeline("./Assets/Shaders/particle_shader_vert.spv", 
-			"./Assets/Shaders/particle_shader_frag.spv", m_LogicalDevice.get(), m_SwapChain.get(), Particle::getBindindDescription(), 
-			Particle::getAttributeDescriptions(), VK_PRIMITIVE_TOPOLOGY_POINT_LIST, m_ActiveScene->GetSceneModels().size()));
-		m_ComputePipeline.reset(new class ComputePipeline("./Assets/Shaders/particle_shader_comp.spv", m_LogicalDevice.get(), 
-			m_SwapChain.get(), m_ShaderStorageBuffers.get(), m_ComputeUniformBuffers.get()));
-		*/
-
-		//createVertexBuffer();
 		{
 			uint32_t totalVerticesSize = 0;
 
-			for (auto model : m_ActiveScene->GetSceneModels()) {
+			for (auto model : p_ActiveScene->GetSceneModels()) {
 				totalVerticesSize += model->GetSizeVertices();
 			}
 
@@ -340,14 +300,14 @@ namespace Engine {
 
 			BufferHelper bufferHelper;
 			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
-				m_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
+				p_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
 		}
 
 		// create index buffer (temporary hardcoded)
 		{
 			uint32_t totalIndicesSize = 0;
 
-			for (auto model : m_ActiveScene->GetSceneModels()) {
+			for (auto model : p_ActiveScene->GetSceneModels()) {
 				totalIndicesSize += model->GetSizeIndices();
 			}
 
@@ -360,7 +320,7 @@ namespace Engine {
 
 			BufferHelper bufferHelper;
 			bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(), 
-				m_ActiveScene->GetSceneIndices(), m_IndexBuffer.get());
+				p_ActiveScene->GetSceneIndices(), m_IndexBuffer.get());
 		}
 
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
@@ -396,10 +356,6 @@ namespace Engine {
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));
 		m_UI->Resize(m_SwapChain.get());
-	}
-
-	void Application::SetActiveScene(Assets::Scene* scene) {
-		m_ActiveScene = scene;
 	}
 
 	// temporary
@@ -438,7 +394,7 @@ namespace Engine {
 
 		uint32_t totalVertexSize = 0;
 
-		for (auto model : m_ActiveScene->GetSceneModels()) {
+		for (auto model : p_ActiveScene->GetSceneModels()) {
 			totalVertexSize += model->GetSizeVertices();
 		}
 
@@ -447,7 +403,7 @@ namespace Engine {
 	
 		BufferHelper bufferHelper;
 		bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
-			m_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
+			p_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
 	}
 
 	void Application::Shutdown() {

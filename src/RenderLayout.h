@@ -4,7 +4,7 @@
 #include <vector>
 #include <stdexcept>
 
-#include "GraphicsPipelineLayout.h"
+#include "CustomPipelineLayout.h"
 
 namespace Engine {
 	class RenderLayout {

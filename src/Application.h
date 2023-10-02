@@ -65,9 +65,8 @@ namespace Engine {
 			const UserSettings &userSettings = UserSettings(), RenderLayout* renderLayout = nullptr);
 		~Application();
 
-		void SetActiveScene(Assets::Scene* scene);
-
 		void Init();
+		void SetActiveScene(Assets::Scene* scene);
 		void Run();
 	private:
 		void InitVulkan();
@@ -128,7 +127,7 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_IndexBuffer;
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 
-		Assets::Scene* m_ActiveScene = nullptr;
+		Assets::Scene* p_ActiveScene = nullptr;
 		RenderLayout* p_RenderLayout = nullptr;
 	};
 }

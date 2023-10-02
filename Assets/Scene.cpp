@@ -6,6 +6,10 @@ namespace Assets {
 
 	}
 
+	Scene::~Scene() {
+		DeleteModels();
+	}
+
 	void Scene::AddModel(Model* model) {
 		m_SceneModels.push_back(model);
 	}

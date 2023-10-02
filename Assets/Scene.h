@@ -17,7 +17,7 @@ namespace Assets {
 	public:
 		// will leave constructor/destructor empty for now
 		Scene();
-		virtual ~Scene() {};
+		~Scene();
 
 		virtual void OnCreate() = 0;
 		virtual void OnUIRender() = 0;

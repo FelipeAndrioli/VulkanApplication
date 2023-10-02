@@ -245,7 +245,7 @@
     <ClInclude Include="src\RenderLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\GraphicsPipelineLayout.h">
+    <ClInclude Include="src\CustomPipelineLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

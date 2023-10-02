@@ -29,27 +29,29 @@
 		aliasing and some Vulkan functions have explicit flags to specify that you want to do this.
 
 */
+#include <iostream>
+#include <stdexcept>
+#include <cstdlib>
+#include <vector>
+#include <array>
+#include <optional>
+#include <set>
+#include <limits>
+#include <algorithm>
+#include <fstream>
+#include <random>
+#include <functional>
 
 #include "Application.h"
-#include "GraphicsPipelineLayout.h"
+#include "CustomPipelineLayout.h"
 #include "RenderLayout.h"
 #include "../Assets/Scene.h"
 #include "../Assets/Model.h"
 
 class MyScene : public Assets::Scene {
 public:
-	~MyScene() {
-		DeleteModels();
-	}
-
 	void OnCreate() {
 
-		/*
-			{ {-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f} },
-			{ {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f} },
-			{ {0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} },
-			{ {-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f} }
-		*/
 		Assets::Model* q1 = new Assets::Model();
 
 		std::vector<Assets::Vertex> v = { 
@@ -110,10 +112,6 @@ public:
 	void OnUpdate(float time) {
 
 	}
-
-	void OnDestroy() {
-
-	}
 };
 
 int main() {
@@ -142,7 +140,6 @@ int main() {
 	userSettings.rayTraced = false;
 	
 	Engine::Application* app = new Engine::Application(windowSettings, userSettings, renderLayout);
-
 
 	app->SetActiveScene(myScene);
 	app->Init();

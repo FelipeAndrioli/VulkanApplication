@@ -1,11 +1,12 @@
 #include "ComputePipeline.h"
 
 namespace Engine {
-	ComputePipeline::ComputePipeline(const char* computeShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain, 
-		Buffer* shaderStorageBuffers, Buffer* uniformBuffers) : p_LogicalDevice(logicalDevice), p_SwapChain(swapChain), 
-		p_ShaderStorageBuffers(shaderStorageBuffers), p_UniformBuffers(uniformBuffers) {
+	ComputePipeline::ComputePipeline(ComputePipelineLayout* computePipelineLayout, LogicalDevice* logicalDevice, 
+		SwapChain* swapChain, Buffer* shaderStorageBuffers, Buffer* uniformBuffers) 
+		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain), p_ShaderStorageBuffers(shaderStorageBuffers), 
+		p_UniformBuffers(uniformBuffers) {
 
-		ShaderModule computeShader(computeShaderPath, p_LogicalDevice, VK_SHADER_STAGE_COMPUTE_BIT);
+		ShaderModule computeShader(computePipelineLayout->computeShaderPath, p_LogicalDevice, VK_SHADER_STAGE_COMPUTE_BIT);
 
 		VkPipelineShaderStageCreateInfo computeShaderStageInfo = {};
 		computeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -29,7 +30,7 @@ namespace Engine {
 
 		m_DescriptorPool.reset(new class DescriptorPool(p_LogicalDevice->GetHandle(), poolDescriptorBindings, MAX_FRAMES_IN_FLIGHT));
 		m_DescriptorSets.reset(new class DescriptorSets(p_LogicalDevice->GetHandle(), m_DescriptorPool->GetHandle(), m_DescriptorSetLayout->GetHandle(), 
-			p_UniformBuffers, true, p_ShaderStorageBuffers));
+			p_UniformBuffers, computePipelineLayout->lastFrameAccess, p_ShaderStorageBuffers));
 
 		VkComputePipelineCreateInfo pipelineInfo = {};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;

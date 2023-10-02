@@ -204,7 +204,7 @@
     <ClInclude Include="src\DescriptorSets.h" />
     <ClInclude Include="src\Fence.h" />
     <ClInclude Include="src\GraphicsPipeline.h" />
-    <ClInclude Include="src\GraphicsPipelineLayout.h" />
+    <ClInclude Include="src\CustomPipelineLayout.h" />
     <ClInclude Include="src\Instance.h" />
     <ClInclude Include="src\Layer.h" />
     <ClInclude Include="src\LogicalDevice.h" />

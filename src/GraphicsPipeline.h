@@ -14,7 +14,7 @@
 #include "DescriptorSets.h"
 #include "DescriptorPool.h"
 #include "Buffer.h"
-#include "GraphicsPipelineLayout.h"
+#include "CustomPipelineLayout.h"
 
 #include "../Assets/Vertex.h"
 

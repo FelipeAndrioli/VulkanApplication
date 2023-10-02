@@ -9,11 +9,13 @@
 #include "DescriptorPool.h"
 #include "DescriptorSets.h"
 
+#include "CustomPipelineLayout.h"
+
 namespace Engine {
 	class ComputePipeline {
 	public:
-		ComputePipeline(const char* computeShaderPath, LogicalDevice* logicalDevice, SwapChain* swapChain, 
-			Buffer* shaderStorageBuffers, Buffer* uniformBuffers);
+		ComputePipeline(ComputePipelineLayout* computePipelineLayout, LogicalDevice* logicalDevice, 
+			SwapChain* swapChain, Buffer* shaderStorageBuffers, Buffer* uniformBuffers);
 		~ComputePipeline();
 
 		inline VkPipeline& GetHandle() { return m_ComputePipeline; };
