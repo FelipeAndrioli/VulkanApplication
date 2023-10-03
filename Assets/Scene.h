@@ -27,7 +27,6 @@ namespace Assets {
 		struct UBO;
 
 		void AddModel(Model* model);
-		void DeleteModels();
 		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
 			Engine::DescriptorPool* descriptorPool, Engine::DescriptorSetLayout* descriptorSetLayout);
 

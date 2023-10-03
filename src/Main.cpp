@@ -48,12 +48,9 @@
 #include "../Assets/Scene.h"
 #include "../Assets/Model.h"
 
-class MyScene : public Assets::Scene {
+class MyQuadOne : public Assets::Model {
 public:
 	void OnCreate() {
-
-		Assets::Model* q1 = new Assets::Model();
-
 		std::vector<Assets::Vertex> v = { 
 			{ {-1.0f, -1.0f}, {1.0f, 0.0f, 0.0f} },
 			{ {0.0f, -1.0f}, {0.0f, 1.0f, 0.0f} },
@@ -65,58 +62,108 @@ public:
 			0, 1, 2, 2, 3, 0
 		};
 
-		q1->SetVertices(v);
-		q1->SetIndices(i);
-		q1->m_ID = "q1";
-		AddModel(q1);
+		SetVertices(v);
+		SetIndices(i);
+		m_ID = "Quad One";
 
-		Assets::Model* q2 = new Assets::Model();
+		std::cout << m_ID << " model created\n";
+	}
 
-		std::vector<Assets::Vertex> v2 = { 
+	void OnUIRender() {
+		std::string modelId = m_ID;
+
+		std::string t = "Transformations " + modelId;
+
+		if (ImGui::TreeNode(t.c_str())) {
+			std::string t_label_x = "Translation x " + modelId;
+			std::string t_label_y = "Translation y " + modelId;
+			std::string t_label_z = "Translation z " + modelId;
+
+			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, 0.0f, 1.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, 0.0f, 1.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, 0.0f, 1.0f);
+			ImGui::TreePop();
+		}
+	}
+
+	void OnUpdate() {
+
+	}
+};
+
+class MyQuadTwo : public Assets::Model {
+public:
+	void OnCreate() {
+		std::vector<Assets::Vertex> v = { 
 			{ {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} },
 			{ {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} },
 			{ {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f} },
 			{ {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f} }
 		};
 
-		std::vector<uint16_t> i2 = {
+		std::vector<uint16_t> i = {
 			0, 1, 2, 2, 3, 0
 		};
 
-		q2->SetVertices(v2);
-		q2->SetIndices(i2);
+		SetVertices(v);
+		SetIndices(i);
+		m_ID = "Quad Two";
+		
+		std::cout << m_ID << " model created\n";
+	}
 
-		q2->m_ID = "q2";
-		AddModel(q2); 
+	void OnUIRender() {
+		std::string modelId = m_ID;
+
+		std::string t = "Transformations " + modelId;
+
+		if (ImGui::TreeNode(t.c_str())) {
+			std::string t_label_x = "Translation x " + modelId;
+			std::string t_label_y = "Translation y " + modelId;
+			std::string t_label_z = "Translation z " + modelId;
+
+			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, 0.0f, 1.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, 0.0f, 1.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, 0.0f, 1.0f);
+			ImGui::TreePop();
+		}
+	}
+
+	void OnUpdate() {
+
+	}
+};
+
+class MyScene : public Assets::Scene {
+public:
+	void OnCreate() {
+		for (auto model : GetSceneModels()) {
+			model->OnCreate();
+		}
 	}
 
 	void OnUIRender() {
 		for (auto model : GetSceneModels()) {
-			std::string modelId = model->m_ID;
-
-			std::string t = "Transformations " + modelId;
-
-			if (ImGui::TreeNode(t.c_str())) {
-				std::string t_label_x = "Translation x " + modelId;
-				std::string t_label_y = "Translation y " + modelId;
-				std::string t_label_z = "Translation z " + modelId;
-
-				ImGui::SliderFloat(t_label_x.c_str(), &model->m_Transform.translation.x, 0.0f, 1.0f);
-				ImGui::SliderFloat(t_label_y.c_str(), &model->m_Transform.translation.y, 0.0f, 1.0f);
-				ImGui::SliderFloat(t_label_z.c_str(), &model->m_Transform.translation.z, 0.0f, 1.0f);
-				ImGui::TreePop();
-			}
+			model->OnUIRender();
 		}
 	}
 
 	void OnUpdate(float time) {
-
+		for (auto model : GetSceneModels()) {
+			model->OnUpdate();
+		}
 	}
 };
 
 int main() {
 
+	auto q1 = MyQuadOne();
+	auto q2 = MyQuadTwo();
+
 	MyScene* myScene = new MyScene();
+	myScene->AddModel(&q1);
+	myScene->AddModel(&q2);
+	
 	myScene->OnCreate();
 	
 	Engine::RenderLayout* renderLayout = new Engine::RenderLayout();

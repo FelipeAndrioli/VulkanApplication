@@ -9,8 +9,7 @@ namespace Assets {
 	}
 
 	Model::~Model() {
-		m_UniformBuffer.reset();
-		m_DescriptorSets.reset();
+		std::cout << "Deleting " << m_ID << '\n';
 	}
 
 	glm::mat4 Model::GetModelMatrix() {
@@ -23,5 +22,10 @@ namespace Assets {
 		model = glm::rotate(model, m_Transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
 
 		return model;
+	}
+
+	void Model::ResetResources() {
+		m_UniformBuffer.reset();
+		m_DescriptorSets.reset();
 	}
 }

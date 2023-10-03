@@ -7,17 +7,13 @@ namespace Assets {
 	}
 
 	Scene::~Scene() {
-		DeleteModels();
+		for (auto model : m_SceneModels) {
+			model->ResetResources();
+		}
 	}
 
 	void Scene::AddModel(Model* model) {
 		m_SceneModels.push_back(model);
-	}
-
-	void Scene::DeleteModels() {
-		for (auto model : m_SceneModels) {
-			delete model;
-		}
 	}
 
 	void Scene::SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice,

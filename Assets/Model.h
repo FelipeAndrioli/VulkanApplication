@@ -22,6 +22,12 @@ namespace Assets {
 		Model();
 		~Model();
 
+		virtual void OnCreate() = 0;
+		virtual void OnUpdate() = 0;
+		virtual void OnUIRender() = 0;
+
+		struct Uniforms;
+
 		glm::mat4 GetModelMatrix();
 
 		inline uint32_t GetSizeVertices() { return static_cast<uint32_t>(m_Vertices.size()); };
@@ -32,6 +38,8 @@ namespace Assets {
 
 		inline void SetVertices(std::vector<Vertex> vertices) { m_Vertices = vertices; };
 		inline void SetIndices(std::vector<uint16_t> indices) { m_Indices = indices; };
+
+		void ResetResources();
 
 		Transform m_Transform{};
 		std::string m_ID;
