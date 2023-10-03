@@ -156,7 +156,6 @@ namespace Engine {
 
 		m_UI->RecordCommands(m_CurrentFrame, imageIndex);
 
-		VkSemaphore waitSemaphores[] = { *m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame), *m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame)};
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 		
 		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers->GetCommandBuffer(m_CurrentFrame), m_UI->GetCommandBuffer(m_CurrentFrame) };
@@ -164,14 +163,8 @@ namespace Engine {
 		submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	
-		if (m_UserSettings.rayTraced) {
-			submitInfo.waitSemaphoreCount = 2;
-			submitInfo.pWaitSemaphores = waitSemaphores;
-		}
-		else {
-			submitInfo.waitSemaphoreCount = 1;
-			submitInfo.pWaitSemaphores = m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame);
-		}
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame);
 
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
