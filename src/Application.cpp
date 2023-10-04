@@ -232,6 +232,8 @@ namespace Engine {
 
 	void Application::SetActiveScene(Assets::Scene* scene) {
 		p_ActiveScene = scene;
+
+		m_Window->Update = std::bind(&Application::Update, this, std::placeholders::_1);
 	}
 
 	void Application::Run() {
@@ -243,6 +245,12 @@ namespace Engine {
 		m_Window->Run();
 
 		m_LogicalDevice->WaitIdle();
+	}
+
+	void Application::Update(float t) {
+		if (p_ActiveScene) {
+			p_ActiveScene->OnUpdate(t);
+		}
 	}
 
 	void Application::Init() {

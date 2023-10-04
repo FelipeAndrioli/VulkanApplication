@@ -21,7 +21,7 @@ namespace Assets {
 
 		virtual void OnCreate() = 0;
 		virtual void OnUIRender() = 0;
-		virtual void OnUpdate(float time) = 0;
+		virtual void OnUpdate(float t) = 0;
 
 		struct Uniforms;
 		struct UBO;

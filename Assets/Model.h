@@ -23,10 +23,10 @@ namespace Assets {
 		~Model();
 
 		virtual void OnCreate() = 0;
-		virtual void OnUpdate() = 0;
+		virtual void OnUpdate(float t) = 0;
 		virtual void OnUIRender() = 0;
 
-		struct Uniforms;
+		struct UniformBufferObject;
 
 		glm::mat4 GetModelMatrix();
 

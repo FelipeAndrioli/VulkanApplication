@@ -86,8 +86,7 @@ public:
 		}
 	}
 
-	void OnUpdate() {
-
+	void OnUpdate(float t) {
 	}
 };
 
@@ -129,7 +128,7 @@ public:
 		}
 	}
 
-	void OnUpdate() {
+	void OnUpdate(float t) {
 
 	}
 };
@@ -148,9 +147,9 @@ public:
 		}
 	}
 
-	void OnUpdate(float time) {
+	void OnUpdate(float t) {
 		for (auto model : GetSceneModels()) {
-			model->OnUpdate();
+			model->OnUpdate(t);
 		}
 	}
 };

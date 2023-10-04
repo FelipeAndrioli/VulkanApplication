@@ -69,6 +69,7 @@ namespace Engine {
 		void SetActiveScene(Assets::Scene* scene);
 		void Run();
 	private:
+		void Update(float t);
 		void InitVulkan();
 		void Shutdown();
 

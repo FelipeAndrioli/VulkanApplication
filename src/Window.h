@@ -23,7 +23,7 @@ namespace Engine {
 		inline GLFWwindow* GetHandle() const { return m_Window; };
 		VkExtent2D GetFramebufferSize() const;
 
-		// function callbacks
+		std::function<void(float time)> Update;
 		std::function<void()> DrawFrame;
 		std::function<void(int width, int height)> OnResize;
 		std::function<void(int key, int scancode, int action, int mods)> OnKeyPress;
