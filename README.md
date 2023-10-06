@@ -18,7 +18,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 [X] - Fix Compute pipeline
 [IN PROGRESS] - Make render/compute flow editable from scene
 	[X] - Change scene virtual functions to model virtual functions
-	[IN PROGRESS] - Load UBOs from the scene
+	[IN PROGRESS] - Update and Load UBOs from the model 
 	[ ] - Load and set different shaders
 	[ ] - Multiple flows from scene controlled by the graphics pipeline layout
 		[ ] - Scene layout
@@ -28,3 +28,8 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 ## Future Work (not in order)
 
 [ ] - Ray Tracer??
+
+## Bugs
+
+[ ] - The updates happen faster when limiting frame rate
+[ ] - The updates happen faster when mouse is moving on the screen
