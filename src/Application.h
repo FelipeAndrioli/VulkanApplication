@@ -85,7 +85,6 @@ namespace Engine {
 		void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
 		void updateComputeUniformBuffer(uint32_t currentImage);
-		void updateUniformBuffer(Buffer* uniformBuffer, uint32_t currentImage, glm::mat4 modelMatrix);
 		void updateVertexBuffer(uint32_t currentImage);
 		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
@@ -99,6 +98,7 @@ namespace Engine {
 
 		void setVertexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout);
 		void setIndexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout);
+		
 	private:
 		std::unique_ptr<class Window> m_Window;
 		std::unique_ptr<class Instance> m_Instance;

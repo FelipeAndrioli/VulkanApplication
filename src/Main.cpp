@@ -42,6 +42,8 @@
 #include <random>
 #include <functional>
 
+#include <glm/glm.hpp>
+
 #include "Application.h"
 #include "CustomPipelineLayout.h"
 #include "RenderLayout.h"
@@ -87,11 +89,14 @@ public:
 	}
 
 	void OnUpdate(float t) {
+	
 	}
 };
 
 class MyQuadTwo : public Assets::Model {
 public:
+
+
 	void OnCreate() {
 		std::vector<Assets::Vertex> v = { 
 			{ {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} },

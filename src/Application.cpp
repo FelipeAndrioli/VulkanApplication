@@ -126,7 +126,9 @@ namespace Engine {
 			vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
 				0, 1, &model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
 				0, nullptr);
-			updateUniformBuffer(model->m_UniformBuffer.get(), m_CurrentFrame, model->GetModelMatrix());
+			//updateUniformBuffer(model->m_UniformBuffer.get(), m_CurrentFrame, model->GetModelMatrix());
+
+			model->SetModelUniformBuffer(m_CurrentFrame);
 
 			auto modelVertexCount = model->GetSizeVertices();
 			auto modelIndexCount = model->GetSizeIndices();
@@ -372,30 +374,6 @@ namespace Engine {
 		cubo.deltaTime = m_Window->GetLastFrameTime() * 0.1f;
 
 		memcpy(m_ComputeUniformBuffers->GetBufferMemoryMapped(currentImage), &cubo, sizeof(cubo));
-	}
-
-	// temporary while scenes are not implemented yet
-	void Application::updateUniformBuffer(Buffer* uniformBuffer, uint32_t currentImage, glm::mat4 modelMatrix) {
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-		UniformBufferObject ubo{};
-		//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		//ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		//ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.model = modelMatrix;
-		ubo.view = glm::lookAt(glm::vec3(0.0f, 1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.proj = glm::perspective(glm::radians(45.0f), 
-			m_SwapChain->GetSwapChainExtent().width / (float)m_SwapChain->GetSwapChainExtent().height, 0.1f, 10.0f);
-
-		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way
-		// to compensate for that is to flip the sign on the scaling factor of the Y axis in the projection matrix. If we don't 
-		// do this the image will be rendered upside down
-		ubo.proj[1][1] *= -1;
-
-		memcpy(uniformBuffer->GetBufferMemoryMapped(currentImage), &ubo, sizeof(ubo));
 	}
 
 	void Application::updateVertexBuffer(uint32_t currentImage) {

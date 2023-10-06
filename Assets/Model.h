@@ -22,13 +22,21 @@ namespace Assets {
 		Model();
 		~Model();
 
+		struct UniformBufferObject {
+			glm::mat4 model = glm::mat4(1.0f);
+			glm::mat4 view = glm::mat4(1.0f);
+			glm::mat4 proj = glm::mat4(1.0f);
+		};
+
+		std::unique_ptr<UniformBufferObject> m_UniformBufferObject = std::make_unique<UniformBufferObject>();
+		
 		virtual void OnCreate() = 0;
 		virtual void OnUpdate(float t) = 0;
 		virtual void OnUIRender() = 0;
 
-		struct UniformBufferObject;
+		void SetModelUniformBuffer(uint32_t currentImage);
 
-		glm::mat4 GetModelMatrix();
+		UniformBufferObject* GetUniformBufferObject();
 
 		inline uint32_t GetSizeVertices() { return static_cast<uint32_t>(m_Vertices.size()); };
 		inline uint32_t GetSizeIndices() { return static_cast<uint32_t>(m_Indices.size()); };
@@ -40,6 +48,7 @@ namespace Assets {
 		inline void SetIndices(std::vector<uint16_t> indices) { m_Indices = indices; };
 
 		void ResetResources();
+		glm::mat4 GetModelMatrix();
 
 		Transform m_Transform{};
 		std::string m_ID;
