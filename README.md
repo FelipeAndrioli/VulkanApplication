@@ -16,10 +16,11 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	[X] - Move the descriptor set layout back to graphics pipeline
 	[X] - Move the descriptor pool back to the graphics pipeline
 [X] - Fix Compute pipeline
+[ ] - Camera class
 [IN PROGRESS] - Make render/compute flow editable from scene
 	[X] - Change scene virtual functions to model virtual functions
-	[IN PROGRESS] - Update and Load UBOs from the model 
-	[ ] - Load and set different shaders
+	[X] - Update and Load UBOs from the model 
+	[IN PROGRESS] - Load and set different shaders
 	[ ] - Multiple flows from scene controlled by the graphics pipeline layout
 		[ ] - Scene layout
 		[ ] - Rasterization
