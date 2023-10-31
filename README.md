@@ -21,6 +21,9 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	[X] - Change scene virtual functions to model virtual functions
 	[X] - Update and Load UBOs from the model 
 	[IN PROGRESS] - Load and set different shaders
+		[ ] - Creating command buffer per resource set
+		[ ] - Creating fences per resource set
+		[ ] - Creating semaphores per resource set
 	[ ] - Multiple flows from scene controlled by the graphics pipeline layout
 		[ ] - Scene layout
 		[ ] - Rasterization
