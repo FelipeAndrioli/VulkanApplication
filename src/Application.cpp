@@ -11,7 +11,6 @@ namespace Engine {
 		m_Instance.reset(new class Instance(c_ValidationLayers, c_EnableValidationLayers));
 		m_DebugMessenger.reset(c_EnableValidationLayers ? new class DebugUtilsMessenger(m_Instance->GetHandle()) : nullptr);
 
-		//Init();
 	}
 
 	Application::~Application() {
@@ -142,7 +141,7 @@ namespace Engine {
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
-	void Application::handleDraw(uint32_t imageIndex) {
+	void Application::handleDraw(ResourceSet* resourceSet, uint32_t imageIndex) {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
@@ -150,9 +149,7 @@ namespace Engine {
 
 		auto commandBuffer = m_CommandBuffers->Begin(m_CurrentFrame);
 
-		for (auto resourceSet : p_ActiveScene->GetResourceSets()) {
-			drawRasterized(resourceSet, commandBuffer, imageIndex);
-		}
+		drawRasterized(resourceSet, commandBuffer, imageIndex);
 		
 		m_CommandBuffers->End(m_CurrentFrame);
 
@@ -199,7 +196,11 @@ namespace Engine {
 			throw std::runtime_error("Failed to acquire swap chain image!");
 		}
 
-		handleDraw(imageIndex);
+		for (auto resourceSet : p_ActiveScene->GetResourceSets()) {
+			if (resourceSet->GetVertices().size() == 0) continue;
+
+			handleDraw(resourceSet, imageIndex);
+		}
 
 		// Present submit
 		{
@@ -313,9 +314,6 @@ namespace Engine {
 	void Application::recreateSwapChain() {
 		m_SwapChain->ReCreate();
 
-		// TODO move to resize function
-		// TODO call recreate swap chain from resize function
-		// TODO fix Shutdown
 		// TODO fix only one quad being rendered
 		p_ActiveScene->Resize();
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),

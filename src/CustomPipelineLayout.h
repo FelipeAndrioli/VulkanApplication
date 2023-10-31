@@ -59,7 +59,7 @@ namespace Engine {
 		FrontFace frontFace = COUNTER_CLOCKWISE;
 
 		float lineWidth = 1.0f;
-		size_t maxDescriptorSets = 2;
+		size_t maxDescriptorSets = 0;
 		
 		const char* vertexShaderPath = "";
 		const char* fragmentShaderPath = "";

@@ -6,6 +6,10 @@ namespace Engine {
 		: p_GraphicsPipelineLayout(graphicsPipelineLayout), p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice), 
 		p_CommandPool(commandPool), p_SwapChain(swapChain), m_ID(graphicsPipelineLayout->resourceSetID) {
 
+		for (auto model : models) {
+			if (model->GetResourceSetID() == m_ID) p_GraphicsPipelineLayout->maxDescriptorSets++;
+		}
+
 		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_GraphicsPipelineLayout, p_LogicalDevice,
 			p_SwapChain));
 
@@ -57,6 +61,8 @@ namespace Engine {
 	}
 
 	void ResourceSet::CreateVertexBuffer() {
+	
+		if (m_Vertices.size() == 0) return;
 
 		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * m_Vertices.size();
 		
@@ -70,6 +76,8 @@ namespace Engine {
 	}
 
 	void ResourceSet::CreateIndexBuffer() {
+
+		if (m_Indices.size() == 0) return;
 
 		VkDeviceSize bufferSize = sizeof(uint16_t) * m_Indices.size();
 

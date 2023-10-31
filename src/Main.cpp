@@ -175,6 +175,7 @@ public:
 
 int main() {
 
+	// TODO refactor this
 	Engine::RenderLayout* renderLayout = new Engine::RenderLayout();
 
 	Engine::GraphicsPipelineLayout defaultLayout;
@@ -184,7 +185,6 @@ int main() {
 	defaultLayout.attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 	defaultLayout.vertexShaderPath = "./Assets/Shaders/vert.spv";
 	defaultLayout.fragmentShaderPath = "./Assets/Shaders/frag.spv";
-	//defaultLayout.maxDescriptorSets = myScene->GetSceneModels().size();
 
 	renderLayout->AddGraphicsPipelineLayout(defaultLayout);
 
@@ -195,7 +195,6 @@ int main() {
 	testNewLayout.attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 	testNewLayout.vertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
 	testNewLayout.fragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
-	//testNewLayout.maxDescriptorSets = myScene->GetSceneModels().size();
 
 	renderLayout->AddGraphicsPipelineLayout(testNewLayout);
 

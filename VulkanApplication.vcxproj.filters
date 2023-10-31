@@ -274,5 +274,9 @@
     <None Include="Assets\Shaders\particle_shader_comp.spv" />
     <None Include="Assets\Shaders\particle_shader_frag.spv" />
     <None Include="Assets\Shaders\comp.spv" />
+    <None Include="Assets\Shaders\shader_test_vert.spv" />
+    <None Include="Assets\Shaders\shader_test_frag.spv" />
+    <None Include="Assets\Shaders\shader_test.vert" />
+    <None Include="Assets\Shaders\shader_test.frag" />
   </ItemGroup>
 </Project>
