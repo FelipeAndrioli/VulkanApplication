@@ -24,9 +24,10 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 		[ ] - Creating command buffer per resource set
 		[ ] - Creating fences per resource set
 		[ ] - Creating semaphores per resource set
-	[ ] - Multiple flows from scene controlled by the graphics pipeline layout
-		[ ] - Scene layout
-		[ ] - Rasterization
+		[IN PROGRESS] - Study to understand better how to handle command buffers, fences, and semaphores for multiple resource sets 
+	[IN PROGRESS] - Multiple flows from scene controlled by the graphics pipeline layout
+		[IN PROGRESS] - Scene Resource Sets
+		[IN PROGRESS] - Rasterization
 		[ ] - Custom rendering
 		[ ] - Compute
 ## Future Work (not in order)
