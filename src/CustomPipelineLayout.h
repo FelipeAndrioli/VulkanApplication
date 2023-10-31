@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <array>
 
 #include "Vulkan.h"
@@ -64,7 +65,8 @@ namespace Engine {
 		const char* fragmentShaderPath = "";
 
 		RenderType renderType = DEFAULT_RENDER;
-		
 		ComputePipelineLayout* computePipelineLayout = nullptr;
+
+		std::string resourceSetID;
 	};
 }

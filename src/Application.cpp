@@ -43,7 +43,7 @@ namespace Engine {
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = m_TempRayTracerPipeline->GetRenderPass().GetHandle();
-		renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
+		//renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
 
@@ -77,12 +77,12 @@ namespace Engine {
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
-	void Application::drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
+	void Application::drawRasterized(ResourceSet* resourceSet, VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
 		
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = m_GraphicsPipeline->GetRenderPass().GetHandle();
-		renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
+		renderPassInfo.renderPass = resourceSet->GetGraphicsPipeline()->GetRenderPass().GetHandle();
+		renderPassInfo.framebuffer = *resourceSet->GetFramebuffer(imageIndex);
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
 
@@ -91,7 +91,7 @@ namespace Engine {
 		renderPassInfo.pClearValues = &clearColor;
 
 		vkCmdBeginRenderPass(p_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetHandle());
+		vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());
 
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
@@ -111,22 +111,22 @@ namespace Engine {
 
 		VkDeviceSize offsets[] = { 0 };
 
-		//updateUniformBuffer(m_CurrentFrame);
-		//updateVertexBuffer(m_CurrentFrame);
-
-		vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, &m_VertexBuffers->GetBuffer(m_CurrentFrame), offsets);
-		vkCmdBindIndexBuffer(p_CommandBuffer, m_IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
-		//vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
-		//	0, 1, &m_GraphicsPipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 0, nullptr);
+		vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, 
+			&resourceSet->GetVertexBuffers()->GetBuffer(m_CurrentFrame), offsets);
+		vkCmdBindIndexBuffer(p_CommandBuffer, resourceSet->GetIndexBuffers()->GetBuffer(), 0, 
+			VK_INDEX_TYPE_UINT16);
 
 		uint32_t vertexOffset = 0;
 		uint32_t indexOffset = 0;
 
-		for (auto model : p_ActiveScene->GetSceneModels()) {
-			vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline->GetPipelineLayout().GetHandle(),
-				0, 1, &model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
-				0, nullptr);
-			//updateUniformBuffer(model->m_UniformBuffer.get(), m_CurrentFrame, model->GetModelMatrix());
+		for (auto model : p_ActiveScene->GetModels()) {
+
+			if (model->GetResourceSetID() != resourceSet->GetID()) continue;
+
+			vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+				resourceSet->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 0, 1,
+				&model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
+				nullptr);
 
 			model->SetModelUniformBuffer(m_CurrentFrame);
 
@@ -142,7 +142,7 @@ namespace Engine {
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
-	void Application::handleDraw(uint32_t imageIndex, GraphicsPipelineLayout* graphicsPipelineLayout) {
+	void Application::handleDraw(uint32_t imageIndex) {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		
@@ -150,10 +150,10 @@ namespace Engine {
 
 		auto commandBuffer = m_CommandBuffers->Begin(m_CurrentFrame);
 
-		if (graphicsPipelineLayout->renderType == GraphicsPipelineLayout::RenderType::DEFAULT_RENDER) {
-			drawRasterized(commandBuffer, imageIndex);
+		for (auto resourceSet : p_ActiveScene->GetResourceSets()) {
+			drawRasterized(resourceSet, commandBuffer, imageIndex);
 		}
-
+		
 		m_CommandBuffers->End(m_CurrentFrame);
 
 		m_UI->RecordCommands(m_CurrentFrame, imageIndex);
@@ -199,9 +199,7 @@ namespace Engine {
 			throw std::runtime_error("Failed to acquire swap chain image!");
 		}
 
-		for (size_t i = 0; i < p_RenderLayout->GetGraphicsPipelineLayout().size(); i++) {
-			handleDraw(imageIndex, p_RenderLayout->GetGraphicsPipelineLayout(i));
-		}
+		handleDraw(imageIndex);
 
 		// Present submit
 		{
@@ -234,6 +232,7 @@ namespace Engine {
 
 	void Application::SetActiveScene(Assets::Scene* scene) {
 		p_ActiveScene = scene;
+		p_ActiveScene->OnCreate();
 
 		m_Window->Update = std::bind(&Application::Update, this, std::placeholders::_1);
 	}
@@ -274,64 +273,14 @@ namespace Engine {
 		std::cout << "width - " << width << " height - " << height << '\n';
 	}
 
-	void Application::setVertexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout) {
-		// TODO create vertex buffer based on given graphics pipeline layout
-		uint32_t totalVerticesSize = 0;
-
-		for (auto model : p_ActiveScene->GetSceneModels()) {
-			totalVerticesSize += model->GetSizeVertices();
-		}
-
-		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * totalVerticesSize;
-		
-		m_VertexBuffers.reset(new class Buffer(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT), m_LogicalDevice.get(), m_PhysicalDevice.get(), bufferSize,
-			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
-		m_VertexBuffers->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-		BufferHelper bufferHelper;
-		bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
-			p_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
-
-	}
-
-	void Application::setIndexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout) {
-		// TODO create index buffer based on given graphics pipeline layout
-		uint32_t totalIndicesSize = 0;
-
-		for (auto model : p_ActiveScene->GetSceneModels()) {
-			totalIndicesSize += model->GetSizeIndices();
-		}
-
-		VkDeviceSize bufferSize = sizeof(uint16_t) * totalIndicesSize;
-
-		m_IndexBuffer.reset(new class Buffer(1, m_LogicalDevice.get(), m_PhysicalDevice.get(),
-			bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
-		m_IndexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-		BufferHelper bufferHelper;
-		bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(), 
-			p_ActiveScene->GetSceneIndices(), m_IndexBuffer.get());
-	}
-
 	void Application::InitVulkan() {
 		m_Surface.reset(new class Surface(m_Instance->GetHandle(), *m_Window->GetHandle()));
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
+		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));	
 
-		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_RenderLayout->GetGraphicsPipelineLayout(0), m_LogicalDevice.get(),
-			m_SwapChain.get()));
-
-		p_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), 
-			&m_GraphicsPipeline->GetDescriptorPool(), &m_GraphicsPipeline->GetDescriptorSetLayout());
-		m_SwapChain->CreateFramebuffers(m_GraphicsPipeline->GetRenderPass().GetHandle());
-
-		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));
-	
-		if (p_RenderLayout->GetGraphicsPipelineLayout(0)->renderType == GraphicsPipelineLayout::RenderType::DEFAULT_RENDER) {
-			setVertexBuffers(p_RenderLayout->GetGraphicsPipelineLayout(0));
-			setIndexBuffers(p_RenderLayout->GetGraphicsPipelineLayout(0));
-		}
+		p_ActiveScene->SetupScene(p_RenderLayout, m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool.get(), m_SwapChain.get());
 
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
@@ -362,7 +311,13 @@ namespace Engine {
 	}
 
 	void Application::recreateSwapChain() {
-		m_SwapChain->ReCreate(m_GraphicsPipeline->GetRenderPass().GetHandle());
+		m_SwapChain->ReCreate();
+
+		// TODO move to resize function
+		// TODO call recreate swap chain from resize function
+		// TODO fix Shutdown
+		// TODO fix only one quad being rendered
+		p_ActiveScene->Resize();
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));
 		m_UI->Resize(m_SwapChain.get());
@@ -376,24 +331,9 @@ namespace Engine {
 		memcpy(m_ComputeUniformBuffers->GetBufferMemoryMapped(currentImage), &cubo, sizeof(cubo));
 	}
 
-	void Application::updateVertexBuffer(uint32_t currentImage) {
-
-		uint32_t totalVertexSize = 0;
-
-		for (auto model : p_ActiveScene->GetSceneModels()) {
-			totalVertexSize += model->GetSizeVertices();
-		}
-
-		//VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * totalVertexSize;
-	
-		BufferHelper bufferHelper;
-		bufferHelper.CopyFromStaging(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool->GetHandle(),
-			p_ActiveScene->GetSceneVertices(), m_VertexBuffers.get());
-	}
-
 	void Application::Shutdown() {
 		m_UI.reset();
+
 		m_SwapChain.reset();
 
 		m_ComputeUniformBuffers.reset();

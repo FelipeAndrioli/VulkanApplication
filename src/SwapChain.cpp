@@ -14,7 +14,7 @@ namespace Engine {
 		CleanUp();
 	}
 
-	void SwapChain::ReCreate(VkRenderPass& renderPass) {
+	void SwapChain::ReCreate() {
 		VkExtent2D currentExtent = p_Window->GetFramebufferSize();
 
 		while (currentExtent.width == 0 || currentExtent.height == 0) {
@@ -29,22 +29,9 @@ namespace Engine {
 		CleanUp();
 		CreateSwapChain();
 		CreateImageViews();
-		CreateFramebuffers(renderPass);
-	}
-
-	VkFramebuffer& SwapChain::GetSwapChainFramebuffer(int index) {
-		if (index > m_SwapChainFramebuffers.size()) {
-			throw std::runtime_error("Index out of bounds trying to access Swap Chain framebuffers");
-		}
-
-		return m_SwapChainFramebuffers[index];
 	}
 
 	void SwapChain::CleanUp() {
-		for (auto framebuffer : m_SwapChainFramebuffers) {
-			vkDestroyFramebuffer(p_LogicalDevice->GetHandle(), framebuffer, nullptr);
-		}
-
 		for (auto imageView : m_SwapChainImageViews) {
 			vkDestroyImageView(p_LogicalDevice->GetHandle(), imageView, nullptr);
 		}
@@ -135,27 +122,6 @@ namespace Engine {
 
 			if (vkCreateImageView(p_LogicalDevice->GetHandle(), &createInfo, nullptr, &m_SwapChainImageViews[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to create image views");
-			}
-		}
-	}
-
-	void SwapChain::CreateFramebuffers(VkRenderPass& renderPass) {
-		m_SwapChainFramebuffers.resize(m_SwapChainImageViews.size());
-
-		for (size_t i = 0; i < m_SwapChainImageViews.size(); i++) {
-			VkImageView attachments[] = { m_SwapChainImageViews[i] };
-
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = renderPass;
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
-			framebufferInfo.width = m_SwapChainExtent.width;
-			framebufferInfo.height = m_SwapChainExtent.height;
-			framebufferInfo.layers = 1;
-
-			if (vkCreateFramebuffer(p_LogicalDevice->GetHandle(), &framebufferInfo, nullptr, &m_SwapChainFramebuffers[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to create framebuffer!");
 			}
 		}
 	}

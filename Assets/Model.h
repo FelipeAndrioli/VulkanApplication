@@ -1,7 +1,7 @@
 #pragma once
 
+#include <iostream>
 #include <vector>
-#include <string>
 
 #include "glm/gtc/matrix_transform.hpp"
 #include "Vertex.h"
@@ -40,16 +40,22 @@ namespace Assets {
 		void SetUniformBufferObject(void* uniformBuffer, size_t uniformBufferSize);
 		void SetModelUniformBuffer(uint32_t currentImage);
 
+		void SetReourceSetID(std::string resourceSetID) { this->m_ResourceSetID = resourceSetID; }
+		const std::string& GetResourceSetID() const { return m_ResourceSetID; }
+
 		Transform m_Transform{};
 		std::string m_ID;
 		
 		std::unique_ptr<class Engine::Buffer> m_UniformBuffer;
 		std::unique_ptr<class Engine::DescriptorSets> m_DescriptorSets;
+
 	private:
 		std::vector<Vertex> m_Vertices;
 		std::vector<uint16_t> m_Indices;
 
 		void* p_UniformBufferObject = nullptr;
 		size_t m_UniformBufferObjectSize = 0;
+		
+		std::string m_ResourceSetID;
 	};
 }

@@ -25,7 +25,6 @@ namespace Assets {
 	}
 
 	void Model::ResetResources() {
-		// invoked from scene
 		m_UniformBuffer.reset();
 		m_DescriptorSets.reset();
 	}

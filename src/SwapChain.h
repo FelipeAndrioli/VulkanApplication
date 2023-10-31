@@ -15,11 +15,8 @@ namespace Engine {
 			VkSurfaceKHR& surface);
 		~SwapChain();
 	
-		void ReCreate(VkRenderPass& renderPass);
+		void ReCreate();
 		void CleanUp();
-		void CreateFramebuffers(VkRenderPass& renderPass);
-
-		VkFramebuffer& GetSwapChainFramebuffer(int index);
 
 		inline VkSwapchainKHR& GetHandle() { return m_SwapChain; };
 		inline std::vector<VkImage> GetSwapChainImages() { return m_SwapChainImages; };
@@ -40,7 +37,6 @@ namespace Engine {
 		VkFormat m_SwapChainImageFormat;
 		VkExtent2D m_SwapChainExtent;
 		std::vector<VkImageView> m_SwapChainImageViews;
-		std::vector<VkFramebuffer> m_SwapChainFramebuffers;
 
 		PhysicalDevice* p_PhysicalDevice;
 		LogicalDevice* p_LogicalDevice;

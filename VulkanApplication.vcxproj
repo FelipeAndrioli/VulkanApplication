@@ -171,6 +171,7 @@
     <ClCompile Include="src\PipelineLayout.cpp" />
     <ClCompile Include="src\RenderLayout.cpp" />
     <ClCompile Include="src\RenderPass.cpp" />
+    <ClCompile Include="src\ResourceSet.cpp" />
     <ClCompile Include="src\Semaphore.cpp" />
     <ClCompile Include="src\ShaderModule.cpp" />
     <ClCompile Include="src\Surface.cpp" />
@@ -212,6 +213,7 @@
     <ClInclude Include="src\PipelineLayout.h" />
     <ClInclude Include="src\RenderLayout.h" />
     <ClInclude Include="src\RenderPass.h" />
+    <ClInclude Include="src\ResourceSet.h" />
     <ClInclude Include="src\Semaphore.h" />
     <ClInclude Include="src\ShaderModule.h" />
     <ClInclude Include="src\Surface.h" />

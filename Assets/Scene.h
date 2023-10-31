@@ -11,31 +11,37 @@
 #include "../src/PhysicalDevice.h"
 #include "../src/DescriptorSetLayout.h"
 #include "../src/DescriptorPool.h"
+#include "../src/ResourceSet.h"
+#include "../src/RenderLayout.h"
+
+namespace Engine {
+	class ResourceSet;
+}
 
 namespace Assets {
+
 	class Scene {
 	public:
 		// will leave constructor/destructor empty for now
 		Scene();
 		~Scene();
 
-		virtual void OnCreate() = 0;
-		virtual void OnUIRender() = 0;
-		virtual void OnUpdate(float t) = 0;
-
-		struct Uniforms;
-		struct UBO;
 
 		void AddModel(Model* model);
-		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
-			Engine::DescriptorPool* descriptorPool, Engine::DescriptorSetLayout* descriptorSetLayout);
+		void SetupScene(Engine::RenderLayout* renderLayout, Engine::LogicalDevice* logicalDevice,
+			Engine::PhysicalDevice* physicalDevice, Engine::CommandPool* commandPool, Engine::SwapChain* swapChain);
+		void Resize();
 
-		inline std::vector<Model*>& GetSceneModels() { return m_SceneModels; };
-		inline std::vector<Vertex>& GetSceneVertices() { return m_SceneVertices; };
-		inline std::vector<uint16_t>& GetSceneIndices() { return m_SceneIndices; };
+		const std::vector<Model*>& GetModels() const { return p_Models; };
+
+		inline std::vector<Engine::ResourceSet*> GetResourceSets() { return m_ResourceSets; };
+		Engine::ResourceSet* GetResourceSet(size_t index) { return m_ResourceSets[index]; };
+		
+		void OnCreate();
+		void OnUIRender();
+		void OnUpdate(float t);
 	private:
-		std::vector<Model*> m_SceneModels;
-		std::vector<Vertex> m_SceneVertices;
-		std::vector<uint16_t> m_SceneIndices;
+		std::vector<Engine::ResourceSet*> m_ResourceSets;
+		std::vector<Model*> p_Models;
 	};
 }

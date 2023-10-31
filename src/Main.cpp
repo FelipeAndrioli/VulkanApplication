@@ -56,8 +56,6 @@ public:
 		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
-
-		glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
 	};
 
 	UniformBufferObject *ubo = new UniformBufferObject();
@@ -175,50 +173,42 @@ public:
 	}
 };
 
-class MyScene : public Assets::Scene {
-public:
-	void OnCreate() {
-		for (auto model : GetSceneModels()) {
-			model->OnCreate();
-		}
-	}
-
-	void OnUIRender() {
-		for (auto model : GetSceneModels()) {
-			model->OnUIRender();
-		}
-	}
-
-	void OnUpdate(float t) {
-		for (auto model : GetSceneModels()) {
-			model->OnUpdate(t);
-		}
-	}
-};
-
 int main() {
 
-	auto q1 = MyQuadOne();
-	auto q2 = MyQuadTwo();
-
-	MyScene* myScene = new MyScene();
-	myScene->AddModel(&q1);
-	myScene->AddModel(&q2);
-	
-	myScene->OnCreate();
-	
 	Engine::RenderLayout* renderLayout = new Engine::RenderLayout();
 
 	Engine::GraphicsPipelineLayout defaultLayout;
 
+	defaultLayout.resourceSetID = "DefaultLayout";
 	defaultLayout.bindingDescription = Assets::Vertex::getBindingDescription();
 	defaultLayout.attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 	defaultLayout.vertexShaderPath = "./Assets/Shaders/vert.spv";
 	defaultLayout.fragmentShaderPath = "./Assets/Shaders/frag.spv";
-	defaultLayout.maxDescriptorSets = myScene->GetSceneModels().size();
+	//defaultLayout.maxDescriptorSets = myScene->GetSceneModels().size();
 
 	renderLayout->AddGraphicsPipelineLayout(defaultLayout);
 
+	Engine::GraphicsPipelineLayout testNewLayout;
+
+	testNewLayout.resourceSetID = "TestNewLayout";
+	testNewLayout.bindingDescription = Assets::Vertex::getBindingDescription();
+	testNewLayout.attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+	testNewLayout.vertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
+	testNewLayout.fragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
+	//testNewLayout.maxDescriptorSets = myScene->GetSceneModels().size();
+
+	renderLayout->AddGraphicsPipelineLayout(testNewLayout);
+
+	auto q1 = MyQuadOne();
+	q1.SetReourceSetID(defaultLayout.resourceSetID);
+
+	auto q2 = MyQuadTwo();
+	q2.SetReourceSetID(testNewLayout.resourceSetID);
+
+	Assets::Scene* myScene = new Assets::Scene();
+	myScene->AddModel(&q1);
+	myScene->AddModel(&q2);
+	
 	Engine::WindowSettings windowSettings;
 	windowSettings.Title = "VulkanApplication.exe";
 	windowSettings.Width = 800;

@@ -50,11 +50,11 @@ namespace Engine {
 			m_CurrentFrameTime = (float)glfwGetTime();
 			Timestep timestep = m_CurrentFrameTime - m_LastFrameTime;
 
+			if (p_WindowSettings->limitFramerate && timestep.GetSeconds() < (1 / 60.0f)) continue;
+			
 			if (Update) {
 				Update(timestep.GetMilliseconds());
 			}
-
-			if (p_WindowSettings->limitFramerate && timestep.GetSeconds() < (1 / 60.0f)) continue;
 			
 			if (DrawFrame) {
 				DrawFrame();

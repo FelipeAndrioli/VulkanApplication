@@ -45,6 +45,7 @@
 #include "Instance.h"
 #include "DebugUtilsMessenger.h"
 #include "RenderLayout.h"
+#include "ResourceSet.h"
 
 #include "../Assets/Scene.h"
 
@@ -89,15 +90,12 @@ namespace Engine {
 		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
 		void drawFrame();
-		void handleDraw(uint32_t imageIndex, GraphicsPipelineLayout* graphicsPipelineLayout);
+		void handleDraw(uint32_t imageIndex);
 		void drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
-		void drawRasterized(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
-	
+		void drawRasterized(ResourceSet* resourceSet, VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex);
+		
 		void processKey(int key, int scancode, int action, int mods);
 		void processResize(int width, int height);
-
-		void setVertexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout);
-		void setIndexBuffers(GraphicsPipelineLayout* graphicsPipelineLayout);
 		
 	private:
 		std::unique_ptr<class Window> m_Window;
@@ -106,9 +104,11 @@ namespace Engine {
 		std::unique_ptr<class PhysicalDevice> m_PhysicalDevice;
 		std::unique_ptr<class LogicalDevice> m_LogicalDevice;
 		std::unique_ptr<class SwapChain> m_SwapChain;
+
 		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
 		std::unique_ptr<class GraphicsPipeline> m_TempRayTracerPipeline;
 		std::unique_ptr<class ComputePipeline> m_ComputePipeline;
+
 		std::unique_ptr<class CommandPool> m_CommandPool;
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Semaphore> m_ImageAvailableSemaphores;
@@ -126,8 +126,10 @@ namespace Engine {
 		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
 		std::unique_ptr<class Buffer> m_ComputeUniformBuffers;
 		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
+
 		std::unique_ptr<class Buffer> m_VertexBuffers;
 		std::unique_ptr<class Buffer> m_IndexBuffer;
+
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 
 		Assets::Scene* p_ActiveScene = nullptr;
