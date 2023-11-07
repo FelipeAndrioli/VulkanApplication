@@ -206,7 +206,7 @@ int main() {
 
 	Assets::Scene* myScene = new Assets::Scene();
 	myScene->AddModel(&q1);
-	myScene->AddModel(&q2);
+	//myScene->AddModel(&q2);
 	
 	Engine::WindowSettings windowSettings;
 	windowSettings.Title = "VulkanApplication.exe";

@@ -10,6 +10,8 @@ namespace Engine {
 			if (model->GetResourceSetID() == m_ID) p_GraphicsPipelineLayout->maxDescriptorSets++;
 		}
 
+		if (p_GraphicsPipelineLayout->maxDescriptorSets == 0) return;
+
 		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_GraphicsPipelineLayout, p_LogicalDevice,
 			p_SwapChain));
 
