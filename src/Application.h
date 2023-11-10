@@ -123,6 +123,8 @@ namespace Engine {
 		UserSettings m_UserSettings;
 		uint32_t m_CurrentFrame = 0;
 
+		VkRenderPassBeginInfo* m_RenderPassInfo = nullptr;
+
 		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
 		std::unique_ptr<class Buffer> m_ComputeUniformBuffers;
 		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;

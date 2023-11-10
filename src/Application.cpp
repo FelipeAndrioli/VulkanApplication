@@ -78,50 +78,29 @@ namespace Engine {
 
 	void Application::drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
 
-		VkRenderPassBeginInfo renderPassInfo[2];
-
 		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-		
-		renderPassInfo[0].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo[0].renderPass = p_ActiveScene->GetResourceSet(0)->GetGraphicsPipeline()->GetRenderPass().GetHandle();
-		renderPassInfo[0].framebuffer = *p_ActiveScene->GetResourceSet(0)->GetFramebuffer(imageIndex);
-		renderPassInfo[0].renderArea.offset = {0, 0};
-		renderPassInfo[0].renderArea.extent = m_SwapChain->GetSwapChainExtent();
-		renderPassInfo[0].pNext = nullptr;
 
-		renderPassInfo[0].clearValueCount = 1;
-		renderPassInfo[0].pClearValues = &clearColor;
+		VkRenderPassBeginInfo* renderPassInfo = new VkRenderPassBeginInfo[p_ActiveScene->GetResourceSets().size() + 1];
 
-		renderPassInfo[1].sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo[1].renderPass = p_ActiveScene->GetResourceSet(1)->GetGraphicsPipeline()->GetRenderPass().GetHandle();
-		renderPassInfo[1].framebuffer = *p_ActiveScene->GetResourceSet(1)->GetFramebuffer(imageIndex);
-		renderPassInfo[1].renderArea.offset = {0, 0};
-		renderPassInfo[1].renderArea.extent = m_SwapChain->GetSwapChainExtent();
-		renderPassInfo[1].pNext = nullptr;
+		for (size_t i = 0; i < p_ActiveScene->GetResourceSets().size(); i++) {
+			VkRenderPassBeginInfo newRenderPassInfo{};
 
-		renderPassInfo[1].clearValueCount = 1;
-		renderPassInfo[1].pClearValues = &clearColor;
+			newRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			newRenderPassInfo.renderPass = p_ActiveScene->GetResourceSet(i)->GetGraphicsPipeline()->GetRenderPass().GetHandle();
+			newRenderPassInfo.framebuffer = *p_ActiveScene->GetResourceSet(i)->GetFramebuffer(imageIndex);
+			newRenderPassInfo.renderArea.offset = {0, 0};
+			newRenderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
+			newRenderPassInfo.pNext = nullptr;
+
+			newRenderPassInfo.clearValueCount = 1;
+			newRenderPassInfo.pClearValues = &clearColor;
+
+			renderPassInfo[i] = newRenderPassInfo;
+		}
 
 		vkCmdBeginRenderPass(p_CommandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		for (ResourceSet* resourceSet : p_ActiveScene->GetResourceSets()) {
-			if (resourceSet->GetVertexBuffers() == 0) continue;
-
-			/*
-			VkRenderPassBeginInfo renderPassInfo{};
-
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = resourceSet->GetGraphicsPipeline()->GetRenderPass().GetHandle();
-			renderPassInfo.framebuffer = *resourceSet->GetFramebuffer(imageIndex);
-			renderPassInfo.renderArea.offset = {0, 0};
-			renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
-
-			VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-			renderPassInfo.clearValueCount = 1;
-			renderPassInfo.pClearValues = &clearColor;
-
-			vkCmdBeginRenderPass(p_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-			*/
 
 			vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());
 
@@ -171,7 +150,9 @@ namespace Engine {
 				indexOffset += modelIndexCount;
 			}
 		}
+		
 		vkCmdEndRenderPass(p_CommandBuffer);
+		delete[] renderPassInfo;
 	}
 
 	void Application::handleDraw(uint32_t imageIndex) {
