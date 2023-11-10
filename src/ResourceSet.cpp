@@ -1,6 +1,9 @@
 #include "ResourceSet.h"
 
 namespace Engine {
+
+	// TODO: refactor
+
 	ResourceSet::ResourceSet(GraphicsPipelineLayout* graphicsPipelineLayout, LogicalDevice* logicalDevice, 
 		PhysicalDevice* physicalDevice, CommandPool* commandPool, SwapChain* swapChain, std::vector<Assets::Model*>& models) 
 		: p_GraphicsPipelineLayout(graphicsPipelineLayout), p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice), 
@@ -42,20 +45,16 @@ namespace Engine {
 
 			if (model->GetResourceSetID() != m_ID) continue;
 
-			{	// uniform buffers
-				VkDeviceSize bufferSize = sizeof(Engine::UniformBufferObject);
-				model->m_UniformBuffer.reset(new class Engine::Buffer(Engine::MAX_FRAMES_IN_FLIGHT, p_LogicalDevice, p_PhysicalDevice,
-					bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
-				model->m_UniformBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-				model->m_UniformBuffer->MapMemory();
-			}
+			VkDeviceSize bufferSize = sizeof(Engine::UniformBufferObject);
+			model->m_UniformBuffer.reset(new class Engine::Buffer(Engine::MAX_FRAMES_IN_FLIGHT, p_LogicalDevice, p_PhysicalDevice,
+				bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+			model->m_UniformBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			model->m_UniformBuffer->MapMemory();
 
-			{	// descriptor sets
-				model->m_DescriptorSets.reset(new class Engine::DescriptorSets(p_LogicalDevice->GetHandle(), 
-					m_GraphicsPipeline->GetDescriptorPool().GetHandle(), m_GraphicsPipeline->GetDescriptorSetLayout().GetHandle(), 
-					model->m_UniformBuffer.get())
-				);
-			}
+			model->m_DescriptorSets.reset(new class Engine::DescriptorSets(p_LogicalDevice->GetHandle(), 
+				m_GraphicsPipeline->GetDescriptorPool().GetHandle(), m_GraphicsPipeline->GetDescriptorSetLayout().GetHandle(), 
+				model->m_UniformBuffer.get())
+			);
 
 			m_Vertices.insert(m_Vertices.end(), model->GetVertices().begin(), model->GetVertices().end());
 			m_Indices.insert(m_Indices.end(), model->GetIndices().begin(), model->GetIndices().end());

@@ -200,13 +200,12 @@ int main() {
 
 	auto q1 = MyQuadOne();
 	q1.SetReourceSetID(defaultLayout.resourceSetID);
-
 	auto q2 = MyQuadTwo();
 	q2.SetReourceSetID(testNewLayout.resourceSetID);
 
 	Assets::Scene* myScene = new Assets::Scene();
 	myScene->AddModel(&q1);
-	//myScene->AddModel(&q2);
+	myScene->AddModel(&q2);
 	
 	Engine::WindowSettings windowSettings;
 	windowSettings.Title = "VulkanApplication.exe";

@@ -90,9 +90,9 @@ namespace Engine {
 		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
 		void drawFrame();
-		void handleDraw(ResourceSet* resourceSet, uint32_t imageIndex);
+		void handleDraw(uint32_t imageIndex);
 		void drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
-		void drawRasterized(ResourceSet* resourceSet, VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex);
+		void drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex);
 		
 		void processKey(int key, int scancode, int action, int mods);
 		void processResize(int width, int height);
