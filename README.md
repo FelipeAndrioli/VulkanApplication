@@ -7,16 +7,16 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 
 ## Current Work
 
-[IN PROGRESS] - Refactoring
-[NEXT] - Depth Buffer
-[ ] - Camera class
-[ ] - Compute Shaders
+- [IN PROGRESS] Refactoring
+- [NEXT] - Depth Buffer
+- [ ] Camera class
+-  [ ] Compute Shaders
 
 ## Future Work (not in order)
 
-[ ] - Ray Tracer??
+- [ ] Ray Tracer??
 
 ## Bugs
 
-[ ] - The updates happen faster when limiting frame rate
-[ ] - The updates happen faster when mouse is moving on the screen
+- [ ] The updates happen faster when limiting frame rate
+- [ ] The updates happen faster when mouse is moving on the screen
