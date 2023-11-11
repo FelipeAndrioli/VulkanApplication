@@ -7,29 +7,11 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 
 ## Current Work
 
-[X] - Render from Scene
-[X] - Render more than one model from the scene
-[X] - Change models from the scene
-[X] - Render UI components from scene
-[X] - Multiple objects rendering
-	[X] - Change the graphics pipeline to support it
-	[X] - Move the descriptor set layout back to graphics pipeline
-	[X] - Move the descriptor pool back to the graphics pipeline
-[X] - Fix Compute pipeline
+[IN PROGRESS] - Refactoring
+[NEXT] - Depth Buffer
 [ ] - Camera class
-[IN PROGRESS] - Make render/compute flow editable from scene
-	[X] - Change scene virtual functions to model virtual functions
-	[X] - Update and Load UBOs from the model 
-	[IN PROGRESS] - Load and set different shaders
-		[ ] - Creating command buffer per resource set
-		[ ] - Creating fences per resource set
-		[ ] - Creating semaphores per resource set
-		[IN PROGRESS] - Study to understand better how to handle command buffers, fences, and semaphores for multiple resource sets 
-	[IN PROGRESS] - Multiple flows from scene controlled by the graphics pipeline layout
-		[IN PROGRESS] - Scene Resource Sets
-		[IN PROGRESS] - Rasterization
-		[ ] - Custom rendering
-		[ ] - Compute
+[ ] - Compute Shaders
+
 ## Future Work (not in order)
 
 [ ] - Ray Tracer??
