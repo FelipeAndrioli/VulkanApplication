@@ -5,12 +5,11 @@ static bool g_FramebufferResized = false;
 static int g_MinImageCount = 2;
 
 namespace Engine {
-	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings, RenderLayout* renderLayout) 
-		: m_WindowSettings(windowSettings), m_UserSettings(userSettings), p_RenderLayout(renderLayout) {
+	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) 
+		: m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
 		m_Window.reset(new class Window(&m_WindowSettings));
 		m_Instance.reset(new class Instance(c_ValidationLayers, c_EnableValidationLayers));
 		m_DebugMessenger.reset(c_EnableValidationLayers ? new class DebugUtilsMessenger(m_Instance->GetHandle()) : nullptr);
-
 	}
 
 	Application::~Application() {
@@ -80,14 +79,14 @@ namespace Engine {
 
 		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 
-		VkRenderPassBeginInfo* renderPassInfo = new VkRenderPassBeginInfo[p_ActiveScene->GetResourceSets().size() + 1];
+		VkRenderPassBeginInfo* renderPassInfo = new VkRenderPassBeginInfo[p_ActiveScene->ResourceSets.size() + 1];
 
-		for (size_t i = 0; i < p_ActiveScene->GetResourceSets().size(); i++) {
+		for (size_t i = 0; i < p_ActiveScene->ResourceSets.size(); i++) {
 			VkRenderPassBeginInfo newRenderPassInfo{};
 
 			newRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			newRenderPassInfo.renderPass = p_ActiveScene->GetResourceSet(i)->GetGraphicsPipeline()->GetRenderPass().GetHandle();
-			newRenderPassInfo.framebuffer = *p_ActiveScene->GetResourceSet(i)->GetFramebuffer(imageIndex);
+			newRenderPassInfo.renderPass = p_ActiveScene->ResourceSets[i]->GetGraphicsPipeline()->GetRenderPass().GetHandle();
+			newRenderPassInfo.framebuffer = *p_ActiveScene->ResourceSets[i]->GetFramebuffer(imageIndex);
 			newRenderPassInfo.renderArea.offset = {0, 0};
 			newRenderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
 			newRenderPassInfo.pNext = nullptr;
@@ -97,58 +96,61 @@ namespace Engine {
 
 			renderPassInfo[i] = newRenderPassInfo;
 		}
-
+		
 		vkCmdBeginRenderPass(p_CommandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		for (ResourceSet* resourceSet : p_ActiveScene->GetResourceSets()) {
+		ResourceSet* resourceSet = nullptr;
+		uint32_t vertexOffset = 0;
+		uint32_t indexOffset = 0;
 
-			vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());
+		for (Assets::Model* model : p_ActiveScene->Models) {
 
-			VkViewport viewport = {};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
-			viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
+			if (resourceSet == nullptr || resourceSet->ResourceSetIndex != model->ResourceSetIndex) {
+				resourceSet = p_ActiveScene->ResourceSets[model->ResourceSetIndex];
 
-			vkCmdSetViewport(p_CommandBuffer, 0, 1, &viewport);
+				vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());
 
-			VkRect2D scissor = {};
-			scissor.offset = { 0, 0 };
-			scissor.extent = m_SwapChain->GetSwapChainExtent();
+				VkViewport viewport = {};
+				viewport.x = 0.0f;
+				viewport.y = 0.0f;
+				viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
+				viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
+				viewport.minDepth = 0.0f;
+				viewport.maxDepth = 1.0f;
 
-			vkCmdSetScissor(p_CommandBuffer, 0, 1, &scissor);
+				vkCmdSetViewport(p_CommandBuffer, 0, 1, &viewport);
 
-			VkDeviceSize offsets[] = { 0 };
+				VkRect2D scissor = {};
+				scissor.offset = { 0, 0 };
+				scissor.extent = m_SwapChain->GetSwapChainExtent();
 
-			vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, 
-				&resourceSet->GetVertexBuffers()->GetBuffer(m_CurrentFrame), offsets);
-			vkCmdBindIndexBuffer(p_CommandBuffer, resourceSet->GetIndexBuffers()->GetBuffer(), 0, 
-				VK_INDEX_TYPE_UINT16);
+				vkCmdSetScissor(p_CommandBuffer, 0, 1, &scissor);
 
-			uint32_t vertexOffset = 0;
-			uint32_t indexOffset = 0;
+				VkDeviceSize offsets[] = { 0 };
 
-			for (auto model : p_ActiveScene->GetModels()) {
+				vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1,
+					&resourceSet->GetVertexBuffers()->GetBuffer(m_CurrentFrame), offsets);
+				vkCmdBindIndexBuffer(p_CommandBuffer, resourceSet->GetIndexBuffers()->GetBuffer(), 0,
+					VK_INDEX_TYPE_UINT16);
 
-				if (model->GetResourceSetID() != resourceSet->GetID()) continue;
-
-				vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-					resourceSet->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 0, 1,
-					&model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
-					nullptr);
-
-				model->SetModelUniformBuffer(m_CurrentFrame);
-
-				auto modelVertexCount = model->GetSizeVertices();
-				auto modelIndexCount = model->GetSizeIndices();
-
-				vkCmdDrawIndexed(p_CommandBuffer, modelIndexCount, 1, indexOffset, vertexOffset, 0);
-			
-				vertexOffset += modelVertexCount;
-				indexOffset += modelIndexCount;
+				indexOffset = 0;
+				vertexOffset = 0;
 			}
+
+			vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+				resourceSet->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 0, 1,
+				&model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
+				nullptr);
+
+			model->SetModelUniformBuffer(m_CurrentFrame);
+
+			auto modelVertexCount = model->GetSizeVertices();
+			auto modelIndexCount = model->GetSizeIndices();
+
+			vkCmdDrawIndexed(p_CommandBuffer, modelIndexCount, 1, indexOffset, vertexOffset, 0);
+		
+			vertexOffset += modelVertexCount;
+			indexOffset += modelIndexCount;
 		}
 		
 		vkCmdEndRenderPass(p_CommandBuffer);
@@ -291,7 +293,7 @@ namespace Engine {
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));	
 
-		p_ActiveScene->SetupScene(p_RenderLayout, m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool.get(), m_SwapChain.get());
+		p_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool.get(), m_SwapChain.get());
 
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
@@ -323,8 +325,6 @@ namespace Engine {
 
 	void Application::recreateSwapChain() {
 		m_SwapChain->ReCreate();
-
-		// TODO fix only one quad being rendered
 		p_ActiveScene->Resize();
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));

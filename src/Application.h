@@ -44,7 +44,6 @@
 #include "Fence.h"
 #include "Instance.h"
 #include "DebugUtilsMessenger.h"
-#include "RenderLayout.h"
 #include "ResourceSet.h"
 
 #include "../Assets/Scene.h"
@@ -63,7 +62,7 @@ namespace Engine {
 	class Application {
 	public:
 		Application(const WindowSettings &windowSettings = WindowSettings(), 
-			const UserSettings &userSettings = UserSettings(), RenderLayout* renderLayout = nullptr);
+			const UserSettings &userSettings = UserSettings());
 		~Application();
 
 		void Init();
@@ -133,6 +132,5 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 
 		Assets::Scene* p_ActiveScene = nullptr;
-		RenderLayout* p_RenderLayout = nullptr;
 	};
 }

@@ -6,52 +6,73 @@ namespace Assets {
 	}
 
 	Scene::~Scene() {
-		for (auto model : p_Models) {
+		for (auto model : Models) {
 			model->ResetResources();
 		}
 
-		for (auto resourceSet : m_ResourceSets) {
+		for (auto resourceSet : ResourceSets) {
 			delete resourceSet;
 		}
 	}
 
 	void Scene::AddModel(Model* model) {
-		p_Models.push_back(model);
+		Models.push_back(model);
+
+		for (size_t i = 0; i < Models.size(); i++) {
+			if (Models.size() == 1) break;
+
+			for (size_t j = i + 1; j < Models.size(); j++) {
+				if (Models[i]->ResourceSetIndex < Models[j]->ResourceSetIndex) {
+					Model* tempModel = Models[i];
+					Models[i] = Models[j];
+					Models[j] = tempModel;
+				}
+			}
+		}
+	}
+
+	void Scene::AddResourceSetLayout(Engine::ResourceSetLayout* resourceSetLayout) {
+		m_ResourceSetLayouts.push_back(resourceSetLayout);
 	}
 
 	void Scene::OnCreate() {
-		for (auto model : p_Models) {
+		for (auto model : Models) {
 			model->OnCreate();
 		}
 	}
 
 	void Scene::OnUIRender() {
-		for (auto model : p_Models) {
+		for (auto model : Models) {
 			model->OnUIRender();
 		}
 	}
 
 	void Scene::OnUpdate(float t) {
-		for (auto model : p_Models) {
+		for (auto model : Models) {
 			model->OnUpdate(t);
 		}
 	}
 
-	void Scene::SetupScene(Engine::RenderLayout* renderLayout, Engine::LogicalDevice* logicalDevice, 
-		Engine::PhysicalDevice* physicalDevice, Engine::CommandPool* commandPool, 
-		Engine::SwapChain* swapChain) {
-		
-		m_ResourceSets.resize(renderLayout->GetGraphicsPipelineLayouts().size());
+	void Scene::SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
+		Engine::CommandPool* commandPool, Engine::SwapChain* swapChain) {
+	
+		int maxIndex = 0;
 
-		for (size_t i = 0; i < renderLayout->GetGraphicsPipelineLayouts().size(); i++) {
-			m_ResourceSets[i] = new Engine::ResourceSet(renderLayout->GetGraphicsPipelineLayout(i), 
-				logicalDevice, physicalDevice, commandPool, swapChain, p_Models);
+		for (Engine::ResourceSetLayout* resourceSetLayout : m_ResourceSetLayouts) {
+			if (resourceSetLayout->ResourceSetIndex > maxIndex) maxIndex = resourceSetLayout->ResourceSetIndex;
+		}
+
+		ResourceSets.resize(maxIndex + 1);
+
+		for (Engine::ResourceSetLayout* resourceSetLayout : m_ResourceSetLayouts) {
+			ResourceSets[resourceSetLayout->ResourceSetIndex] = new Engine::ResourceSet(resourceSetLayout, logicalDevice,
+				physicalDevice, commandPool, swapChain, Models);
 		}
 	}
 
 	void Scene::Resize() {
-		for (size_t i = 0; i < m_ResourceSets.size(); i++) {
-			m_ResourceSets[i]->Resize();
+		for (size_t i = 0; i < ResourceSets.size(); i++) {
+			ResourceSets[i]->Resize();
 		}
 	}
 }

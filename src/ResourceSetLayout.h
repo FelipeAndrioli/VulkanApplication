@@ -13,7 +13,7 @@ namespace Engine {
 		bool lastFrameAccess = false;
 	};
 
-	struct GraphicsPipelineLayout {
+	struct ResourceSetLayout {
 		enum Topology {
 			POINT_LIST = 0,
 			LINE_LIST = 1,
@@ -50,23 +50,23 @@ namespace Engine {
 			DEFAULT_RENDER = 0
 		};
 
-		VkVertexInputBindingDescription bindingDescription = Assets::Vertex::getBindingDescription();
-		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+		VkVertexInputBindingDescription BindingDescription = Assets::Vertex::getBindingDescription();
+		std::array<VkVertexInputAttributeDescription, 2> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 
-		Topology topology = TRIANGLE_LIST;
-		PolygonMode polygonMode = FILL;
-		CullMode cullMode = CULL_BACK;
-		FrontFace frontFace = COUNTER_CLOCKWISE;
+		Topology Topology = TRIANGLE_LIST;
+		PolygonMode PolygonMode = FILL;
+		CullMode CullMode = CULL_BACK;
+		FrontFace FrontFace = COUNTER_CLOCKWISE;
 
-		float lineWidth = 1.0f;
-		size_t maxDescriptorSets = 0;
+		float LineWidth = 1.0f;
+		size_t MaxDescriptorSets = 0;
 		
-		const char* vertexShaderPath = "";
-		const char* fragmentShaderPath = "";
+		const char* VertexShaderPath = "";
+		const char* FragmentShaderPath = "";
 
-		RenderType renderType = DEFAULT_RENDER;
-		ComputePipelineLayout* computePipelineLayout = nullptr;
+		RenderType RenderType = DEFAULT_RENDER;
+		ComputePipelineLayout* ComputePipelineLayout = nullptr;
 
-		std::string resourceSetID;
+		int ResourceSetIndex;
 	};
 }

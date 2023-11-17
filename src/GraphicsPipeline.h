@@ -14,7 +14,7 @@
 #include "DescriptorSets.h"
 #include "DescriptorPool.h"
 #include "Buffer.h"
-#include "CustomPipelineLayout.h"
+#include "ResourceSetLayout.h"
 
 #include "../Assets/Vertex.h"
 
@@ -24,7 +24,7 @@ namespace Engine {
 
 	class GraphicsPipeline {
 	public:
-		GraphicsPipeline(GraphicsPipelineLayout* graphicsPipelineLayout, LogicalDevice* logicalDevice, SwapChain* swapChain);
+		GraphicsPipeline(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, SwapChain* swapChain);
 		~GraphicsPipeline();
 
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };

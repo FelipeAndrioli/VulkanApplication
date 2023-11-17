@@ -9,6 +9,7 @@
 #include "PhysicalDevice.h"
 #include "CommandPool.h"
 #include "SwapChain.h"
+#include "ResourceSetLayout.h"
 
 #include "../Assets/Scene.h"
 
@@ -16,8 +17,7 @@ namespace Engine {
 	class ResourceSet {
 	public:
 
-		ResourceSet(GraphicsPipelineLayout* graphicsPipelineLayout,
-			LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, 
+		ResourceSet(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, 
 			CommandPool* commandPool, SwapChain* swapChain, std::vector<Assets::Model*>& models);
 
 		~ResourceSet();
@@ -40,9 +40,12 @@ namespace Engine {
 		inline std::vector<Assets::Vertex>& GetVertices() { return m_Vertices; };
 		inline std::vector<uint16_t>& GetIndices() { return m_Indices; };
 
-		const std::string& GetID() const { return m_ID; };
-
+	public:
+		int ResourceSetIndex = -1;
+		std::string ID;
 	private:
+		ResourceSetLayout* p_ResourceSetLayout = nullptr;
+
 		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
 		std::unique_ptr<class Buffer> m_VertexBuffer;
 		std::unique_ptr<class Buffer> m_IndexBuffer;
@@ -51,15 +54,9 @@ namespace Engine {
 		std::vector<Assets::Vertex> m_Vertices;
 		std::vector<uint16_t> m_Indices;
 
-		std::string m_ID;
-
-		GraphicsPipelineLayout* p_GraphicsPipelineLayout = nullptr;
-		ComputePipelineLayout* p_ComputePipelineLayout = nullptr;
-
 		LogicalDevice* p_LogicalDevice = nullptr;
 		PhysicalDevice* p_PhysicalDevice = nullptr;
 		CommandPool* p_CommandPool = nullptr;
 		SwapChain* p_SwapChain = nullptr;
-
 	};
 }

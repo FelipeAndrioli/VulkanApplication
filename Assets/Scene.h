@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <vector>
+#include <stdexcept>
 
 #include "Model.h"
 
@@ -12,7 +13,6 @@
 #include "../src/DescriptorSetLayout.h"
 #include "../src/DescriptorPool.h"
 #include "../src/ResourceSet.h"
-#include "../src/RenderLayout.h"
 
 namespace Engine {
 	class ResourceSet;
@@ -28,20 +28,19 @@ namespace Assets {
 
 
 		void AddModel(Model* model);
-		void SetupScene(Engine::RenderLayout* renderLayout, Engine::LogicalDevice* logicalDevice,
-			Engine::PhysicalDevice* physicalDevice, Engine::CommandPool* commandPool, Engine::SwapChain* swapChain);
-		void Resize();
-
-		const std::vector<Model*>& GetModels() const { return p_Models; };
-
-		inline std::vector<Engine::ResourceSet*> GetResourceSets() { return m_ResourceSets; };
-		Engine::ResourceSet* GetResourceSet(size_t index) { return m_ResourceSets[index]; };
+		void AddResourceSetLayout(Engine::ResourceSetLayout* resourceSetLayout);
+		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
+			Engine::CommandPool* commandPool, Engine::SwapChain* swapChain);
 		
+		void Resize();
+	
 		void OnCreate();
 		void OnUIRender();
 		void OnUpdate(float t);
+	public:
+		std::vector<Model*> Models;
+		std::vector<Engine::ResourceSet*> ResourceSets;
 	private:
-		std::vector<Engine::ResourceSet*> m_ResourceSets;
-		std::vector<Model*> p_Models;
+		std::vector<Engine::ResourceSetLayout*> m_ResourceSetLayouts;
 	};
 }

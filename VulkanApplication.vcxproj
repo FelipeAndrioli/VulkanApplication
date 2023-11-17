@@ -169,7 +169,6 @@
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\PhysicalDevice.cpp" />
     <ClCompile Include="src\PipelineLayout.cpp" />
-    <ClCompile Include="src\RenderLayout.cpp" />
     <ClCompile Include="src\RenderPass.cpp" />
     <ClCompile Include="src\ResourceSet.cpp" />
     <ClCompile Include="src\Semaphore.cpp" />
@@ -205,13 +204,12 @@
     <ClInclude Include="src\DescriptorSets.h" />
     <ClInclude Include="src\Fence.h" />
     <ClInclude Include="src\GraphicsPipeline.h" />
-    <ClInclude Include="src\CustomPipelineLayout.h" />
+    <ClInclude Include="src\ResourceSetLayout.h" />
     <ClInclude Include="src\Instance.h" />
     <ClInclude Include="src\Layer.h" />
     <ClInclude Include="src\LogicalDevice.h" />
     <ClInclude Include="src\PhysicalDevice.h" />
     <ClInclude Include="src\PipelineLayout.h" />
-    <ClInclude Include="src\RenderLayout.h" />
     <ClInclude Include="src\RenderPass.h" />
     <ClInclude Include="src\ResourceSet.h" />
     <ClInclude Include="src\Semaphore.h" />

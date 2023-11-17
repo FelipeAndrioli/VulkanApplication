@@ -1,14 +1,14 @@
-#include "CustomPipelineLayout.h"
 #include "GraphicsPipeline.h"
 #include "LogicalDevice.h"
 #include "SwapChain.h"
 
 namespace Engine {
-	GraphicsPipeline::GraphicsPipeline(GraphicsPipelineLayout* graphicsPipelineLayout, LogicalDevice* logicalDevice, SwapChain* swapChain)
+	GraphicsPipeline::GraphicsPipeline(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, 
+		SwapChain* swapChain)
 		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain) {
 
-		auto bindingDescription = graphicsPipelineLayout->bindingDescription;
-		auto attributeDescriptions = graphicsPipelineLayout->attributeDescriptions;
+		auto bindingDescription = resourceSetLayout->BindingDescription;
+		auto attributeDescriptions = resourceSetLayout->AttributeDescriptions;
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -19,7 +19,7 @@ namespace Engine {
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssembly.topology = static_cast<VkPrimitiveTopology>(graphicsPipelineLayout->topology);
+		inputAssembly.topology = static_cast<VkPrimitiveTopology>(resourceSetLayout->Topology);
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 		VkViewport viewport{};
@@ -45,10 +45,10 @@ namespace Engine {
 		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizer.depthClampEnable = VK_FALSE;
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
-		rasterizer.polygonMode = static_cast<VkPolygonMode>(graphicsPipelineLayout->polygonMode);
-		rasterizer.lineWidth = graphicsPipelineLayout->lineWidth;
-		rasterizer.cullMode = graphicsPipelineLayout->cullMode;
-		rasterizer.frontFace = static_cast<VkFrontFace>(graphicsPipelineLayout->frontFace);
+		rasterizer.polygonMode = static_cast<VkPolygonMode>(resourceSetLayout->PolygonMode);
+		rasterizer.lineWidth = resourceSetLayout->LineWidth;
+		rasterizer.cullMode = resourceSetLayout->CullMode;
+		rasterizer.frontFace = static_cast<VkFrontFace>(resourceSetLayout->FrontFace);
 		rasterizer.depthBiasEnable = VK_FALSE;
 		rasterizer.depthBiasConstantFactor = 0.0f;
 		rasterizer.depthBiasClamp = 0.0f;
@@ -97,7 +97,9 @@ namespace Engine {
 
 		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
 
-		for (size_t i = 0; i < graphicsPipelineLayout->maxDescriptorSets; i++) {
+		size_t maxDescriptorSets = resourceSetLayout->MaxDescriptorSets == 0 ? 1 : resourceSetLayout->MaxDescriptorSets;
+
+		for (size_t i = 0; i < maxDescriptorSets; i++) {
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
 
@@ -106,15 +108,15 @@ namespace Engine {
 		}
 
 		m_DescriptorPool.reset(new class DescriptorPool(p_LogicalDevice->GetHandle(), poolDescriptorBindings, 
-			static_cast<uint32_t>(graphicsPipelineLayout->maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
+			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
 
 		std::vector<BufferDescriptor> bufferDescriptor = {};
 
 		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
 		m_RenderPass.reset(new class RenderPass(p_SwapChain, p_LogicalDevice->GetHandle()));
 
-		ShaderModule vertShaderModule(graphicsPipelineLayout->vertexShaderPath, p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
-		ShaderModule fragShaderModule(graphicsPipelineLayout->fragmentShaderPath, p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
+		ShaderModule vertShaderModule(resourceSetLayout->VertexShaderPath, p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
+		ShaderModule fragShaderModule(resourceSetLayout->FragmentShaderPath, p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderModule.GetShaderStageInfo(), fragShaderModule.GetShaderStageInfo() };
 

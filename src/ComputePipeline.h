@@ -8,8 +8,7 @@
 #include "PipelineLayout.h"
 #include "DescriptorPool.h"
 #include "DescriptorSets.h"
-
-#include "CustomPipelineLayout.h"
+#include "ResourceSetLayout.h"
 
 namespace Engine {
 	class ComputePipeline {

@@ -117,9 +117,6 @@
     <ClCompile Include="src\Timestep.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\RenderLayout.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\ResourceSet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -245,10 +242,7 @@
     <ClInclude Include="src\Timestep.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\RenderLayout.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\CustomPipelineLayout.h">
+    <ClInclude Include="src\ResourceSetLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ResourceSet.h">

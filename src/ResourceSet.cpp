@@ -1,28 +1,26 @@
 #include "ResourceSet.h"
 
 namespace Engine {
-
-	// TODO: refactor
-
-	ResourceSet::ResourceSet(GraphicsPipelineLayout* graphicsPipelineLayout, LogicalDevice* logicalDevice, 
+	ResourceSet::ResourceSet(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, 
 		PhysicalDevice* physicalDevice, CommandPool* commandPool, SwapChain* swapChain, std::vector<Assets::Model*>& models) 
-		: p_GraphicsPipelineLayout(graphicsPipelineLayout), p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice), 
-		p_CommandPool(commandPool), p_SwapChain(swapChain), m_ID(graphicsPipelineLayout->resourceSetID) {
+		: p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice), p_CommandPool(commandPool), 
+		p_SwapChain(swapChain), p_ResourceSetLayout(resourceSetLayout), 
+		ResourceSetIndex(resourceSetLayout->ResourceSetIndex) {
 
 		for (auto model : models) {
-			if (model->GetResourceSetID() == m_ID) p_GraphicsPipelineLayout->maxDescriptorSets++;
+			if (model->ResourceSetIndex == ResourceSetIndex) p_ResourceSetLayout->MaxDescriptorSets++;
 		}
 
-		if (p_GraphicsPipelineLayout->maxDescriptorSets == 0) return;
-
-		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_GraphicsPipelineLayout, p_LogicalDevice,
+		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_ResourceSetLayout, p_LogicalDevice,
 			p_SwapChain));
+		CreateFrameBuffers();
 
-		if (p_GraphicsPipelineLayout->renderType == GraphicsPipelineLayout::RenderType::DEFAULT_RENDER) {
+		if (p_ResourceSetLayout->MaxDescriptorSets == 0) return;
+		
+		if (p_ResourceSetLayout->RenderType == ResourceSetLayout::RenderType::DEFAULT_RENDER) {
 			SetModelResources(models);
 			CreateVertexBuffer();
 			CreateIndexBuffer();
-			CreateFrameBuffers();
 		}
 	}
 	
@@ -43,7 +41,7 @@ namespace Engine {
 
 		for (auto model : models) {
 
-			if (model->GetResourceSetID() != m_ID) continue;
+			if (model->ResourceSetIndex != ResourceSetIndex) continue;
 
 			VkDeviceSize bufferSize = sizeof(Engine::UniformBufferObject);
 			model->m_UniformBuffer.reset(new class Engine::Buffer(Engine::MAX_FRAMES_IN_FLIGHT, p_LogicalDevice, p_PhysicalDevice,
@@ -63,8 +61,6 @@ namespace Engine {
 
 	void ResourceSet::CreateVertexBuffer() {
 	
-		if (m_Vertices.size() == 0) return;
-
 		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * m_Vertices.size();
 		
 		m_VertexBuffer.reset(new class Buffer(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT), p_LogicalDevice, p_PhysicalDevice, bufferSize,
@@ -77,8 +73,6 @@ namespace Engine {
 	}
 
 	void ResourceSet::CreateIndexBuffer() {
-
-		if (m_Indices.size() == 0) return;
 
 		VkDeviceSize bufferSize = sizeof(uint16_t) * m_Indices.size();
 

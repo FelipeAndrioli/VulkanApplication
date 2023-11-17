@@ -45,8 +45,7 @@
 #include <glm/glm.hpp>
 
 #include "Application.h"
-#include "CustomPipelineLayout.h"
-#include "RenderLayout.h"
+#include "ResourceSetLayout.h"
 #include "../Assets/Scene.h"
 #include "../Assets/Model.h"
 
@@ -77,13 +76,13 @@ public:
 
 		SetVertices(v);
 		SetIndices(i);
-		m_ID = "Quad One";
+		ID = "Quad One";
 
-		std::cout << m_ID << " model created\n";
+		std::cout << ID << " model created\n";
 	}
 
 	void OnUIRender() {
-		std::string modelId = m_ID;
+		std::string modelId = ID;
 
 		std::string t = "Transformations " + modelId;
 
@@ -142,13 +141,13 @@ public:
 
 		SetVertices(v);
 		SetIndices(i);
-		m_ID = "Quad Two";
+		ID = "Quad Two";
 		
-		std::cout << m_ID << " model created\n";
+		std::cout << ID << " model created\n";
 	}
 
 	void OnUIRender() {
-		std::string modelId = m_ID;
+		std::string modelId = ID;
 
 		std::string t = "Transformations " + modelId;
 
@@ -174,36 +173,30 @@ public:
 };
 
 int main() {
+	Engine::ResourceSetLayout defaultLayout;
 
-	// TODO refactor this
-	Engine::RenderLayout* renderLayout = new Engine::RenderLayout();
+	defaultLayout.ResourceSetIndex = 0;
+	defaultLayout.BindingDescription = Assets::Vertex::getBindingDescription();
+	defaultLayout.AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+	defaultLayout.VertexShaderPath = "./Assets/Shaders/vert.spv";
+	defaultLayout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
 
-	Engine::GraphicsPipelineLayout defaultLayout;
+	Engine::ResourceSetLayout testNewLayout;
 
-	defaultLayout.resourceSetID = "DefaultLayout";
-	defaultLayout.bindingDescription = Assets::Vertex::getBindingDescription();
-	defaultLayout.attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
-	defaultLayout.vertexShaderPath = "./Assets/Shaders/vert.spv";
-	defaultLayout.fragmentShaderPath = "./Assets/Shaders/frag.spv";
-
-	renderLayout->AddGraphicsPipelineLayout(defaultLayout);
-
-	Engine::GraphicsPipelineLayout testNewLayout;
-
-	testNewLayout.resourceSetID = "TestNewLayout";
-	testNewLayout.bindingDescription = Assets::Vertex::getBindingDescription();
-	testNewLayout.attributeDescriptions = Assets::Vertex::getAttributeDescriptions();
-	testNewLayout.vertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
-	testNewLayout.fragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
-
-	renderLayout->AddGraphicsPipelineLayout(testNewLayout);
+	testNewLayout.ResourceSetIndex = 1;
+	testNewLayout.BindingDescription = Assets::Vertex::getBindingDescription();
+	testNewLayout.AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+	testNewLayout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
+	testNewLayout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
 
 	auto q1 = MyQuadOne();
-	q1.SetReourceSetID(defaultLayout.resourceSetID);
+	q1.ResourceSetIndex = defaultLayout.ResourceSetIndex;
 	auto q2 = MyQuadTwo();
-	q2.SetReourceSetID(testNewLayout.resourceSetID);
+	q2.ResourceSetIndex = testNewLayout.ResourceSetIndex;
 
 	Assets::Scene* myScene = new Assets::Scene();
+	myScene->AddResourceSetLayout(&defaultLayout);
+	myScene->AddResourceSetLayout(&testNewLayout);
 	myScene->AddModel(&q1);
 	myScene->AddModel(&q2);
 	
@@ -215,7 +208,7 @@ int main() {
 	Engine::UserSettings userSettings;
 	userSettings.rayTraced = false;
 	
-	Engine::Application* app = new Engine::Application(windowSettings, userSettings, renderLayout);
+	Engine::Application* app = new Engine::Application(windowSettings, userSettings);
 
 	app->SetActiveScene(myScene);
 	app->Init();
