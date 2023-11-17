@@ -7,10 +7,10 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 
 ## Current Work
 
-- [IN PROGRESS] Refactoring
-- [NEXT] - Depth Buffer
+- [IN PROGRESS] Default Resource Set to be used when no Resource Set is specified 
+- [NEXT] Depth Buffer
 - [ ] Camera class
--  [ ] Compute Shaders
+- [ ] Compute Shaders
 
 ## Future Work (not in order)
 
