@@ -10,7 +10,7 @@ namespace Assets {
 			model->ResetResources();
 		}
 
-		for (auto resourceSet : ResourceSets) {
+		for (Engine::ResourceSet* resourceSet : ResourceSets) {
 			delete resourceSet;
 		}
 	}
@@ -68,11 +68,47 @@ namespace Assets {
 			ResourceSets[resourceSetLayout->ResourceSetIndex] = new Engine::ResourceSet(resourceSetLayout, logicalDevice,
 				physicalDevice, commandPool, swapChain, Models);
 		}
+		
+		CreateRenderPassBeginInfo(swapChain);
 	}
 
-	void Scene::Resize() {
+	void Scene::Resize(Engine::SwapChain* swapChain) {
 		for (size_t i = 0; i < ResourceSets.size(); i++) {
 			ResourceSets[i]->Resize();
+		}
+
+		for (VkRenderPassBeginInfo* beginInfo : RenderPassBeginInfo) {
+			delete beginInfo;
+		}
+
+		RenderPassBeginInfo.clear();
+
+		CreateRenderPassBeginInfo(swapChain);
+	}
+
+	void Scene::CreateRenderPassBeginInfo(Engine::SwapChain* swapChain) {
+		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+
+		for (size_t i = 0; i < swapChain->GetSwapChainImages().size(); i++) {
+			VkRenderPassBeginInfo* renderPassInfo = new VkRenderPassBeginInfo[ResourceSets.size() + 1];
+
+			for (size_t j = 0; j < ResourceSets.size(); j++) {
+				VkRenderPassBeginInfo newRenderPassInfo{};
+
+				newRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				newRenderPassInfo.renderPass = ResourceSets[j]->GetGraphicsPipeline()->GetRenderPass().GetHandle();
+				newRenderPassInfo.framebuffer = *ResourceSets[j]->GetFramebuffer(i);
+				newRenderPassInfo.renderArea.offset = {0, 0};
+				newRenderPassInfo.renderArea.extent = swapChain->GetSwapChainExtent();
+				newRenderPassInfo.pNext = nullptr;
+
+				newRenderPassInfo.clearValueCount = 1;
+				newRenderPassInfo.pClearValues = &clearColor;
+
+				renderPassInfo[j] = newRenderPassInfo;
+			}
+
+			RenderPassBeginInfo.push_back(renderPassInfo);
 		}
 	}
 }

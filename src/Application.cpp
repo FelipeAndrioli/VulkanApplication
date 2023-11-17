@@ -77,27 +77,8 @@ namespace Engine {
 
 	void Application::drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
 
-		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-
-		VkRenderPassBeginInfo* renderPassInfo = new VkRenderPassBeginInfo[p_ActiveScene->ResourceSets.size() + 1];
-
-		for (size_t i = 0; i < p_ActiveScene->ResourceSets.size(); i++) {
-			VkRenderPassBeginInfo newRenderPassInfo{};
-
-			newRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			newRenderPassInfo.renderPass = p_ActiveScene->ResourceSets[i]->GetGraphicsPipeline()->GetRenderPass().GetHandle();
-			newRenderPassInfo.framebuffer = *p_ActiveScene->ResourceSets[i]->GetFramebuffer(imageIndex);
-			newRenderPassInfo.renderArea.offset = {0, 0};
-			newRenderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
-			newRenderPassInfo.pNext = nullptr;
-
-			newRenderPassInfo.clearValueCount = 1;
-			newRenderPassInfo.pClearValues = &clearColor;
-
-			renderPassInfo[i] = newRenderPassInfo;
-		}
-		
-		vkCmdBeginRenderPass(p_CommandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(p_CommandBuffer, p_ActiveScene->RenderPassBeginInfo[imageIndex], 
+			VK_SUBPASS_CONTENTS_INLINE);
 
 		ResourceSet* resourceSet = nullptr;
 		uint32_t vertexOffset = 0;
@@ -105,7 +86,7 @@ namespace Engine {
 
 		for (Assets::Model* model : p_ActiveScene->Models) {
 
-			if (resourceSet == nullptr || resourceSet->ResourceSetIndex != model->ResourceSetIndex) {
+			if (resourceSet == nullptr || model->ResourceSetIndex < resourceSet->ResourceSetIndex) {
 				resourceSet = p_ActiveScene->ResourceSets[model->ResourceSetIndex];
 
 				vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());
@@ -154,7 +135,6 @@ namespace Engine {
 		}
 		
 		vkCmdEndRenderPass(p_CommandBuffer);
-		delete[] renderPassInfo;
 	}
 
 	void Application::handleDraw(uint32_t imageIndex) {
@@ -215,28 +195,26 @@ namespace Engine {
 		handleDraw(imageIndex);
 
 		// Present submit
-		{
-			VkPresentInfoKHR presentInfo{};
-			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-			presentInfo.waitSemaphoreCount = 1;
-			presentInfo.pWaitSemaphores = m_RenderFinishedSemaphores->GetHandle(m_CurrentFrame);
-			
-			VkSwapchainKHR swapChains[] = { m_SwapChain->GetHandle() };
-			presentInfo.swapchainCount = 1;
-			presentInfo.pSwapchains = swapChains;
-			presentInfo.pImageIndices = &imageIndex;
-			presentInfo.pResults = nullptr;
+		VkPresentInfoKHR presentInfo{};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = m_RenderFinishedSemaphores->GetHandle(m_CurrentFrame);
+		
+		VkSwapchainKHR swapChains[] = { m_SwapChain->GetHandle() };
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = swapChains;
+		presentInfo.pImageIndices = &imageIndex;
+		presentInfo.pResults = nullptr;
 
-			result = vkQueuePresentKHR(m_LogicalDevice->GetPresentQueue(), &presentInfo);
+		result = vkQueuePresentKHR(m_LogicalDevice->GetPresentQueue(), &presentInfo);
 
-			if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || g_FramebufferResized) {
-				g_FramebufferResized = false;
-				recreateSwapChain();
-				//return;
-			}
-			else if (result != VK_SUCCESS) {
-				throw std::runtime_error("Failed to present swap chain image!");
-			}
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || g_FramebufferResized) {
+			g_FramebufferResized = false;
+			recreateSwapChain();
+			//return;
+		}
+		else if (result != VK_SUCCESS) {
+			throw std::runtime_error("Failed to present swap chain image!");
 		}
 
 		// using modulo operator to ensure that the frame index loops around after every MAX_FRAMES_IN_FLIGHT enqueued frames
@@ -325,7 +303,7 @@ namespace Engine {
 
 	void Application::recreateSwapChain() {
 		m_SwapChain->ReCreate();
-		p_ActiveScene->Resize();
+		p_ActiveScene->Resize(m_SwapChain.get());
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));
 		m_UI->Resize(m_SwapChain.get());

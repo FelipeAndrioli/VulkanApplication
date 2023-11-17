@@ -26,20 +26,23 @@ namespace Assets {
 		Scene();
 		~Scene();
 
-
 		void AddModel(Model* model);
 		void AddResourceSetLayout(Engine::ResourceSetLayout* resourceSetLayout);
-		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
-			Engine::CommandPool* commandPool, Engine::SwapChain* swapChain);
-		
-		void Resize();
-	
+
 		void OnCreate();
 		void OnUIRender();
 		void OnUpdate(float t);
+
+		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
+			Engine::CommandPool* commandPool, Engine::SwapChain* swapChain);
+		
+		void Resize(Engine::SwapChain* swapChain);
+	private:
+		void CreateRenderPassBeginInfo(Engine::SwapChain* swapChain);
 	public:
 		std::vector<Model*> Models;
 		std::vector<Engine::ResourceSet*> ResourceSets;
+		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 	private:
 		std::vector<Engine::ResourceSetLayout*> m_ResourceSetLayouts;
 	};
