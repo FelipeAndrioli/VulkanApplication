@@ -272,5 +272,9 @@
     <None Include="Assets\Shaders\shader_test_frag.spv" />
     <None Include="Assets\Shaders\shader_test.vert" />
     <None Include="Assets\Shaders\shader_test.frag" />
+    <None Include="Assets\Shaders\default.vert" />
+    <None Include="Assets\Shaders\default.frag" />
+    <None Include="Assets\Shaders\default_frag.spv" />
+    <None Include="Assets\Shaders\default_vert.spv" />
   </ItemGroup>
 </Project>

@@ -228,6 +228,10 @@
     <None Include=".gitmodules" />
     <None Include="Assets\Shaders\comp.spv" />
     <None Include="Assets\Shaders\compile.bat" />
+    <None Include="Assets\Shaders\default.frag" />
+    <None Include="Assets\Shaders\default.vert" />
+    <None Include="Assets\Shaders\default_frag.spv" />
+    <None Include="Assets\Shaders\default_vert.spv" />
     <None Include="Assets\Shaders\frag.spv" />
     <None Include="Assets\Shaders\particle_shader.frag" />
     <None Include="Assets\Shaders\particle_shader.vert" />

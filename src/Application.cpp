@@ -86,7 +86,7 @@ namespace Engine {
 
 		for (Assets::Model* model : p_ActiveScene->Models) {
 
-			if (resourceSet == nullptr || model->ResourceSetIndex < resourceSet->ResourceSetIndex) {
+			if (resourceSet == nullptr || model->ResourceSetIndex != resourceSet->ResourceSetIndex) {
 				resourceSet = p_ActiveScene->ResourceSets[model->ResourceSetIndex];
 
 				vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());

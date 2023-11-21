@@ -61,12 +61,12 @@ namespace Engine {
 		float LineWidth = 1.0f;
 		size_t MaxDescriptorSets = 0;
 		
-		const char* VertexShaderPath = "";
-		const char* FragmentShaderPath = "";
+		const char* VertexShaderPath = "./Assets/Shaders/default_vert.spv";
+		const char* FragmentShaderPath = "./Assets/Shaders/default_frag.spv";
 
 		RenderType RenderType = DEFAULT_RENDER;
 		ComputePipelineLayout* ComputePipelineLayout = nullptr;
 
-		int ResourceSetIndex;
+		int ResourceSetIndex = -1;
 	};
 }

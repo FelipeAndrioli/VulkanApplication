@@ -43,6 +43,7 @@
 #include <functional>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "Application.h"
 #include "ResourceSetLayout.h"
@@ -91,9 +92,9 @@ public:
 			std::string t_label_y = "Translation y " + modelId;
 			std::string t_label_z = "Translation z " + modelId;
 
-			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, 0.0f, 1.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, 0.0f, 1.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, 0.0f, 1.0f);
+			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -1.0f, 1.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -1.0f, 1.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -1.0f, 1.0f);
 			ImGui::TreePop();
 		}
 	}
@@ -138,6 +139,8 @@ public:
 		std::vector<uint16_t> i = {
 			0, 1, 2, 2, 3, 0
 		};
+		
+		m_Transform.translation.z = -1.0f;
 
 		SetVertices(v);
 		SetIndices(i);
@@ -156,9 +159,76 @@ public:
 			std::string t_label_y = "Translation y " + modelId;
 			std::string t_label_z = "Translation z " + modelId;
 
-			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, 0.0f, 1.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, 0.0f, 1.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, 0.0f, 1.0f);
+			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -1.0f, 1.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -1.0f, 1.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -1.0f, 1.0f);
+
+			ImGui::ColorEdit3("Color", glm::value_ptr(ubo->color));
+
+			ImGui::TreePop();
+		}
+	}
+
+	void OnUpdate(float t) {
+		ubo->model = GetModelMatrix();
+		ubo->view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo->proj = glm::perspective(glm::radians(45.0f), 800 / (float) 600, 0.1f, 10.0f);
+
+		ubo->proj[1][1] *= -1;
+	}
+};
+
+class MyQuadThree : public Assets::Model {
+public:
+
+	struct UniformBufferObject {
+		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 view = glm::mat4(1.0f);
+		glm::mat4 proj = glm::mat4(1.0f);
+
+		glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
+	};
+
+	UniformBufferObject *ubo = new UniformBufferObject();
+
+	void OnCreate() {
+
+		SetUniformBufferObject(ubo, sizeof(*ubo));
+
+		std::vector<Assets::Vertex> v = { 
+			{ {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} },
+			{ {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} },
+			{ {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f} },
+			{ {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f} }
+		};
+
+		std::vector<uint16_t> i = {
+			0, 1, 2, 2, 3, 0
+		};
+
+		m_Transform.translation.x = -1.0f;
+		m_Transform.translation.z = -1.0f;
+
+		SetVertices(v);
+		SetIndices(i);
+		ID = "Quad Three";
+		
+		std::cout << ID << " model created\n";
+	}
+
+	void OnUIRender() {
+		std::string modelId = ID;
+
+		std::string t = "Transformations " + modelId;
+
+		if (ImGui::TreeNode(t.c_str())) {
+			std::string t_label_x = "Translation x " + modelId;
+			std::string t_label_y = "Translation y " + modelId;
+			std::string t_label_z = "Translation z " + modelId;
+
+			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -1.0f, 1.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -1.0f, 1.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -1.0f, 1.0f);
 			ImGui::TreePop();
 		}
 	}
@@ -173,32 +243,34 @@ public:
 };
 
 int main() {
-	Engine::ResourceSetLayout defaultLayout;
+	Engine::ResourceSetLayout rainbowLayout;
 
-	defaultLayout.ResourceSetIndex = 0;
-	defaultLayout.BindingDescription = Assets::Vertex::getBindingDescription();
-	defaultLayout.AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
-	defaultLayout.VertexShaderPath = "./Assets/Shaders/vert.spv";
-	defaultLayout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
+	rainbowLayout.ResourceSetIndex = 0;
+	rainbowLayout.BindingDescription = Assets::Vertex::getBindingDescription();
+	rainbowLayout.AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+	rainbowLayout.VertexShaderPath = "./Assets/Shaders/vert.spv";
+	rainbowLayout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
 
-	Engine::ResourceSetLayout testNewLayout;
+	Engine::ResourceSetLayout colorLayout;
 
-	testNewLayout.ResourceSetIndex = 1;
-	testNewLayout.BindingDescription = Assets::Vertex::getBindingDescription();
-	testNewLayout.AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
-	testNewLayout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
-	testNewLayout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
+	colorLayout.ResourceSetIndex = 1;
+	colorLayout.BindingDescription = Assets::Vertex::getBindingDescription();
+	colorLayout.AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+	colorLayout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
+	colorLayout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
 
 	auto q1 = MyQuadOne();
-	q1.ResourceSetIndex = defaultLayout.ResourceSetIndex;
+	q1.ResourceSetIndex = rainbowLayout.ResourceSetIndex;
 	auto q2 = MyQuadTwo();
-	q2.ResourceSetIndex = testNewLayout.ResourceSetIndex;
+	q2.ResourceSetIndex = colorLayout.ResourceSetIndex;
+	auto q3 = MyQuadThree();
 
 	Assets::Scene* myScene = new Assets::Scene();
-	myScene->AddResourceSetLayout(&defaultLayout);
-	myScene->AddResourceSetLayout(&testNewLayout);
+	myScene->AddResourceSetLayout(&rainbowLayout);
+	myScene->AddResourceSetLayout(&colorLayout);
 	myScene->AddModel(&q1);
 	myScene->AddModel(&q2);
+	myScene->AddModel(&q3);
 	
 	Engine::WindowSettings windowSettings;
 	windowSettings.Title = "VulkanApplication.exe";

@@ -58,11 +58,22 @@ namespace Assets {
 	
 		int maxIndex = 0;
 
+		// Add default
+		m_ResourceSetLayouts.push_back(new Engine::ResourceSetLayout{});
+
 		for (Engine::ResourceSetLayout* resourceSetLayout : m_ResourceSetLayouts) {
+			if (resourceSetLayout->ResourceSetIndex == -1) {
+				resourceSetLayout->ResourceSetIndex = m_ResourceSetLayouts.size() - 1;
+			}
+		
 			if (resourceSetLayout->ResourceSetIndex > maxIndex) maxIndex = resourceSetLayout->ResourceSetIndex;
 		}
 
 		ResourceSets.resize(maxIndex + 1);
+
+		for (Model* model : Models) {
+			if (model->ResourceSetIndex == -1) model->ResourceSetIndex = m_ResourceSetLayouts.size() - 1;
+		}
 
 		for (Engine::ResourceSetLayout* resourceSetLayout : m_ResourceSetLayouts) {
 			ResourceSets[resourceSetLayout->ResourceSetIndex] = new Engine::ResourceSet(resourceSetLayout, logicalDevice,
