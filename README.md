@@ -7,8 +7,10 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 
 ## Current Work
 
-- [IN PROGRESS] Default Resource Set to be used when no Resource Set is specified 
-- [NEXT] Depth Buffer
+- [IN PROGRESS] Depth Buffer
+- [ ] Texture
+- [ ] Model loading
+- [ ] Scene selection
 - [ ] Camera class
 - [ ] Compute Shaders
 
