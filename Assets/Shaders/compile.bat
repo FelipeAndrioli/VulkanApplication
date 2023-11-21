@@ -9,4 +9,6 @@ C:/VulkanSDK/1.3.250.0/Bin/glslc.exe particle_shader.frag -o particle_shader_fra
 C:/VulkanSDK/1.3.250.0/Bin/glslc.exe shader_test.vert -o shader_test_vert.spv
 C:/VulkanSDK/1.3.250.0/Bin/glslc.exe shader_test.frag -o shader_test_frag.spv
 
+C:/VulkanSDK/1.3.250.0/Bin/glslc.exe default.vert -o default_vert.spv
+C:/VulkanSDK/1.3.250.0/Bin/glslc.exe default.frag -o default_frag.spv
 pause
