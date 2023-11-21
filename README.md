@@ -5,18 +5,20 @@ to help me not lose track of what I'm doing, to help me remember the future work
 
 Once the engine is in a acceptable (ish) kind of state, I will change the whole README.
 
-## Current Work
+## Current Work (not in order)
 
-- [IN PROGRESS] Depth Buffer
+- [ ] Depth Buffer (In Progress)
 - [ ] Texture
 - [ ] Model loading
+- [ ] In Engine models
 - [ ] Scene selection
 - [ ] Camera class
 - [ ] Compute Shaders
 
 ## Future Work (not in order)
 
-- [ ] Ray Tracer??
+- [ ] Render Graph
+- [ ] Ray Tracer
 
 ## Bugs
 
