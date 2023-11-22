@@ -2,12 +2,10 @@
 
 namespace Engine {
 	Buffer::Buffer(const int bufferSize, LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, const size_t size, 
-		const VkBufferUsageFlags usage) : p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice) {
+		const VkBufferUsageFlags usage) : p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice), m_BufferSize(bufferSize) {
 
-		m_BufferSize = bufferSize;
 		m_Buffer.resize(m_BufferSize);
-		m_BufferMemory.resize(m_BufferSize);
-		m_BufferMemoryMapped.resize(m_BufferSize);
+		BufferMemory.reset(new class DeviceMemory(&p_LogicalDevice->GetHandle(), &p_PhysicalDevice->GetHandle(), m_BufferSize));
 
 		for (size_t i = 0; i < m_BufferSize; i++) {
 			VkBufferCreateInfo bufferInfo{};
@@ -26,44 +24,15 @@ namespace Engine {
 		if (!m_Buffer.empty()) {
 			for (size_t i = 0; i < m_Buffer.size(); i++) {
 				vkDestroyBuffer(p_LogicalDevice->GetHandle(), m_Buffer[i], nullptr);
-				vkFreeMemory(p_LogicalDevice->GetHandle(), m_BufferMemory[i], nullptr);
 			}
 		}
+
+		BufferMemory.reset();
 	}
+
 
 	void Buffer::AllocateMemory(VkMemoryPropertyFlags properties) {
-		for (size_t i = 0; i < m_Buffer.size(); i++) {
-			VkMemoryRequirements memRequirements = GetMemoryRequirements(m_Buffer[i]);
-
-			VkMemoryAllocateInfo allocInfo{};
-			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
-		
-			if (vkAllocateMemory(p_LogicalDevice->GetHandle(), &allocInfo, nullptr, &m_BufferMemory[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to allocate buffer memory!");
-			}
-
-			vkBindBufferMemory(p_LogicalDevice->GetHandle(), m_Buffer[i], m_BufferMemory[i], 0);
-		}
-	}
-
-	void Buffer::MapMemory() {
-		for (size_t i = 0; i < m_Buffer.size(); i++) {
-			vkMapMemory(p_LogicalDevice->GetHandle(), m_BufferMemory[i], 0, m_Buffer.size(), 0, &m_BufferMemoryMapped[i]);
-		}
-	}
-
-	void Buffer::MapMemory(void* data) {
-		for (size_t i = 0; i < m_Buffer.size(); i++) {
-			vkMapMemory(p_LogicalDevice->GetHandle(), m_BufferMemory[i], 0, m_Buffer.size(), 0, &data);
-		}
-	}
-
-	void Buffer::UnmapMemory() {
-		for (size_t i = 0; i < m_Buffer.size(); i++) {
-			vkUnmapMemory(p_LogicalDevice->GetHandle(), m_BufferMemory[i]);
-		}
+		BufferMemory->AllocateMemory(m_Buffer, properties);
 	}
 
 	void Buffer::CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, VkCommandPool& commandPool) {
@@ -91,39 +60,11 @@ namespace Engine {
 		return m_Buffer[index];
 	}
 
-	VkDeviceMemory& Buffer::GetBufferMemory(uint32_t index) {
-		if (index > m_Buffer.size() || index < 0) {
-			throw std::runtime_error("Index to retrieve buffer memory out of bounds!");
-		}
-
-		return m_BufferMemory[index];
-	}
-
 	void* Buffer::GetBufferMemoryMapped(uint32_t index) {
 		if (index > m_Buffer.size() || index < 0) {
 			throw std::runtime_error("Index to retrieve buffer memory mapped out of bounds!");
 		}
-
-		return m_BufferMemoryMapped[index];
-	}
-
-	uint32_t Buffer::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(p_PhysicalDevice->GetHandle(), &memProperties);
-
-		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-				return i;
-			}
-		}
-
-		throw std::runtime_error("Failed to find suitable memory type!");
-	}
-
-	VkMemoryRequirements Buffer::GetMemoryRequirements(VkBuffer& buffer) {
-		VkMemoryRequirements memRequirements;
-		vkGetBufferMemoryRequirements(p_LogicalDevice->GetHandle(), buffer, &memRequirements);
-
-		return memRequirements;
+		
+		return BufferMemory->MemoryMapped[index];
 	}
 }

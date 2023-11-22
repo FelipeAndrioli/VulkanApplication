@@ -35,6 +35,6 @@ namespace Assets {
 	}
 
 	void Model::SetModelUniformBuffer(uint32_t currentImage) {
-		memcpy(m_UniformBuffer->GetBufferMemoryMapped(currentImage), p_UniformBufferObject, m_UniformBufferObjectSize);
+		memcpy(m_UniformBuffer->BufferMemory->MemoryMapped[currentImage], p_UniformBufferObject, m_UniformBufferObjectSize);
 	}
 }

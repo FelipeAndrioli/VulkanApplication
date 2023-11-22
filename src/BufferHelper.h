@@ -27,9 +27,9 @@ namespace Engine {
 			bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		stagingBuffer->MapMemory();
-		memcpy(stagingBuffer->GetBufferMemoryMapped(0), content.data(), bufferSize);
-		stagingBuffer->UnmapMemory();
+		stagingBuffer->BufferMemory->MapMemory();
+		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content.data(), bufferSize);
+		stagingBuffer->BufferMemory->UnmapMemory();
 
 		dstBuffer->CopyFrom(stagingBuffer->GetBuffer(0), bufferSize, commandPool);
 

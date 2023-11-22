@@ -314,7 +314,7 @@ namespace Engine {
 		ComputeUniformBufferObject cubo{};
 		cubo.deltaTime = m_Window->GetLastFrameTime() * 0.1f;
 
-		memcpy(m_ComputeUniformBuffers->GetBufferMemoryMapped(currentImage), &cubo, sizeof(cubo));
+		//memcpy(m_ComputeUniformBuffers->GetBufferMemoryMapped(currentImage), &cubo, sizeof(cubo));
 	}
 
 	void Application::Shutdown() {

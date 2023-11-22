@@ -47,7 +47,7 @@ namespace Engine {
 			model->m_UniformBuffer.reset(new class Engine::Buffer(Engine::MAX_FRAMES_IN_FLIGHT, p_LogicalDevice, p_PhysicalDevice,
 				bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
 			model->m_UniformBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			model->m_UniformBuffer->MapMemory();
+			model->m_UniformBuffer->BufferMemory->MapMemory();
 
 			model->m_DescriptorSets.reset(new class Engine::DescriptorSets(p_LogicalDevice->GetHandle(), 
 				m_GraphicsPipeline->GetDescriptorPool().GetHandle(), m_GraphicsPipeline->GetDescriptorSetLayout().GetHandle(), 
