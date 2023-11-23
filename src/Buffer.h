@@ -28,7 +28,6 @@ namespace Engine {
 		std::vector<VkBuffer> m_Buffer;
 
 		LogicalDevice* p_LogicalDevice;
-		PhysicalDevice* p_PhysicalDevice;
 
 		int m_BufferSize;
 	};

@@ -323,8 +323,6 @@ namespace Engine {
 	}
 
 	void Application::createSyncObjects() {
-		// TODO: The Semaphore and Fence classes are pretty similar, maybe we can turn them into a template instead of two different classes
-
 		m_ImageAvailableSemaphores.reset(new class Semaphore(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
 		m_RenderFinishedSemaphores.reset(new class Semaphore(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
 		m_ComputeFinishedSemaphores.reset(new class Semaphore(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));

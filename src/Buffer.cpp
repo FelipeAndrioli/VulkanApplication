@@ -2,10 +2,10 @@
 
 namespace Engine {
 	Buffer::Buffer(const int bufferSize, LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, const size_t size, 
-		const VkBufferUsageFlags usage) : p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice), m_BufferSize(bufferSize) {
+		const VkBufferUsageFlags usage) : p_LogicalDevice(logicalDevice), m_BufferSize(bufferSize) {
 
 		m_Buffer.resize(m_BufferSize);
-		BufferMemory.reset(new class DeviceMemory(&p_LogicalDevice->GetHandle(), &p_PhysicalDevice->GetHandle(), m_BufferSize));
+		BufferMemory.reset(new class DeviceMemory(&p_LogicalDevice->GetHandle(), &physicalDevice->GetHandle(), m_BufferSize));
 
 		for (size_t i = 0; i < m_BufferSize; i++) {
 			VkBufferCreateInfo bufferInfo{};
