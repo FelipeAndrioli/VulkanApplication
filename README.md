@@ -7,20 +7,18 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 
 ## Current Work (not in order)
 
-- [ ] Depth Buffer (In Progress)
-- [ ] Texture
-- [ ] Model loading
-- [ ] In Engine models
-- [ ] Scene selection
+- [x] Depth Buffer 
+- [ ] Texture 
 - [ ] Camera class
+- [ ] Custom Model loading
+- [ ] Default models
+	- [ ] Plane
+	- [ ] Cube
+	- [ ] Sphere
+- [ ] Scene selection
 - [ ] Compute Shaders
 
 ## Future Work (not in order)
 
 - [ ] Render Graph
 - [ ] Ray Tracer
-
-## Bugs
-
-- [ ] The updates happen faster when limiting frame rate
-- [ ] The updates happen faster when mouse is moving on the screen
