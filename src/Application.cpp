@@ -77,8 +77,38 @@ namespace Engine {
 
 	void Application::drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
 
+		/*
 		vkCmdBeginRenderPass(p_CommandBuffer, p_ActiveScene->RenderPassBeginInfo[imageIndex], 
 			VK_SUBPASS_CONTENTS_INLINE);
+		*/
+
+		std::array<VkClearValue, 2> clearValues{};
+		clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+		//VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+
+		VkRenderPassBeginInfo* renderPassInfo = new VkRenderPassBeginInfo[p_ActiveScene->ResourceSets.size() + 1];
+
+		int index = 0;
+
+		// TODO: building VkRenderPassBeginInfo temporary here, must bring back retrieval from scene resources
+		for (const Engine::ResourceSetLayout* resourceSetLayout : p_ActiveScene->m_ResourceSetLayouts) {
+			VkRenderPassBeginInfo newRenderPassInfo{};
+
+			newRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			newRenderPassInfo.renderPass = p_ActiveScene->ResourceSets[resourceSetLayout->ResourceSetIndex]->GetGraphicsPipeline()->GetRenderPass().GetHandle();
+			newRenderPassInfo.framebuffer = *p_ActiveScene->ResourceSets[resourceSetLayout->ResourceSetIndex]->GetFramebuffer(imageIndex);
+			newRenderPassInfo.renderArea.offset = {0, 0};
+			newRenderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
+			newRenderPassInfo.pNext = nullptr;
+
+			newRenderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+			newRenderPassInfo.pClearValues = clearValues.data();
+
+			renderPassInfo[index++] = newRenderPassInfo;
+		}
+
+		vkCmdBeginRenderPass(p_CommandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		ResourceSet* resourceSet = nullptr;
 		uint32_t vertexOffset = 0;
@@ -271,14 +301,17 @@ namespace Engine {
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));	
 
-		p_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool.get(), m_SwapChain.get());
+		m_DepthBuffer.reset(new class DepthBuffer(&m_PhysicalDevice->GetHandle(), &m_LogicalDevice->GetHandle(), m_SwapChain.get()));
 
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
+
 		m_ComputeCommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
-
+		
 		createSyncObjects();
+	
+		p_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool.get(), m_SwapChain.get(), m_DepthBuffer.get());
 	}
 
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
@@ -303,7 +336,8 @@ namespace Engine {
 
 	void Application::recreateSwapChain() {
 		m_SwapChain->ReCreate();
-		p_ActiveScene->Resize(m_SwapChain.get());
+		m_DepthBuffer->Resize(m_SwapChain.get());
+		p_ActiveScene->Resize(m_SwapChain.get(), m_DepthBuffer.get());
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));
 		m_UI->Resize(m_SwapChain.get());
@@ -324,6 +358,8 @@ namespace Engine {
 
 		m_ComputeUniformBuffers.reset();
 		m_ComputePipeline.reset();
+
+		m_DepthBuffer.reset();
 
 		m_CommandBuffers.reset();
 		m_ComputeCommandBuffers.reset();

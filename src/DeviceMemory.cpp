@@ -12,6 +12,9 @@ namespace Engine {
 		for (size_t i = 0; i < Memory.size(); i++) {
 			vkFreeMemory(*p_LogicalDevice, Memory[i], nullptr);
 		}
+
+		Memory.clear();
+		MemoryMapped.clear();
 	}
 
 	void DeviceMemory::MapMemory() {
@@ -46,6 +49,24 @@ namespace Engine {
 			}
 
 			vkBindBufferMemory(*p_LogicalDevice, buffer[i], Memory[i], 0);
+		}
+	}
+
+	void DeviceMemory::AllocateMemory(std::vector<VkImage>& images, VkMemoryPropertyFlags properties) {
+		for (size_t i = 0; i < images.size(); i++) {
+			VkMemoryRequirements memRequirements;
+			vkGetImageMemoryRequirements(*p_LogicalDevice, images[i], &memRequirements);
+			
+			VkMemoryAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			allocInfo.allocationSize = memRequirements.size;
+			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+
+			if (vkAllocateMemory(*p_LogicalDevice, &allocInfo, nullptr, &Memory[i]) != VK_SUCCESS) {
+				throw std::runtime_error("Failed to allocate image memory!");
+			}
+
+			vkBindImageMemory(*p_LogicalDevice, images[i], Memory[i], 0);
 		}
 	}
 

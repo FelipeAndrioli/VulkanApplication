@@ -1,10 +1,19 @@
 #include "ResourceSet.h"
 
 namespace Engine {
-	ResourceSet::ResourceSet(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, 
-		PhysicalDevice* physicalDevice, CommandPool* commandPool, SwapChain* swapChain, std::vector<Assets::Model*>& models) 
-		: p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice), p_CommandPool(commandPool), 
-		p_SwapChain(swapChain), p_ResourceSetLayout(resourceSetLayout), 
+	ResourceSet::ResourceSet(
+		ResourceSetLayout* resourceSetLayout, 
+		LogicalDevice* logicalDevice, 
+		PhysicalDevice* physicalDevice, 
+		CommandPool* commandPool, 
+		SwapChain* swapChain, 
+		DepthBuffer* depthBuffer,
+		std::vector<Assets::Model*>& models
+	): 
+		p_LogicalDevice(logicalDevice), 
+		p_PhysicalDevice(physicalDevice), 
+		p_CommandPool(commandPool), 
+		p_ResourceSetLayout(resourceSetLayout), 
 		ResourceSetIndex(resourceSetLayout->ResourceSetIndex) {
 
 		for (auto model : models) {
@@ -12,8 +21,8 @@ namespace Engine {
 		}
 
 		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_ResourceSetLayout, p_LogicalDevice,
-			p_SwapChain));
-		CreateFrameBuffers();
+			swapChain, depthBuffer));
+		CreateFrameBuffers(swapChain, depthBuffer);
 
 		if (p_ResourceSetLayout->MaxDescriptorSets == 0) return;
 		
@@ -83,22 +92,24 @@ namespace Engine {
 		BufferHelper bufferHelper;
 		bufferHelper.CopyFromStaging(p_LogicalDevice, p_PhysicalDevice, p_CommandPool->GetHandle(), 
 			m_Indices, m_IndexBuffer.get());
-
 	}
 
-	void ResourceSet::CreateFrameBuffers() {
-		m_Framebuffers.resize(p_SwapChain->GetSwapChainImageViews().size());
+	void ResourceSet::CreateFrameBuffers(SwapChain* swapChain, DepthBuffer* depthBuffer) {
+		m_Framebuffers.resize(swapChain->GetSwapChainImageViews().size());
 
-		for (size_t i = 0; i < p_SwapChain->GetSwapChainImageViews().size(); i++) {
-			VkImageView attachments[] = { p_SwapChain->GetSwapChainImageViews()[i] };
+		for (size_t i = 0; i < swapChain->GetSwapChainImageViews().size(); i++) {
+			std::array<VkImageView, 2> attachments = { 
+				swapChain->GetSwapChainImageViews()[i], 
+				depthBuffer->GetDepthBufferImageView()[0] 
+			};
 
 			VkFramebufferCreateInfo framebufferInfo{};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferInfo.renderPass = m_GraphicsPipeline->GetRenderPass().GetHandle();
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
-			framebufferInfo.width = p_SwapChain->GetSwapChainExtent().width;
-			framebufferInfo.height = p_SwapChain->GetSwapChainExtent().height;
+			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments = attachments.data();
+			framebufferInfo.width = swapChain->GetSwapChainExtent().width;
+			framebufferInfo.height = swapChain->GetSwapChainExtent().height;
 			framebufferInfo.layers = 1;
 
 			if (vkCreateFramebuffer(p_LogicalDevice->GetHandle(), &framebufferInfo, nullptr, &m_Framebuffers[i]) != VK_SUCCESS) {
@@ -113,8 +124,8 @@ namespace Engine {
 		}
 	}
 
-	void ResourceSet::Resize() {
+	void ResourceSet::Resize(SwapChain* swapChain, DepthBuffer* depthBuffer) {
 		CleanUp();
-		CreateFrameBuffers();
+		CreateFrameBuffers(swapChain, depthBuffer);
 	}
 }

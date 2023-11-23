@@ -4,8 +4,8 @@
 
 namespace Engine {
 	GraphicsPipeline::GraphicsPipeline(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, 
-		SwapChain* swapChain)
-		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain) {
+		SwapChain* swapChain, DepthBuffer* depthBuffer)
+		: p_LogicalDevice(logicalDevice) {
 
 		auto bindingDescription = resourceSetLayout->BindingDescription;
 		auto attributeDescriptions = resourceSetLayout->AttributeDescriptions;
@@ -25,14 +25,14 @@ namespace Engine {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)p_SwapChain->GetSwapChainExtent().width;
-		viewport.height = (float)p_SwapChain->GetSwapChainExtent().height;
+		viewport.width = (float)swapChain->GetSwapChainExtent().width;
+		viewport.height = (float)swapChain->GetSwapChainExtent().height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
-		scissor.extent = p_SwapChain->GetSwapChainExtent();
+		scissor.extent = swapChain->GetSwapChainExtent();
 
 		VkPipelineViewportStateCreateInfo viewportState{};
 		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -113,12 +113,24 @@ namespace Engine {
 		std::vector<BufferDescriptor> bufferDescriptor = {};
 
 		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
-		m_RenderPass.reset(new class RenderPass(p_SwapChain, p_LogicalDevice->GetHandle()));
+		m_RenderPass.reset(new class RenderPass(swapChain, p_LogicalDevice->GetHandle(), depthBuffer));
 
 		ShaderModule vertShaderModule(resourceSetLayout->VertexShaderPath, p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
 		ShaderModule fragShaderModule(resourceSetLayout->FragmentShaderPath, p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderModule.GetShaderStageInfo(), fragShaderModule.GetShaderStageInfo() };
+
+		VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo{};
+		depthStencilCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depthStencilCreateInfo.depthTestEnable = VK_TRUE;
+		depthStencilCreateInfo.depthWriteEnable = VK_TRUE;
+		depthStencilCreateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+		depthStencilCreateInfo.depthBoundsTestEnable = VK_FALSE;
+		depthStencilCreateInfo.minDepthBounds = 0.0f;
+		depthStencilCreateInfo.maxDepthBounds = 1.0f;
+		depthStencilCreateInfo.stencilTestEnable = VK_FALSE;
+		depthStencilCreateInfo.front = {};
+		depthStencilCreateInfo.back = {};
 
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -129,7 +141,7 @@ namespace Engine {
 		pipelineInfo.pViewportState = &viewportState;
 		pipelineInfo.pRasterizationState = &rasterizer;
 		pipelineInfo.pMultisampleState = &multisampling;
-		pipelineInfo.pDepthStencilState = nullptr;
+		pipelineInfo.pDepthStencilState = &depthStencilCreateInfo;
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDynamicState = &dynamicState;
 		pipelineInfo.layout = m_GraphicsPipelineLayout->GetHandle();

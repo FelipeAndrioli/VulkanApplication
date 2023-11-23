@@ -166,6 +166,7 @@
     <ClCompile Include="src\DeviceMemory.cpp" />
     <ClCompile Include="src\Fence.cpp" />
     <ClCompile Include="src\GraphicsPipeline.cpp" />
+    <ClCompile Include="src\Image.cpp" />
     <ClCompile Include="src\Instance.cpp" />
     <ClCompile Include="src\LogicalDevice.cpp" />
     <ClCompile Include="src\Main.cpp" />
@@ -208,6 +209,7 @@
     <ClInclude Include="src\DeviceMemory.h" />
     <ClInclude Include="src\Fence.h" />
     <ClInclude Include="src\GraphicsPipeline.h" />
+    <ClInclude Include="src\Image.h" />
     <ClInclude Include="src\ResourceSetLayout.h" />
     <ClInclude Include="src\Instance.h" />
     <ClInclude Include="src\Layer.h" />

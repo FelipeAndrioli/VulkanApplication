@@ -26,10 +26,9 @@ namespace Engine {
 				vkDestroyBuffer(p_LogicalDevice->GetHandle(), m_Buffer[i], nullptr);
 			}
 		}
-
+		
 		BufferMemory.reset();
 	}
-
 
 	void Buffer::AllocateMemory(VkMemoryPropertyFlags properties) {
 		BufferMemory->AllocateMemory(m_Buffer, properties);

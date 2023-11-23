@@ -12,6 +12,7 @@ namespace Engine {
 		~DeviceMemory();
 
 		void AllocateMemory(std::vector<VkBuffer>& buffer, VkMemoryPropertyFlags properties);
+		void AllocateMemory(std::vector<VkImage>& images, VkMemoryPropertyFlags properties);
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 		VkMemoryRequirements GetMemoryRequirements(VkBuffer& buffer);
 

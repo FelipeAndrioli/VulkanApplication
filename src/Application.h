@@ -46,6 +46,7 @@
 #include "Instance.h"
 #include "DebugUtilsMessenger.h"
 #include "ResourceSet.h"
+#include "DepthBuffer.h"
 
 #include "../Assets/Scene.h"
 
@@ -107,6 +108,8 @@ namespace Engine {
 		std::unique_ptr<class Semaphore> m_ComputeFinishedSemaphores;
 		std::unique_ptr<class Fence> m_InFlightFences;
 		std::unique_ptr<class Fence> m_ComputeInFlightFences;
+
+		std::unique_ptr<class DepthBuffer> m_DepthBuffer;
 
 		std::unique_ptr<class UI> m_UI;
 		

@@ -10,6 +10,7 @@
 #include "CommandPool.h"
 #include "SwapChain.h"
 #include "ResourceSetLayout.h"
+#include "DepthBuffer.h"
 
 #include "../Assets/Scene.h"
 
@@ -18,16 +19,16 @@ namespace Engine {
 	public:
 
 		ResourceSet(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, 
-			CommandPool* commandPool, SwapChain* swapChain, std::vector<Assets::Model*>& models);
+			CommandPool* commandPool, SwapChain* swapChain, DepthBuffer* depthBuffer, std::vector<Assets::Model*>& models);
 
 		~ResourceSet();
 		
 		void SetModelResources(std::vector<Assets::Model*>& models);
 		void CreateVertexBuffer();
 		void CreateIndexBuffer();
-		void CreateFrameBuffers();
+		void CreateFrameBuffers(SwapChain* swapChain, DepthBuffer* depthBuffer);
 		void CleanUp();
-		void Resize();
+		void Resize(SwapChain* swapchain, DepthBuffer* depthBuffer);
 
 		GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline.get(); };
 		VkFramebuffer* GetFramebuffer(size_t index) { return &m_Framebuffers[index]; };
@@ -57,6 +58,5 @@ namespace Engine {
 		LogicalDevice* p_LogicalDevice = nullptr;
 		PhysicalDevice* p_PhysicalDevice = nullptr;
 		CommandPool* p_CommandPool = nullptr;
-		SwapChain* p_SwapChain = nullptr;
 	};
 }
