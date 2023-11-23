@@ -64,25 +64,27 @@ public:
 
 		SetUniformBufferObject(ubo, sizeof(*ubo));
 
-		/*
-		std::vector<Assets::Vertex> v = { 
-			{ {-1.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} },
-			{ {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} },
-			{ {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f} },
-			{ {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f} }
-		};
-		*/
-
-		std::vector<Assets::Vertex> v = { 
-			{ {-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f} },
-			{ {0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f} },
-			{ {0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f} },
-			{ {-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f} }
+		std::vector<Assets::Vertex> v = {
+			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }},		// top front right		0
+			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }},		// top back right		1
+			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }},		// top front left		2
+			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }},		// top back left		3
+			{{ -0.5f, -0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }},		// bottom front left	4
+			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }},	// bottom back left		5
+			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }},		// bottom front right	6
+			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }}		// bottom back right	7
 		};
 
 		std::vector<uint16_t> i = {
-			0, 1, 2, 2, 3, 0
+			0, 2, 6, 2, 4, 6,		// front face
+			0, 6, 7, 0, 1, 7,		// right face
+			3, 4, 2, 3, 5, 4,		// left face
+			3, 5, 7, 3, 7, 1,		// bottom face
+			2, 3, 0, 3, 0, 1,		// top face
+			5, 4, 6, 5, 6, 7		// bottom face
 		};
+
+		m_Transform.translation.z = -4.0f;
 
 		SetVertices(v);
 		SetIndices(i);
@@ -101,14 +103,27 @@ public:
 			std::string t_label_y = "Translation y " + modelId;
 			std::string t_label_z = "Translation z " + modelId;
 
-			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -1.0f, 1.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -1.0f, 1.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -1.0f, 1.0f);
+			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -20.0f, 20.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -20.0f, 20.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -20.0f, 20.0f);
+
+			std::string r_label_x = "Rotation x " + modelId;
+			std::string r_label_y = "Rotation y " + modelId;
+			std::string r_label_z = "Rotation z " + modelId;
+			
+			ImGui::SliderFloat(r_label_x.c_str(), &m_Transform.rotation.x, -20.0f, 20.0f);
+			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
+			ImGui::SliderFloat(r_label_z.c_str(), &m_Transform.rotation.z, -20.0f, 20.0f);
+
 			ImGui::TreePop();
 		}
 	}
 
 	void OnUpdate(float t) {
+		m_Transform.rotation.x += t * 0.05f;
+		m_Transform.rotation.y += t * 0.05f;
+		m_Transform.rotation.z += t * 0.05f;
+
 		ubo->model = GetModelMatrix();
 		ubo->view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo->proj = glm::perspective(45.0f, 800 / (float)600, 0.1f, 10.0f);
@@ -138,18 +153,28 @@ public:
 
 		SetUniformBufferObject(ubo, sizeof(*ubo));
 
-		std::vector<Assets::Vertex> v = { 
-			{ {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} },
-			{ {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f} },
-			{ {1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} },
-			{ {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} }
+		std::vector<Assets::Vertex> v = {
+			{{ 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front right		0
+			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},		// top back right		1
+			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front left		2
+			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},		// top back left		3
+			{{ -0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// bottom front left	4
+			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},	// bottom back left		5
+			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// bottom front right	6
+			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }}		// bottom back right	7
 		};
 
 		std::vector<uint16_t> i = {
-			0, 1, 2, 2, 3, 0
+			0, 2, 6, 2, 4, 6,		// front face
+			0, 6, 7, 0, 1, 7,		// right face
+			3, 4, 2, 3, 5, 4,		// left face
+			3, 5, 7, 3, 7, 1,		// bottom face
+			2, 3, 0, 3, 0, 1,		// top face
+			5, 4, 6, 5, 6, 7		// bottom face
 		};
-		
-		m_Transform.translation.z = -1.0f;
+
+		m_Transform.translation.x = 2.0f;
+		m_Transform.translation.z = -4.0f;
 
 		SetVertices(v);
 		SetIndices(i);
@@ -168,10 +193,18 @@ public:
 			std::string t_label_y = "Translation y " + modelId;
 			std::string t_label_z = "Translation z " + modelId;
 
-			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -1.0f, 1.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -1.0f, 1.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -1.0f, 1.0f);
+			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -20.0f, 20.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -20.0f, 20.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -20.0f, 20.0f);
 
+			std::string r_label_x = "Rotation x " + modelId;
+			std::string r_label_y = "Rotation y " + modelId;
+			std::string r_label_z = "Rotation z " + modelId;
+			
+			ImGui::SliderFloat(r_label_x.c_str(), &m_Transform.rotation.x, -20.0f, 20.0f);
+			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
+			ImGui::SliderFloat(r_label_z.c_str(), &m_Transform.rotation.z, -20.0f, 20.0f);
+			
 			ImGui::ColorEdit3("Color", glm::value_ptr(ubo->color));
 
 			ImGui::TreePop();
@@ -179,6 +212,10 @@ public:
 	}
 
 	void OnUpdate(float t) {
+		m_Transform.rotation.x += t * 0.05f;
+		m_Transform.rotation.y += t * 0.05f;
+		m_Transform.rotation.z += t * 0.05f;
+
 		ubo->model = GetModelMatrix();
 		ubo->view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo->proj = glm::perspective(glm::radians(45.0f), 800 / (float) 600, 0.1f, 10.0f);
@@ -204,19 +241,28 @@ public:
 
 		SetUniformBufferObject(ubo, sizeof(*ubo));
 
-		std::vector<Assets::Vertex> v = { 
-			{ {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} },
-			{ {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f} },
-			{ {1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} },
-			{ {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} }
+		std::vector<Assets::Vertex> v = {
+			{{ 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front right		0
+			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},		// top back right		1
+			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front left		2
+			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},		// top back left		3
+			{{ -0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// bottom front left	4
+			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},	// bottom back left		5
+			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// bottom front right	6
+			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }}		// bottom back right	7
 		};
 
 		std::vector<uint16_t> i = {
-			0, 1, 2, 2, 3, 0
+			0, 2, 6, 2, 4, 6,		// front face
+			0, 6, 7, 0, 1, 7,		// right face
+			3, 4, 2, 3, 5, 4,		// left face
+			3, 5, 7, 3, 7, 1,		// bottom face
+			2, 3, 0, 3, 0, 1,		// top face
+			5, 4, 6, 5, 6, 7		// bottom face
 		};
 
-		m_Transform.translation.x = -1.0f;
-		m_Transform.translation.z = -1.0f;
+		m_Transform.translation.x = -2.0f;
+		m_Transform.translation.z = -4.0f;
 
 		SetVertices(v);
 		SetIndices(i);
@@ -235,14 +281,27 @@ public:
 			std::string t_label_y = "Translation y " + modelId;
 			std::string t_label_z = "Translation z " + modelId;
 
-			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -1.0f, 1.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -1.0f, 1.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -1.0f, 1.0f);
+			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -20.0f, 20.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -20.0f, 20.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -20.0f, 20.0f);
+
+			std::string r_label_x = "Rotation x " + modelId;
+			std::string r_label_y = "Rotation y " + modelId;
+			std::string r_label_z = "Rotation z " + modelId;
+			
+			ImGui::SliderFloat(r_label_x.c_str(), &m_Transform.rotation.x, -20.0f, 20.0f);
+			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
+			ImGui::SliderFloat(r_label_z.c_str(), &m_Transform.rotation.z, -20.0f, 20.0f);
+
 			ImGui::TreePop();
 		}
 	}
 
 	void OnUpdate(float t) {
+		m_Transform.rotation.x += t * 0.05f;
+		m_Transform.rotation.y += t * 0.05f;
+		m_Transform.rotation.z += t * 0.05f;
+
 		ubo->model = GetModelMatrix();
 		ubo->view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo->proj = glm::perspective(glm::radians(45.0f), 800 / (float) 600, 0.1f, 10.0f);
