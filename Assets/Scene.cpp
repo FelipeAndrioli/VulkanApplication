@@ -54,7 +54,8 @@ namespace Assets {
 	}
 
 	void Scene::SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
-		Engine::CommandPool* commandPool, Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer) {
+		Engine::CommandPool* commandPool, Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer,
+		const VkRenderPass& renderPass) {
 	
 		int maxIndex = 0;
 
@@ -77,28 +78,30 @@ namespace Assets {
 
 		for (Engine::ResourceSetLayout* resourceSetLayout : m_ResourceSetLayouts) {
 			ResourceSets[resourceSetLayout->ResourceSetIndex] = new Engine::ResourceSet(resourceSetLayout, logicalDevice,
-				physicalDevice, commandPool, swapChain, depthBuffer, Models);
+				physicalDevice, commandPool, swapChain, depthBuffer, renderPass, Models);
 		}
 		
-		CreateRenderPassBeginInfo(swapChain);
+		//CreateRenderPassBeginInfo(swapChain);
 	}
 
 	void Scene::Resize(Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer) {
+
+		/*
 		for (size_t i = 0; i < ResourceSets.size(); i++) {
 			ResourceSets[i]->Resize(swapChain, depthBuffer);
 		}
 
-		/*
 		for (VkRenderPassBeginInfo* beginInfo : RenderPassBeginInfo) {
 			delete beginInfo;
 		}
 		*/
 
-		RenderPassBeginInfo.clear();
+		//RenderPassBeginInfo.clear();
 
-		CreateRenderPassBeginInfo(swapChain);
+		//CreateRenderPassBeginInfo(swapChain);
 	}
 
+	/*
 	void Scene::CreateRenderPassBeginInfo(Engine::SwapChain* swapChain) {
 		// TODO: fix
 		std::array<VkClearValue, 2> clearValues{};
@@ -128,4 +131,5 @@ namespace Assets {
 			RenderPassBeginInfo.push_back(renderPassInfo);
 		}
 	}
+	*/
 }

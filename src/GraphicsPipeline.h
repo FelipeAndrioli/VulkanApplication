@@ -26,11 +26,11 @@ namespace Engine {
 	class GraphicsPipeline {
 	public:
 		GraphicsPipeline(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, SwapChain* swapChain, 
-			DepthBuffer* depthBuffer);
+			DepthBuffer* depthBuffer, const VkRenderPass& renderPass);
 		~GraphicsPipeline();
 
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };
-		inline RenderPass& GetRenderPass() { return *m_RenderPass; };
+		//inline RenderPass& GetRenderPass() { return *m_RenderPass; };
 		inline PipelineLayout& GetPipelineLayout() { return *m_GraphicsPipelineLayout; };
 		inline DescriptorSetLayout& GetDescriptorSetLayout() { return *m_DescriptorSetLayout; };
 		inline DescriptorPool& GetDescriptorPool() { return *m_DescriptorPool; };
@@ -42,6 +42,6 @@ namespace Engine {
 		std::unique_ptr<class DescriptorSetLayout> m_DescriptorSetLayout;
 		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
 		std::unique_ptr<class PipelineLayout> m_GraphicsPipelineLayout;
-		std::unique_ptr<class RenderPass> m_RenderPass;
+		//std::unique_ptr<class RenderPass> m_RenderPass;
 	};
 }

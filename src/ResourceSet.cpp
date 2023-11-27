@@ -8,6 +8,7 @@ namespace Engine {
 		CommandPool* commandPool, 
 		SwapChain* swapChain, 
 		DepthBuffer* depthBuffer,
+		const VkRenderPass& renderPass,
 		std::vector<Assets::Model*>& models
 	): 
 		p_LogicalDevice(logicalDevice), 
@@ -21,8 +22,8 @@ namespace Engine {
 		}
 
 		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_ResourceSetLayout, p_LogicalDevice,
-			swapChain, depthBuffer));
-		CreateFrameBuffers(swapChain, depthBuffer);
+			swapChain, depthBuffer, renderPass));
+		//CreateFrameBuffers(swapChain, depthBuffer);
 
 		if (p_ResourceSetLayout->MaxDescriptorSets == 0) return;
 		
@@ -34,7 +35,7 @@ namespace Engine {
 	}
 	
 	ResourceSet::~ResourceSet() {
-		CleanUp();
+		//CleanUp();
 
 		m_Vertices.clear();
 		m_Indices.clear();
@@ -94,6 +95,7 @@ namespace Engine {
 			m_Indices, m_IndexBuffer.get());
 	}
 
+	/*
 	void ResourceSet::CreateFrameBuffers(SwapChain* swapChain, DepthBuffer* depthBuffer) {
 		m_Framebuffers.resize(swapChain->GetSwapChainImageViews().size());
 
@@ -128,4 +130,5 @@ namespace Engine {
 		CleanUp();
 		CreateFrameBuffers(swapChain, depthBuffer);
 	}
+	*/
 }

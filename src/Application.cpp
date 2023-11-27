@@ -40,7 +40,7 @@ namespace Engine {
 
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = m_TempRayTracerPipeline->GetRenderPass().GetHandle();
+		//renderPassInfo.renderPass = m_TempRayTracerPipeline->GetRenderPass().GetHandle();
 		//renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
 		renderPassInfo.renderArea.offset = { 0, 0 };
 		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
@@ -87,6 +87,7 @@ namespace Engine {
 		clearValues[1].depthStencil = { 1.0f, 0 };
 		//VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 
+		/*
 		VkRenderPassBeginInfo* renderPassInfo = new VkRenderPassBeginInfo[p_ActiveScene->ResourceSets.size() + 1];
 
 		int index = 0;
@@ -96,8 +97,12 @@ namespace Engine {
 			VkRenderPassBeginInfo newRenderPassInfo{};
 
 			newRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			newRenderPassInfo.renderPass = p_ActiveScene->ResourceSets[resourceSetLayout->ResourceSetIndex]->GetGraphicsPipeline()->GetRenderPass().GetHandle();
-			newRenderPassInfo.framebuffer = *p_ActiveScene->ResourceSets[resourceSetLayout->ResourceSetIndex]->GetFramebuffer(imageIndex);
+			//newRenderPassInfo.renderPass = p_ActiveScene->ResourceSets[resourceSetLayout->ResourceSetIndex]->GetGraphicsPipeline()->GetRenderPass().GetHandle();
+			//newRenderPassInfo.framebuffer = *p_ActiveScene->ResourceSets[resourceSetLayout->ResourceSetIndex]->GetFramebuffer(imageIndex);
+
+			newRenderPassInfo.renderPass = m_DefaultRenderPass->GetHandle();
+			newRenderPassInfo.framebuffer = m_Framebuffers[imageIndex];
+			
 			newRenderPassInfo.renderArea.offset = {0, 0};
 			newRenderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
 			newRenderPassInfo.pNext = nullptr;
@@ -109,6 +114,19 @@ namespace Engine {
 		}
 
 		vkCmdBeginRenderPass(p_CommandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		*/
+
+		VkRenderPassBeginInfo renderPassBeginInfo{};
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass = m_DefaultRenderPass->GetHandle();
+		renderPassBeginInfo.framebuffer = m_Framebuffers[imageIndex];
+		renderPassBeginInfo.renderArea.offset = {0, 0};
+		renderPassBeginInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
+		renderPassBeginInfo.pNext = nullptr;
+		renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassBeginInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(p_CommandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		ResourceSet* resourceSet = nullptr;
 		uint32_t vertexOffset = 0;
@@ -294,14 +312,46 @@ namespace Engine {
 		std::cout << "width - " << width << " height - " << height << '\n';
 	}
 
+	void Application::createFramebuffers(const VkRenderPass& renderPass) {
+		// temporary here
+		m_Framebuffers.resize(m_SwapChain->GetSwapChainImageViews().size());
+
+		for (size_t i = 0; i < m_SwapChain->GetSwapChainImageViews().size(); i++) {
+			std::array<VkImageView, 2> attachments = { 
+				m_SwapChain->GetSwapChainImageViews()[i], 
+				m_DepthBuffer->GetDepthBufferImageView()[0] 
+			};
+
+			VkFramebufferCreateInfo framebufferInfo{};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			//framebufferInfo.renderPass = m_GraphicsPipeline->GetRenderPass().GetHandle();
+			framebufferInfo.renderPass = renderPass;
+			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments = attachments.data();
+			framebufferInfo.width = m_SwapChain->GetSwapChainExtent().width;
+			framebufferInfo.height = m_SwapChain->GetSwapChainExtent().height;
+			framebufferInfo.layers = 1;
+
+			if (vkCreateFramebuffer(m_LogicalDevice->GetHandle(), &framebufferInfo, nullptr, &m_Framebuffers[i]) != VK_SUCCESS) {
+				throw std::runtime_error("Failed to create framebuffer!");
+			}
+		}
+		// temporary here
+	}
+
 	void Application::InitVulkan() {
 		m_Surface.reset(new class Surface(m_Instance->GetHandle(), *m_Window->GetHandle()));
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
+		m_DepthBuffer.reset(new class DepthBuffer(&m_PhysicalDevice->GetHandle(), &m_LogicalDevice->GetHandle(), m_SwapChain.get()));
+
+		m_DefaultRenderPass.reset(new class RenderPass(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get()));
+		// temporary
+		createFramebuffers(m_DefaultRenderPass->GetHandle());
+
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));	
 
-		m_DepthBuffer.reset(new class DepthBuffer(&m_PhysicalDevice->GetHandle(), &m_LogicalDevice->GetHandle(), m_SwapChain.get()));
 
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
@@ -311,7 +361,7 @@ namespace Engine {
 		
 		createSyncObjects();
 	
-		p_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool.get(), m_SwapChain.get(), m_DepthBuffer.get());
+		p_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool.get(), m_SwapChain.get(), m_DepthBuffer.get(), m_DefaultRenderPass->GetHandle());
 	}
 
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
@@ -335,6 +385,17 @@ namespace Engine {
 	void Application::recreateSwapChain() {
 		m_SwapChain->ReCreate();
 		m_DepthBuffer->Resize(m_SwapChain.get());
+
+		m_DefaultRenderPass.reset(new class RenderPass(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get()));
+		// temporary
+		for (VkFramebuffer framebuffer : m_Framebuffers) {
+			vkDestroyFramebuffer(m_LogicalDevice->GetHandle(), framebuffer, nullptr);
+		}
+
+		m_Framebuffers.clear();
+		createFramebuffers(m_DefaultRenderPass->GetHandle());
+		// temporary
+
 		p_ActiveScene->Resize(m_SwapChain.get(), m_DepthBuffer.get());
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));
@@ -358,6 +419,13 @@ namespace Engine {
 		m_ComputePipeline.reset();
 
 		m_DepthBuffer.reset();
+
+		for (VkFramebuffer framebuffer : m_Framebuffers) {
+			vkDestroyFramebuffer(m_LogicalDevice->GetHandle(), framebuffer, nullptr);
+		}
+
+		m_Framebuffers.clear();
+		m_DefaultRenderPass.reset();
 
 		m_CommandBuffers.reset();
 		m_ComputeCommandBuffers.reset();

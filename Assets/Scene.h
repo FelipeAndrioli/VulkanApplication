@@ -34,11 +34,12 @@ namespace Assets {
 		void OnUpdate(float t);
 
 		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
-			Engine::CommandPool* commandPool, Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer);
+			Engine::CommandPool* commandPool, Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer,
+			const VkRenderPass& renderPass);
 		
 		void Resize(Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer);
 	private:
-		void CreateRenderPassBeginInfo(Engine::SwapChain* swapChain);
+		//void CreateRenderPassBeginInfo(Engine::SwapChain* swapChain);
 	public:
 		std::vector<Model*> Models;
 		std::vector<Engine::ResourceSet*> ResourceSets;

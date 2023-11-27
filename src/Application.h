@@ -88,6 +88,9 @@ namespace Engine {
 		
 		void processKey(int key, int scancode, int action, int mods);
 		void processResize(int width, int height);
+
+		// temporary
+		void createFramebuffers(const VkRenderPass& renderPass);
 		
 	private:
 		std::unique_ptr<class Window> m_Window;
@@ -110,6 +113,9 @@ namespace Engine {
 		std::unique_ptr<class Fence> m_ComputeInFlightFences;
 
 		std::unique_ptr<class DepthBuffer> m_DepthBuffer;
+
+		std::unique_ptr<class RenderPass> m_DefaultRenderPass;
+		std::vector<VkFramebuffer> m_Framebuffers;
 
 		std::unique_ptr<class UI> m_UI;
 		

@@ -121,8 +121,8 @@ public:
 
 	void OnUpdate(float t) {
 		m_Transform.rotation.x += t * 0.05f;
-		m_Transform.rotation.y += t * 0.05f;
-		m_Transform.rotation.z += t * 0.05f;
+		//m_Transform.rotation.y += t * 0.05f;
+		//m_Transform.rotation.z -= t * 0.05f;
 
 		ubo->model = GetModelMatrix();
 		ubo->view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -212,9 +212,9 @@ public:
 	}
 
 	void OnUpdate(float t) {
-		m_Transform.rotation.x += t * 0.05f;
+		//m_Transform.rotation.x += t * 0.05f;
 		m_Transform.rotation.y += t * 0.05f;
-		m_Transform.rotation.z += t * 0.05f;
+		//m_Transform.rotation.z += t * 0.05f;
 
 		ubo->model = GetModelMatrix();
 		ubo->view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -298,8 +298,8 @@ public:
 	}
 
 	void OnUpdate(float t) {
-		m_Transform.rotation.x += t * 0.05f;
-		m_Transform.rotation.y += t * 0.05f;
+		//m_Transform.rotation.x += t * 0.05f;
+		//m_Transform.rotation.y -= t * 0.05f;
 		m_Transform.rotation.z += t * 0.05f;
 
 		ubo->model = GetModelMatrix();
