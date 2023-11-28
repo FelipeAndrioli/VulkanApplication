@@ -21,9 +21,9 @@ namespace Engine {
 		inline VkSwapchainKHR& GetHandle() { return m_SwapChain; };
 		inline std::vector<VkImage> GetSwapChainImages() { return m_SwapChainImages; };
 		inline VkFormat GetSwapChainImageFormat() { return m_SwapChainImageFormat; };
-		inline VkExtent2D GetSwapChainExtent() { return m_SwapChainExtent; };
 		inline std::vector<VkImageView> GetSwapChainImageViews() { return m_SwapChainImageViews; };
 
+		VkExtent2D GetSwapChainExtent() const { return m_SwapChainExtent; };
 	private:
 		void CreateSwapChain();
 		void CreateImageViews();

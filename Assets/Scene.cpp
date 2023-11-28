@@ -53,8 +53,8 @@ namespace Assets {
 		}
 	}
 
-	void Scene::SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
-		Engine::CommandPool* commandPool, Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer,
+	void Scene::SetupScene(Engine::LogicalDevice& logicalDevice, Engine::PhysicalDevice& physicalDevice, 
+		Engine::CommandPool& commandPool, const Engine::SwapChain& swapChain, const Engine::DepthBuffer& depthBuffer,
 		const VkRenderPass& renderPass) {
 	
 		int maxIndex = 0;
@@ -77,7 +77,7 @@ namespace Assets {
 		}
 
 		for (Engine::ResourceSetLayout* resourceSetLayout : m_ResourceSetLayouts) {
-			ResourceSets[resourceSetLayout->ResourceSetIndex] = new Engine::ResourceSet(resourceSetLayout, logicalDevice,
+			ResourceSets[resourceSetLayout->ResourceSetIndex] = new Engine::ResourceSet(*resourceSetLayout, logicalDevice,
 				physicalDevice, commandPool, swapChain, depthBuffer, renderPass, Models);
 		}
 	}

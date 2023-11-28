@@ -33,8 +33,12 @@ namespace Assets {
 		void OnUIRender();
 		void OnUpdate(float t);
 
-		void SetupScene(Engine::LogicalDevice* logicalDevice, Engine::PhysicalDevice* physicalDevice, 
-			Engine::CommandPool* commandPool, Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer,
+		void SetupScene(
+			Engine::LogicalDevice& logicalDevice, 
+			Engine::PhysicalDevice& physicalDevice, 
+			Engine::CommandPool& commandPool, 
+			const Engine::SwapChain& swapChain, 
+			const Engine::DepthBuffer& depthBuffer,
 			const VkRenderPass& renderPass);
 		
 	public:

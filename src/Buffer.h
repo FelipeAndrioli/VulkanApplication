@@ -10,7 +10,7 @@
 namespace Engine {
 	class Buffer {
 	public:
-		Buffer(const int bufferSize, LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, 
+		Buffer(const int bufferSize, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, 
 			const size_t size, const VkBufferUsageFlags usage);
 		~Buffer();
 

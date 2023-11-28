@@ -18,15 +18,22 @@ namespace Engine {
 	class ResourceSet {
 	public:
 
-		ResourceSet(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, 
-			CommandPool* commandPool, SwapChain* swapChain, DepthBuffer* depthBuffer, const VkRenderPass& renderPass,
+		ResourceSet(
+			ResourceSetLayout& resourceSetLayout, 
+			LogicalDevice& logicalDevice, 
+			PhysicalDevice& physicalDevice, 
+			CommandPool& commandPool, 
+			const SwapChain& swapChain, 
+			const DepthBuffer& depthBuffer, 
+			const VkRenderPass& renderPass,
 			std::vector<Assets::Model*>& models);
 
 		~ResourceSet();
 		
-		void SetModelResources(std::vector<Assets::Model*>& models);
-		void CreateVertexBuffer();
-		void CreateIndexBuffer();
+		void SetModelResources(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, 
+			std::vector<Assets::Model*>& models);
+		void CreateVertexBuffer(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, CommandPool& commandPool);
+		void CreateIndexBuffer(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, CommandPool& commandPool);
 
 		GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline.get(); };
 	
@@ -49,8 +56,8 @@ namespace Engine {
 		std::vector<Assets::Vertex> m_Vertices;
 		std::vector<uint16_t> m_Indices;
 
-		LogicalDevice* p_LogicalDevice = nullptr;
-		PhysicalDevice* p_PhysicalDevice = nullptr;
-		CommandPool* p_CommandPool = nullptr;
+		//LogicalDevice* p_LogicalDevice = nullptr;
+		//PhysicalDevice* p_PhysicalDevice = nullptr;
+		//CommandPool* p_CommandPool = nullptr;
 	};
 }

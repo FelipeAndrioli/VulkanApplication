@@ -328,7 +328,8 @@ namespace Engine {
 		
 		createSyncObjects();
 	
-		p_ActiveScene->SetupScene(m_LogicalDevice.get(), m_PhysicalDevice.get(), m_CommandPool.get(), m_SwapChain.get(), m_DepthBuffer.get(), m_DefaultRenderPass->GetHandle());
+		p_ActiveScene->SetupScene(*m_LogicalDevice, *m_PhysicalDevice, *m_CommandPool, *m_SwapChain, *m_DepthBuffer, 
+			m_DefaultRenderPass->GetHandle());
 	}
 
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {

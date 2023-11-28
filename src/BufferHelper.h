@@ -14,12 +14,12 @@ namespace Engine {
 		~BufferHelper() {};
 
 		template <class T>
-		static void CopyFromStaging(LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, 
+		static void CopyFromStaging(LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, 
 			VkCommandPool& commandPool, const std::vector<T>& content, Buffer* dstBuffer);
 	};
 
 	template <class T>
-	void BufferHelper::CopyFromStaging(LogicalDevice* logicalDevice, PhysicalDevice* physicalDevice, VkCommandPool& commandPool, 
+	void BufferHelper::CopyFromStaging(LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, VkCommandPool& commandPool, 
 		const std::vector<T>& content, Buffer* dstBuffer) {
 
 		auto bufferSize = sizeof(content[0]) * content.size();

@@ -3,12 +3,16 @@
 #include "SwapChain.h"
 
 namespace Engine {
-	GraphicsPipeline::GraphicsPipeline(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, 
-		SwapChain* swapChain, DepthBuffer* depthBuffer, const VkRenderPass& renderPass)
-		: p_LogicalDevice(logicalDevice) {
+	GraphicsPipeline::GraphicsPipeline(
+		const ResourceSetLayout& resourceSetLayout, 
+		LogicalDevice& logicalDevice, 
+		const SwapChain& swapChain, 
+		const DepthBuffer& depthBuffer, 
+		const VkRenderPass& renderPass)
+		: p_LogicalDevice(&logicalDevice) {
 
-		auto bindingDescription = resourceSetLayout->BindingDescription;
-		auto attributeDescriptions = resourceSetLayout->AttributeDescriptions;
+		auto bindingDescription = resourceSetLayout.BindingDescription;
+		auto attributeDescriptions = resourceSetLayout.AttributeDescriptions;
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -19,20 +23,20 @@ namespace Engine {
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssembly.topology = static_cast<VkPrimitiveTopology>(resourceSetLayout->Topology);
+		inputAssembly.topology = static_cast<VkPrimitiveTopology>(resourceSetLayout.Topology);
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)swapChain->GetSwapChainExtent().width;
-		viewport.height = (float)swapChain->GetSwapChainExtent().height;
+		viewport.width = (float)swapChain.GetSwapChainExtent().width;
+		viewport.height = (float)swapChain.GetSwapChainExtent().height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
-		scissor.extent = swapChain->GetSwapChainExtent();
+		scissor.extent = swapChain.GetSwapChainExtent();
 
 		VkPipelineViewportStateCreateInfo viewportState{};
 		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -45,10 +49,10 @@ namespace Engine {
 		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizer.depthClampEnable = VK_FALSE;
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
-		rasterizer.polygonMode = static_cast<VkPolygonMode>(resourceSetLayout->PolygonMode);
-		rasterizer.lineWidth = resourceSetLayout->LineWidth;
-		rasterizer.cullMode = resourceSetLayout->CullMode;
-		rasterizer.frontFace = static_cast<VkFrontFace>(resourceSetLayout->FrontFace);
+		rasterizer.polygonMode = static_cast<VkPolygonMode>(resourceSetLayout.PolygonMode);
+		rasterizer.lineWidth = resourceSetLayout.LineWidth;
+		rasterizer.cullMode = resourceSetLayout.CullMode;
+		rasterizer.frontFace = static_cast<VkFrontFace>(resourceSetLayout.FrontFace);
 		rasterizer.depthBiasEnable = VK_FALSE;
 		rasterizer.depthBiasConstantFactor = 0.0f;
 		rasterizer.depthBiasClamp = 0.0f;
@@ -97,7 +101,7 @@ namespace Engine {
 
 		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
 
-		size_t maxDescriptorSets = resourceSetLayout->MaxDescriptorSets == 0 ? 1 : resourceSetLayout->MaxDescriptorSets;
+		size_t maxDescriptorSets = resourceSetLayout.MaxDescriptorSets == 0 ? 1 : resourceSetLayout.MaxDescriptorSets;
 
 		for (size_t i = 0; i < maxDescriptorSets; i++) {
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
@@ -114,8 +118,8 @@ namespace Engine {
 
 		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
 
-		ShaderModule vertShaderModule(resourceSetLayout->VertexShaderPath, p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
-		ShaderModule fragShaderModule(resourceSetLayout->FragmentShaderPath, p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
+		ShaderModule vertShaderModule(resourceSetLayout.VertexShaderPath, p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
+		ShaderModule fragShaderModule(resourceSetLayout.FragmentShaderPath, p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderModule.GetShaderStageInfo(), fragShaderModule.GetShaderStageInfo() };
 

@@ -2,34 +2,29 @@
 
 namespace Engine {
 	ResourceSet::ResourceSet(
-		ResourceSetLayout* resourceSetLayout, 
-		LogicalDevice* logicalDevice, 
-		PhysicalDevice* physicalDevice, 
-		CommandPool* commandPool, 
-		SwapChain* swapChain, 
-		DepthBuffer* depthBuffer,
+		ResourceSetLayout& resourceSetLayout, 
+		LogicalDevice& logicalDevice, 
+		PhysicalDevice& physicalDevice, 
+		CommandPool& commandPool, 
+		const SwapChain& swapChain, 
+		const DepthBuffer& depthBuffer, 
 		const VkRenderPass& renderPass,
 		std::vector<Assets::Model*>& models
-	): 
-		p_LogicalDevice(logicalDevice), 
-		p_PhysicalDevice(physicalDevice), 
-		p_CommandPool(commandPool), 
-		p_ResourceSetLayout(resourceSetLayout), 
-		ResourceSetIndex(resourceSetLayout->ResourceSetIndex) {
+	):
+		ResourceSetIndex(resourceSetLayout.ResourceSetIndex) {
 
 		for (auto model : models) {
-			if (model->ResourceSetIndex == ResourceSetIndex) p_ResourceSetLayout->MaxDescriptorSets++;
+			if (model->ResourceSetIndex == ResourceSetIndex) resourceSetLayout.MaxDescriptorSets++;
 		}
 
-		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_ResourceSetLayout, p_LogicalDevice,
-			swapChain, depthBuffer, renderPass));
+		m_GraphicsPipeline.reset(new class GraphicsPipeline(resourceSetLayout, logicalDevice, swapChain, depthBuffer, renderPass));
 
-		if (p_ResourceSetLayout->MaxDescriptorSets == 0) return;
+		if (resourceSetLayout.MaxDescriptorSets == 0) return;
 		
-		if (p_ResourceSetLayout->RenderType == ResourceSetLayout::RenderType::DEFAULT_RENDER) {
-			SetModelResources(models);
-			CreateVertexBuffer();
-			CreateIndexBuffer();
+		if (resourceSetLayout.RenderType == ResourceSetLayout::RenderType::DEFAULT_RENDER) {
+			SetModelResources(physicalDevice, logicalDevice, models);
+			CreateVertexBuffer(physicalDevice, logicalDevice, commandPool);
+			CreateIndexBuffer(physicalDevice, logicalDevice, commandPool);
 		}
 	}
 	
@@ -42,7 +37,8 @@ namespace Engine {
 		m_IndexBuffer.reset();
 	}
 
-	void ResourceSet::SetModelResources(std::vector<Assets::Model*>& models) {
+	void ResourceSet::SetModelResources(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, 
+		std::vector<Assets::Model*>& models) {
 		m_Vertices.clear();
 		m_Indices.clear();
 
@@ -51,12 +47,12 @@ namespace Engine {
 			if (model->ResourceSetIndex != ResourceSetIndex) continue;
 
 			VkDeviceSize bufferSize = sizeof(Engine::UniformBufferObject);
-			model->m_UniformBuffer.reset(new class Engine::Buffer(Engine::MAX_FRAMES_IN_FLIGHT, p_LogicalDevice, p_PhysicalDevice,
+			model->m_UniformBuffer.reset(new class Engine::Buffer(Engine::MAX_FRAMES_IN_FLIGHT, logicalDevice, physicalDevice,
 				bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
 			model->m_UniformBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			model->m_UniformBuffer->BufferMemory->MapMemory();
 
-			model->m_DescriptorSets.reset(new class Engine::DescriptorSets(p_LogicalDevice->GetHandle(), 
+			model->m_DescriptorSets.reset(new class Engine::DescriptorSets(logicalDevice.GetHandle(), 
 				m_GraphicsPipeline->GetDescriptorPool().GetHandle(), m_GraphicsPipeline->GetDescriptorSetLayout().GetHandle(), 
 				model->m_UniformBuffer.get())
 			);
@@ -66,29 +62,29 @@ namespace Engine {
 		}
 	}
 
-	void ResourceSet::CreateVertexBuffer() {
+	void ResourceSet::CreateVertexBuffer(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, CommandPool& commandPool) {
 	
 		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * m_Vertices.size();
 		
-		m_VertexBuffer.reset(new class Buffer(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT), p_LogicalDevice, p_PhysicalDevice, bufferSize,
+		m_VertexBuffer.reset(new class Buffer(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT), logicalDevice, physicalDevice, bufferSize,
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 		m_VertexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		BufferHelper bufferHelper;
-		bufferHelper.CopyFromStaging(p_LogicalDevice, p_PhysicalDevice, p_CommandPool->GetHandle(),
+		bufferHelper.CopyFromStaging(logicalDevice, physicalDevice, commandPool.GetHandle(),
 			m_Vertices, m_VertexBuffer.get());
 	}
 
-	void ResourceSet::CreateIndexBuffer() {
+	void ResourceSet::CreateIndexBuffer(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, CommandPool& commandPool) {
 
 		VkDeviceSize bufferSize = sizeof(uint16_t) * m_Indices.size();
 
-		m_IndexBuffer.reset(new class Buffer(1, p_LogicalDevice, p_PhysicalDevice,
+		m_IndexBuffer.reset(new class Buffer(1, logicalDevice, physicalDevice,
 			bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
 		m_IndexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		BufferHelper bufferHelper;
-		bufferHelper.CopyFromStaging(p_LogicalDevice, p_PhysicalDevice, p_CommandPool->GetHandle(), 
+		bufferHelper.CopyFromStaging(logicalDevice, physicalDevice, commandPool.GetHandle(), 
 			m_Indices, m_IndexBuffer.get());
 	}
 

@@ -25,8 +25,12 @@ namespace Engine {
 
 	class GraphicsPipeline {
 	public:
-		GraphicsPipeline(ResourceSetLayout* resourceSetLayout, LogicalDevice* logicalDevice, SwapChain* swapChain, 
-			DepthBuffer* depthBuffer, const VkRenderPass& renderPass);
+		GraphicsPipeline(
+			const ResourceSetLayout& resourceSetLayout, 
+			LogicalDevice& logicalDevice, 
+			const SwapChain& swapChain, 
+			const DepthBuffer& depthBuffer, 
+			const VkRenderPass& renderPass);
 		~GraphicsPipeline();
 
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };
