@@ -23,7 +23,6 @@ namespace Engine {
 
 		m_GraphicsPipeline.reset(new class GraphicsPipeline(p_ResourceSetLayout, p_LogicalDevice,
 			swapChain, depthBuffer, renderPass));
-		//CreateFrameBuffers(swapChain, depthBuffer);
 
 		if (p_ResourceSetLayout->MaxDescriptorSets == 0) return;
 		
@@ -35,8 +34,6 @@ namespace Engine {
 	}
 	
 	ResourceSet::~ResourceSet() {
-		//CleanUp();
-
 		m_Vertices.clear();
 		m_Indices.clear();
 
@@ -95,40 +92,4 @@ namespace Engine {
 			m_Indices, m_IndexBuffer.get());
 	}
 
-	/*
-	void ResourceSet::CreateFrameBuffers(SwapChain* swapChain, DepthBuffer* depthBuffer) {
-		m_Framebuffers.resize(swapChain->GetSwapChainImageViews().size());
-
-		for (size_t i = 0; i < swapChain->GetSwapChainImageViews().size(); i++) {
-			std::array<VkImageView, 2> attachments = { 
-				swapChain->GetSwapChainImageViews()[i], 
-				depthBuffer->GetDepthBufferImageView()[0] 
-			};
-
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = m_GraphicsPipeline->GetRenderPass().GetHandle();
-			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-			framebufferInfo.pAttachments = attachments.data();
-			framebufferInfo.width = swapChain->GetSwapChainExtent().width;
-			framebufferInfo.height = swapChain->GetSwapChainExtent().height;
-			framebufferInfo.layers = 1;
-
-			if (vkCreateFramebuffer(p_LogicalDevice->GetHandle(), &framebufferInfo, nullptr, &m_Framebuffers[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to create framebuffer!");
-			}
-		}
-	}
-
-	void ResourceSet::CleanUp() {
-		for (size_t i = 0; i < m_Framebuffers.size(); i++) {
-			vkDestroyFramebuffer(p_LogicalDevice->GetHandle(), m_Framebuffers[i], nullptr);
-		}
-	}
-
-	void ResourceSet::Resize(SwapChain* swapChain, DepthBuffer* depthBuffer) {
-		CleanUp();
-		CreateFrameBuffers(swapChain, depthBuffer);
-	}
-	*/
 }

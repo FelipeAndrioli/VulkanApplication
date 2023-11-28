@@ -113,7 +113,6 @@ namespace Engine {
 		std::vector<BufferDescriptor> bufferDescriptor = {};
 
 		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
-		//m_RenderPass.reset(new class RenderPass(swapChain, p_LogicalDevice->GetHandle(), depthBuffer));
 
 		ShaderModule vertShaderModule(resourceSetLayout->VertexShaderPath, p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
 		ShaderModule fragShaderModule(resourceSetLayout->FragmentShaderPath, p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -145,7 +144,6 @@ namespace Engine {
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDynamicState = &dynamicState;
 		pipelineInfo.layout = m_GraphicsPipelineLayout->GetHandle();
-		//pipelineInfo.renderPass = m_RenderPass->GetHandle();
 		pipelineInfo.renderPass = renderPass;
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -160,7 +158,6 @@ namespace Engine {
 	GraphicsPipeline::~GraphicsPipeline() {
 		vkDestroyPipeline(p_LogicalDevice->GetHandle(), m_GraphicsPipeline, nullptr);
 
-		//m_RenderPass.reset();
 		m_GraphicsPipelineLayout.reset();
 		m_DescriptorSetLayout.reset();
 	}

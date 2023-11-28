@@ -27,15 +27,9 @@ namespace Engine {
 		void SetModelResources(std::vector<Assets::Model*>& models);
 		void CreateVertexBuffer();
 		void CreateIndexBuffer();
-		//void CreateFrameBuffers(SwapChain* swapChain, DepthBuffer* depthBuffer);
-		//void CleanUp();
-		//void Resize(SwapChain* swapchain, DepthBuffer* depthBuffer);
 
 		GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline.get(); };
-		//VkFramebuffer* GetFramebuffer(size_t index) { return &m_Framebuffers[index]; };
-
-		//std::vector<VkFramebuffer>& GetFramebuffers() { return m_Framebuffers; };
-		
+	
 		inline Buffer* GetVertexBuffers() const { return m_VertexBuffer.get(); };
 		inline Buffer* GetIndexBuffers() const { return m_IndexBuffer.get(); };
 
@@ -52,7 +46,6 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_VertexBuffer;
 		std::unique_ptr<class Buffer> m_IndexBuffer;
 
-		//std::vector<VkFramebuffer> m_Framebuffers;
 		std::vector<Assets::Vertex> m_Vertices;
 		std::vector<uint16_t> m_Indices;
 

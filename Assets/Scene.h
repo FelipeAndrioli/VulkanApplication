@@ -37,16 +37,12 @@ namespace Assets {
 			Engine::CommandPool* commandPool, Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer,
 			const VkRenderPass& renderPass);
 		
-		void Resize(Engine::SwapChain* swapChain, Engine::DepthBuffer* depthBuffer);
-	private:
-		//void CreateRenderPassBeginInfo(Engine::SwapChain* swapChain);
 	public:
 		std::vector<Model*> Models;
 		std::vector<Engine::ResourceSet*> ResourceSets;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 
-		// TODO: temporary here, must move it back to private once I figure out the issue with RenderPassBeginInfo
-		std::vector<Engine::ResourceSetLayout*> m_ResourceSetLayouts;
 	private:
+		std::vector<Engine::ResourceSetLayout*> m_ResourceSetLayouts;
 	};
 }

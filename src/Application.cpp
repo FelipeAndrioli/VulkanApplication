@@ -77,44 +77,9 @@ namespace Engine {
 
 	void Application::drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
 
-		/*
-		vkCmdBeginRenderPass(p_CommandBuffer, p_ActiveScene->RenderPassBeginInfo[imageIndex], 
-			VK_SUBPASS_CONTENTS_INLINE);
-		*/
-
 		std::array<VkClearValue, 2> clearValues{};
 		clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
 		clearValues[1].depthStencil = { 1.0f, 0 };
-		//VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-
-		/*
-		VkRenderPassBeginInfo* renderPassInfo = new VkRenderPassBeginInfo[p_ActiveScene->ResourceSets.size() + 1];
-
-		int index = 0;
-
-		// TODO: building VkRenderPassBeginInfo temporary here, must bring back retrieval from scene resources
-		for (const Engine::ResourceSetLayout* resourceSetLayout : p_ActiveScene->m_ResourceSetLayouts) {
-			VkRenderPassBeginInfo newRenderPassInfo{};
-
-			newRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			//newRenderPassInfo.renderPass = p_ActiveScene->ResourceSets[resourceSetLayout->ResourceSetIndex]->GetGraphicsPipeline()->GetRenderPass().GetHandle();
-			//newRenderPassInfo.framebuffer = *p_ActiveScene->ResourceSets[resourceSetLayout->ResourceSetIndex]->GetFramebuffer(imageIndex);
-
-			newRenderPassInfo.renderPass = m_DefaultRenderPass->GetHandle();
-			newRenderPassInfo.framebuffer = m_Framebuffers[imageIndex];
-			
-			newRenderPassInfo.renderArea.offset = {0, 0};
-			newRenderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
-			newRenderPassInfo.pNext = nullptr;
-
-			newRenderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-			newRenderPassInfo.pClearValues = clearValues.data();
-
-			renderPassInfo[index++] = newRenderPassInfo;
-		}
-
-		vkCmdBeginRenderPass(p_CommandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		*/
 
 		VkRenderPassBeginInfo renderPassBeginInfo{};
 		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -324,7 +289,6 @@ namespace Engine {
 
 			VkFramebufferCreateInfo framebufferInfo{};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			//framebufferInfo.renderPass = m_GraphicsPipeline->GetRenderPass().GetHandle();
 			framebufferInfo.renderPass = renderPass;
 			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 			framebufferInfo.pAttachments = attachments.data();
@@ -396,7 +360,6 @@ namespace Engine {
 		createFramebuffers(m_DefaultRenderPass->GetHandle());
 		// temporary
 
-		p_ActiveScene->Resize(m_SwapChain.get(), m_DepthBuffer.get());
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));
 		m_UI->Resize(m_SwapChain.get());
