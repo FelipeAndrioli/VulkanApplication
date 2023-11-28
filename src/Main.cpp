@@ -314,16 +314,12 @@ int main() {
 	Engine::ResourceSetLayout rainbowLayout;
 
 	rainbowLayout.ResourceSetIndex = 0;
-	rainbowLayout.BindingDescription = Assets::Vertex::getBindingDescription();
-	rainbowLayout.AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 	rainbowLayout.VertexShaderPath = "./Assets/Shaders/vert.spv";
 	rainbowLayout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
 
 	Engine::ResourceSetLayout colorLayout;
 
 	colorLayout.ResourceSetIndex = 1;
-	colorLayout.BindingDescription = Assets::Vertex::getBindingDescription();
-	colorLayout.AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 	colorLayout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
 	colorLayout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
 

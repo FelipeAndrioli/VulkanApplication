@@ -84,13 +84,13 @@ namespace Engine {
 		void drawFrame();
 		void handleDraw(uint32_t imageIndex);
 		void drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
-		void drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex);
+		void drawRasterized(const VkCommandBuffer& commandBuffer, uint32_t imageIndex);
 		
 		void processKey(int key, int scancode, int action, int mods);
 		void processResize(int width, int height);
 
-		// temporary
-		void createFramebuffers(const VkRenderPass& renderPass);
+		void CreateFramebuffers(const VkRenderPass& renderPass);
+		void ClearFramebuffers();
 		
 	private:
 		std::unique_ptr<class Window> m_Window;

@@ -75,7 +75,7 @@ namespace Engine {
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
-	void Application::drawRasterized(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
+	void Application::drawRasterized(const VkCommandBuffer& commandBuffer, uint32_t imageIndex) {
 
 		std::array<VkClearValue, 2> clearValues{};
 		clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
@@ -91,7 +91,7 @@ namespace Engine {
 		renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 		renderPassBeginInfo.pClearValues = clearValues.data();
 
-		vkCmdBeginRenderPass(p_CommandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		ResourceSet* resourceSet = nullptr;
 		uint32_t vertexOffset = 0;
@@ -102,7 +102,7 @@ namespace Engine {
 			if (resourceSet == nullptr || model->ResourceSetIndex != resourceSet->ResourceSetIndex) {
 				resourceSet = p_ActiveScene->ResourceSets[model->ResourceSetIndex];
 
-				vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());
 
 				VkViewport viewport = {};
 				viewport.x = 0.0f;
@@ -112,26 +112,26 @@ namespace Engine {
 				viewport.minDepth = 0.0f;
 				viewport.maxDepth = 1.0f;
 
-				vkCmdSetViewport(p_CommandBuffer, 0, 1, &viewport);
+				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
 				VkRect2D scissor = {};
 				scissor.offset = { 0, 0 };
 				scissor.extent = m_SwapChain->GetSwapChainExtent();
 
-				vkCmdSetScissor(p_CommandBuffer, 0, 1, &scissor);
+				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 				VkDeviceSize offsets[] = { 0 };
 
-				vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1,
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1,
 					&resourceSet->GetVertexBuffers()->GetBuffer(m_CurrentFrame), offsets);
-				vkCmdBindIndexBuffer(p_CommandBuffer, resourceSet->GetIndexBuffers()->GetBuffer(), 0,
+				vkCmdBindIndexBuffer(commandBuffer, resourceSet->GetIndexBuffers()->GetBuffer(), 0,
 					VK_INDEX_TYPE_UINT16);
 
 				indexOffset = 0;
 				vertexOffset = 0;
 			}
 
-			vkCmdBindDescriptorSets(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
 				resourceSet->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 0, 1,
 				&model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
 				nullptr);
@@ -141,13 +141,13 @@ namespace Engine {
 			auto modelVertexCount = model->GetSizeVertices();
 			auto modelIndexCount = model->GetSizeIndices();
 
-			vkCmdDrawIndexed(p_CommandBuffer, modelIndexCount, 1, indexOffset, vertexOffset, 0);
+			vkCmdDrawIndexed(commandBuffer, modelIndexCount, 1, indexOffset, vertexOffset, 0);
 		
 			vertexOffset += modelVertexCount;
 			indexOffset += modelIndexCount;
 		}
 		
-		vkCmdEndRenderPass(p_CommandBuffer);
+		vkCmdEndRenderPass(commandBuffer);
 	}
 
 	void Application::handleDraw(uint32_t imageIndex) {
@@ -277,8 +277,7 @@ namespace Engine {
 		std::cout << "width - " << width << " height - " << height << '\n';
 	}
 
-	void Application::createFramebuffers(const VkRenderPass& renderPass) {
-		// temporary here
+	void Application::CreateFramebuffers(const VkRenderPass& renderPass) {
 		m_Framebuffers.resize(m_SwapChain->GetSwapChainImageViews().size());
 
 		for (size_t i = 0; i < m_SwapChain->GetSwapChainImageViews().size(); i++) {
@@ -300,7 +299,14 @@ namespace Engine {
 				throw std::runtime_error("Failed to create framebuffer!");
 			}
 		}
-		// temporary here
+	}
+
+	void Application::ClearFramebuffers() {
+		for (VkFramebuffer framebuffer : m_Framebuffers) {
+			vkDestroyFramebuffer(m_LogicalDevice->GetHandle(), framebuffer, nullptr);
+		}
+
+		m_Framebuffers.clear();
 	}
 
 	void Application::InitVulkan() {
@@ -311,12 +317,9 @@ namespace Engine {
 		m_DepthBuffer.reset(new class DepthBuffer(&m_PhysicalDevice->GetHandle(), &m_LogicalDevice->GetHandle(), m_SwapChain.get()));
 
 		m_DefaultRenderPass.reset(new class RenderPass(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get()));
-		// temporary
-		createFramebuffers(m_DefaultRenderPass->GetHandle());
+		CreateFramebuffers(m_DefaultRenderPass->GetHandle());
 
 		m_CommandPool.reset(new class CommandPool(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices()));	
-
-
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
 
@@ -351,14 +354,9 @@ namespace Engine {
 		m_DepthBuffer->Resize(m_SwapChain.get());
 
 		m_DefaultRenderPass.reset(new class RenderPass(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get()));
-		// temporary
-		for (VkFramebuffer framebuffer : m_Framebuffers) {
-			vkDestroyFramebuffer(m_LogicalDevice->GetHandle(), framebuffer, nullptr);
-		}
 
-		m_Framebuffers.clear();
-		createFramebuffers(m_DefaultRenderPass->GetHandle());
-		// temporary
+		ClearFramebuffers();
+		CreateFramebuffers(m_DefaultRenderPass->GetHandle());
 
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
 			m_LogicalDevice->GetHandle()));
@@ -383,11 +381,8 @@ namespace Engine {
 
 		m_DepthBuffer.reset();
 
-		for (VkFramebuffer framebuffer : m_Framebuffers) {
-			vkDestroyFramebuffer(m_LogicalDevice->GetHandle(), framebuffer, nullptr);
-		}
+		ClearFramebuffers();
 
-		m_Framebuffers.clear();
 		m_DefaultRenderPass.reset();
 
 		m_CommandBuffers.reset();
