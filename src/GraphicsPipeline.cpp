@@ -101,7 +101,7 @@ namespace Engine {
 
 		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
 
-		size_t maxDescriptorSets = resourceSetLayout.MaxDescriptorSets == 0 ? 1 : resourceSetLayout.MaxDescriptorSets;
+		size_t maxDescriptorSets = 10;
 
 		for (size_t i = 0; i < maxDescriptorSets; i++) {
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });

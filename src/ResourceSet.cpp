@@ -13,13 +13,7 @@ namespace Engine {
 	):
 		ResourceSetIndex(resourceSetLayout.ResourceSetIndex) {
 
-		for (auto model : models) {
-			if (model->ResourceSetIndex == ResourceSetIndex) resourceSetLayout.MaxDescriptorSets++;
-		}
-
 		m_GraphicsPipeline.reset(new class GraphicsPipeline(resourceSetLayout, logicalDevice, swapChain, depthBuffer, renderPass));
-
-		if (resourceSetLayout.MaxDescriptorSets == 0) return;
 		
 		if (resourceSetLayout.RenderType == ResourceSetLayout::RenderType::DEFAULT_RENDER) {
 			SetModelResources(physicalDevice, logicalDevice, models);
@@ -63,7 +57,9 @@ namespace Engine {
 	}
 
 	void ResourceSet::CreateVertexBuffer(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, CommandPool& commandPool) {
-	
+
+		if (m_Vertices.size() == 0) return;
+
 		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * m_Vertices.size();
 		
 		m_VertexBuffer.reset(new class Buffer(static_cast<size_t>(MAX_FRAMES_IN_FLIGHT), logicalDevice, physicalDevice, bufferSize,
@@ -77,6 +73,7 @@ namespace Engine {
 
 	void ResourceSet::CreateIndexBuffer(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, CommandPool& commandPool) {
 
+		if (m_Indices.size() == 0) return;
 		VkDeviceSize bufferSize = sizeof(uint16_t) * m_Indices.size();
 
 		m_IndexBuffer.reset(new class Buffer(1, logicalDevice, physicalDevice,
