@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Assets\Camera.cpp" />
     <ClCompile Include="Assets\Model.cpp" />
     <ClCompile Include="Assets\Scene.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_glfw.cpp" />
@@ -183,6 +184,7 @@
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Assets\Camera.h" />
     <ClInclude Include="Assets\Model.h" />
     <ClInclude Include="Assets\Scene.h" />
     <ClInclude Include="Assets\Vertex.h" />

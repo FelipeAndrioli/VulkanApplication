@@ -3,6 +3,8 @@
 namespace Assets {
 	Scene::Scene() {
 		std::cout << "Starting scene" << std::endl;
+
+		camera = Camera();
 	}
 
 	Scene::~Scene() {

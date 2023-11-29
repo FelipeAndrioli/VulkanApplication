@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "Model.h"
+#include "Camera.h"
 
 #include "../src/Buffer.h"
 #include "../src/DescriptorSets.h"
@@ -45,6 +46,8 @@ namespace Assets {
 		std::vector<Model*> Models;
 		std::vector<Engine::ResourceSet*> ResourceSets;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
+	
+		Camera camera;
 
 	private:
 		std::vector<Engine::ResourceSetLayout*> m_ResourceSetLayouts;
