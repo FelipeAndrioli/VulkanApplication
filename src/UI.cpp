@@ -86,7 +86,6 @@ namespace Engine {
 		ImGui::Text("Last Frame: %f ms", r_WindowSettings.ms);
 		ImGui::Text("Framerate: %.1f fps", r_WindowSettings.frames);
 		ImGui::Checkbox("Limit Framerate", &r_WindowSettings.limitFramerate);
-
 		scene->OnUIRender();
 
 		ImGui::End();

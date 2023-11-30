@@ -52,6 +52,7 @@
 
 class MyQuadOne : public Assets::Model {
 public:
+	/*
 	struct UniformBufferObject {
 		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 view = glm::mat4(1.0f);
@@ -59,10 +60,11 @@ public:
 	};
 
 	UniformBufferObject *ubo = new UniformBufferObject();
+	*/
 
 	void OnCreate() {
 
-		SetUniformBufferObject(ubo, sizeof(*ubo));
+		SetUniformBufferObject(&ubo, sizeof(ubo));
 
 		std::vector<Assets::Vertex> v = {
 			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }},		// top front right		0
@@ -124,14 +126,14 @@ public:
 		//m_Transform.rotation.y += t * 0.05f;
 		//m_Transform.rotation.z -= t * 0.05f;
 
-		ubo->model = GetModelMatrix();
-		ubo->view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo->proj = glm::perspective(45.0f, 800 / (float)600, 0.1f, 10.0f);
+		ubo.model = GetModelMatrix();
+		ubo.view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.proj = glm::perspective(45.0f, 800 / (float)600, 0.1f, 10.0f);
 
 		// GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted. The easiest way
 		// to compensate for that is to flip the sign on the scaling factor of the Y axis in the projection matrix. If we don't 
 		// do this the image will be rendered upside down
-		ubo->proj[1][1] *= -1;
+		ubo.proj[1][1] *= -1;
 
 	}
 };
@@ -139,6 +141,7 @@ public:
 class MyQuadTwo : public Assets::Model {
 public:
 
+	/*
 	struct UniformBufferObject {
 		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 view = glm::mat4(1.0f);
@@ -148,10 +151,11 @@ public:
 	};
 
 	UniformBufferObject *ubo = new UniformBufferObject();
+	*/
 
 	void OnCreate() {
 
-		SetUniformBufferObject(ubo, sizeof(*ubo));
+		SetUniformBufferObject(&ubo, sizeof(ubo));
 
 		std::vector<Assets::Vertex> v = {
 			{{ 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front right		0
@@ -205,7 +209,7 @@ public:
 			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
 			ImGui::SliderFloat(r_label_z.c_str(), &m_Transform.rotation.z, -20.0f, 20.0f);
 			
-			ImGui::ColorEdit3("Color", glm::value_ptr(ubo->color));
+			ImGui::ColorEdit3("Color", glm::value_ptr(ubo.color));
 
 			ImGui::TreePop();
 		}
@@ -216,17 +220,18 @@ public:
 		m_Transform.rotation.y += t * 0.05f;
 		//m_Transform.rotation.z += t * 0.05f;
 
-		ubo->model = GetModelMatrix();
-		ubo->view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo->proj = glm::perspective(glm::radians(45.0f), 800 / (float) 600, 0.1f, 10.0f);
+		ubo.model = GetModelMatrix();
+		ubo.view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.proj = glm::perspective(glm::radians(45.0f), 800 / (float) 600, 0.1f, 10.0f);
 
-		ubo->proj[1][1] *= -1;
+		ubo.proj[1][1] *= -1;
 	}
 };
 
 class MyQuadThree : public Assets::Model {
 public:
 
+	/*
 	struct UniformBufferObject {
 		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 view = glm::mat4(1.0f);
@@ -236,10 +241,11 @@ public:
 	};
 
 	UniformBufferObject *ubo = new UniformBufferObject();
+	*/
 
 	void OnCreate() {
 
-		SetUniformBufferObject(ubo, sizeof(*ubo));
+		SetUniformBufferObject(&ubo, sizeof(ubo));
 
 		std::vector<Assets::Vertex> v = {
 			{{ 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front right		0
@@ -302,11 +308,11 @@ public:
 		//m_Transform.rotation.y -= t * 0.05f;
 		m_Transform.rotation.z += t * 0.05f;
 
-		ubo->model = GetModelMatrix();
-		ubo->view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo->proj = glm::perspective(glm::radians(45.0f), 800 / (float) 600, 0.1f, 10.0f);
+		ubo.model = GetModelMatrix();
+		ubo.view = glm::lookAt(glm::vec3(0.0f, 0.1f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.proj = glm::perspective(glm::radians(45.0f), 800 / (float) 600, 0.1f, 10.0f);
 
-		ubo->proj[1][1] *= -1;
+		ubo.proj[1][1] *= -1;
 	}
 };
 

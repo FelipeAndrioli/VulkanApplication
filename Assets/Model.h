@@ -17,6 +17,14 @@ namespace Assets {
 		glm::vec3 scalation;
 	};
 
+	struct UniformBufferObject {
+		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 view = glm::mat4(1.0f);
+		glm::mat4 proj = glm::mat4(1.0f);
+		glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
+	};
+
+
 	class Model {
 	public:
 		Model();
@@ -41,6 +49,7 @@ namespace Assets {
 		void SetModelUniformBuffer(uint32_t currentImage);
 
 		Transform m_Transform{};
+		UniformBufferObject ubo = UniformBufferObject();
 		
 		std::unique_ptr<class Engine::Buffer> m_UniformBuffer;
 		std::unique_ptr<class Engine::DescriptorSets> m_DescriptorSets;

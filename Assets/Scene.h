@@ -47,7 +47,7 @@ namespace Assets {
 		std::vector<Engine::ResourceSet*> ResourceSets;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 	
-		Camera camera;
+		Camera DefaultCamera;
 
 	private:
 		std::vector<Engine::ResourceSetLayout*> m_ResourceSetLayouts;

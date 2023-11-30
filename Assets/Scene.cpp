@@ -4,7 +4,8 @@ namespace Assets {
 	Scene::Scene() {
 		std::cout << "Starting scene" << std::endl;
 
-		camera = Camera();
+		//DefaultCamera = Camera();
+		DefaultCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f));
 	}
 
 	Scene::~Scene() {
@@ -44,12 +45,16 @@ namespace Assets {
 	}
 
 	void Scene::OnUIRender() {
+		DefaultCamera.OnUIRender();
+		
 		for (auto model : Models) {
 			model->OnUIRender();
 		}
 	}
 
 	void Scene::OnUpdate(float t) {
+		DefaultCamera.OnUpdate();
+
 		for (auto model : Models) {
 			model->OnUpdate(t);
 		}
