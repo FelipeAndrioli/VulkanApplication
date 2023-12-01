@@ -136,8 +136,6 @@ namespace Engine {
 				&model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
 				nullptr);
 
-			model->ubo.view = p_ActiveScene->DefaultCamera.ViewMatrix;
-			model->ubo.proj = p_ActiveScene->DefaultCamera.ProjectionMatrix;
 			model->SetModelUniformBuffer(m_CurrentFrame);
 
 			auto modelVertexCount = model->GetSizeVertices();
