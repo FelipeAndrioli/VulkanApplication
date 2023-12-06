@@ -15,10 +15,10 @@ namespace Engine {
 	class DescriptorSets {
 	public:
 		DescriptorSets(
-			VkDeviceSize& bufferSize, 
-			VkDevice& logicalDevice, 
-			VkDescriptorPool& descriptorPool, 
-			VkDescriptorSetLayout& descriptorSetLayout, 
+			const VkDeviceSize& bufferSize, 
+			const VkDevice& logicalDevice, 
+			const VkDescriptorPool& descriptorPool, 
+			const VkDescriptorSetLayout& descriptorSetLayout, 
 			Buffer* uniformBuffers,
 			Buffer* shaderStorageBuffers = nullptr,
 			bool accessLastFrame = false
