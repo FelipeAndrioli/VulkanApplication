@@ -26,7 +26,7 @@ namespace Engine {
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
 
 		auto computeCommandBuffer = m_ComputeCommandBuffers->Begin(m_CurrentFrame);
-		recordComputeCommandBuffer(computeCommandBuffer);
+		//recordComputeCommandBuffer(computeCommandBuffer);
 		m_ComputeCommandBuffers->End(m_CurrentFrame);
 
 		submitInfo.commandBufferCount = 1;
@@ -326,8 +326,10 @@ namespace Engine {
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
 
+		/*
 		m_ComputeCommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
+		*/
 		
 		createSyncObjects();
 	
@@ -335,6 +337,7 @@ namespace Engine {
 			m_DefaultRenderPass->GetHandle());
 	}
 
+	/* TODO: not ready AON
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetHandle());
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetPipelineLayout().GetHandle(), 
@@ -342,6 +345,7 @@ namespace Engine {
 			0, nullptr);
 		vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
 	}
+	*/
 
 	void Application::createSyncObjects() {
 		m_ImageAvailableSemaphores.reset(new class Semaphore(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
@@ -381,7 +385,7 @@ namespace Engine {
 		m_SwapChain.reset();
 
 		m_ComputeUniformBuffers.reset();
-		m_ComputePipeline.reset();
+		//m_ComputePipeline.reset();
 
 		m_DepthBuffer.reset();
 

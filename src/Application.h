@@ -79,7 +79,7 @@ namespace Engine {
 		void recreateSwapChain();
 
 		void updateComputeUniformBuffer(uint32_t currentImage);
-		void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
+		//void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
 		void drawFrame();
 		void handleDraw(uint32_t imageIndex);
@@ -102,7 +102,7 @@ namespace Engine {
 
 		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
 		std::unique_ptr<class GraphicsPipeline> m_TempRayTracerPipeline;
-		std::unique_ptr<class ComputePipeline> m_ComputePipeline;
+		//std::unique_ptr<class ComputePipeline> m_ComputePipeline;
 
 		std::unique_ptr<class CommandPool> m_CommandPool;
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;

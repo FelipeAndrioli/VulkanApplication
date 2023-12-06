@@ -1,6 +1,7 @@
 #include "ComputePipeline.h"
 
 namespace Engine {
+	/*
 	ComputePipeline::ComputePipeline(ComputePipelineLayout* computePipelineLayout, LogicalDevice* logicalDevice, 
 		SwapChain* swapChain, Buffer* shaderStorageBuffers, Buffer* uniformBuffers) 
 		: p_LogicalDevice(logicalDevice), p_SwapChain(swapChain), p_ShaderStorageBuffers(shaderStorageBuffers), 
@@ -29,8 +30,16 @@ namespace Engine {
 		};
 
 		m_DescriptorPool.reset(new class DescriptorPool(p_LogicalDevice->GetHandle(), poolDescriptorBindings, MAX_FRAMES_IN_FLIGHT));
-		m_DescriptorSets.reset(new class DescriptorSets(p_LogicalDevice->GetHandle(), m_DescriptorPool->GetHandle(), m_DescriptorSetLayout->GetHandle(), 
-			p_UniformBuffers, computePipelineLayout->lastFrameAccess, p_ShaderStorageBuffers));
+
+		m_DescriptorSets.reset(new class DescriptorSets( 
+			sizeof(UniformBufferObject),
+			p_LogicalDevice->GetHandle(),
+			m_DescriptorPool->GetHandle(),
+			m_DescriptorSetLayout->GetHandle(),
+			p_UniformBuffers,
+			p_ShaderStorageBuffers,
+			computePipelineLayout->lastFrameAccess
+		));
 
 		VkComputePipelineCreateInfo pipelineInfo = {};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -48,4 +57,5 @@ namespace Engine {
 		m_DescriptorSetLayout.reset();
 		m_PipelineLayout.reset();
 	}
+	*/
 }

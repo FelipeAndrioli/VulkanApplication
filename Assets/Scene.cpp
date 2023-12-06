@@ -90,19 +90,20 @@ namespace Assets {
 		for (auto model : Models) {
 			if (model->Material != resourceSet) continue;
 
-			//VkDeviceSize bufferSize = sizeof(model->UniformBufferObjectSize);
-			VkDeviceSize bufferSize = sizeof(Engine::UniformBufferObject);
+			VkDeviceSize bufferSize = sizeof(model->UniformBufferObjectSize);
 
 			model->UniformBuffer.reset(new class Engine::Buffer(Engine::MAX_FRAMES_IN_FLIGHT, logicalDevice, physicalDevice,
 				bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
 			model->UniformBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			model->UniformBuffer->BufferMemory->MapMemory();
 
-			model->DescriptorSets.reset(new class Engine::DescriptorSets(logicalDevice.GetHandle(), 
-				resourceSet->GetGraphicsPipeline()->GetDescriptorPool().GetHandle(), 
-				resourceSet->GetGraphicsPipeline()->GetDescriptorSetLayout().GetHandle(), 
-				model->UniformBuffer.get())
-			);
+			model->DescriptorSets.reset(new class Engine::DescriptorSets(
+				bufferSize,
+				logicalDevice.GetHandle(),
+				resourceSet->GetGraphicsPipeline()->GetDescriptorPool().GetHandle(),
+				resourceSet->GetGraphicsPipeline()->GetDescriptorSetLayout().GetHandle(),
+				model->UniformBuffer.get()
+			));
 
 			m_HelperVertices.insert(m_HelperVertices.end(), model->GetVertices().begin(), model->GetVertices().end());
 			m_HelperIndices.insert(m_HelperIndices.end(), model->GetIndices().begin(), model->GetIndices().end());

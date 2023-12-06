@@ -11,6 +11,8 @@
 #include "ResourceSetLayout.h"
 
 namespace Engine {
+	// TODO: For later
+	/*
 	class ComputePipeline {
 	public:
 		ComputePipeline(ComputePipelineLayout* computePipelineLayout, LogicalDevice* logicalDevice, 
@@ -34,4 +36,5 @@ namespace Engine {
 		Buffer* p_UniformBuffers;
 		Buffer* p_ShaderStorageBuffers;
 	};
+	*/
 }
