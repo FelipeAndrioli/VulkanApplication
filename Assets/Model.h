@@ -10,6 +10,7 @@
 
 #include "../src/Buffer.h"
 #include "../src/DescriptorSets.h"
+#include "../src/ResourceSet.h"
 
 namespace Assets {
 
@@ -38,25 +39,27 @@ namespace Assets {
 		inline void SetIndices(std::vector<uint16_t> indices) { m_Indices = indices; };
 
 		glm::mat4 GetModelMatrix();
+
 		void ResetResources();
 		void SetUniformBufferObject(void* uniformBuffer, size_t uniformBufferSize);
 		void SetModelUniformBuffer(uint32_t currentImage);
 
-		Transform m_Transform{};
-		
-		std::unique_ptr<class Engine::Buffer> m_UniformBuffer;
-		std::unique_ptr<class Engine::DescriptorSets> m_DescriptorSets;
-
 	public:
-		Camera* SceneCamera = nullptr;
-
 		std::string ID = "";
-		int ResourceSetIndex = -1;
+
+		Camera* SceneCamera = nullptr;
+		Engine::ResourceSet* Material = nullptr;
+	
+		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
+		std::unique_ptr<class Engine::Buffer> UniformBuffer;
+		
+		Transform m_Transform{};
+
+		size_t UniformBufferObjectSize = 0;
 	private:
 		std::vector<Vertex> m_Vertices;
 		std::vector<uint16_t> m_Indices;
 
 		void* p_UniformBufferObject = nullptr;
-		size_t m_UniformBufferObjectSize = 0;
 	};
 }

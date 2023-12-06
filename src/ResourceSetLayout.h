@@ -59,7 +59,6 @@ namespace Engine {
 		FrontFace FrontFace = COUNTER_CLOCKWISE;
 
 		float LineWidth = 1.0f;
-		size_t MaxDescriptorSets = 0;
 		
 		const char* VertexShaderPath = "./Assets/Shaders/default_vert.spv";
 		const char* FragmentShaderPath = "./Assets/Shaders/default_frag.spv";
@@ -67,6 +66,6 @@ namespace Engine {
 		RenderType RenderType = DEFAULT_RENDER;
 		ComputePipelineLayout* ComputePipelineLayout = nullptr;
 
-		int ResourceSetIndex = -1;
+		std::string ID = "Default";
 	};
 }

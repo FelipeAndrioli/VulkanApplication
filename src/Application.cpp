@@ -93,14 +93,14 @@ namespace Engine {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		ResourceSet* resourceSet = nullptr;
+		ResourceSet* resourceSet = p_ActiveScene->MapResourceSets.find("Default")->second;
 		uint32_t vertexOffset = 0;
 		uint32_t indexOffset = 0;
 
 		for (Assets::Model* model : p_ActiveScene->Models) {
 
-			if (resourceSet == nullptr || model->ResourceSetIndex != resourceSet->ResourceSetIndex) {
-				resourceSet = p_ActiveScene->ResourceSets[model->ResourceSetIndex];
+			if (model->Material != resourceSet) {
+				resourceSet = p_ActiveScene->MapResourceSets.find(model->Material->MaterialLayout.ID)->second;
 
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());
 
@@ -133,7 +133,7 @@ namespace Engine {
 
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
 				resourceSet->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 0, 1,
-				&model->m_DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
+				&model->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
 				nullptr);
 
 			model->SetModelUniformBuffer(m_CurrentFrame);
@@ -235,6 +235,9 @@ namespace Engine {
 	}
 
 	void Application::SetActiveScene(Assets::Scene* scene) {
+
+		if (scene == nullptr) return;
+
 		p_ActiveScene = scene;
 		p_ActiveScene->OnCreate();
 

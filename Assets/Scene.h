@@ -29,6 +29,7 @@ namespace Assets {
 
 		void AddModel(Model* model);
 		void AddResourceSetLayout(Engine::ResourceSetLayout* resourceSetLayout);
+		void AddResourceSet(Engine::ResourceSet* resourceSet);
 
 		void OnCreate();
 		void OnUIRender();
@@ -45,11 +46,19 @@ namespace Assets {
 	public:
 		std::vector<Model*> Models;
 		std::vector<Engine::ResourceSet*> ResourceSets;
+		std::unordered_map<std::string, Engine::ResourceSet*> MapResourceSets;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 	
 		Camera DefaultCamera;
-
 	private:
 		std::vector<Engine::ResourceSetLayout*> m_ResourceSetLayouts;
+		std::vector<Vertex> m_HelperVertices;
+		std::vector<uint16_t> m_HelperIndices;
+
+		Engine::ResourceSet* DefaultMaterial = nullptr;
+
+	private:
+		void SetModelResources(Engine::ResourceSet* resourceSet, Engine::PhysicalDevice& physicalDevice, 
+			Engine::LogicalDevice& logicalDevice);
 	};
 }

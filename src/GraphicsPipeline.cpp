@@ -162,7 +162,10 @@ namespace Engine {
 	GraphicsPipeline::~GraphicsPipeline() {
 		vkDestroyPipeline(p_LogicalDevice->GetHandle(), m_GraphicsPipeline, nullptr);
 
+		m_DescriptorPool.reset();
 		m_GraphicsPipelineLayout.reset();
 		m_DescriptorSetLayout.reset();
+
+		p_LogicalDevice = nullptr;
 	}
 }

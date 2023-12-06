@@ -293,28 +293,27 @@ public:
 };
 
 int main() {
-	Engine::ResourceSetLayout rainbowLayout;
+	Engine::ResourceSet* rainbowMaterial = new Engine::ResourceSet();
+	rainbowMaterial->MaterialLayout.ID = "RainbowMaterial";
+	rainbowMaterial->MaterialLayout.VertexShaderPath = "./Assets/Shaders/vert.spv";
+	rainbowMaterial->MaterialLayout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
 
-	rainbowLayout.ResourceSetIndex = 0;
-	rainbowLayout.VertexShaderPath = "./Assets/Shaders/vert.spv";
-	rainbowLayout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
-
-	Engine::ResourceSetLayout colorLayout;
-
-	colorLayout.ResourceSetIndex = 1;
-	colorLayout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
-	colorLayout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
+	Engine::ResourceSet* colorMaterial = new Engine::ResourceSet();
+	colorMaterial->MaterialLayout.ID = "ColorMaterial";
+	colorMaterial->MaterialLayout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
+	colorMaterial->MaterialLayout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
 
 	Assets::Scene* myScene = new Assets::Scene();
-	myScene->AddResourceSetLayout(&rainbowLayout);
-	myScene->AddResourceSetLayout(&colorLayout);
+
+	myScene->AddResourceSet(rainbowMaterial);
+	myScene->AddResourceSet(colorMaterial);
 
 	auto q1 = MyCubeOne();
-	q1.ResourceSetIndex = rainbowLayout.ResourceSetIndex;
+	q1.Material = rainbowMaterial;
 	q1.SceneCamera = &myScene->DefaultCamera;
 	auto q2 = MyCubeTwo();
 	q2.SceneCamera = &myScene->DefaultCamera;
-	q2.ResourceSetIndex = colorLayout.ResourceSetIndex;
+	q2.Material = colorMaterial;
 	auto q3 = MyCubeThree();
 	q3.SceneCamera = &myScene->DefaultCamera;
 
@@ -343,6 +342,9 @@ int main() {
 		std::cerr << e.what() << std::endl;
 		return EXIT_FAILURE;
 	}
+
+	delete rainbowMaterial;
+	delete colorMaterial;
 
 	delete myScene;
 	delete app;

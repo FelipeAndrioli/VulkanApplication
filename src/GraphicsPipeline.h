@@ -41,7 +41,7 @@ namespace Engine {
 	private:
 		VkPipeline m_GraphicsPipeline = VK_NULL_HANDLE;
 
-		LogicalDevice* p_LogicalDevice;
+		LogicalDevice* p_LogicalDevice = nullptr;
 
 		std::unique_ptr<class DescriptorSetLayout> m_DescriptorSetLayout;
 		std::unique_ptr<class DescriptorPool> m_DescriptorPool;

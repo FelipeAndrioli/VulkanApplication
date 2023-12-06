@@ -25,18 +25,18 @@ namespace Assets {
 	}
 
 	void Model::ResetResources() {
-		m_UniformBuffer.reset();
-		m_DescriptorSets.reset();
+		UniformBuffer.reset();
+		DescriptorSets.reset();
 	}
 
 	void Model::SetUniformBufferObject(void* uniformBuffer, size_t uniformBufferSize) {
 		p_UniformBufferObject = uniformBuffer;
-		m_UniformBufferObjectSize = uniformBufferSize;
+		UniformBufferObjectSize = uniformBufferSize;
 	}
 
 	void Model::SetModelUniformBuffer(uint32_t currentImage) {
 		if (p_UniformBufferObject == nullptr) return;
 
-		memcpy(m_UniformBuffer->BufferMemory->MemoryMapped[currentImage], p_UniformBufferObject, m_UniformBufferObjectSize);
+		memcpy(UniformBuffer->BufferMemory->MemoryMapped[currentImage], p_UniformBufferObject, UniformBufferObjectSize);
 	}
 }

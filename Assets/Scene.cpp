@@ -6,6 +6,10 @@ namespace Assets {
 
 		//DefaultCamera = Camera();
 		DefaultCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f));
+
+		DefaultMaterial = new Engine::ResourceSet();
+
+		MapResourceSets.emplace(DefaultMaterial->MaterialLayout.ID, DefaultMaterial);
 	}
 
 	Scene::~Scene() {
@@ -13,29 +17,21 @@ namespace Assets {
 			model->ResetResources();
 		}
 
-		for (Engine::ResourceSet* resourceSet : ResourceSets) {
-			delete resourceSet;
-		}
+		delete DefaultMaterial;
+
+		MapResourceSets.clear();
 	}
 
 	void Scene::AddModel(Model* model) {
 		Models.push_back(model);
-
-		for (size_t i = 0; i < Models.size(); i++) {
-			if (Models.size() == 1) break;
-
-			for (size_t j = i + 1; j < Models.size(); j++) {
-				if (Models[i]->ResourceSetIndex < Models[j]->ResourceSetIndex) {
-					Model* tempModel = Models[i];
-					Models[i] = Models[j];
-					Models[j] = tempModel;
-				}
-			}
-		}
 	}
 
 	void Scene::AddResourceSetLayout(Engine::ResourceSetLayout* resourceSetLayout) {
 		m_ResourceSetLayouts.push_back(resourceSetLayout);
+	}
+
+	void Scene::AddResourceSet(Engine::ResourceSet* resourceSet) {
+		MapResourceSets.emplace(resourceSet->MaterialLayout.ID, resourceSet);
 	}
 
 	void Scene::OnCreate() {
@@ -60,32 +56,56 @@ namespace Assets {
 		}
 	}
 
-	void Scene::SetupScene(Engine::LogicalDevice& logicalDevice, Engine::PhysicalDevice& physicalDevice, 
+	void Scene::SetupScene(Engine::LogicalDevice& logicalDevice, Engine::PhysicalDevice& physicalDevice,
 		Engine::CommandPool& commandPool, const Engine::SwapChain& swapChain, const Engine::DepthBuffer& depthBuffer,
 		const VkRenderPass& renderPass) {
-	
-		int maxIndex = 0;
-
-		// Add default
-		m_ResourceSetLayouts.push_back(new Engine::ResourceSetLayout{});
-
-		for (Engine::ResourceSetLayout* resourceSetLayout : m_ResourceSetLayouts) {
-			if (resourceSetLayout->ResourceSetIndex == -1) {
-				resourceSetLayout->ResourceSetIndex = (int)m_ResourceSetLayouts.size() - 1;
-			}
-		
-			if (resourceSetLayout->ResourceSetIndex > maxIndex) maxIndex = resourceSetLayout->ResourceSetIndex;
-		}
-
-		ResourceSets.resize(maxIndex + 1);
 
 		for (Model* model : Models) {
-			if (model->ResourceSetIndex == -1) model->ResourceSetIndex = (int)m_ResourceSetLayouts.size() - 1;
+			if (model->Material == nullptr) {
+				model->Material = MapResourceSets.find("Default")->second;
+			}
 		}
 
-		for (Engine::ResourceSetLayout* resourceSetLayout : m_ResourceSetLayouts) {
-			ResourceSets[resourceSetLayout->ResourceSetIndex] = new Engine::ResourceSet(*resourceSetLayout, logicalDevice,
-				physicalDevice, commandPool, swapChain, depthBuffer, renderPass, Models);
+		std::unordered_map<std::string, Engine::ResourceSet*>::iterator it;
+
+		for (it = MapResourceSets.begin(); it != MapResourceSets.end(); it++) {
+			it->second->Init(logicalDevice, physicalDevice, commandPool, swapChain, depthBuffer, renderPass);
+
+			SetModelResources(it->second, physicalDevice, logicalDevice);
+
+			if (m_HelperVertices.size() > 0) {
+				it->second->CreateVertexBuffer(m_HelperVertices, physicalDevice, logicalDevice, commandPool);
+			}
+
+			if (m_HelperIndices.size() > 0) {
+				it->second->CreateIndexBuffer(m_HelperIndices, physicalDevice, logicalDevice, commandPool);
+			}
+		}
+	}
+	
+	void Scene::SetModelResources(Engine::ResourceSet* resourceSet, Engine::PhysicalDevice& physicalDevice, Engine::LogicalDevice& logicalDevice) {
+		m_HelperVertices.clear();
+		m_HelperIndices.clear();
+
+		for (auto model : Models) {
+			if (model->Material != resourceSet) continue;
+
+			//VkDeviceSize bufferSize = sizeof(model->UniformBufferObjectSize);
+			VkDeviceSize bufferSize = sizeof(Engine::UniformBufferObject);
+
+			model->UniformBuffer.reset(new class Engine::Buffer(Engine::MAX_FRAMES_IN_FLIGHT, logicalDevice, physicalDevice,
+				bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
+			model->UniformBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			model->UniformBuffer->BufferMemory->MapMemory();
+
+			model->DescriptorSets.reset(new class Engine::DescriptorSets(logicalDevice.GetHandle(), 
+				resourceSet->GetGraphicsPipeline()->GetDescriptorPool().GetHandle(), 
+				resourceSet->GetGraphicsPipeline()->GetDescriptorSetLayout().GetHandle(), 
+				model->UniformBuffer.get())
+			);
+
+			m_HelperVertices.insert(m_HelperVertices.end(), model->GetVertices().begin(), model->GetVertices().end());
+			m_HelperIndices.insert(m_HelperIndices.end(), model->GetIndices().begin(), model->GetIndices().end());
 		}
 	}
 }
