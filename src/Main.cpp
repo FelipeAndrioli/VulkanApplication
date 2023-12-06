@@ -294,27 +294,27 @@ public:
 
 int main() {
 
-	Engine::ResourceSet* rainbowMaterial = new Engine::ResourceSet();
+	std::unique_ptr<Engine::ResourceSet> rainbowMaterial = std::make_unique<Engine::ResourceSet>();
 	rainbowMaterial->MaterialLayout.ID = "RainbowMaterial";
 	rainbowMaterial->MaterialLayout.VertexShaderPath = "./Assets/Shaders/vert.spv";
 	rainbowMaterial->MaterialLayout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
 
-	Engine::ResourceSet* colorMaterial = new Engine::ResourceSet();
+	std::unique_ptr<Engine::ResourceSet> colorMaterial = std::make_unique<Engine::ResourceSet>();
 	colorMaterial->MaterialLayout.ID = "ColorMaterial";
 	colorMaterial->MaterialLayout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
 	colorMaterial->MaterialLayout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
 
-	Assets::Scene* myScene = new Assets::Scene();
+	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 
-	myScene->AddResourceSet(rainbowMaterial);
-	myScene->AddResourceSet(colorMaterial);
+	myScene->AddResourceSet(rainbowMaterial.get());
+	myScene->AddResourceSet(colorMaterial.get());
 
 	auto q1 = MyCubeOne();
-	q1.Material = rainbowMaterial;
+	q1.Material = rainbowMaterial.get();
 	q1.SceneCamera = &myScene->DefaultCamera;
 	auto q2 = MyCubeTwo();
 	q2.SceneCamera = &myScene->DefaultCamera;
-	q2.Material = colorMaterial;
+	q2.Material = colorMaterial.get();
 	auto q3 = MyCubeThree();
 	q3.SceneCamera = &myScene->DefaultCamera;
 
@@ -329,10 +329,11 @@ int main() {
 
 	Engine::UserSettings userSettings;
 	userSettings.rayTraced = false;
-	
-	Engine::Application* app = new Engine::Application(windowSettings, userSettings);
 
-	app->SetActiveScene(myScene);
+	// TODO: review this initial settings
+	std::unique_ptr<Engine::Application> app = std::make_unique<Engine::Application>(windowSettings, userSettings);
+
+	app->SetActiveScene(myScene.get());
 	app->Init();
 
 	try {
@@ -343,11 +344,11 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-	delete rainbowMaterial;
-	delete colorMaterial;
-
-	delete myScene;
-	delete app;
+	rainbowMaterial.reset();
+	colorMaterial.reset();
+	
+	myScene.reset();
+	app.reset();
 
 	return EXIT_SUCCESS;
 }
