@@ -8,7 +8,6 @@ namespace Assets {
 		DefaultCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f));
 
 		DefaultMaterial = new Engine::ResourceSet();
-
 		MapResourceSets.emplace(DefaultMaterial->MaterialLayout.ID, DefaultMaterial);
 	}
 
@@ -17,9 +16,10 @@ namespace Assets {
 			model->ResetResources();
 		}
 
-		delete DefaultMaterial;
-
+		MapResourceSets.erase("Default");
 		MapResourceSets.clear();
+
+		delete DefaultMaterial;
 	}
 
 	void Scene::AddModel(Model* model) {

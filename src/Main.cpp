@@ -293,6 +293,7 @@ public:
 };
 
 int main() {
+
 	Engine::ResourceSet* rainbowMaterial = new Engine::ResourceSet();
 	rainbowMaterial->MaterialLayout.ID = "RainbowMaterial";
 	rainbowMaterial->MaterialLayout.VertexShaderPath = "./Assets/Shaders/vert.spv";
@@ -316,7 +317,6 @@ int main() {
 	q2.Material = colorMaterial;
 	auto q3 = MyCubeThree();
 	q3.SceneCamera = &myScene->DefaultCamera;
-
 
 	myScene->AddModel(&q1);
 	myScene->AddModel(&q2);
