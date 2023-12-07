@@ -4,7 +4,7 @@
 #include <vector>
 #include <stdexcept>
 
-#include "Model.h"
+#include "Object.h"
 #include "Camera.h"
 
 #include "../src/Buffer.h"
@@ -27,7 +27,7 @@ namespace Assets {
 		Scene();
 		~Scene();
 
-		void AddModel(Model* model);
+		void AddObject(Object* object);
 		void AddMaterial(Engine::Material* material);
 
 		void OnCreate();
@@ -43,7 +43,7 @@ namespace Assets {
 			const VkRenderPass& renderPass);
 		
 	public:
-		std::vector<Model*> Models;
+		std::vector<Object*> Objects;
 		std::unordered_map<std::string, Engine::Material*> MapMaterials;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 	
@@ -55,7 +55,7 @@ namespace Assets {
 		Engine::Material* DefaultMaterial = nullptr;
 
 	private:
-		void SetModelResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
+		void SetObjectResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
 			Engine::LogicalDevice& logicalDevice);
 	};
 }

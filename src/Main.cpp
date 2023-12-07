@@ -48,12 +48,12 @@
 #include "Application.h"
 #include "MaterialLayout.h"
 #include "../Assets/Scene.h"
-#include "../Assets/Model.h"
+#include "../Assets/Object.h"
 
-class MyCubeOne : public Assets::Model {
+class MyCubeOne : public Assets::Object {
 public:
 	struct UniformBufferObject {
-		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 object = glm::mat4(1.0f);
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
 	};
@@ -90,26 +90,26 @@ public:
 		SetIndices(i);
 		ID = "Quad One";
 
-		std::cout << ID << " model created\n";
+		std::cout << ID << " object created\n";
 	}
 
 	void OnUIRender() {
-		std::string modelId = ID;
+		std::string objectId = ID;
 
-		std::string t = "Transformations " + modelId;
+		std::string t = "Transformations " + objectId;
 
 		if (ImGui::TreeNode(t.c_str())) {
-			std::string t_label_x = "Translation x " + modelId;
-			std::string t_label_y = "Translation y " + modelId;
-			std::string t_label_z = "Translation z " + modelId;
+			std::string t_label_x = "Translation x " + objectId;
+			std::string t_label_y = "Translation y " + objectId;
+			std::string t_label_z = "Translation z " + objectId;
 
 			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -20.0f, 20.0f);
 			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -20.0f, 20.0f);
 			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -20.0f, 20.0f);
 
-			std::string r_label_x = "Rotation x " + modelId;
-			std::string r_label_y = "Rotation y " + modelId;
-			std::string r_label_z = "Rotation z " + modelId;
+			std::string r_label_x = "Rotation x " + objectId;
+			std::string r_label_y = "Rotation y " + objectId;
+			std::string r_label_z = "Rotation z " + objectId;
 			
 			ImGui::SliderFloat(r_label_x.c_str(), &m_Transform.rotation.x, -20.0f, 20.0f);
 			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
@@ -122,17 +122,17 @@ public:
 	void OnUpdate(float t) {
 		m_Transform.rotation.x += t * 0.05f;
 
-		ubo->model = GetModelMatrix();
+		ubo->object = GetModelMatrix();
 		ubo->view = SceneCamera->ViewMatrix;
 		ubo->proj = SceneCamera->ProjectionMatrix;
 	}
 };
 
-class MyCubeTwo : public Assets::Model {
+class MyCubeTwo : public Assets::Object {
 public:
 
 	struct UniformBufferObject {
-		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 object = glm::mat4(1.0f);
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
 
@@ -172,26 +172,26 @@ public:
 		SetIndices(i);
 		ID = "Quad Two";
 		
-		std::cout << ID << " model created\n";
+		std::cout << ID << " object created\n";
 	}
 
 	void OnUIRender() {
-		std::string modelId = ID;
+		std::string objectId = ID;
 
-		std::string t = "Transformations " + modelId;
+		std::string t = "Transformations " + objectId;
 
 		if (ImGui::TreeNode(t.c_str())) {
-			std::string t_label_x = "Translation x " + modelId;
-			std::string t_label_y = "Translation y " + modelId;
-			std::string t_label_z = "Translation z " + modelId;
+			std::string t_label_x = "Translation x " + objectId;
+			std::string t_label_y = "Translation y " + objectId;
+			std::string t_label_z = "Translation z " + objectId;
 
 			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -20.0f, 20.0f);
 			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -20.0f, 20.0f);
 			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -20.0f, 20.0f);
 
-			std::string r_label_x = "Rotation x " + modelId;
-			std::string r_label_y = "Rotation y " + modelId;
-			std::string r_label_z = "Rotation z " + modelId;
+			std::string r_label_x = "Rotation x " + objectId;
+			std::string r_label_y = "Rotation y " + objectId;
+			std::string r_label_z = "Rotation z " + objectId;
 			
 			ImGui::SliderFloat(r_label_x.c_str(), &m_Transform.rotation.x, -20.0f, 20.0f);
 			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
@@ -206,17 +206,17 @@ public:
 	void OnUpdate(float t) {
 		m_Transform.rotation.y += t * 0.05f;
 
-		ubo->model = GetModelMatrix();
+		ubo->object = GetModelMatrix();
 		ubo->view = SceneCamera->ViewMatrix;
 		ubo->proj = SceneCamera->ProjectionMatrix;
 	}
 };
 
-class MyCubeThree : public Assets::Model {
+class MyCubeThree : public Assets::Object {
 public:
 
 	struct UniformBufferObject {
-		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 object = glm::mat4(1.0f);
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
 	};
@@ -254,26 +254,26 @@ public:
 		SetIndices(i);
 		ID = "Quad Three";
 		
-		std::cout << ID << " model created\n";
+		std::cout << ID << " object created\n";
 	}
 
 	void OnUIRender() {
-		std::string modelId = ID;
+		std::string objectId = ID;
 
-		std::string t = "Transformations " + modelId;
+		std::string t = "Transformations " + objectId;
 
 		if (ImGui::TreeNode(t.c_str())) {
-			std::string t_label_x = "Translation x " + modelId;
-			std::string t_label_y = "Translation y " + modelId;
-			std::string t_label_z = "Translation z " + modelId;
+			std::string t_label_x = "Translation x " + objectId;
+			std::string t_label_y = "Translation y " + objectId;
+			std::string t_label_z = "Translation z " + objectId;
 
 			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -20.0f, 20.0f);
 			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -20.0f, 20.0f);
 			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -20.0f, 20.0f);
 
-			std::string r_label_x = "Rotation x " + modelId;
-			std::string r_label_y = "Rotation y " + modelId;
-			std::string r_label_z = "Rotation z " + modelId;
+			std::string r_label_x = "Rotation x " + objectId;
+			std::string r_label_y = "Rotation y " + objectId;
+			std::string r_label_z = "Rotation z " + objectId;
 			
 			ImGui::SliderFloat(r_label_x.c_str(), &m_Transform.rotation.x, -20.0f, 20.0f);
 			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
@@ -286,7 +286,7 @@ public:
 	void OnUpdate(float t) {
 		m_Transform.rotation.z += t * 0.05f;
 
-		ubo->model = GetModelMatrix();
+		ubo->object = GetModelMatrix();
 		ubo->view = SceneCamera->ViewMatrix;
 		ubo->proj = SceneCamera->ProjectionMatrix;
 	}
@@ -318,9 +318,9 @@ int main() {
 	auto q3 = MyCubeThree();
 	q3.SceneCamera = &myScene->DefaultCamera;
 
-	myScene->AddModel(&q1);
-	myScene->AddModel(&q2);
-	myScene->AddModel(&q3);
+	myScene->AddObject(&q1);
+	myScene->AddObject(&q2);
+	myScene->AddObject(&q3);
 	
 	Engine::WindowSettings windowSettings;
 	windowSettings.Title = "VulkanApplication.exe";

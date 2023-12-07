@@ -97,10 +97,10 @@ namespace Engine {
 		uint32_t vertexOffset = 0;
 		uint32_t indexOffset = 0;
 
-		for (Assets::Model* model : p_ActiveScene->Models) {
+		for (Assets::Object* object : p_ActiveScene->Objects) {
 
-			if (model->Material != material) {
-				material = p_ActiveScene->MapMaterials.find(model->Material->Layout.ID)->second;
+			if (object->Material != material) {
+				material = p_ActiveScene->MapMaterials.find(object->Material->Layout.ID)->second;
 
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->GetGraphicsPipeline()->GetHandle());
 
@@ -133,18 +133,18 @@ namespace Engine {
 
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
 				material->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 0, 1,
-				&model->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
+				&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
 				nullptr);
 
-			model->SetModelUniformBuffer(m_CurrentFrame);
+			object->SetObjectUniformBuffer(m_CurrentFrame);
 
-			auto modelVertexCount = model->GetSizeVertices();
-			auto modelIndexCount = model->GetSizeIndices();
+			auto objectVertexCount = object->GetSizeVertices();
+			auto objectIndexCount = object->GetSizeIndices();
 
-			vkCmdDrawIndexed(commandBuffer, modelIndexCount, 1, indexOffset, vertexOffset, 0);
+			vkCmdDrawIndexed(commandBuffer, objectIndexCount, 1, indexOffset, vertexOffset, 0);
 		
-			vertexOffset += modelVertexCount;
-			indexOffset += modelIndexCount;
+			vertexOffset += objectVertexCount;
+			indexOffset += objectIndexCount;
 		}
 		
 		vkCmdEndRenderPass(commandBuffer);

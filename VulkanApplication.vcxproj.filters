@@ -105,7 +105,7 @@
     <ClCompile Include="src\DescriptorSets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Assets\Model.cpp">
+    <ClCompile Include="Assets\Object.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Assets\Scene.cpp">
@@ -239,7 +239,7 @@
     <ClInclude Include="src\DescriptorSets.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Assets\Model.h">
+    <ClInclude Include="Assets\Object.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Assets\Scene.h">

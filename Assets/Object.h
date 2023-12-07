@@ -20,10 +20,10 @@ namespace Assets {
 		glm::vec3 scalation;
 	};
 
-	class Model {
+	class Object {
 	public:
-		Model();
-		~Model();
+		Object();
+		~Object();
 
 		virtual void OnCreate() = 0;
 		virtual void OnUpdate(float t) = 0;
@@ -42,12 +42,12 @@ namespace Assets {
 
 		void ResetResources();
 		void SetUniformBufferObject(void* uniformBuffer, size_t uniformBufferSize);
-		void SetModelUniformBuffer(uint32_t currentImage);
+		void SetObjectUniformBuffer(uint32_t currentImage);
 
 	public:
 		std::string ID = "";
 
-		// TODO: Find a way to remove the camera pointer from the model
+		// TODO: Find a way to remove the camera pointer from the object 
 		Camera* SceneCamera = nullptr;
 		
 		Engine::Material* Material = nullptr;

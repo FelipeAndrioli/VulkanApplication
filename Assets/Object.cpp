@@ -1,18 +1,18 @@
-#include "Model.h"
+#include "Object.h"
 
 namespace Assets {
-	Model::Model() {
+	Object::Object() {
 
 		m_Transform.translation = glm::vec3(0.0f, 0.0f, 0.0f);
 		m_Transform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
 		m_Transform.scalation = glm::vec3(1.0f, 1.0f, 1.0f);
 	}
 
-	Model::~Model() {
+	Object::~Object() {
 	
 	}
 
-	glm::mat4 Model::GetModelMatrix() {
+	glm::mat4 Object::GetModelMatrix() {
 		glm::mat4 model = glm::mat4(1.0f);
 
 		model = glm::scale(model, m_Transform.scalation);
@@ -24,17 +24,17 @@ namespace Assets {
 		return model;
 	}
 
-	void Model::ResetResources() {
+	void Object::ResetResources() {
 		UniformBuffer.reset();
 		DescriptorSets.reset();
 	}
 
-	void Model::SetUniformBufferObject(void* uniformBuffer, size_t uniformBufferSize) {
+	void Object::SetUniformBufferObject(void* uniformBuffer, size_t uniformBufferSize) {
 		p_UniformBufferObject = uniformBuffer;
 		UniformBufferObjectSize = uniformBufferSize;
 	}
 
-	void Model::SetModelUniformBuffer(uint32_t currentImage) {
+	void Object::SetObjectUniformBuffer(uint32_t currentImage) {
 		if (p_UniformBufferObject == nullptr) return;
 
 		memcpy(UniformBuffer->BufferMemory->MemoryMapped[currentImage], p_UniformBufferObject, UniformBufferObjectSize);
