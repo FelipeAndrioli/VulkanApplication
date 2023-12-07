@@ -19,16 +19,17 @@ namespace Assets {
 		float Fov;
 		float Near = 0.1f;
 		float Far = 200.0f;
+		float Yaw = -90.0f;
+		float Pitch = 0.0f;
 
 		glm::mat4 ViewMatrix = glm::mat4(1.0f);
 		glm::mat4 ProjectionMatrix = glm::mat4(1.0f);
-		
+	
 		glm::vec3 Position;
 		glm::vec3 Front;
 		glm::vec3 WorldUp = glm::vec3(0.0f, 1.0f, 0.0f);
 		glm::vec3 Up;
 		glm::vec3 Right;
-		glm::vec3 Target;
 
 	private:
 		void UpdateViewMatrix();

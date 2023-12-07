@@ -15,34 +15,44 @@ namespace Assets {
 
 	void Camera::OnUIRender() {
 		if (ImGui::TreeNode("Camera")) {
-			ImGui::Text("Camera Position: x - %f, y - %f, z - %f", Position.x, Position.y, Position.z);
-			ImGui::Text("Camera Up: x - %f, y - %f, z - %f", Up.x, Up.y, Up.z);
-			ImGui::Text("Camera Target: x - %f, y - %f, z - %f", Target.x, Target.y, Target.z);
 			ImGui::Text("Camera Near Clip: %f", Near);
 			ImGui::Text("Camera Far Clip: %f", Far);
+			ImGui::Text("Camera Position: x - %f, y - %f, z - %f", Position.x, Position.y, Position.z);
+			ImGui::Text("Camera Up: x - %f, y - %f, z - %f", Up.x, Up.y, Up.z);
+			ImGui::Text("Camera Yaw: %f", Yaw);
+			ImGui::Text("Camera Pitch: %f", Pitch);
+			ImGui::SliderFloat("Camera Near Clip", &Near, -1.0f, 20.0f);
+			ImGui::SliderFloat("Camera Far Clip", &Far, 10.0f, 200.0f);
 			ImGui::SliderFloat("Camera Position X", &Position.x, -20.0f, 20.0f);
 			ImGui::SliderFloat("Camera Position Y", &Position.y, -20.0f, 20.0f);
 			ImGui::SliderFloat("Camera Position Z", &Position.z, -20.0f, 20.0f);
-			ImGui::SliderFloat("Camera Near Clip", &Near, -1.0f, 20.0f);
-			ImGui::SliderFloat("Camera Far Clip", &Far, 10.0f, 200.0f);
+			ImGui::SliderFloat("Camera Yaw", &Yaw, -100.0f, 100.0f);
+			ImGui::SliderFloat("Camera Pitch", &Pitch, -100.0f, 100.0f);
 			ImGui::TreePop();
 		}
 	}
 
 	void Camera::UpdateCameraVectors() {
-		Front = glm::normalize(Position - glm::vec3(0.0f, 0.0f, 0.0f));
+
+		if (Pitch > 89.0f) Pitch = 89.0f;
+		if (Pitch < -89.0f) Pitch = -89.0f;
+
+		glm::vec3 front = glm::vec3(1.0f);
+
+		front.x = glm::cos(glm::radians(Yaw)) * glm::cos(glm::radians(Pitch));
+		front.y = glm::sin(glm::radians(Pitch));
+		front.z = glm::sin(glm::radians(Yaw)) * glm::cos(glm::radians(Pitch));
+
+		Front = glm::normalize(front);
 		Right = glm::normalize(glm::cross(Front, WorldUp));
 		Up = glm::normalize(glm::cross(Right, Front));
-
-		Target = Position + Front;
 
 		UpdateViewMatrix();
 		UpdateProjectionMatrix();
 	}
 
 	void Camera::UpdateViewMatrix() {
-		//ViewMatrix = glm::lookAt(Position, Target, Up);
-		ViewMatrix = glm::translate(glm::mat4(1.0f), Position);
+		ViewMatrix = glm::lookAt(Position, Position + Front, Up);
 	}
 
 	void Camera::UpdateProjectionMatrix() {

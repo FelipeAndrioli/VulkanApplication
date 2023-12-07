@@ -5,7 +5,7 @@ namespace Assets {
 		std::cout << "Starting scene" << std::endl;
 
 		//DefaultCamera = Camera();
-		DefaultCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f));
+		DefaultCamera = Camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 		DefaultMaterial = new Engine::Material();
 		MapMaterials.emplace(DefaultMaterial->Layout.ID, DefaultMaterial);

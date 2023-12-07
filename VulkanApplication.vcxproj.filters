@@ -212,7 +212,7 @@
     <ClInclude Include="src\ShaderModule.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Assets\Vertex.h">
+    <ClInclude Include="Assets\Mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\PipelineLayout.h">
