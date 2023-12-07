@@ -45,7 +45,7 @@
 #include "Fence.h"
 #include "Instance.h"
 #include "DebugUtilsMessenger.h"
-#include "ResourceSet.h"
+#include "Material.h"
 #include "DepthBuffer.h"
 
 #include "../Assets/Scene.h"

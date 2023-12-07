@@ -1,27 +1,27 @@
-#include "ResourceSet.h"
+#include "Material.h"
 
 namespace Engine {
-	ResourceSet::ResourceSet() {
+	Material::Material() {
 
 	}
 
-	ResourceSet::~ResourceSet() {
+	Material::~Material() {
 		m_GraphicsPipeline.reset();
 		m_VertexBuffer.reset();
 		m_IndexBuffer.reset();
 	}
 
-	void ResourceSet::Init(LogicalDevice& logicalDevice, 
+	void Material::Init(LogicalDevice& logicalDevice, 
 		PhysicalDevice& physicalDevice, 
 		CommandPool& commandPool, 
 		const SwapChain& swapChain, 
 		const DepthBuffer& depthBuffer, 
 		const VkRenderPass& renderPass
 	) {
-		m_GraphicsPipeline.reset(new class GraphicsPipeline(MaterialLayout, logicalDevice, swapChain, depthBuffer, renderPass));
+		m_GraphicsPipeline.reset(new class GraphicsPipeline(Layout, logicalDevice, swapChain, depthBuffer, renderPass));
 	}
 
-	void ResourceSet::CreateVertexBuffer(std::vector<Assets::Vertex> vertices, PhysicalDevice& physicalDevice, 
+	void Material::CreateVertexBuffer(std::vector<Assets::Vertex> vertices, PhysicalDevice& physicalDevice, 
 		LogicalDevice& logicalDevice, CommandPool& commandPool) {
 
 		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * vertices.size();
@@ -35,7 +35,7 @@ namespace Engine {
 			vertices, m_VertexBuffer.get());
 	}
 
-	void ResourceSet::CreateIndexBuffer(std::vector<uint16_t> indices, PhysicalDevice& physicalDevice, 
+	void Material::CreateIndexBuffer(std::vector<uint16_t> indices, PhysicalDevice& physicalDevice, 
 		LogicalDevice& logicalDevice, CommandPool& commandPool) {
 
 		VkDeviceSize bufferSize = sizeof(uint16_t) * indices.size();

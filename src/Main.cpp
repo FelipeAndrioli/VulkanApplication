@@ -46,7 +46,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Application.h"
-#include "ResourceSetLayout.h"
+#include "MaterialLayout.h"
 #include "../Assets/Scene.h"
 #include "../Assets/Model.h"
 
@@ -294,20 +294,20 @@ public:
 
 int main() {
 
-	std::unique_ptr<Engine::ResourceSet> rainbowMaterial = std::make_unique<Engine::ResourceSet>();
-	rainbowMaterial->MaterialLayout.ID = "RainbowMaterial";
-	rainbowMaterial->MaterialLayout.VertexShaderPath = "./Assets/Shaders/vert.spv";
-	rainbowMaterial->MaterialLayout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
+	std::unique_ptr<Engine::Material> rainbowMaterial = std::make_unique<Engine::Material>();
+	rainbowMaterial->Layout.ID = "RainbowMaterial";
+	rainbowMaterial->Layout.VertexShaderPath = "./Assets/Shaders/vert.spv";
+	rainbowMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
 
-	std::unique_ptr<Engine::ResourceSet> colorMaterial = std::make_unique<Engine::ResourceSet>();
-	colorMaterial->MaterialLayout.ID = "ColorMaterial";
-	colorMaterial->MaterialLayout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
-	colorMaterial->MaterialLayout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
+	std::unique_ptr<Engine::Material> colorMaterial = std::make_unique<Engine::Material>();
+	colorMaterial->Layout.ID = "ColorMaterial";
+	colorMaterial->Layout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
+	colorMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
 
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 
-	myScene->AddResourceSet(rainbowMaterial.get());
-	myScene->AddResourceSet(colorMaterial.get());
+	myScene->AddMaterial(rainbowMaterial.get());
+	myScene->AddMaterial(colorMaterial.get());
 
 	auto q1 = MyCubeOne();
 	q1.Material = rainbowMaterial.get();

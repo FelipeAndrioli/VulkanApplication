@@ -13,7 +13,7 @@
 #include "../src/PhysicalDevice.h"
 #include "../src/DescriptorSetLayout.h"
 #include "../src/DescriptorPool.h"
-#include "../src/ResourceSet.h"
+#include "../src/Material.h"
 
 namespace Engine {
 	class ResourceSet;
@@ -28,8 +28,7 @@ namespace Assets {
 		~Scene();
 
 		void AddModel(Model* model);
-		void AddResourceSetLayout(Engine::ResourceSetLayout* resourceSetLayout);
-		void AddResourceSet(Engine::ResourceSet* resourceSet);
+		void AddMaterial(Engine::Material* material);
 
 		void OnCreate();
 		void OnUIRender();
@@ -45,20 +44,18 @@ namespace Assets {
 		
 	public:
 		std::vector<Model*> Models;
-		std::vector<Engine::ResourceSet*> ResourceSets;
-		std::unordered_map<std::string, Engine::ResourceSet*> MapResourceSets;
+		std::unordered_map<std::string, Engine::Material*> MapMaterials;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 	
 		Camera DefaultCamera;
 	private:
-		std::vector<Engine::ResourceSetLayout*> m_ResourceSetLayouts;
 		std::vector<Vertex> m_HelperVertices;
 		std::vector<uint16_t> m_HelperIndices;
 
-		Engine::ResourceSet* DefaultMaterial = nullptr;
+		Engine::Material* DefaultMaterial = nullptr;
 
 	private:
-		void SetModelResources(Engine::ResourceSet* resourceSet, Engine::PhysicalDevice& physicalDevice, 
+		void SetModelResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
 			Engine::LogicalDevice& logicalDevice);
 	};
 }

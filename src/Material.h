@@ -9,15 +9,15 @@
 #include "PhysicalDevice.h"
 #include "CommandPool.h"
 #include "SwapChain.h"
-#include "ResourceSetLayout.h"
+#include "MaterialLayout.h"
 #include "DepthBuffer.h"
 
 namespace Engine {
-	class ResourceSet {
+	class Material {
 	public:
 
-		ResourceSet();
-		~ResourceSet();
+		Material();
+		~Material();
 	
 		void Init(LogicalDevice& logicalDevice,
 			PhysicalDevice& physicalDevice,
@@ -38,7 +38,7 @@ namespace Engine {
 		void CreateIndexBuffer(std::vector<uint16_t> indices, PhysicalDevice& physicalDevice, 
 			LogicalDevice& logicalDevice, CommandPool& commandPool);
 	public:
-		ResourceSetLayout MaterialLayout = ResourceSetLayout();
+		MaterialLayout Layout = MaterialLayout();
 	private:
 		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
 		

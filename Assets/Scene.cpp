@@ -7,8 +7,8 @@ namespace Assets {
 		//DefaultCamera = Camera();
 		DefaultCamera = Camera(glm::vec3(0.0f, 0.0f, -5.0f));
 
-		DefaultMaterial = new Engine::ResourceSet();
-		MapResourceSets.emplace(DefaultMaterial->MaterialLayout.ID, DefaultMaterial);
+		DefaultMaterial = new Engine::Material();
+		MapMaterials.emplace(DefaultMaterial->Layout.ID, DefaultMaterial);
 	}
 
 	Scene::~Scene() {
@@ -16,8 +16,8 @@ namespace Assets {
 			model->ResetResources();
 		}
 
-		MapResourceSets.erase("Default");
-		MapResourceSets.clear();
+		MapMaterials.erase("Default");
+		MapMaterials.clear();
 
 		delete DefaultMaterial;
 	}
@@ -26,12 +26,8 @@ namespace Assets {
 		Models.push_back(model);
 	}
 
-	void Scene::AddResourceSetLayout(Engine::ResourceSetLayout* resourceSetLayout) {
-		m_ResourceSetLayouts.push_back(resourceSetLayout);
-	}
-
-	void Scene::AddResourceSet(Engine::ResourceSet* resourceSet) {
-		MapResourceSets.emplace(resourceSet->MaterialLayout.ID, resourceSet);
+	void Scene::AddMaterial(Engine::Material* material) {
+		MapMaterials.emplace(material->Layout.ID, material);
 	}
 
 	void Scene::OnCreate() {
@@ -62,13 +58,13 @@ namespace Assets {
 
 		for (Model* model : Models) {
 			if (model->Material == nullptr) {
-				model->Material = MapResourceSets.find("Default")->second;
+				model->Material = MapMaterials.find("Default")->second;
 			}
 		}
 
-		std::unordered_map<std::string, Engine::ResourceSet*>::iterator it;
+		std::unordered_map<std::string, Engine::Material*>::iterator it;
 
-		for (it = MapResourceSets.begin(); it != MapResourceSets.end(); it++) {
+		for (it = MapMaterials.begin(); it != MapMaterials.end(); it++) {
 			it->second->Init(logicalDevice, physicalDevice, commandPool, swapChain, depthBuffer, renderPass);
 
 			SetModelResources(it->second, physicalDevice, logicalDevice);
@@ -83,12 +79,12 @@ namespace Assets {
 		}
 	}
 	
-	void Scene::SetModelResources(Engine::ResourceSet* resourceSet, Engine::PhysicalDevice& physicalDevice, Engine::LogicalDevice& logicalDevice) {
+	void Scene::SetModelResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, Engine::LogicalDevice& logicalDevice) {
 		m_HelperVertices.clear();
 		m_HelperIndices.clear();
 
 		for (auto model : Models) {
-			if (model->Material != resourceSet) continue;
+			if (model->Material != material) continue;
 
 			VkDeviceSize bufferSize = sizeof(model->UniformBufferObjectSize);
 
@@ -100,8 +96,8 @@ namespace Assets {
 			model->DescriptorSets.reset(new class Engine::DescriptorSets(
 				bufferSize,
 				logicalDevice.GetHandle(),
-				resourceSet->GetGraphicsPipeline()->GetDescriptorPool().GetHandle(),
-				resourceSet->GetGraphicsPipeline()->GetDescriptorSetLayout().GetHandle(),
+				material->GetGraphicsPipeline()->GetDescriptorPool().GetHandle(),
+				material->GetGraphicsPipeline()->GetDescriptorSetLayout().GetHandle(),
 				model->UniformBuffer.get()
 			));
 

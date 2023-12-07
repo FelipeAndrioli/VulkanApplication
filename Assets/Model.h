@@ -10,7 +10,7 @@
 
 #include "../src/Buffer.h"
 #include "../src/DescriptorSets.h"
-#include "../src/ResourceSet.h"
+#include "../src/Material.h"
 
 namespace Assets {
 
@@ -50,7 +50,7 @@ namespace Assets {
 		// TODO: Find a way to remove the camera pointer from the model
 		Camera* SceneCamera = nullptr;
 		
-		Engine::ResourceSet* Material = nullptr;
+		Engine::Material* Material = nullptr;
 	
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
 		std::unique_ptr<class Engine::Buffer> UniformBuffer;

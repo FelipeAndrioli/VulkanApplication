@@ -93,16 +93,16 @@ namespace Engine {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		ResourceSet* resourceSet = p_ActiveScene->MapResourceSets.find("Default")->second;
+		Material* material = p_ActiveScene->MapMaterials.find("Default")->second;
 		uint32_t vertexOffset = 0;
 		uint32_t indexOffset = 0;
 
 		for (Assets::Model* model : p_ActiveScene->Models) {
 
-			if (model->Material != resourceSet) {
-				resourceSet = p_ActiveScene->MapResourceSets.find(model->Material->MaterialLayout.ID)->second;
+			if (model->Material != material) {
+				material = p_ActiveScene->MapMaterials.find(model->Material->Layout.ID)->second;
 
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, resourceSet->GetGraphicsPipeline()->GetHandle());
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->GetGraphicsPipeline()->GetHandle());
 
 				VkViewport viewport = {};
 				viewport.x = 0.0f;
@@ -123,8 +123,8 @@ namespace Engine {
 				VkDeviceSize offsets[] = { 0 };
 
 				vkCmdBindVertexBuffers(commandBuffer, 0, 1,
-					&resourceSet->GetVertexBuffers()->GetBuffer(m_CurrentFrame), offsets);
-				vkCmdBindIndexBuffer(commandBuffer, resourceSet->GetIndexBuffers()->GetBuffer(), 0,
+					&material->GetVertexBuffers()->GetBuffer(m_CurrentFrame), offsets);
+				vkCmdBindIndexBuffer(commandBuffer, material->GetIndexBuffers()->GetBuffer(), 0,
 					VK_INDEX_TYPE_UINT16);
 
 				indexOffset = 0;
@@ -132,7 +132,7 @@ namespace Engine {
 			}
 
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-				resourceSet->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 0, 1,
+				material->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 0, 1,
 				&model->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
 				nullptr);
 

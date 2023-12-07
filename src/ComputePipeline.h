@@ -8,7 +8,7 @@
 #include "PipelineLayout.h"
 #include "DescriptorPool.h"
 #include "DescriptorSets.h"
-#include "ResourceSetLayout.h"
+#include "MaterialLayout.h"
 
 namespace Engine {
 	// TODO: For later

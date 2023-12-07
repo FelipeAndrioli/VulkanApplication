@@ -13,7 +13,7 @@ namespace Engine {
 		bool lastFrameAccess = false;
 	};
 
-	struct ResourceSetLayout {
+	struct MaterialLayout {
 		enum Topology {
 			POINT_LIST = 0,
 			LINE_LIST = 1,

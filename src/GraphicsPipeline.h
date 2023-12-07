@@ -14,7 +14,7 @@
 #include "DescriptorSets.h"
 #include "DescriptorPool.h"
 #include "Buffer.h"
-#include "ResourceSetLayout.h"
+#include "MaterialLayout.h"
 #include "DepthBuffer.h"
 
 #include "../Assets/Vertex.h"
@@ -26,7 +26,7 @@ namespace Engine {
 	class GraphicsPipeline {
 	public:
 		GraphicsPipeline(
-			const ResourceSetLayout& resourceSetLayout, 
+			const MaterialLayout& materialLayout, 
 			LogicalDevice& logicalDevice, 
 			const SwapChain& swapChain, 
 			const DepthBuffer& depthBuffer, 
@@ -34,7 +34,6 @@ namespace Engine {
 		~GraphicsPipeline();
 
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };
-		//inline RenderPass& GetRenderPass() { return *m_RenderPass; };
 		inline PipelineLayout& GetPipelineLayout() { return *m_GraphicsPipelineLayout; };
 		inline DescriptorSetLayout& GetDescriptorSetLayout() { return *m_DescriptorSetLayout; };
 		inline DescriptorPool& GetDescriptorPool() { return *m_DescriptorPool; };
@@ -46,6 +45,5 @@ namespace Engine {
 		std::unique_ptr<class DescriptorSetLayout> m_DescriptorSetLayout;
 		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
 		std::unique_ptr<class PipelineLayout> m_GraphicsPipelineLayout;
-		//std::unique_ptr<class RenderPass> m_RenderPass;
 	};
 }

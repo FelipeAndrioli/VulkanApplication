@@ -117,7 +117,7 @@
     <ClCompile Include="src\Timestep.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ResourceSet.cpp">
+    <ClCompile Include="src\Material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\DepthBuffer.cpp">
@@ -254,10 +254,10 @@
     <ClInclude Include="src\Timestep.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\ResourceSetLayout.h">
+    <ClInclude Include="src\MaterialLayout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\ResourceSet.h">
+    <ClInclude Include="src\Material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\DepthBuffer.h">
