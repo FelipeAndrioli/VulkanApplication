@@ -187,7 +187,6 @@
     <ClInclude Include="Assets\Camera.h" />
     <ClInclude Include="Assets\Object.h" />
     <ClInclude Include="Assets\Scene.h" />
-    <ClInclude Include="Assets\Mesh.h" />
     <ClInclude Include="libs\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="libs\imgui\backends\imgui_impl_vulkan.h" />
     <ClInclude Include="libs\imgui\imgui.h" />

@@ -26,8 +26,8 @@ namespace Assets {
 			ImGui::SliderFloat("Camera Position X", &Position.x, -20.0f, 20.0f);
 			ImGui::SliderFloat("Camera Position Y", &Position.y, -20.0f, 20.0f);
 			ImGui::SliderFloat("Camera Position Z", &Position.z, -20.0f, 20.0f);
-			ImGui::SliderFloat("Camera Yaw", &Yaw, -100.0f, 100.0f);
-			ImGui::SliderFloat("Camera Pitch", &Pitch, -100.0f, 100.0f);
+			ImGui::SliderFloat("Camera Yaw", &Yaw, -200.0f, 200.0f);
+			ImGui::SliderFloat("Camera Pitch", &Pitch, -89.0f, 89.0f);
 			ImGui::TreePop();
 		}
 	}
