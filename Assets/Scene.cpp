@@ -101,8 +101,8 @@ namespace Assets {
 				object->UniformBuffer.get()
 			));
 
-			m_HelperVertices.insert(m_HelperVertices.end(), object->GetVertices().begin(), object->GetVertices().end());
-			m_HelperIndices.insert(m_HelperIndices.end(), object->GetIndices().begin(), object->GetIndices().end());
+			m_HelperVertices.insert(m_HelperVertices.end(), object->Meshes->Vertices.begin(), object->Meshes->Vertices.end());
+			m_HelperIndices.insert(m_HelperIndices.end(), object->Meshes->Indices.begin(), object->Meshes->Indices.end());
 		}
 	}
 }

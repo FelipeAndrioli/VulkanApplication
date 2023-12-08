@@ -15,12 +15,6 @@ namespace Assets {
 
 	void Camera::OnUIRender() {
 		if (ImGui::TreeNode("Camera")) {
-			ImGui::Text("Camera Near Clip: %f", Near);
-			ImGui::Text("Camera Far Clip: %f", Far);
-			ImGui::Text("Camera Position: x - %f, y - %f, z - %f", Position.x, Position.y, Position.z);
-			ImGui::Text("Camera Up: x - %f, y - %f, z - %f", Up.x, Up.y, Up.z);
-			ImGui::Text("Camera Yaw: %f", Yaw);
-			ImGui::Text("Camera Pitch: %f", Pitch);
 			ImGui::SliderFloat("Camera Near Clip", &Near, -1.0f, 20.0f);
 			ImGui::SliderFloat("Camera Far Clip", &Far, 10.0f, 200.0f);
 			ImGui::SliderFloat("Camera Position X", &Position.x, -20.0f, 20.0f);

@@ -86,8 +86,8 @@ public:
 
 		m_Transform.translation.z = -4.0f;
 
-		SetVertices(v);
-		SetIndices(i);
+		AddVertices(v);
+		AddIndices(i);
 		ID = "Quad One";
 
 		std::cout << ID << " object created\n";
@@ -168,8 +168,8 @@ public:
 		m_Transform.translation.x = 2.0f;
 		m_Transform.translation.z = -4.0f;
 
-		SetVertices(v);
-		SetIndices(i);
+		AddVertices(v);
+		AddIndices(i);
 		ID = "Quad Two";
 		
 		std::cout << ID << " object created\n";
@@ -250,8 +250,8 @@ public:
 		m_Transform.translation.x = -2.0f;
 		m_Transform.translation.z = -4.0f;
 
-		SetVertices(v);
-		SetIndices(i);
+		AddVertices(v);
+		AddIndices(i);
 		ID = "Quad Three";
 		
 		std::cout << ID << " object created\n";

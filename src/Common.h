@@ -9,7 +9,7 @@
 #include <optional>
 
 #include "Vulkan.h"
-#include "../Assets/Vertex.h"
+#include "../Assets/Mesh.h"
 
 namespace Engine {
 	const int MAX_FRAMES_IN_FLIGHT = 2;

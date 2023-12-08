@@ -17,7 +17,7 @@
 #include "MaterialLayout.h"
 #include "DepthBuffer.h"
 
-#include "../Assets/Vertex.h"
+#include "../Assets/Mesh.h"
 
 namespace Engine {
 	class LogicalDevice;

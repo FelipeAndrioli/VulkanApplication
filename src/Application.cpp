@@ -138,13 +138,13 @@ namespace Engine {
 
 			object->SetObjectUniformBuffer(m_CurrentFrame);
 
-			auto objectVertexCount = object->GetSizeVertices();
-			auto objectIndexCount = object->GetSizeIndices();
+			auto objectVertexCount = object->Meshes->Vertices.size();
+			auto objectIndexCount = object->Meshes->Indices.size();
 
-			vkCmdDrawIndexed(commandBuffer, objectIndexCount, 1, indexOffset, vertexOffset, 0);
+			vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(objectIndexCount), 1, indexOffset, vertexOffset, 0);
 		
-			vertexOffset += objectVertexCount;
-			indexOffset += objectIndexCount;
+			vertexOffset += static_cast<uint32_t>(objectVertexCount);
+			indexOffset += static_cast<uint32_t>(objectIndexCount);
 		}
 		
 		vkCmdEndRenderPass(commandBuffer);

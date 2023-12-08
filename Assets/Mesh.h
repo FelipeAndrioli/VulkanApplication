@@ -1,7 +1,9 @@
 #pragma once
 
+#include <vector>
 #include <array>
-#include <glm/glm.hpp>
+
+#include<glm/glm.hpp>
 
 #include "../src/Vulkan.h"
 
@@ -34,5 +36,10 @@ namespace Assets {
 
 			return attributeDescriptions;
 		}
+	};
+
+	struct Mesh {
+		std::vector<Vertex> Vertices;
+		std::vector<uint16_t> Indices;
 	};
 }

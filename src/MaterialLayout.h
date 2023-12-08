@@ -5,7 +5,7 @@
 
 #include "Vulkan.h"
 
-#include "../Assets/Vertex.h"
+#include "../Assets/Mesh.h"
 
 namespace Engine {
 	struct ComputePipelineLayout {
