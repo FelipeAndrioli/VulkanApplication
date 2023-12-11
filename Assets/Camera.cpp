@@ -11,7 +11,28 @@ namespace Assets {
 	}
 
 	void Camera::OnUpdate(float t, const Engine::InputSystem::Input& input) {
-		
+
+		if (!input.Mouse.LeftButtonPressed) {
+			m_LastX = input.Mouse.x;
+			m_LastY = input.Mouse.y;
+			return;
+		}
+
+		if (m_FirstMouse) {
+			m_LastX = input.Mouse.x;
+			m_LastY = input.Mouse.y;
+			m_FirstMouse = false;
+		}
+
+		m_OffsetX = input.Mouse.x - m_LastX;
+		m_OffsetY = m_LastY - input.Mouse.y;
+
+		m_LastX = input.Mouse.x;
+		m_LastY = input.Mouse.y;
+
+		Yaw += static_cast<float>(m_OffsetX) * Sensitivity * t;
+		Pitch += static_cast<float>(m_OffsetY) * Sensitivity * t;
+
 		if (input.Keys[GLFW_KEY_W].IsPressed) {
 			Position += Front * MovementSpeed * t;
 		}
@@ -50,6 +71,7 @@ namespace Assets {
 			ImGui::SliderFloat("Camera Yaw", &Yaw, -200.0f, 200.0f);
 			ImGui::SliderFloat("Camera Pitch", &Pitch, -89.0f, 89.0f);
 			ImGui::SliderFloat("Camera Movement Speed", &MovementSpeed, 0.0f, 0.10f);
+			ImGui::SliderFloat("Sensitivity", &Sensitivity, 0.0f, 1.0f);
 			ImGui::SliderFloat("Camera FOV", &Fov, 0.0f, 100.0f);
 			ImGui::TreePop();
 		}

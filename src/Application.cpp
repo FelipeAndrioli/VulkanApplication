@@ -16,7 +16,10 @@ namespace Engine {
 		m_Window->Render = std::bind(&Application::Draw, this);
 		m_Window->OnKeyPress = std::bind(&Application::ProcessKey, this, std::placeholders::_1, std::placeholders::_2,
 			std::placeholders::_3, std::placeholders::_4);
-		m_Window->OnResize = std::bind(&Application::processResize, this, std::placeholders::_1, std::placeholders::_2);
+		m_Window->OnResize = std::bind(&Application::ProcessResize, this, std::placeholders::_1, std::placeholders::_2);
+		m_Window->OnMouseClick = std::bind(&Application::ProcessMouseClick, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+		m_Window->OnCursorMove = std::bind(&Application::ProcessCursorMove, this, std::placeholders::_1, std::placeholders::_2);
+		m_Window->OnCursorOnScreen = std::bind(&Application::ProcessCursorOnScreen, this, std::placeholders::_1);
 	}
 
 	Application::~Application() {
@@ -393,11 +396,40 @@ namespace Engine {
 		}
 	}
 
-	void Application::processResize(int width, int height) {
+	void Application::ProcessResize(int width, int height) {
 		g_FramebufferResized = true;
 		std::cout << "width - " << width << " height - " << height << '\n';
 
 		p_ActiveScene->OnResize(width, height);
+	}
+
+	void Application::ProcessMouseClick(int button, int action, int mods) {
+		if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+			m_Input->Mouse.LeftButtonPressed = true;
+		}
+		
+		if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+			m_Input->Mouse.RightButtonPressed = true;
+		}
+
+		if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+			m_Input->Mouse.LeftButtonPressed = false;
+		}
+		
+		if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
+			m_Input->Mouse.RightButtonPressed = false;
+		}
+
+	}
+
+	void Application::ProcessCursorMove(double x, double y) {
+		m_Input->Mouse.x = x;
+		m_Input->Mouse.y = y;
+	}
+
+	void Application::ProcessCursorOnScreen(int entered) {
+		if (entered == 1) m_Input->Mouse.OnScreen = true;
+		if (entered == 0) m_Input->Mouse.OnScreen = false;
 	}
 
 	void Application::CreateFramebuffers(const VkRenderPass& renderPass) {

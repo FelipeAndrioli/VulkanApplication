@@ -18,6 +18,30 @@ namespace Engine {
 		}
 	}
 
+	void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+		auto* const _this = static_cast<Window*>(glfwGetWindowUserPointer(window));
+
+		if (_this->OnMouseClick) {
+			_this->OnMouseClick(button, action, mods);
+		}
+	}
+
+	void cursorPosCallback(GLFWwindow* window, double x, double y) {
+		auto* const _this = static_cast<Window*>(glfwGetWindowUserPointer(window));
+
+		if (_this->OnCursorMove) {
+			_this->OnCursorMove(x, y);
+		}
+	}
+
+	void cursorEnterCallback(GLFWwindow* window, int entered) {
+		auto* const _this = static_cast<Window*>(glfwGetWindowUserPointer(window));
+	
+		if (_this->OnCursorOnScreen) {
+			_this->OnCursorOnScreen(entered);
+		}
+	}
+
 	Window::Window(WindowSettings *windowSettings) : p_WindowSettings(windowSettings) {
 
 		if (!glfwInit()) {
@@ -34,6 +58,9 @@ namespace Engine {
 		
 		glfwSetFramebufferSizeCallback(m_Window, framebufferResizeCallback);
 		glfwSetKeyCallback(m_Window, keyCallback);
+		glfwSetMouseButtonCallback(m_Window, mouseButtonCallback);
+		glfwSetCursorPosCallback(m_Window, cursorPosCallback);
+		glfwSetCursorEnterCallback(m_Window, cursorEnterCallback);
 
 		m_Running = true;
 	}

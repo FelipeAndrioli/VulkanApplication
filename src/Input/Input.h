@@ -10,15 +10,12 @@ namespace Engine {
 		};
 
 		struct mouse_t {
-			double X = 0.0;
-			double Y = 0.0;
+			double x = 0.0;
+			double y = 0.0;
 
-			double LastX = 0.0;
-			double LastY = 0.0;
-
-			int OnScreen = 0;
-
-			bool FirstMouse = true;
+			bool LeftButtonPressed = false;
+			bool RightButtonPressed = false;
+			bool OnScreen = true;
 		};
 
 		class Input {

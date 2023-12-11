@@ -27,6 +27,9 @@ namespace Engine {
 		std::function<void()> Render;
 		std::function<void(int width, int height)> OnResize;
 		std::function<void(int key, int scancode, int action, int mods)> OnKeyPress;
+		std::function<void(int button, int action, int mods)> OnMouseClick;
+		std::function<void(double x, double y)> OnCursorMove;
+		std::function<void(int entered)> OnCursorOnScreen;
 	private:
 		GLFWwindow* m_Window{};
 		WindowSettings* p_WindowSettings;

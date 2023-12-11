@@ -29,6 +29,7 @@ namespace Assets {
 		float Pitch = 0.0f;
 
 		float MovementSpeed = 0.01f;
+		float Sensitivity = 0.1f;
 
 		glm::mat4 ViewMatrix = glm::mat4(1.0f);
 		glm::mat4 ProjectionMatrix = glm::mat4(1.0f);
@@ -46,5 +47,12 @@ namespace Assets {
 	private:
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
+
+		double m_LastX = 0.0;
+		double m_LastY = 0.0;
+		double m_OffsetX = 0.0;
+		double m_OffsetY = 0.0;
+		
+		bool m_FirstMouse = true;
 	};
 }
