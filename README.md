@@ -9,10 +9,10 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 
 - [x] Depth Buffer 
 - [ ] Texture 
-- [ ] Camera clas
+- [x] Camera clas
 	- [x] Movement 
 	- [x] Turn Movement
-	- [ ] Based on Input
+	- [x] Based on Input
 - [ ] Custom Model loading
 - [ ] Default models
 	- [ ] Plane
