@@ -75,8 +75,39 @@ namespace Engine {
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
-	void Application::drawRasterized(const VkCommandBuffer& commandBuffer, uint32_t imageIndex) {
+	void Application::Draw() {
+		VkCommandBuffer* commandBuffer = BeginFrame();
 
+		if (commandBuffer == nullptr) return;
+
+		DrawFrame(*commandBuffer);
+		EndFrame(*commandBuffer);
+		PresentFrame();
+	}
+
+	VkCommandBuffer* Application::BeginFrame() {
+		// move this function to DrawFrame function
+		m_UI->Draw(m_UserSettings, m_WindowSettings, p_ActiveScene);
+
+		VkResult result;
+
+		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
+		result = vkAcquireNextImageKHR(m_LogicalDevice->GetHandle(), m_SwapChain->GetHandle(), UINT64_MAX,
+			*m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame), VK_NULL_HANDLE, &m_ImageIndex);
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+			recreateSwapChain();
+			return nullptr;
+		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+			throw std::runtime_error("Failed to acquire swap chain image!");
+		}
+
+		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame));
+
+		return &m_CommandBuffers->Begin(m_CurrentFrame);
+	}
+
+	void Application::DrawFrame(const VkCommandBuffer& commandBuffer) {
 		std::array<VkClearValue, 2> clearValues{};
 		clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
 		clearValues[1].depthStencil = { 1.0f, 0 };
@@ -84,7 +115,7 @@ namespace Engine {
 		VkRenderPassBeginInfo renderPassBeginInfo{};
 		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassBeginInfo.renderPass = m_DefaultRenderPass->GetHandle();
-		renderPassBeginInfo.framebuffer = m_Framebuffers[imageIndex];
+		renderPassBeginInfo.framebuffer = m_Framebuffers[m_ImageIndex];
 		renderPassBeginInfo.renderArea.offset = {0, 0};
 		renderPassBeginInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
 		renderPassBeginInfo.pNext = nullptr;
@@ -148,27 +179,19 @@ namespace Engine {
 		}
 		
 		vkCmdEndRenderPass(commandBuffer);
+
 	}
 
-	void Application::handleDraw(uint32_t imageIndex) {
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		
-		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame));
-
-		auto commandBuffer = m_CommandBuffers->Begin(m_CurrentFrame);
-
-		drawRasterized(commandBuffer, imageIndex);
-		
+	void Application::EndFrame(const VkCommandBuffer& commandBuffer) {
 		m_CommandBuffers->End(m_CurrentFrame);
 
-		m_UI->RecordCommands(m_CurrentFrame, imageIndex);
+		m_UI->RecordCommands(m_CurrentFrame, m_ImageIndex);
 
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 		
 		std::array<VkCommandBuffer, 2> cmdBuffers = { m_CommandBuffers->GetCommandBuffer(m_CurrentFrame), m_UI->GetCommandBuffer(m_CurrentFrame) };
 
-		submitInfo = {};
+		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	
 		submitInfo.waitSemaphoreCount = 1;
@@ -184,30 +207,10 @@ namespace Engine {
 			throw std::runtime_error("Failed to submit draw command buffer!");
 		}
 	}
-	
-	void Application::drawFrame() {
 
-		m_UI->Draw(m_UserSettings, m_WindowSettings, p_ActiveScene);
-
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		uint32_t imageIndex;
+	void Application::PresentFrame() {
 		VkResult result;
 
-		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
-		result = vkAcquireNextImageKHR(m_LogicalDevice->GetHandle(), m_SwapChain->GetHandle(), UINT64_MAX,
-			*m_ImageAvailableSemaphores->GetHandle(m_CurrentFrame), VK_NULL_HANDLE, &imageIndex);
-
-		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-			recreateSwapChain();
-			return;
-		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-			throw std::runtime_error("Failed to acquire swap chain image!");
-		}
-
-		handleDraw(imageIndex);
-
-		// Present submit
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.waitSemaphoreCount = 1;
@@ -216,7 +219,7 @@ namespace Engine {
 		VkSwapchainKHR swapChains[] = { m_SwapChain->GetHandle() };
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = swapChains;
-		presentInfo.pImageIndices = &imageIndex;
+		presentInfo.pImageIndices = &m_ImageIndex;
 		presentInfo.pResults = nullptr;
 
 		result = vkQueuePresentKHR(m_LogicalDevice->GetPresentQueue(), &presentInfo);
@@ -246,7 +249,7 @@ namespace Engine {
 
 	void Application::Run() {
 
-		m_Window->DrawFrame = std::bind(&Application::drawFrame, this);
+		m_Window->Render = std::bind(&Application::Draw, this);
 		m_Window->OnKeyPress = std::bind(&Application::processKey, this, std::placeholders::_1, std::placeholders::_2,
 			std::placeholders::_3, std::placeholders::_4);
 		m_Window->OnResize = std::bind(&Application::processResize, this, std::placeholders::_1, std::placeholders::_2);

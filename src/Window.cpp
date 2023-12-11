@@ -56,8 +56,8 @@ namespace Engine {
 				Update(timestep.GetMilliseconds());
 			}
 			
-			if (DrawFrame) {
-				DrawFrame();
+			if (Render) {
+				Render();
 			}
 
 			m_LastFrameTime = m_CurrentFrameTime;

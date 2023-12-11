@@ -81,10 +81,13 @@ namespace Engine {
 		void updateComputeUniformBuffer(uint32_t currentImage);
 		//void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
 
-		void drawFrame();
-		void handleDraw(uint32_t imageIndex);
+		void Draw();
+		VkCommandBuffer* BeginFrame();
+		void DrawFrame(const VkCommandBuffer& commandBuffer);
+		void EndFrame(const VkCommandBuffer& commandBuffer);
+		void PresentFrame();
+
 		void drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
-		void drawRasterized(const VkCommandBuffer& commandBuffer, uint32_t imageIndex);
 		
 		void processKey(int key, int scancode, int action, int mods);
 		void processResize(int width, int height);
@@ -121,7 +124,9 @@ namespace Engine {
 		
 		WindowSettings m_WindowSettings;
 		UserSettings m_UserSettings;
+
 		uint32_t m_CurrentFrame = 0;
+		uint32_t m_ImageIndex = 0;
 
 		std::unique_ptr<class CommandBuffer> m_CommandBuffers;
 		std::unique_ptr<class Buffer> m_ComputeUniformBuffers;
