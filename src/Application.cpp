@@ -49,7 +49,7 @@ namespace Engine {
 	void Application::Update(float t) {
 
 		if (p_ActiveScene) {
-			p_ActiveScene->OnUpdate(t);
+			p_ActiveScene->OnUpdate(t, *m_Input.get());
 		}
 	}
 
@@ -76,6 +76,7 @@ namespace Engine {
 	
 		p_ActiveScene->SetupScene(*m_LogicalDevice, *m_PhysicalDevice, *m_CommandPool, *m_SwapChain, *m_DepthBuffer, 
 			m_DefaultRenderPass->GetHandle());
+		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 	}
 
 	void Application::Shutdown() {
@@ -395,6 +396,8 @@ namespace Engine {
 	void Application::processResize(int width, int height) {
 		g_FramebufferResized = true;
 		std::cout << "width - " << width << " height - " << height << '\n';
+
+		p_ActiveScene->OnResize(width, height);
 	}
 
 	void Application::CreateFramebuffers(const VkRenderPass& renderPass) {

@@ -15,6 +15,8 @@
 #include "../src/DescriptorPool.h"
 #include "../src/Material.h"
 
+#include "../src/Input/Input.h"
+
 namespace Engine {
 	class ResourceSet;
 }
@@ -32,7 +34,8 @@ namespace Assets {
 
 		void OnCreate();
 		void OnUIRender();
-		void OnUpdate(float t);
+		virtual void OnUpdate(float t, const Engine::InputSystem::Input& input);
+		void OnResize(uint32_t width, uint32_t height);
 
 		void SetupScene(
 			Engine::LogicalDevice& logicalDevice, 
@@ -57,5 +60,8 @@ namespace Assets {
 	private:
 		void SetObjectResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
 			Engine::LogicalDevice& logicalDevice);
+
+		uint32_t m_Width = 800;
+		uint32_t m_Height = 600;
 	};
 }

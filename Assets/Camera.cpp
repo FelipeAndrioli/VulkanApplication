@@ -1,7 +1,8 @@
 #include "./Camera.h"
 
 namespace Assets {
-	Camera::Camera(glm::vec3 position, float fov) : Position(position), Fov(fov) {
+	Camera::Camera(glm::vec3 position, float fov, uint32_t width, uint32_t height) : Position(position), Fov(fov) {
+		Resize(width, height);
 		UpdateCameraVectors();
 	}
 
@@ -9,8 +10,34 @@ namespace Assets {
 
 	}
 
-	void Camera::OnUpdate() {
+	void Camera::OnUpdate(float t, const Engine::InputSystem::Input& input) {
+		
+		if (input.Keys[GLFW_KEY_W].IsPressed) {
+			Position += Front * MovementSpeed * t;
+		}
+
+		if (input.Keys[GLFW_KEY_S].IsPressed) {
+			Position -= Front * MovementSpeed * t;
+		}
+
+		if (input.Keys[GLFW_KEY_D].IsPressed) {
+			Position += Right * MovementSpeed * t;
+		}
+
+		if (input.Keys[GLFW_KEY_A].IsPressed) {
+			Position -= Right * MovementSpeed * t;
+		}
+		
+		if (input.Keys[GLFW_KEY_Q].IsPressed) {
+			Position -= WorldUp * MovementSpeed * t;
+		}
+		
+		if (input.Keys[GLFW_KEY_E].IsPressed) {
+			Position += WorldUp * MovementSpeed * t;
+		}
+
 		UpdateCameraVectors();
+		UpdateProjectionMatrix();
 	}
 
 	void Camera::OnUIRender() {
@@ -22,6 +49,8 @@ namespace Assets {
 			ImGui::SliderFloat("Camera Position Z", &Position.z, -20.0f, 20.0f);
 			ImGui::SliderFloat("Camera Yaw", &Yaw, -200.0f, 200.0f);
 			ImGui::SliderFloat("Camera Pitch", &Pitch, -89.0f, 89.0f);
+			ImGui::SliderFloat("Camera Movement Speed", &MovementSpeed, 0.0f, 0.10f);
+			ImGui::SliderFloat("Camera FOV", &Fov, 0.0f, 100.0f);
 			ImGui::TreePop();
 		}
 	}
@@ -42,7 +71,6 @@ namespace Assets {
 		Up = glm::normalize(glm::cross(Right, Front));
 
 		UpdateViewMatrix();
-		UpdateProjectionMatrix();
 	}
 
 	void Camera::UpdateViewMatrix() {
@@ -52,5 +80,12 @@ namespace Assets {
 	void Camera::UpdateProjectionMatrix() {
 		ProjectionMatrix = glm::perspective(glm::radians(Fov), 800 / (float) 600, Near, Far);
 		ProjectionMatrix[1][1] *= -1;
+	}
+
+	void Camera::Resize(uint32_t width, uint32_t height) {
+		m_Width = width;
+		m_Height = height;
+
+		UpdateProjectionMatrix();
 	}
 }

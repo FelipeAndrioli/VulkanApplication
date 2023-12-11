@@ -4,8 +4,7 @@ namespace Assets {
 	Scene::Scene() {
 		std::cout << "Starting scene" << std::endl;
 
-		//DefaultCamera = Camera();
-		DefaultCamera = Camera(glm::vec3(0.0f, 0.0f, 3.0f));
+		DefaultCamera = Camera(glm::vec3(0.0f, 0.0f, 3.0f), 45.0f, m_Width, m_Height);
 
 		DefaultMaterial = new Engine::Material();
 		MapMaterials.emplace(DefaultMaterial->Layout.ID, DefaultMaterial);
@@ -44,12 +43,22 @@ namespace Assets {
 		}
 	}
 
-	void Scene::OnUpdate(float t) {
-		DefaultCamera.OnUpdate();
+	void Scene::OnUpdate(float t, const Engine::InputSystem::Input& input) {
+
+		DefaultCamera.OnUpdate(t, input);
 
 		for (auto object : Objects) {
 			object->OnUpdate(t);
 		}
+	}
+
+	void Scene::OnResize(uint32_t width, uint32_t height) {
+		if (width == m_Width && height == m_Height) return;
+
+		m_Width = width;
+		m_Height = height;
+
+		DefaultCamera.Resize(m_Width, m_Height);
 	}
 
 	void Scene::SetupScene(Engine::LogicalDevice& logicalDevice, Engine::PhysicalDevice& physicalDevice,

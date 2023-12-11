@@ -1,26 +1,34 @@
 #pragma once
 
+#include <iostream>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <imgui.h>
 
+#include "../src/Input/Input.h"
+
 namespace Assets {
 	class Camera {
 	public:
-		Camera(
-			glm::vec3 position = glm::vec3(0.0f, 0.0f, 3.0f), float fov = 45.0f);
+		Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 3.0f), float fov = 45.0f, 
+			uint32_t width = 800, uint32_t height = 600
+		);
 		~Camera();
 
-		void OnUpdate();
+		void OnUpdate(float t, const Engine::InputSystem::Input& input);
 		void OnUIRender();
 		void UpdateCameraVectors();
+		void Resize(uint32_t width, uint32_t height);
 	public:
 		float Fov;
 		float Near = 0.1f;
 		float Far = 200.0f;
 		float Yaw = -90.0f;
 		float Pitch = 0.0f;
+
+		float MovementSpeed = 0.01f;
 
 		glm::mat4 ViewMatrix = glm::mat4(1.0f);
 		glm::mat4 ProjectionMatrix = glm::mat4(1.0f);
@@ -34,5 +42,9 @@ namespace Assets {
 	private:
 		void UpdateViewMatrix();
 		void UpdateProjectionMatrix();
+
+	private:
+		uint32_t m_Width = 0;
+		uint32_t m_Height = 0;
 	};
 }
