@@ -10,9 +10,11 @@ namespace Engine {
 		m_Window.reset(new class Window(&m_WindowSettings));
 		m_Instance.reset(new class Instance(c_ValidationLayers, c_EnableValidationLayers));
 		m_DebugMessenger.reset(c_EnableValidationLayers ? new class DebugUtilsMessenger(m_Instance->GetHandle()) : nullptr);
-	
+
+		m_Input.reset(new class InputSystem::Input());
+
 		m_Window->Render = std::bind(&Application::Draw, this);
-		m_Window->OnKeyPress = std::bind(&Application::processKey, this, std::placeholders::_1, std::placeholders::_2,
+		m_Window->OnKeyPress = std::bind(&Application::ProcessKey, this, std::placeholders::_1, std::placeholders::_2,
 			std::placeholders::_3, std::placeholders::_4);
 		m_Window->OnResize = std::bind(&Application::processResize, this, std::placeholders::_1, std::placeholders::_2);
 	}
@@ -45,6 +47,7 @@ namespace Engine {
 	}
 
 	void Application::Update(float t) {
+
 		if (p_ActiveScene) {
 			p_ActiveScene->OnUpdate(t);
 		}
@@ -367,10 +370,25 @@ namespace Engine {
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
-	void Application::processKey(int key, int scancode, int action, int mods) {
+	void Application::ProcessKey(int key, int scancode, int action, int mods) {
+		if (key < 0) return;
+
 		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 			std::cout << "Closing application" << '\n';
 			m_Window->Close();
+		}
+
+		switch (action) {
+		case GLFW_PRESS:
+			m_Input->Keys[key].IsDown = true;
+			m_Input->Keys[key].IsPressed = true;
+			break;
+		case GLFW_RELEASE:
+			m_Input->Keys[key].IsDown = false;
+			m_Input->Keys[key].IsPressed = false;
+			break;
+		default:
+			break;
 		}
 	}
 

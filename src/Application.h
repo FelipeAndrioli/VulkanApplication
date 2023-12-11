@@ -50,6 +50,8 @@
 
 #include "../Assets/Scene.h"
 
+#include "../src/Input/Input.h"
+
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
 #else
@@ -89,7 +91,7 @@ namespace Engine {
 
 		void drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
 		
-		void processKey(int key, int scancode, int action, int mods);
+		void ProcessKey(int key, int scancode, int action, int mods);
 		void processResize(int width, int height);
 
 		void CreateFramebuffers(const VkRenderPass& renderPass);
@@ -121,7 +123,9 @@ namespace Engine {
 		std::vector<VkFramebuffer> m_Framebuffers;
 
 		std::unique_ptr<class UI> m_UI;
-		
+	
+		std::unique_ptr<class InputSystem::Input> m_Input;
+
 		WindowSettings m_WindowSettings;
 		UserSettings m_UserSettings;
 
