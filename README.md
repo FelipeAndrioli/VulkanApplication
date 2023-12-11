@@ -11,7 +11,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [ ] Texture 
 - [ ] Camera clas
 	- [x] Movement 
-	- [ ] Turn Movement
+	- [x] Turn Movement
 	- [ ] Based on Input
 - [ ] Custom Model loading
 - [ ] Default models
