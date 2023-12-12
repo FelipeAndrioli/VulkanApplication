@@ -1,13 +1,23 @@
 #include "DepthBuffer.h"
 
 namespace Engine {
-	DepthBuffer::DepthBuffer(VkPhysicalDevice* physicalDevice, VkDevice* logicalDevice, SwapChain* swapChain) 
-	: p_PhysicalDevice(physicalDevice) {
+	DepthBuffer::DepthBuffer(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, const SwapChain& swapChain) 
+	: p_PhysicalDevice(&physicalDevice) {
 		VkFormat depthFormat = FindDepthFormat();
 
-		m_DepthBufferImage.reset(new class Image(1, logicalDevice, p_PhysicalDevice, swapChain, depthFormat,
-			VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-			VK_IMAGE_ASPECT_DEPTH_BIT));
+		m_DepthBufferImage.reset(new class Image(
+			1, 
+			logicalDevice, 
+			*p_PhysicalDevice, 
+			swapChain.GetSwapChainExtent().width,
+			swapChain.GetSwapChainExtent().height, 
+			depthFormat,
+			VK_IMAGE_TILING_OPTIMAL, 
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+			VK_IMAGE_ASPECT_DEPTH_BIT
+		));
+
 		m_DepthBufferImage->CreateImageView();
 	}
 
@@ -15,8 +25,8 @@ namespace Engine {
 		m_DepthBufferImage.reset();
 	}
 
-	void DepthBuffer::Resize(SwapChain* swapChain) {
-		m_DepthBufferImage->Resize(swapChain);
+	void DepthBuffer::Resize(const uint32_t width, const uint32_t height) {
+		m_DepthBufferImage->Resize(width, height);
 	}
 
 	VkFormat DepthBuffer::FindDepthFormat() {

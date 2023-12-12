@@ -3,27 +3,30 @@
 namespace Engine {
 	Image::Image(
 		int imageSize, 
-		VkDevice* logicalDevice, 
-		VkPhysicalDevice* physicalDevice, 
-		SwapChain* swapChain, 
-		VkFormat format, 
-		VkImageTiling tiling,
-		VkImageUsageFlagBits usage, 
-		VkMemoryPropertyFlagBits properties,
-		VkImageAspectFlags aspectFlags
+		VkDevice& logicalDevice, 
+		VkPhysicalDevice& physicalDevice, 
+		const uint32_t imageWidth, 
+		const uint32_t imageHeight, 
+		const VkFormat format, 
+		const VkImageTiling tiling,
+		const VkImageUsageFlagBits usage, 
+		const VkMemoryPropertyFlagBits properties,
+		const VkImageAspectFlags aspectFlags
 	): 
-		p_LogicalDevice(logicalDevice), 
-		p_PhysicalDevice(physicalDevice),
+		p_LogicalDevice(&logicalDevice), 
+		p_PhysicalDevice(&physicalDevice),
 		m_Format(format), 
 		m_Tiling(tiling), 
 		m_Usage(usage), 
 		m_Properties(properties), 
 		m_ImageSize(imageSize),
-		m_AspectFlags(aspectFlags) {
+		m_AspectFlags(aspectFlags),
+		m_ImageWidth(imageWidth),
+		m_ImageHeight(imageHeight) {
 
-		m_ImageMemory.reset(new class DeviceMemory(p_LogicalDevice, physicalDevice, imageSize));
+		m_ImageMemory.reset(new class DeviceMemory(p_LogicalDevice, p_PhysicalDevice, m_ImageSize));
 
-		CreateImage(swapChain);
+		CreateImage();
 	}
 	
 	Image::~Image() {
@@ -51,24 +54,27 @@ namespace Engine {
 		}
 	}
 
-	void Image::Resize(SwapChain* swapChain) {
+	void Image::Resize(const uint32_t imageWidth, const uint32_t imageHeight) {
 		CleanUp();
-		
+	
+		m_ImageWidth = imageWidth;
+		m_ImageHeight = imageHeight;
+
 		m_ImageMemory.reset(new class DeviceMemory(p_LogicalDevice, p_PhysicalDevice, m_ImageSize));
 		
-		CreateImage(swapChain);
+		CreateImage();
 		CreateImageView();
 	}
 
-	void Image::CreateImage(SwapChain* swapChain) {
+	void Image::CreateImage() {
 		m_Image.resize(m_ImageSize);
 
 		for (size_t i = 0; i < m_Image.size(); i++) {
 			VkImageCreateInfo imageCreateInfo{};
 			imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 			imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-			imageCreateInfo.extent.width = swapChain->GetSwapChainExtent().width;
-			imageCreateInfo.extent.height = swapChain->GetSwapChainExtent().height;
+			imageCreateInfo.extent.width = m_ImageWidth;
+			imageCreateInfo.extent.height = m_ImageHeight;
 			imageCreateInfo.extent.depth = 1;
 			imageCreateInfo.mipLevels = 1;
 			imageCreateInfo.arrayLayers = 1;

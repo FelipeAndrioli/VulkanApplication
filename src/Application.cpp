@@ -61,7 +61,7 @@ namespace Engine {
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
 		m_SwapChain.reset(new class SwapChain(m_PhysicalDevice.get(), m_Window.get(), m_LogicalDevice.get(), m_Surface->GetHandle()));
-		m_DepthBuffer.reset(new class DepthBuffer(&m_PhysicalDevice->GetHandle(), &m_LogicalDevice->GetHandle(), m_SwapChain.get()));
+		m_DepthBuffer.reset(new class DepthBuffer(m_PhysicalDevice->GetHandle(), m_LogicalDevice->GetHandle(), *m_SwapChain.get()));
 
 		m_DefaultRenderPass.reset(new class RenderPass(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get()));
 		CreateFramebuffers(m_DefaultRenderPass->GetHandle());
@@ -135,7 +135,7 @@ namespace Engine {
 
 	void Application::recreateSwapChain() {
 		m_SwapChain->ReCreate();
-		m_DepthBuffer->Resize(m_SwapChain.get());
+		m_DepthBuffer->Resize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 
 		m_DefaultRenderPass.reset(new class RenderPass(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get()));
 
@@ -374,6 +374,7 @@ namespace Engine {
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
+	// Maybe move callback functions to Input class?
 	void Application::ProcessKey(int key, int scancode, int action, int mods) {
 		if (key < 0) return;
 

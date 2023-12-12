@@ -59,7 +59,7 @@ namespace Assets {
 
 	private:
 		void SetObjectResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
-			Engine::LogicalDevice& logicalDevice);
+			Engine::LogicalDevice& logicalDevice, Engine::CommandPool& commandPool);
 
 		uint32_t m_Width = 800;
 		uint32_t m_Height = 600;

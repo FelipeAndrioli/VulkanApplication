@@ -76,7 +76,7 @@ namespace Assets {
 		for (it = MapMaterials.begin(); it != MapMaterials.end(); it++) {
 			it->second->Init(logicalDevice, physicalDevice, commandPool, swapChain, depthBuffer, renderPass);
 
-			SetObjectResources(it->second, physicalDevice, logicalDevice);
+			SetObjectResources(it->second, physicalDevice, logicalDevice, commandPool);
 
 			if (m_HelperVertices.size() > 0) {
 				it->second->CreateVertexBuffer(m_HelperVertices, physicalDevice, logicalDevice, commandPool);
@@ -88,7 +88,8 @@ namespace Assets {
 		}
 	}
 	
-	void Scene::SetObjectResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, Engine::LogicalDevice& logicalDevice) {
+	void Scene::SetObjectResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
+		Engine::LogicalDevice& logicalDevice, Engine::CommandPool& commandPool) {
 		m_HelperVertices.clear();
 		m_HelperIndices.clear();
 
