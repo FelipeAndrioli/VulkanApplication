@@ -16,19 +16,35 @@ namespace Engine {
 			const VkImageTiling tiling, 
 			const VkImageUsageFlagBits usage, 
 			const VkMemoryPropertyFlagBits properties,
-			const VkImageAspectFlags aspectFlags = NULL
+			const VkImageAspectFlags aspectFlags = NULL, 
+			VkImageLayout imageLayout = VK_IMAGE_LAYOUT_UNDEFINED
 		);
 		~Image();
+		
+		VkImage& GetImage(size_t index) { return m_Image[index]; }
 
 		void CreateImageView();
 		void Resize(const uint32_t imageWidth, const uint32_t imageHeight);
+		void TransitionImageLayoutTo(
+			VkDevice& logicalDevice,
+			VkCommandPool& commandPool,
+			VkQueue& queue,
+			VkImage& image,
+			VkFormat format,
+			VkImageLayout newLayout
+		);
 	public:
 		std::vector<VkImageView> ImageView;
+
+		uint32_t Width;
+		uint32_t Height;
 	private:
 		void CreateImage();
 		void CleanUp();
 	private:
 		std::vector<VkImage> m_Image;
+		VkImageLayout m_ImageLayout;
+
 		std::unique_ptr<class DeviceMemory> m_ImageMemory;
 
 		VkFormat m_Format;
@@ -38,8 +54,6 @@ namespace Engine {
 		VkImageAspectFlags m_AspectFlags;
 		
 		uint32_t m_ImageSize;
-		uint32_t m_ImageWidth;
-		uint32_t m_ImageHeight;
 
 		VkDevice* p_LogicalDevice = nullptr;
 		VkPhysicalDevice* p_PhysicalDevice = nullptr;

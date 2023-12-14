@@ -11,7 +11,8 @@ namespace Engine {
 		const VkImageTiling tiling,
 		const VkImageUsageFlagBits usage, 
 		const VkMemoryPropertyFlagBits properties,
-		const VkImageAspectFlags aspectFlags
+		const VkImageAspectFlags aspectFlags,
+		VkImageLayout imageLayout
 	): 
 		p_LogicalDevice(&logicalDevice), 
 		p_PhysicalDevice(&physicalDevice),
@@ -21,8 +22,9 @@ namespace Engine {
 		m_Properties(properties), 
 		m_ImageSize(imageSize),
 		m_AspectFlags(aspectFlags),
-		m_ImageWidth(imageWidth),
-		m_ImageHeight(imageHeight) {
+		m_ImageLayout(imageLayout),
+		Width(imageWidth),
+		Height(imageHeight) {
 
 		m_ImageMemory.reset(new class DeviceMemory(p_LogicalDevice, p_PhysicalDevice, m_ImageSize));
 
@@ -57,13 +59,57 @@ namespace Engine {
 	void Image::Resize(const uint32_t imageWidth, const uint32_t imageHeight) {
 		CleanUp();
 	
-		m_ImageWidth = imageWidth;
-		m_ImageHeight = imageHeight;
+		Width = imageWidth;
+		Height = imageHeight;
 
 		m_ImageMemory.reset(new class DeviceMemory(p_LogicalDevice, p_PhysicalDevice, m_ImageSize));
 		
 		CreateImage();
 		CreateImageView();
+	}
+
+	void Image::TransitionImageLayoutTo(
+		VkDevice& logicalDevice, 
+		VkCommandPool& commandPool,
+		VkQueue& queue,
+		VkImage& image,
+		VkFormat format,
+		VkImageLayout newLayout
+	) {
+
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
+
+		VkImageMemoryBarrier barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.oldLayout = m_ImageLayout;
+		barrier.newLayout = newLayout;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = image;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = 0; // todo
+		barrier.dstAccessMask = 0; // todo
+
+		vkCmdPipelineBarrier(
+			commandBuffer,
+			0, //todo 
+			0, // todo
+			0,
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&barrier
+		);
+
+		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, queue, commandBuffer, commandPool);
+
+		m_ImageLayout = newLayout;
 	}
 
 	void Image::CreateImage() {
@@ -73,8 +119,8 @@ namespace Engine {
 			VkImageCreateInfo imageCreateInfo{};
 			imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 			imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-			imageCreateInfo.extent.width = m_ImageWidth;
-			imageCreateInfo.extent.height = m_ImageHeight;
+			imageCreateInfo.extent.width = Width;
+			imageCreateInfo.extent.height = Height;
 			imageCreateInfo.extent.depth = 1;
 			imageCreateInfo.mipLevels = 1;
 			imageCreateInfo.arrayLayers = 1;
