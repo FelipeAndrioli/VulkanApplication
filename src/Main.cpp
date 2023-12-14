@@ -28,7 +28,13 @@
 		the same render operations, provided that their data is refreshed, of course. This is known as
 		aliasing and some Vulkan functions have explicit flags to specify that you want to do this.
 
+	- Asynchronous Command Buffer
+		Create a setupCommandBuffer that the helper functions record commands into, and add a flushSetupCommands 
+		to execute the commands that have been recorded so far. It's best to do this after the texture mapping 
+		works to check if the texture resources are still set up correctly.
+
 */
+
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
