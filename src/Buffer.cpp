@@ -58,6 +58,7 @@ namespace Engine {
 		VkImage& image, 
 		const uint32_t imageWidth,
 		const uint32_t imageHeight,
+		VkImageLayout imageLayout,
 		VkBuffer& buffer
 	) {
 		VkCommandBuffer sCommandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
@@ -77,7 +78,7 @@ namespace Engine {
 			sCommandBuffer, 
 			buffer, 
 			image, 
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+			imageLayout, 
 			1, 
 			&region
 		);

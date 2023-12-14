@@ -24,6 +24,7 @@ namespace Engine {
 			VkImage& image,
 			const uint32_t imageWidth,
 			const uint32_t imageHeight,
+			VkImageLayout imageLayout,
 			VkBuffer& buffer
 		);
 
