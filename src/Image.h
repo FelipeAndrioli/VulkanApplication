@@ -26,7 +26,6 @@ namespace Engine {
 		void CreateImageView();
 		void Resize(const uint32_t imageWidth, const uint32_t imageHeight);
 		void TransitionImageLayoutTo(
-			VkDevice& logicalDevice,
 			VkCommandPool& commandPool,
 			VkQueue& queue,
 			VkImage& image,

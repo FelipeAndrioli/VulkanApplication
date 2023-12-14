@@ -69,7 +69,6 @@ namespace Engine {
 	}
 
 	void Image::TransitionImageLayoutTo(
-		VkDevice& logicalDevice, 
 		VkCommandPool& commandPool,
 		VkQueue& queue,
 		VkImage& image,
@@ -77,7 +76,7 @@ namespace Engine {
 		VkImageLayout newLayout
 	) {
 
-		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(*p_LogicalDevice, commandPool);
 
 		VkImageMemoryBarrier barrier{};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -107,7 +106,7 @@ namespace Engine {
 			&barrier
 		);
 
-		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, queue, commandBuffer, commandPool);
+		CommandBuffer::EndSingleTimeCommandBuffer(*p_LogicalDevice, queue, commandBuffer, commandPool);
 
 		m_ImageLayout = newLayout;
 	}

@@ -55,7 +55,6 @@ namespace Engine {
 			texelImage.CreateImageView();
 
 			texelImage.TransitionImageLayoutTo(
-				logicalDevice.GetHandle(),
 				commandPool.GetHandle(),
 				queue	,
 				texelImage.GetImage(0),
