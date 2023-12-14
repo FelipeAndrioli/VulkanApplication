@@ -39,6 +39,7 @@ namespace Engine {
 
 			stbi_image_free(pixels);
 
+			// Test if we need to return a pointer instead and cleanup the resources later
 			Engine::Image texelImage = Engine::Image(
 				1,
 				logicalDevice.GetHandle(),
@@ -57,7 +58,6 @@ namespace Engine {
 			texelImage.TransitionImageLayoutTo(
 				commandPool.GetHandle(),
 				queue	,
-				texelImage.GetImage(0),
 				VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 			);
@@ -69,7 +69,15 @@ namespace Engine {
 				texelImage.GetImage(0),
 				texelImage.Width,
 				texelImage.Height,
+				texelImage.ImageLayout,
 				transferBuffer.GetBuffer(0)
+			);
+
+			texelImage.TransitionImageLayoutTo(
+				commandPool.GetHandle(),
+				queue,
+				VK_FORMAT_R8G8B8A8_SRGB,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 			);
 		}
 	}
