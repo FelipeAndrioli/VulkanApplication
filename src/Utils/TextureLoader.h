@@ -11,6 +11,7 @@
 #include "../LogicalDevice.h"
 #include "../PhysicalDevice.h"
 #include "../CommandPool.h"
+#include "../CommandBuffer.h"
 #include "../Image.h"
 
 namespace Engine {
@@ -24,7 +25,8 @@ namespace Engine {
 				const char* texturePath, 
 				LogicalDevice& logicalDevice, 
 				PhysicalDevice& physicalDevice,
-				CommandPool& commandPool	
+				CommandPool& commandPool,
+				VkQueue& queue
 			);
 		};
 	}

@@ -11,7 +11,7 @@ namespace Engine {
 		}
 
 		void TextureLoader::LoadTexture(const char* texturePath, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, 
-			CommandPool& commandPool) {
+			CommandPool& commandPool, VkQueue& queue) {
 			int texWidth = 0;
 			int texHeight = 0;
 			int texChannels = 0;
@@ -53,6 +53,25 @@ namespace Engine {
 			);
 
 			texelImage.CreateImageView();
+
+			texelImage.TransitionImageLayoutTo(
+				logicalDevice.GetHandle(),
+				commandPool.GetHandle(),
+				queue	,
+				texelImage.GetImage(0),
+				VK_FORMAT_R8G8B8A8_SRGB,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+			);
+
+			Buffer::CopyToImage(
+				logicalDevice.GetHandle(),
+				commandPool.GetHandle(),
+				queue,
+				texelImage.GetImage(0),
+				texelImage.Width,
+				texelImage.Height,
+				transferBuffer.GetBuffer(0)
+			);
 		}
 	}
 }
