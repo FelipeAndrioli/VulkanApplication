@@ -11,6 +11,9 @@
 namespace Engine {
 	class SwapChain {
 	public:
+
+		// TODO: refactor swap chain to use Image class
+
 		SwapChain(PhysicalDevice *physicalDevice, Window* window, LogicalDevice* logicalDevice, 
 			VkSurfaceKHR& surface);
 		~SwapChain();
