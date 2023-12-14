@@ -48,9 +48,9 @@ namespace Engine {
 		init_info.CheckVkResultFn = check_vk_result;
 		ImGui_ImplVulkan_Init(&init_info, m_UIRenderPass);
 
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands(p_LogicalDevice->GetHandle(), m_UICommandPool);
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(p_LogicalDevice->GetHandle(), m_UICommandPool);
 		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-		endSingleTimeCommands(p_LogicalDevice->GetHandle(), p_LogicalDevice->GetGraphicsQueue(), 
+		CommandBuffer::EndSingleTimeCommandBuffer(p_LogicalDevice->GetHandle(), p_LogicalDevice->GetGraphicsQueue(), 
 			commandBuffer, m_UICommandPool);
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}

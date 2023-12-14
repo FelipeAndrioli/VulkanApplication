@@ -36,7 +36,7 @@ namespace Engine {
 
 	void Buffer::CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, VkCommandPool& commandPool) {
 
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands(p_LogicalDevice->GetHandle(), commandPool);
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(p_LogicalDevice->GetHandle(), commandPool);
 
 		VkBufferCopy copyRegion{};
 		copyRegion.srcOffset = 0;
@@ -47,8 +47,42 @@ namespace Engine {
 			vkCmdCopyBuffer(commandBuffer, srcBuffer, m_Buffer[i], 1, &copyRegion);
 		}
 
-		endSingleTimeCommands(p_LogicalDevice->GetHandle(), p_LogicalDevice->GetGraphicsQueue(), 
+		CommandBuffer::EndSingleTimeCommandBuffer(p_LogicalDevice->GetHandle(), p_LogicalDevice->GetGraphicsQueue(), 
 			commandBuffer, commandPool);
+	}
+
+	void Buffer::CopyToImage(
+		VkDevice& logicalDevice, 
+		VkCommandPool& commandPool, 
+		VkQueue& queue, 
+		VkImage& image, 
+		const uint32_t imageWidth,
+		const uint32_t imageHeight,
+		VkBuffer& buffer
+	) {
+		VkCommandBuffer sCommandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
+
+		VkBufferImageCopy region{};
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+		region.imageOffset = { 0, 0, 0 };
+		region.imageExtent = { imageWidth, imageHeight, 1 }; 
+
+		vkCmdCopyBufferToImage(
+			sCommandBuffer, 
+			buffer, 
+			image, 
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+			1, 
+			&region
+		);
+
+		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, queue, sCommandBuffer, commandPool);
 	}
 
 	VkBuffer& Buffer::GetBuffer(uint32_t index) {

@@ -6,6 +6,7 @@
 #include "LogicalDevice.h"
 #include "PhysicalDevice.h"
 #include "DeviceMemory.h"
+#include "CommandBUffer.h"
 
 namespace Engine {
 	class Buffer {
@@ -16,6 +17,15 @@ namespace Engine {
 
 		void AllocateMemory(VkMemoryPropertyFlags properties);
 		void CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, VkCommandPool& commandPool);
+		static void CopyToImage(
+			VkDevice& logicalDevice,
+			VkCommandPool& commandPool,
+			VkQueue& queue,
+			VkImage& image,
+			const uint32_t imageWidth,
+			const uint32_t imageHeight,
+			VkBuffer& buffer
+		);
 
 		VkBuffer& GetBuffer(uint32_t index);
 		void* GetBufferMemoryMapped(uint32_t index);

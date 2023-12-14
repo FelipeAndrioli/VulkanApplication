@@ -14,6 +14,14 @@ namespace Engine {
 		VkCommandBuffer& GetCommandBuffer(uint32_t index);
 		VkCommandBuffer& Begin(uint32_t index);
 		void End(uint32_t index);
+
+		static VkCommandBuffer BeginSingleTimeCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool);
+		static void EndSingleTimeCommandBuffer(
+			VkDevice& logicalDevice, 
+			VkQueue& queue, 
+			VkCommandBuffer& commandBuffer, 
+			VkCommandPool& commandPool
+		);
 	private:
 		void ValidateIndex(uint32_t index);
 	private:

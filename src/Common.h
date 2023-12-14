@@ -9,6 +9,7 @@
 #include <optional>
 
 #include "Vulkan.h"
+#include "CommandBuffer.h"
 #include "../Assets/Mesh.h"
 
 namespace Engine {
@@ -75,42 +76,6 @@ namespace Engine {
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
 	};
-
-	// TODO rework both begin and end single time commands
-	inline VkCommandBuffer beginSingleTimeCommands(VkDevice &r_LogicalDevice, VkCommandPool cmdPool) {
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandPool = cmdPool;
-		allocInfo.commandBufferCount = 1;
-
-		VkCommandBuffer commandBuffer = {};
-		vkAllocateCommandBuffers(r_LogicalDevice, &allocInfo, &commandBuffer);
-
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create one time command buffer!");
-		}
-
-		return commandBuffer;
-	}
-
-	inline void endSingleTimeCommands(VkDevice &r_LogicalDevice, VkQueue &r_Queue, VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) {
-		vkEndCommandBuffer(cmdBuffer);
-
-		VkSubmitInfo info = {};
-		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		info.commandBufferCount = 1;
-		info.pCommandBuffers = &cmdBuffer;
-
-		vkQueueSubmit(r_Queue, 1, &info, VK_NULL_HANDLE);
-		vkQueueWaitIdle(r_Queue);
-
-		vkFreeCommandBuffers(r_LogicalDevice, cmdPool, 1, &cmdBuffer);
-	}
 
 	static void check_vk_result(VkResult err) {
 		if (err == 0) return;

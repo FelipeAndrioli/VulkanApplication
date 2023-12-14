@@ -50,6 +50,47 @@ namespace Engine {
 		}
 	}
 
+	VkCommandBuffer CommandBuffer::BeginSingleTimeCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool) {
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool = commandPool;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer commandBuffer = {};
+		vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
+
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create one time command buffer!");
+		}
+
+		return commandBuffer;
+	}
+
+	void CommandBuffer::EndSingleTimeCommandBuffer(
+		VkDevice& logicalDevice, 
+		VkQueue& queue, 
+		VkCommandBuffer& commandBuffer, 
+		VkCommandPool& commandPool
+	) {
+
+		vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		info.commandBufferCount = 1;
+		info.pCommandBuffers = &commandBuffer;
+
+		vkQueueSubmit(queue, 1, &info, VK_NULL_HANDLE);
+		vkQueueWaitIdle(queue);
+
+		vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
+	}
+
 	void CommandBuffer::ValidateIndex(uint32_t index) {
 		if (index > m_CommandBuffers.size()) {
 			throw std::runtime_error("Index to access command buffer out of bounds!");
