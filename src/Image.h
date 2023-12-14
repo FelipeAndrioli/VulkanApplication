@@ -28,12 +28,13 @@ namespace Engine {
 		void TransitionImageLayoutTo(
 			VkCommandPool& commandPool,
 			VkQueue& queue,
-			VkImage& image,
 			VkFormat format,
 			VkImageLayout newLayout
 		);
 	public:
 		std::vector<VkImageView> ImageView;
+		
+		VkImageLayout ImageLayout;
 
 		uint32_t Width;
 		uint32_t Height;
@@ -42,7 +43,6 @@ namespace Engine {
 		void CleanUp();
 	private:
 		std::vector<VkImage> m_Image;
-		VkImageLayout m_ImageLayout;
 
 		std::unique_ptr<class DeviceMemory> m_ImageMemory;
 
