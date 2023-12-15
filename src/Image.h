@@ -31,6 +31,7 @@ namespace Engine {
 			VkFormat format,
 			VkImageLayout newLayout
 		);
+		void CreateImageSampler();
 	public:
 		std::vector<VkImageView> ImageView;
 		
@@ -43,8 +44,8 @@ namespace Engine {
 		void CleanUp();
 	private:
 		std::vector<VkImage> m_Image;
-
 		std::unique_ptr<class DeviceMemory> m_ImageMemory;
+		VkSampler m_ImageSampler;
 
 		VkFormat m_Format;
 		VkImageTiling m_Tiling;
