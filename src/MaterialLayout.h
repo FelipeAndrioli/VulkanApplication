@@ -51,7 +51,7 @@ namespace Engine {
 		};
 
 		VkVertexInputBindingDescription BindingDescription = Assets::Vertex::getBindingDescription();
-		std::array<VkVertexInputAttributeDescription, 2> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+		std::array<VkVertexInputAttributeDescription, 3> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 
 		Topology Topology = TRIANGLE_LIST;
 		PolygonMode PolygonMode = FILL;
@@ -62,6 +62,7 @@ namespace Engine {
 		
 		const char* VertexShaderPath = "./Assets/Shaders/default_vert.spv";
 		const char* FragmentShaderPath = "./Assets/Shaders/default_frag.spv";
+		const char* TexturePath = nullptr;
 
 		RenderType RenderType = DEFAULT_RENDER;
 		ComputePipelineLayout* ComputePipelineLayout = nullptr;
