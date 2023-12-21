@@ -142,5 +142,7 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 
 		Assets::Scene* p_ActiveScene = nullptr;
+
+		bool m_FramebufferResized = false;
 	};
 }

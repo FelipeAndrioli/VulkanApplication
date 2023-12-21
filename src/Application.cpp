@@ -1,9 +1,5 @@
 #include "Application.h" 
 
-static bool g_FramebufferResized = false;
-
-static int g_MinImageCount = 2;
-
 namespace Engine {
 	Application::Application(const Settings &settings) : m_Settings(settings) {
 		m_Window.reset(new class Window(m_Settings));
@@ -28,8 +24,14 @@ namespace Engine {
 	void Application::Init() {
 		InitVulkan();
 
-		m_UI.reset(new class UI(m_Window->GetHandle(), m_Instance.get(), m_PhysicalDevice.get(), m_LogicalDevice.get(),
-			m_SwapChain.get(), g_MinImageCount));
+		m_UI.reset(new class UI(
+			m_Window->GetHandle(), 
+			m_Instance.get(), 
+			m_PhysicalDevice.get(), 
+			m_LogicalDevice.get(),
+			m_SwapChain.get(), 
+			MAX_FRAMES_IN_FLIGHT	
+		));
 	}
 
 	void Application::SetActiveScene(Assets::Scene* scene) {
@@ -301,8 +303,8 @@ namespace Engine {
 
 		result = vkQueuePresentKHR(m_LogicalDevice->GetPresentQueue(), &presentInfo);
 
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || g_FramebufferResized) {
-			g_FramebufferResized = false;
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_FramebufferResized) {
+			m_FramebufferResized = false;
 			recreateSwapChain();
 			//return;
 		}
@@ -397,7 +399,7 @@ namespace Engine {
 	}
 
 	void Application::ProcessResize(int width, int height) {
-		g_FramebufferResized = true;
+		m_FramebufferResized = true;
 		std::cout << "width - " << width << " height - " << height << '\n';
 
 		p_ActiveScene->OnResize(width, height);
