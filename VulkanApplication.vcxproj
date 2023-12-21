@@ -231,11 +231,10 @@
     <ClInclude Include="src\SwapChain.h" />
     <ClInclude Include="src\Timestep.h" />
     <ClInclude Include="src\UI.h" />
-    <ClInclude Include="src\UserSettings.h" />
     <ClInclude Include="src\Utils\TextureLoader.h" />
     <ClInclude Include="src\Vulkan.h" />
     <ClInclude Include="src\Window.h" />
-    <ClInclude Include="src\WindowSettings.h" />
+    <ClInclude Include="src\Settings.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />

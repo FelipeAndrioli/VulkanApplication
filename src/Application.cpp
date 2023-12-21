@@ -5,9 +5,8 @@ static bool g_FramebufferResized = false;
 static int g_MinImageCount = 2;
 
 namespace Engine {
-	Application::Application(const WindowSettings &windowSettings, const UserSettings &userSettings) 
-		: m_WindowSettings(windowSettings), m_UserSettings(userSettings) {
-		m_Window.reset(new class Window(&m_WindowSettings));
+	Application::Application(const Settings &settings) : m_Settings(settings) {
+		m_Window.reset(new class Window(m_Settings));
 		m_Instance.reset(new class Instance(c_ValidationLayers, c_EnableValidationLayers));
 		m_DebugMessenger.reset(c_EnableValidationLayers ? new class DebugUtilsMessenger(m_Instance->GetHandle()) : nullptr);
 
@@ -262,7 +261,7 @@ namespace Engine {
 	void Application::EndFrame(const VkCommandBuffer& commandBuffer) {
 		m_CommandBuffers->End(m_CurrentFrame);
 
-		m_UI->Draw(m_UserSettings, m_WindowSettings, p_ActiveScene);
+		m_UI->Draw(m_Settings, p_ActiveScene);
 		m_UI->RecordCommands(m_CurrentFrame, m_ImageIndex);
 
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };

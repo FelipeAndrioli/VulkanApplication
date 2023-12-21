@@ -77,15 +77,15 @@ namespace Engine {
 		return m_UICommandBuffers[index];
 	}
 
-	void UI::Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings, Assets::Scene* scene) {
+	void UI::Draw(Settings& settings, Assets::Scene* scene) {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 	
 		ImGui::Begin("Settings");
-		ImGui::Text("Last Frame: %f ms", r_WindowSettings.ms);
-		ImGui::Text("Framerate: %.1f fps", r_WindowSettings.frames);
-		ImGui::Checkbox("Limit Framerate", &r_WindowSettings.limitFramerate);
+		ImGui::Text("Last Frame: %f ms", settings.ms);
+		ImGui::Text("Framerate: %.1f fps", settings.frames);
+		ImGui::Checkbox("Limit Framerate", &settings.limitFramerate);
 		scene->OnUIRender();
 
 		ImGui::End();

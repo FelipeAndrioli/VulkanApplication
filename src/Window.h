@@ -5,13 +5,13 @@
 #include <stdexcept>
 
 #include "Vulkan.h"
-#include "WindowSettings.h"
+#include "Settings.h"
 #include "Timestep.h"
 
 namespace Engine {
 	class Window {
 	public:
-		Window(WindowSettings *p_WindowSettings);
+		Window(Settings& settings);
 		~Window();
 
 		void Run();
@@ -32,7 +32,7 @@ namespace Engine {
 		std::function<void(int entered)> OnCursorOnScreen;
 	private:
 		GLFWwindow* m_Window{};
-		WindowSettings* p_WindowSettings;
+		Settings* p_Settings = nullptr;
 		bool m_Running;
 
 		float m_CurrentFrameTime = 0.0;

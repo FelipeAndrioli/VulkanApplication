@@ -332,16 +332,12 @@ int main() {
 	myScene->AddObject(&q3);
 	myScene->AddObject(&q4);
 	
-	Engine::WindowSettings windowSettings;
-	windowSettings.Title = "VulkanApplication.exe";
-	windowSettings.Width = 800;
-	windowSettings.Height = 600;
+	Engine::Settings settings;
+	settings.Title = "VulkanApplication.exe";
+	settings.Width = 800;
+	settings.Height = 600;
 
-	Engine::UserSettings userSettings;
-	userSettings.rayTraced = false;
-
-	// TODO: review this initial settings
-	std::unique_ptr<Engine::Application> app = std::make_unique<Engine::Application>(windowSettings, userSettings);
+	std::unique_ptr<Engine::Application> app = std::make_unique<Engine::Application>(settings);
 
 	app->SetActiveScene(myScene.get());
 	app->Init();

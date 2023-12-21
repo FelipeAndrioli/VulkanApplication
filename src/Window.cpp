@@ -42,7 +42,7 @@ namespace Engine {
 		}
 	}
 
-	Window::Window(WindowSettings *windowSettings) : p_WindowSettings(windowSettings) {
+	Window::Window(Settings& settings) : p_Settings(&settings) {
 
 		if (!glfwInit()) {
 			throw std::runtime_error("Failed to initialize window!");
@@ -51,8 +51,8 @@ namespace Engine {
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-		m_Window = glfwCreateWindow(p_WindowSettings->Width, p_WindowSettings->Height, 
-			p_WindowSettings->Title.c_str(), nullptr, nullptr);
+		m_Window = glfwCreateWindow(p_Settings->Width, p_Settings->Height, 
+			p_Settings->Title.c_str(), nullptr, nullptr);
 
 		glfwSetWindowUserPointer(m_Window, this);
 		
@@ -77,7 +77,7 @@ namespace Engine {
 			m_CurrentFrameTime = (float)glfwGetTime();
 			Timestep timestep = m_CurrentFrameTime - m_LastFrameTime;
 
-			if (p_WindowSettings->limitFramerate && timestep.GetSeconds() < (1 / 60.0f)) continue;
+			if (p_Settings->limitFramerate && timestep.GetSeconds() < (1 / 60.0f)) continue;
 			
 			if (Update) {
 				Update(timestep.GetMilliseconds());
@@ -89,8 +89,8 @@ namespace Engine {
 
 			m_LastFrameTime = m_CurrentFrameTime;
 
-			p_WindowSettings->ms = timestep.GetMilliseconds();
-			p_WindowSettings->frames = static_cast<float>(1 / timestep.GetSeconds());
+			p_Settings->ms = timestep.GetMilliseconds();
+			p_Settings->frames = static_cast<float>(1 / timestep.GetSeconds());
 		}
 	}
 

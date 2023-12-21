@@ -11,8 +11,7 @@
 #include "Vulkan.h"
 //#include "Common.h"
 #include "CommandBUffer.h"
-#include "UserSettings.h"
-#include "WindowSettings.h"
+#include "Settings.h"
 #include "Instance.h"
 #include "PhysicalDevice.h"
 #include "LogicalDevice.h"
@@ -30,7 +29,7 @@ namespace Engine {
 		void RecordCommands(const uint32_t currentFrame, const uint32_t imageIndex);
 		void Resize(SwapChain* swapChain);
 		VkCommandBuffer& GetCommandBuffer(uint32_t currentFrame);
-		void Draw(UserSettings& r_UserSettings, WindowSettings& r_WindowSettings, Assets::Scene* scene);
+		void Draw(Settings& settings, Assets::Scene* scene);
 	private:
 		void createUIDescriptorPool(VkDevice& r_LogicalDevice);
 		void createUIRenderPass(VkDevice& r_LogicalDevice, const VkFormat& r_SwapChainImageFormat);

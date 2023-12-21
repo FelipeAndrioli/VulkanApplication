@@ -176,10 +176,7 @@
     <ClInclude Include="src\Window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\UserSettings.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\WindowSettings.h">
+    <ClInclude Include="src\Settings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Vulkan.h">

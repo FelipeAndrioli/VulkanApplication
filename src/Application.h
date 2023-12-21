@@ -25,8 +25,7 @@
 #include "Vulkan.h"
 #include "Common.h"
 #include "UI.h"
-#include "UserSettings.h"
-#include "WindowSettings.h"
+#include "Settings.h"
 #include "Window.h"
 #include "Instance.h"
 #include "Surface.h"
@@ -65,8 +64,7 @@ const std::vector<const char*> c_ValidationLayers = {
 namespace Engine {
 	class Application {
 	public:
-		Application(const WindowSettings &windowSettings = WindowSettings(), 
-			const UserSettings &userSettings = UserSettings());
+		Application(const Settings &settings = Settings());
 		~Application();
 
 		void Init();
@@ -129,8 +127,7 @@ namespace Engine {
 	
 		std::unique_ptr<class InputSystem::Input> m_Input;
 
-		WindowSettings m_WindowSettings;
-		UserSettings m_UserSettings;
+		Settings m_Settings;
 
 		uint32_t m_CurrentFrame = 0;
 		uint32_t m_ImageIndex = 0;
