@@ -3,9 +3,9 @@
 namespace Assets {
 	Object::Object() {
 
-		m_Transform.translation = glm::vec3(0.0f, 0.0f, 0.0f);
-		m_Transform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-		m_Transform.scalation = glm::vec3(1.0f, 1.0f, 1.0f);
+		Transformations.translation = glm::vec3(0.0f, 0.0f, 0.0f);
+		Transformations.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+		Transformations.scalation = glm::vec3(1.0f, 1.0f, 1.0f);
 
 		Meshes = new Mesh();
 	}
@@ -17,11 +17,11 @@ namespace Assets {
 	glm::mat4 Object::GetModelMatrix() {
 		glm::mat4 model = glm::mat4(1.0f);
 
-		model = glm::scale(model, m_Transform.scalation);
-		model = glm::translate(model, m_Transform.translation);
-		model = glm::rotate(model, glm::radians(m_Transform.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(m_Transform.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(m_Transform.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		model = glm::scale(model, Transformations.scalation);
+		model = glm::translate(model, Transformations.translation);
+		model = glm::rotate(model, glm::radians(Transformations.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		model = glm::rotate(model, glm::radians(Transformations.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::rotate(model, glm::radians(Transformations.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
 		return model;
 	}

@@ -259,9 +259,16 @@
     <None Include="Assets\Shaders\shader_test.vert" />
     <None Include="Assets\Shaders\shader_test_frag.spv" />
     <None Include="Assets\Shaders\shader_test_vert.spv" />
+    <None Include="Assets\Shaders\textured.frag" />
+    <None Include="Assets\Shaders\textured.vert" />
+    <None Include="Assets\Shaders\textured_frag.spv" />
+    <None Include="Assets\Shaders\textured_vert.spv" />
     <None Include="Assets\Shaders\vert.spv" />
     <None Include="imgui.ini" />
     <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Assets\Textures\statue_test.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

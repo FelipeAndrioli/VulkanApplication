@@ -11,6 +11,8 @@
 #include "SwapChain.h"
 #include "MaterialLayout.h"
 #include "DepthBuffer.h"
+#include "Image.h"
+#include "./Utils/TextureLoader.h"
 
 namespace Engine {
 	class Material {
@@ -19,7 +21,7 @@ namespace Engine {
 		Material();
 		~Material();
 	
-		void Init(LogicalDevice& logicalDevice,
+		void Create(LogicalDevice& logicalDevice,
 			PhysicalDevice& physicalDevice,
 			CommandPool& commandPool,
 			const SwapChain& swapChain,
@@ -32,13 +34,29 @@ namespace Engine {
 		inline Buffer* GetVertexBuffers() const { return m_VertexBuffer.get(); };
 		inline Buffer* GetIndexBuffers() const { return m_IndexBuffer.get(); };
 
-		void CreateVertexBuffer(std::vector<Assets::Vertex> vertices, PhysicalDevice& physicalDevice, 
-			LogicalDevice& logicalDevice, CommandPool& commandPool);
+		void CreateVertexBuffer(
+			std::vector<Assets::Vertex> vertices, 
+			PhysicalDevice& physicalDevice, 
+			LogicalDevice& logicalDevice, 
+			CommandPool& commandPool
+		);
 
-		void CreateIndexBuffer(std::vector<uint16_t> indices, PhysicalDevice& physicalDevice, 
-			LogicalDevice& logicalDevice, CommandPool& commandPool);
+		void CreateIndexBuffer(
+			std::vector<uint16_t> indices, 
+			PhysicalDevice& physicalDevice, 
+			LogicalDevice& logicalDevice, 
+			CommandPool& commandPool
+		);
+
+		void LoadTexture(
+			PhysicalDevice& physicalDevice, 
+			LogicalDevice& logicalDevice, 
+			CommandPool& commandPool
+		);
+
 	public:
 		MaterialLayout Layout = MaterialLayout();
+		std::unique_ptr<class Image> Texture;
 	private:
 		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
 		

@@ -10,6 +10,7 @@
 #include "DescriptorPool.h"
 #include "DescriptorBinding.h"
 #include "Buffer.h"
+#include "Image.h"
 
 namespace Engine {
 	class DescriptorSets {
@@ -21,7 +22,8 @@ namespace Engine {
 			const VkDescriptorSetLayout& descriptorSetLayout, 
 			Buffer* uniformBuffers,
 			Buffer* shaderStorageBuffers = nullptr,
-			bool accessLastFrame = false
+			bool accessLastFrame = false,
+			Image* textureImage = nullptr
 		);
 
 		~DescriptorSets();

@@ -11,7 +11,7 @@ namespace Engine {
 		m_IndexBuffer.reset();
 	}
 
-	void Material::Init(LogicalDevice& logicalDevice, 
+	void Material::Create(LogicalDevice& logicalDevice, 
 		PhysicalDevice& physicalDevice, 
 		CommandPool& commandPool, 
 		const SwapChain& swapChain, 
@@ -19,6 +19,8 @@ namespace Engine {
 		const VkRenderPass& renderPass
 	) {
 		m_GraphicsPipeline.reset(new class GraphicsPipeline(Layout, logicalDevice, swapChain, depthBuffer, renderPass));
+
+		if (Layout.TexturePath != nullptr) LoadTexture(physicalDevice, logicalDevice, commandPool);
 	}
 
 	void Material::CreateVertexBuffer(std::vector<Assets::Vertex> vertices, PhysicalDevice& physicalDevice, 
@@ -47,5 +49,15 @@ namespace Engine {
 		BufferHelper bufferHelper;
 		bufferHelper.CopyFromStaging(logicalDevice, physicalDevice, commandPool.GetHandle(), 
 			indices, m_IndexBuffer.get());
+	}
+
+	void Material::LoadTexture(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, CommandPool& commandPool) {
+		Utils::TextureLoader::LoadTexture(
+			Texture,
+			Layout.TexturePath,
+			logicalDevice,
+			physicalDevice,
+			commandPool
+		);
 	}
 }

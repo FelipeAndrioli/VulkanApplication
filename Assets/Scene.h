@@ -57,11 +57,10 @@ namespace Assets {
 
 		Engine::Material* DefaultMaterial = nullptr;
 
+		uint32_t m_Width = 800;
+		uint32_t m_Height = 600;
 	private:
 		void SetObjectResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
 			Engine::LogicalDevice& logicalDevice, Engine::CommandPool& commandPool);
-
-		uint32_t m_Width = 800;
-		uint32_t m_Height = 600;
 	};
 }

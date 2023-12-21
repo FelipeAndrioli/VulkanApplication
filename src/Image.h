@@ -34,7 +34,7 @@ namespace Engine {
 		void CreateImageSampler();
 	public:
 		std::vector<VkImageView> ImageView;
-		
+		VkSampler ImageSampler;
 		VkImageLayout ImageLayout;
 
 		uint32_t Width;
@@ -45,7 +45,6 @@ namespace Engine {
 	private:
 		std::vector<VkImage> m_Image;
 		std::unique_ptr<class DeviceMemory> m_ImageMemory;
-		VkSampler m_ImageSampler;
 
 		VkFormat m_Format;
 		VkImageTiling m_Tiling;

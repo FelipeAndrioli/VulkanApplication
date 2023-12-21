@@ -46,12 +46,12 @@ namespace Assets {
 		Camera* SceneCamera = nullptr;
 		
 		Engine::Material* Material = nullptr;
+		
+		Transform Transformations = {};
 	
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
 		std::unique_ptr<class Engine::Buffer> UniformBuffer;
 		
-		Transform m_Transform{};
-
 		size_t UniformBufferObjectSize = 0;
 		Mesh* Meshes = nullptr;
 	private:

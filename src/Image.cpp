@@ -32,7 +32,7 @@ namespace Engine {
 	}
 	
 	Image::~Image() {
-		vkDestroySampler(*p_LogicalDevice, m_ImageSampler, nullptr);
+		vkDestroySampler(*p_LogicalDevice, ImageSampler, nullptr);
 		CleanUp();
 	}
 
@@ -155,7 +155,7 @@ namespace Engine {
 		samplerInfo.minLod = 0.0f;
 		samplerInfo.maxLod = 0.0f;
 
-		if (vkCreateSampler(*p_LogicalDevice, &samplerInfo, nullptr, &m_ImageSampler) != VK_SUCCESS) {
+		if (vkCreateSampler(*p_LogicalDevice, &samplerInfo, nullptr, &ImageSampler) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create image sampler!");
 		}
 	}

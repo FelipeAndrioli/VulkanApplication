@@ -66,19 +66,21 @@ public:
 
 	UniformBufferObject *ubo = new UniformBufferObject();
 
+	bool Rotate = false;
+
 	void OnCreate() {
 
 		SetUniformBufferObject(ubo, sizeof(*ubo));
 
 		std::vector<Assets::Vertex> v = {
-			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }},		// top front right		0
-			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }},		// top back right		1
-			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }},		// top front left		2
-			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }},		// top back left		3
-			{{ -0.5f, -0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }},		// bottom front left	4
-			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }},	// bottom back left		5
-			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }},		// bottom front right	6
-			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }}		// bottom back right	7
+			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
+			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f }},		// top back right		1 - OK
+			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},		// top front left		2 - OK
+			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},		// top back left		3 - OK
+			{{ -0.5f, -0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},		// bottom front left	4 - OK
+			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},	// bottom back left		5 - OK
+			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},		// bottom front right	6 - OK
+			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }}		// bottom back right	7 - OK
 		};
 
 		std::vector<uint16_t> i = {
@@ -90,43 +92,41 @@ public:
 			5, 4, 6, 5, 6, 7		// bottom face
 		};
 
-		m_Transform.translation.z = -4.0f;
+		Transformations.translation.z = -4.0f;
 
 		AddVertices(v);
 		AddIndices(i);
-		ID = "Quad One";
-
-		std::cout << ID << " object created\n";
 	}
 
 	void OnUIRender() {
-		std::string objectId = ID;
-
-		std::string t = "Transformations " + objectId;
+		std::string t = "Transformations " + ID;
 
 		if (ImGui::TreeNode(t.c_str())) {
-			std::string t_label_x = "Translation x " + objectId;
-			std::string t_label_y = "Translation y " + objectId;
-			std::string t_label_z = "Translation z " + objectId;
+			std::string t_label_x = "Translation x " + ID;
+			std::string t_label_y = "Translation y " + ID;
+			std::string t_label_z = "Translation z " + ID;
 
-			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -20.0f, 20.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -20.0f, 20.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -20.0f, 20.0f);
+			ImGui::SliderFloat(t_label_x.c_str(), &Transformations.translation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &Transformations.translation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &Transformations.translation.z, -200.0f, 200.0f);
 
-			std::string r_label_x = "Rotation x " + objectId;
-			std::string r_label_y = "Rotation y " + objectId;
-			std::string r_label_z = "Rotation z " + objectId;
+			std::string r_label_x = "Rotation x " + ID;
+			std::string r_label_y = "Rotation y " + ID;
+			std::string r_label_z = "Rotation z " + ID;
 			
-			ImGui::SliderFloat(r_label_x.c_str(), &m_Transform.rotation.x, -20.0f, 20.0f);
-			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
-			ImGui::SliderFloat(r_label_z.c_str(), &m_Transform.rotation.z, -20.0f, 20.0f);
+			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
 
+			ImGui::Checkbox("Rotate", &Rotate);
 			ImGui::TreePop();
 		}
 	}
 
 	void OnUpdate(float t) {
-		m_Transform.rotation.x += t * 0.05f;
+		if (Rotate) {
+			Transformations.rotation.x += t * 0.05f;
+		}
 
 		ubo->object = GetModelMatrix();
 		ubo->view = SceneCamera->ViewMatrix;
@@ -152,14 +152,14 @@ public:
 		SetUniformBufferObject(ubo, sizeof(*ubo));
 
 		std::vector<Assets::Vertex> v = {
-			{{ 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front right		0
-			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},		// top back right		1
-			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front left		2
-			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},		// top back left		3
-			{{ -0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// bottom front left	4
-			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},	// bottom back left		5
-			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// bottom front right	6
-			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }}		// bottom back right	7
+			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
+			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f }},		// top back right		1 - OK
+			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},		// top front left		2 - OK
+			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},		// top back left		3 - OK
+			{{ -0.5f, -0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},		// bottom front left	4 - OK
+			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},	// bottom back left		5 - OK
+			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},		// bottom front right	6 - OK
+			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }}		// bottom back right	7 - OK
 		};
 
 		std::vector<uint16_t> i = {
@@ -171,37 +171,32 @@ public:
 			5, 4, 6, 5, 6, 7		// bottom face
 		};
 
-		m_Transform.translation.x = 2.0f;
-		m_Transform.translation.z = -4.0f;
+		Transformations.translation.x = 2.0f;
+		Transformations.translation.z = -4.0f;
 
 		AddVertices(v);
 		AddIndices(i);
-		ID = "Quad Two";
-		
-		std::cout << ID << " object created\n";
 	}
 
 	void OnUIRender() {
-		std::string objectId = ID;
-
-		std::string t = "Transformations " + objectId;
+		std::string t = "Transformations " + ID;
 
 		if (ImGui::TreeNode(t.c_str())) {
-			std::string t_label_x = "Translation x " + objectId;
-			std::string t_label_y = "Translation y " + objectId;
-			std::string t_label_z = "Translation z " + objectId;
+			std::string t_label_x = "Translation x " + ID;
+			std::string t_label_y = "Translation y " + ID;
+			std::string t_label_z = "Translation z " + ID;
 
-			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -20.0f, 20.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -20.0f, 20.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -20.0f, 20.0f);
+			ImGui::SliderFloat(t_label_x.c_str(), &Transformations.translation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &Transformations.translation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &Transformations.translation.z, -200.0f, 200.0f);
 
-			std::string r_label_x = "Rotation x " + objectId;
-			std::string r_label_y = "Rotation y " + objectId;
-			std::string r_label_z = "Rotation z " + objectId;
+			std::string r_label_x = "Rotation x " + ID;
+			std::string r_label_y = "Rotation y " + ID;
+			std::string r_label_z = "Rotation z " + ID;
 			
-			ImGui::SliderFloat(r_label_x.c_str(), &m_Transform.rotation.x, -20.0f, 20.0f);
-			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
-			ImGui::SliderFloat(r_label_z.c_str(), &m_Transform.rotation.z, -20.0f, 20.0f);
+			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
 			
 			ImGui::ColorEdit3("Color", glm::value_ptr(ubo->color));
 
@@ -210,7 +205,7 @@ public:
 	}
 
 	void OnUpdate(float t) {
-		m_Transform.rotation.y += t * 0.05f;
+		Transformations.rotation.y += t * 0.05f;
 
 		ubo->object = GetModelMatrix();
 		ubo->view = SceneCamera->ViewMatrix;
@@ -234,14 +229,14 @@ public:
 		SetUniformBufferObject(ubo, sizeof(*ubo));
 
 		std::vector<Assets::Vertex> v = {
-			{{ 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front right		0
-			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},		// top back right		1
-			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// top front left		2
-			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},		// top back left		3
-			{{ -0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// bottom front left	4
-			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }},	// bottom back left		5
-			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f }},		// bottom front right	6
-			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f }}		// bottom back right	7
+			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
+			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f }},		// top back right		1 - OK
+			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},		// top front left		2 - OK
+			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},		// top back left		3 - OK
+			{{ -0.5f, -0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},		// bottom front left	4 - OK
+			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},	// bottom back left		5 - OK
+			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},		// bottom front right	6 - OK
+			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }}		// bottom back right	7 - OK
 		};
 
 		std::vector<uint16_t> i = {
@@ -253,44 +248,39 @@ public:
 			5, 4, 6, 5, 6, 7		// bottom face
 		};
 
-		m_Transform.translation.x = -2.0f;
-		m_Transform.translation.z = -4.0f;
+		Transformations.translation.x = -2.0f;
+		Transformations.translation.z = -4.0f;
 
 		AddVertices(v);
 		AddIndices(i);
-		ID = "Quad Three";
-		
-		std::cout << ID << " object created\n";
 	}
 
 	void OnUIRender() {
-		std::string objectId = ID;
-
-		std::string t = "Transformations " + objectId;
+		std::string t = "Transformations " + ID;
 
 		if (ImGui::TreeNode(t.c_str())) {
-			std::string t_label_x = "Translation x " + objectId;
-			std::string t_label_y = "Translation y " + objectId;
-			std::string t_label_z = "Translation z " + objectId;
+			std::string t_label_x = "Translation x " + ID;
+			std::string t_label_y = "Translation y " + ID;
+			std::string t_label_z = "Translation z " + ID;
 
-			ImGui::SliderFloat(t_label_x.c_str(), &m_Transform.translation.x, -20.0f, 20.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &m_Transform.translation.y, -20.0f, 20.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &m_Transform.translation.z, -20.0f, 20.0f);
+			ImGui::SliderFloat(t_label_x.c_str(), &Transformations.translation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &Transformations.translation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &Transformations.translation.z, -200.0f, 200.0f);
 
-			std::string r_label_x = "Rotation x " + objectId;
-			std::string r_label_y = "Rotation y " + objectId;
-			std::string r_label_z = "Rotation z " + objectId;
+			std::string r_label_x = "Rotation x " + ID;
+			std::string r_label_y = "Rotation y " + ID;
+			std::string r_label_z = "Rotation z " + ID;
 			
-			ImGui::SliderFloat(r_label_x.c_str(), &m_Transform.rotation.x, -20.0f, 20.0f);
-			ImGui::SliderFloat(r_label_y.c_str(), &m_Transform.rotation.y, -20.0f, 20.0f);
-			ImGui::SliderFloat(r_label_z.c_str(), &m_Transform.rotation.z, -20.0f, 20.0f);
+			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
 
 			ImGui::TreePop();
 		}
 	}
 
 	void OnUpdate(float t) {
-		m_Transform.rotation.z += t * 0.05f;
+		Transformations.rotation.z += t * 0.05f;
 
 		ubo->object = GetModelMatrix();
 		ubo->view = SceneCamera->ViewMatrix;
@@ -310,12 +300,20 @@ int main() {
 	colorMaterial->Layout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
 	colorMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
 
+	std::unique_ptr<Engine::Material> texturedMaterial = std::make_unique<Engine::Material>();
+	texturedMaterial->Layout.ID = "TexturedMaterial";
+	texturedMaterial->Layout.VertexShaderPath = "./Assets/Shaders/textured_vert.spv";
+	texturedMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/textured_frag.spv";
+	texturedMaterial->Layout.TexturePath = "./Assets/Textures/statue_test.jpg";
+
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 
 	myScene->AddMaterial(rainbowMaterial.get());
 	myScene->AddMaterial(colorMaterial.get());
+	myScene->AddMaterial(texturedMaterial.get());
 
 	auto q1 = MyCubeOne();
+	q1.Rotate = true;
 	q1.Material = rainbowMaterial.get();
 	q1.SceneCamera = &myScene->DefaultCamera;
 	auto q2 = MyCubeTwo();
@@ -323,10 +321,16 @@ int main() {
 	q2.Material = colorMaterial.get();
 	auto q3 = MyCubeThree();
 	q3.SceneCamera = &myScene->DefaultCamera;
+	auto q4 = MyCubeOne();
+	q4.Transformations.translation.y = 2.0f;
+	q4.Transformations.rotation.x = 200.0f;
+	q4.Material = texturedMaterial.get();
+	q4.SceneCamera = &myScene->DefaultCamera;
 
 	myScene->AddObject(&q1);
 	myScene->AddObject(&q2);
 	myScene->AddObject(&q3);
+	myScene->AddObject(&q4);
 	
 	Engine::WindowSettings windowSettings;
 	windowSettings.Title = "VulkanApplication.exe";
@@ -352,6 +356,7 @@ int main() {
 
 	rainbowMaterial.reset();
 	colorMaterial.reset();
+	texturedMaterial.reset();
 	
 	myScene.reset();
 	app.reset();

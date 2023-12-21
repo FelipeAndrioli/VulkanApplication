@@ -8,7 +8,8 @@ namespace Engine {
 		const VkDescriptorSetLayout& descriptorSetLayout, 
 		Buffer* uniformBuffers, 
 		Buffer* shaderStorageBuffers,
-		bool accessLastFrame 
+		bool accessLastFrame,
+		Image* textureImage
 	) {
 		// create descriptor pool inside graphics pipeline
 		// receive descriptor set layout from graphics pipeline
@@ -30,69 +31,101 @@ namespace Engine {
 			throw std::runtime_error("Failed to allocate Descriptor Sets!");
 		}
 
+		// TODO: refactor descriptor set creation
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			VkDescriptorBufferInfo bufferInfo{};
-			//bufferInfo.buffer = uniformBuffers.GetBuffer(static_cast<uint32_t>(i));
 			bufferInfo.buffer = uniformBuffers->GetBuffer(static_cast<uint32_t>(i));
 			bufferInfo.offset = 0;
 			bufferInfo.range = bufferSize;
 
 			if (!accessLastFrame) {
-				VkWriteDescriptorSet descriptorWrite{};
-				descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrite.dstSet = m_DescriptorSets[i];
-				descriptorWrite.dstBinding = 0;
-				descriptorWrite.dstArrayElement = 0;
-				descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				descriptorWrite.descriptorCount = 1;
-				descriptorWrite.pBufferInfo = &bufferInfo;
-				descriptorWrite.pImageInfo = nullptr;
-				descriptorWrite.pTexelBufferView = nullptr;
+				std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
 
-				vkUpdateDescriptorSets(logicalDevice, 1, &descriptorWrite, 0, nullptr);
+				int index = 0;
+	
+				descriptorWrites[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrites[index].dstSet = m_DescriptorSets[i];
+				descriptorWrites[index].dstBinding = 0;
+				descriptorWrites[index].dstArrayElement = 0;
+				descriptorWrites[index].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				descriptorWrites[index].descriptorCount = 1;
+				descriptorWrites[index].pBufferInfo = &bufferInfo;
+				descriptorWrites[index].pImageInfo = nullptr;
+				descriptorWrites[index].pTexelBufferView = nullptr;
+
+				index++;
+
+				if (textureImage != nullptr) {
+					VkDescriptorImageInfo imageInfo{};
+					imageInfo.imageLayout = textureImage->ImageLayout;
+					imageInfo.imageView = textureImage->ImageView[0];
+					imageInfo.sampler = textureImage->ImageSampler;
+
+					descriptorWrites[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+					descriptorWrites[index].dstSet = m_DescriptorSets[i];
+					descriptorWrites[index].dstBinding = 1;
+					descriptorWrites[index].dstArrayElement = 0;
+					descriptorWrites[index].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					descriptorWrites[index].descriptorCount = 1;
+					descriptorWrites[index].pImageInfo = &imageInfo;
+
+					index++;
+				}
+
+				vkUpdateDescriptorSets(logicalDevice, index, 
+					descriptorWrites.data(), 0, nullptr);
 			} else {
+
+				int index = 0;
+
 				std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
-				descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrites[0].dstSet = m_DescriptorSets[i];
-				descriptorWrites[0].dstBinding = 0;
-				descriptorWrites[0].dstArrayElement = 0;
-				descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				descriptorWrites[0].descriptorCount = 1;
-				descriptorWrites[0].pBufferInfo = &bufferInfo;
-				descriptorWrites[0].pImageInfo = nullptr;
-				descriptorWrites[0].pTexelBufferView = nullptr;
+				descriptorWrites[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrites[index].dstSet = m_DescriptorSets[i];
+				descriptorWrites[index].dstBinding = 0;
+				descriptorWrites[index].dstArrayElement = 0;
+				descriptorWrites[index].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				descriptorWrites[index].descriptorCount = 1;
+				descriptorWrites[index].pBufferInfo = &bufferInfo;
+				descriptorWrites[index].pImageInfo = nullptr;
+				descriptorWrites[index].pTexelBufferView = nullptr;
+
+				index++;	
 
 				VkDescriptorBufferInfo storageBufferInfoLastFrame = {};
 				storageBufferInfoLastFrame.buffer = shaderStorageBuffers->GetBuffer((i - 1) % MAX_FRAMES_IN_FLIGHT);
 				storageBufferInfoLastFrame.offset = 0;
 				storageBufferInfoLastFrame.range = sizeof(Particle) * PARTICLE_COUNT;
 
-				descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrites[1].dstSet = m_DescriptorSets[i];
-				descriptorWrites[1].dstBinding = 1;
-				descriptorWrites[1].dstArrayElement = 0;
-				descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-				descriptorWrites[1].descriptorCount = 1;
-				descriptorWrites[1].pBufferInfo = &storageBufferInfoLastFrame;
-				descriptorWrites[1].pImageInfo = nullptr;
-				descriptorWrites[1].pTexelBufferView = nullptr;
+				descriptorWrites[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrites[index].dstSet = m_DescriptorSets[i];
+				descriptorWrites[index].dstBinding = 2;
+				descriptorWrites[index].dstArrayElement = 0;
+				descriptorWrites[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				descriptorWrites[index].descriptorCount = 1;
+				descriptorWrites[index].pBufferInfo = &storageBufferInfoLastFrame;
+				descriptorWrites[index].pImageInfo = nullptr;
+				descriptorWrites[index].pTexelBufferView = nullptr;
+
+				index++;
 
 				VkDescriptorBufferInfo storageBufferInfoCurrentFrame = {};
 				storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers->GetBuffer((i - 1) % MAX_FRAMES_IN_FLIGHT);
 				storageBufferInfoCurrentFrame.offset = 0;
 				storageBufferInfoCurrentFrame.range = sizeof(Particle) * PARTICLE_COUNT;
 
-				descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrites[2].dstSet = m_DescriptorSets[i];
-				descriptorWrites[2].dstBinding = 2;
-				descriptorWrites[2].dstArrayElement = 0;
-				descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-				descriptorWrites[2].descriptorCount = 1;
-				descriptorWrites[2].pBufferInfo = &storageBufferInfoCurrentFrame;
-				descriptorWrites[2].pImageInfo = nullptr;
-				descriptorWrites[2].pTexelBufferView = nullptr;
+				descriptorWrites[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrites[index].dstSet = m_DescriptorSets[i];
+				descriptorWrites[index].dstBinding = 3;
+				descriptorWrites[index].dstArrayElement = 0;
+				descriptorWrites[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				descriptorWrites[index].descriptorCount = 1;
+				descriptorWrites[index].pBufferInfo = &storageBufferInfoCurrentFrame;
+				descriptorWrites[index].pImageInfo = nullptr;
+				descriptorWrites[index].pTexelBufferView = nullptr;
 
-				vkUpdateDescriptorSets(logicalDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(),
+				index++;
+
+				vkUpdateDescriptorSets(logicalDevice, index, descriptorWrites.data(),
 					0, nullptr);
 			}
 		}

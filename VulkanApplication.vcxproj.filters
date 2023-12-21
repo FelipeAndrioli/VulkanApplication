@@ -318,5 +318,14 @@
     <None Include="Assets\Shaders\default.frag" />
     <None Include="Assets\Shaders\default_frag.spv" />
     <None Include="Assets\Shaders\default_vert.spv" />
+    <None Include="Assets\Shaders\textured.vert" />
+    <None Include="Assets\Shaders\textured.frag" />
+    <None Include="Assets\Shaders\textured_vert.spv" />
+    <None Include="Assets\Shaders\textured_frag.spv" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Assets\Textures\statue_test.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

@@ -30,7 +30,14 @@ namespace Assets {
 	}
 
 	void Scene::OnCreate() {
-		for (auto object : Objects) {
+		for (size_t i = 0; i < Objects.size(); i++) {
+			auto object = Objects[i];
+
+			if (object->ID == "") {
+				object->ID = "object_";
+				object->ID.append(std::to_string(i));
+			}
+
 			object->OnCreate();
 		}
 	}
@@ -74,7 +81,7 @@ namespace Assets {
 		std::unordered_map<std::string, Engine::Material*>::iterator it;
 
 		for (it = MapMaterials.begin(); it != MapMaterials.end(); it++) {
-			it->second->Init(logicalDevice, physicalDevice, commandPool, swapChain, depthBuffer, renderPass);
+			it->second->Create(logicalDevice, physicalDevice, commandPool, swapChain, depthBuffer, renderPass);
 
 			SetObjectResources(it->second, physicalDevice, logicalDevice, commandPool);
 
@@ -108,7 +115,10 @@ namespace Assets {
 				logicalDevice.GetHandle(),
 				material->GetGraphicsPipeline()->GetDescriptorPool().GetHandle(),
 				material->GetGraphicsPipeline()->GetDescriptorSetLayout().GetHandle(),
-				object->UniformBuffer.get()
+				object->UniformBuffer.get(),
+				nullptr,
+				false,
+				material->Texture.get()
 			));
 
 			m_HelperVertices.insert(m_HelperVertices.end(), object->Meshes->Vertices.begin(), object->Meshes->Vertices.end());
