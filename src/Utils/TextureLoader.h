@@ -1,32 +1,28 @@
 #pragma once
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
+#include <memory>
 #include <stdexcept>
 
 #include "../Vulkan.h"
-#include "../Buffer.h"
-#include "../BufferHelper.h"
-#include "../LogicalDevice.h"
-#include "../PhysicalDevice.h"
-#include "../CommandPool.h"
-#include "../CommandBuffer.h"
-#include "../Image.h"
 
 namespace Engine {
+	class LogicalDevice;
+	class PhysicalDevice;
+	class CommandPool;
+	class Image;
+
 	namespace Utils {
 		class TextureLoader {
 		public:
 			TextureLoader();
 			~TextureLoader();
 
-			void LoadTexture(
+			static void LoadTexture(
+				std::unique_ptr<Image>& texture,
 				const char* texturePath, 
 				LogicalDevice& logicalDevice, 
 				PhysicalDevice& physicalDevice,
-				CommandPool& commandPool,
-				VkQueue& queue
+				CommandPool& commandPool
 			);
 		};
 	}

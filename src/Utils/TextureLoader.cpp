@@ -1,5 +1,16 @@
 #include "./TextureLoader.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+#include "../Buffer.h"
+#include "../BufferHelper.h"
+#include "../LogicalDevice.h"
+#include "../PhysicalDevice.h"
+#include "../CommandPool.h"
+#include "../CommandBuffer.h"
+#include "../Image.h"
+
 namespace Engine {
 	namespace Utils {
 		TextureLoader::TextureLoader() {
@@ -10,8 +21,13 @@ namespace Engine {
 
 		}
 
-		void TextureLoader::LoadTexture(const char* texturePath, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, 
-			CommandPool& commandPool, VkQueue& queue) {
+		void TextureLoader::LoadTexture(
+			std::unique_ptr<Image>& texture, 
+			const char* texturePath, 
+			LogicalDevice& logicalDevice, 
+			PhysicalDevice& physicalDevice, 
+			CommandPool& commandPool
+		) {
 			int texWidth = 0;
 			int texHeight = 0;
 			int texChannels = 0;
@@ -29,7 +45,7 @@ namespace Engine {
 				logicalDevice, 
 				physicalDevice, 
 				imageSize, 
-				VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+				VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
 			);
 
 			transferBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -39,8 +55,7 @@ namespace Engine {
 
 			stbi_image_free(pixels);
 
-			// Test if we need to return a pointer instead and cleanup the resources later
-			Engine::Image texelImage = Engine::Image(
+			texture = std::make_unique<class Image> (
 				1,
 				logicalDevice.GetHandle(),
 				physicalDevice.GetHandle(),
@@ -50,14 +65,14 @@ namespace Engine {
 				VK_IMAGE_TILING_OPTIMAL,
 				static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT),
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				NULL
+				VK_IMAGE_ASPECT_COLOR_BIT	
 			);
 
-			texelImage.CreateImageView();
+			texture->CreateImageView();
 
-			texelImage.TransitionImageLayoutTo(
+			texture->TransitionImageLayoutTo(
 				commandPool.GetHandle(),
-				queue	,
+				logicalDevice.GetGraphicsQueue(),
 				VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 			);
@@ -65,20 +80,22 @@ namespace Engine {
 			Buffer::CopyToImage(
 				logicalDevice.GetHandle(),
 				commandPool.GetHandle(),
-				queue,
-				texelImage.GetImage(0),
-				texelImage.Width,
-				texelImage.Height,
-				texelImage.ImageLayout,
+				logicalDevice.GetGraphicsQueue(),
+				texture->GetImage(0),
+				texture->Width,
+				texture->Height,
+				texture->ImageLayout,
 				transferBuffer.GetBuffer(0)
 			);
 
-			texelImage.TransitionImageLayoutTo(
+			texture->TransitionImageLayoutTo(
 				commandPool.GetHandle(),
-				queue,
+				logicalDevice.GetGraphicsQueue(),
 				VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 			);
+
+			texture->CreateImageSampler();
 		}
 	}
 }
