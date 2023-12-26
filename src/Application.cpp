@@ -9,12 +9,12 @@ namespace Engine {
 		m_Input.reset(new class InputSystem::Input());
 
 		m_Window->Render = std::bind(&Application::Draw, this);
-		m_Window->OnKeyPress = std::bind(&Application::ProcessKey, this, std::placeholders::_1, std::placeholders::_2,
+		m_Window->OnKeyPress = std::bind(&InputSystem::Input::ProcessKey, m_Input.get(), std::placeholders::_1, std::placeholders::_2,
 			std::placeholders::_3, std::placeholders::_4);
 		m_Window->OnResize = std::bind(&Application::ProcessResize, this, std::placeholders::_1, std::placeholders::_2);
-		m_Window->OnMouseClick = std::bind(&Application::ProcessMouseClick, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-		m_Window->OnCursorMove = std::bind(&Application::ProcessCursorMove, this, std::placeholders::_1, std::placeholders::_2);
-		m_Window->OnCursorOnScreen = std::bind(&Application::ProcessCursorOnScreen, this, std::placeholders::_1);
+		m_Window->OnMouseClick = std::bind(&InputSystem::Input::ProcessMouseClick, m_Input.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+		m_Window->OnCursorMove = std::bind(&InputSystem::Input::ProcessCursorMove, m_Input.get(), std::placeholders::_1, std::placeholders::_2);
+		m_Window->OnCursorOnScreen = std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
 	}
 
 	Application::~Application() {
@@ -51,6 +51,8 @@ namespace Engine {
 	}
 
 	void Application::Update(float t) {
+
+		if (m_Input->Keys[GLFW_KEY_ESCAPE].IsPressed) m_Window->Close();
 
 		if (p_ActiveScene) {
 			p_ActiveScene->OnUpdate(t, *m_Input.get());
@@ -375,63 +377,11 @@ namespace Engine {
 		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 
-	// Maybe move callback functions to Input class?
-	void Application::ProcessKey(int key, int scancode, int action, int mods) {
-		if (key < 0) return;
-
-		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-			std::cout << "Closing application" << '\n';
-			m_Window->Close();
-		}
-
-		switch (action) {
-		case GLFW_PRESS:
-			m_Input->Keys[key].IsDown = true;
-			m_Input->Keys[key].IsPressed = true;
-			break;
-		case GLFW_RELEASE:
-			m_Input->Keys[key].IsDown = false;
-			m_Input->Keys[key].IsPressed = false;
-			break;
-		default:
-			break;
-		}
-	}
-
 	void Application::ProcessResize(int width, int height) {
 		m_FramebufferResized = true;
 		std::cout << "width - " << width << " height - " << height << '\n';
 
 		p_ActiveScene->OnResize(width, height);
-	}
-
-	void Application::ProcessMouseClick(int button, int action, int mods) {
-		if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-			m_Input->Mouse.LeftButtonPressed = true;
-		}
-		
-		if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-			m_Input->Mouse.RightButtonPressed = true;
-		}
-
-		if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
-			m_Input->Mouse.LeftButtonPressed = false;
-		}
-		
-		if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
-			m_Input->Mouse.RightButtonPressed = false;
-		}
-
-	}
-
-	void Application::ProcessCursorMove(double x, double y) {
-		m_Input->Mouse.x = x;
-		m_Input->Mouse.y = y;
-	}
-
-	void Application::ProcessCursorOnScreen(int entered) {
-		if (entered == 1) m_Input->Mouse.OnScreen = true;
-		if (entered == 0) m_Input->Mouse.OnScreen = false;
 	}
 
 	void Application::CreateFramebuffers(const VkRenderPass& renderPass) {

@@ -23,6 +23,11 @@ namespace Engine {
 			Input();
 			~Input();
 
+			void ProcessKey(int key, int scancode, int action, int mods);
+			void ProcessMouseClick(int button, int action, int mods);
+			void ProcessCursorMove(double x, double y);
+			void ProcessCursorOnScreen(int entered);
+
 		public:
 			key_t Keys[GLFW_KEY_LAST];
 			mouse_t Mouse;

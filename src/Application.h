@@ -89,11 +89,7 @@ namespace Engine {
 
 		void drawRayTraced(VkCommandBuffer &r_CommandBuffer, uint32_t imageIndex);
 		
-		void ProcessKey(int key, int scancode, int action, int mods);
 		void ProcessResize(int width, int height);
-		void ProcessMouseClick(int button, int action, int mods);
-		void ProcessCursorMove(double x, double y);
-		void ProcessCursorOnScreen(int entered);
 
 		void CreateFramebuffers(const VkRenderPass& renderPass);
 		void ClearFramebuffers();
