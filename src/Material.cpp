@@ -48,10 +48,10 @@ namespace Engine {
 			vertices, m_VertexBuffer.get());
 	}
 
-	void Material::CreateIndexBuffer(std::vector<uint16_t> indices, PhysicalDevice& physicalDevice, 
+	void Material::CreateIndexBuffer(std::vector<uint32_t> indices, PhysicalDevice& physicalDevice, 
 		LogicalDevice& logicalDevice, CommandPool& commandPool) {
 
-		VkDeviceSize bufferSize = sizeof(uint16_t) * indices.size();
+		VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
 
 		m_IndexBuffer.reset(new class Buffer(1, logicalDevice, physicalDevice,
 			bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT));

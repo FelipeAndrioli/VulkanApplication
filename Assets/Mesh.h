@@ -1,17 +1,25 @@
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include <vector>
 #include <array>
 
 #include<glm/glm.hpp>
+#include <glm/gtx/hash.hpp>
 
 #include "../src/Vulkan.h"
 
 namespace Assets {
 	struct Vertex {
+
 		glm::vec3 pos;
 		glm::vec3 color;
 		glm::vec2 texCoord;
+
+		bool operator==(const Vertex& other) const {
+			return pos == other.pos && color == other.color && texCoord == other.texCoord;
+		}
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
@@ -45,6 +53,15 @@ namespace Assets {
 
 	struct Mesh {
 		std::vector<Vertex> Vertices;
-		std::vector<uint16_t> Indices;
-	};
+		std::vector<uint32_t> Indices;
+	};	
 }
+
+namespace std {
+    template<> struct hash<Assets::Vertex> {
+        size_t operator()(Assets::Vertex const& vertex) const {
+            return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
+        }
+    };
+}
+

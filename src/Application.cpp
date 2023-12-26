@@ -261,27 +261,50 @@ namespace Engine {
 
 				VkDeviceSize offsets[] = { 0 };
 
-				vkCmdBindVertexBuffers(commandBuffer, 0, 1,
-					&material->GetVertexBuffers()->GetBuffer(m_CurrentFrame), offsets);
-				vkCmdBindIndexBuffer(commandBuffer, material->GetIndexBuffers()->GetBuffer(), 0,
-					VK_INDEX_TYPE_UINT16);
+				vkCmdBindVertexBuffers(
+					commandBuffer, 
+					0, 
+					1,
+					&material->GetVertexBuffers()->GetBuffer(m_CurrentFrame), 
+					offsets
+				);
+		
+				vkCmdBindIndexBuffer(
+					commandBuffer, 
+					material->GetIndexBuffers()->GetBuffer(), 
+					0, 
+					VK_INDEX_TYPE_UINT32
+				);
 
 				indexOffset = 0;
 				vertexOffset = 0;
 			}
 
-			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-				material->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 0, 1,
-				&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 0, 
-				nullptr);
+			vkCmdBindDescriptorSets(
+				commandBuffer, 
+				VK_PIPELINE_BIND_POINT_GRAPHICS, 
+				material->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 
+				0, 
+				1,
+				&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
+				0, 
+				nullptr
+			);
 
 			object->SetObjectUniformBuffer(m_CurrentFrame);
 
 			auto objectVertexCount = object->Meshes->Vertices.size();
 			auto objectIndexCount = object->Meshes->Indices.size();
 
-			vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(objectIndexCount), 1, indexOffset, vertexOffset, 0);
-		
+			vkCmdDrawIndexed(
+				commandBuffer, 
+				static_cast<uint32_t>(objectIndexCount), 
+				1, 
+				indexOffset, 
+				vertexOffset, 
+				0
+			);
+	
 			vertexOffset += static_cast<uint32_t>(objectVertexCount);
 			indexOffset += static_cast<uint32_t>(objectIndexCount);
 		}

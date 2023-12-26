@@ -280,8 +280,56 @@ public:
 	}
 };
 
+class CustomObject : public Assets::Object {
+public:
+
+	struct UniformBufferObject {
+		glm::mat4 object = glm::mat4(1.0f);
+		glm::mat4 view = glm::mat4(1.0f);
+		glm::mat4 proj = glm::mat4(1.0f);
+	};
+
+	UniformBufferObject *ubo = new UniformBufferObject();
+
+	void OnCreate() {
+
+		SetUniformBufferObject(ubo, sizeof(*ubo));
+	}
+
+	void OnUIRender() {
+		std::string t = "Transformations " + ID;
+
+		if (ImGui::TreeNode(t.c_str())) {
+			std::string t_label_x = "Translation x " + ID;
+			std::string t_label_y = "Translation y " + ID;
+			std::string t_label_z = "Translation z " + ID;
+
+			ImGui::SliderFloat(t_label_x.c_str(), &Transformations.translation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &Transformations.translation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &Transformations.translation.z, -200.0f, 200.0f);
+
+			std::string r_label_x = "Rotation x " + ID;
+			std::string r_label_y = "Rotation y " + ID;
+			std::string r_label_z = "Rotation z " + ID;
+			
+			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
+
+			ImGui::TreePop();
+		}
+	}
+
+	void OnUpdate(float t) {
+		ubo->object = GetModelMatrix();
+		ubo->view = SceneCamera->ViewMatrix;
+		ubo->proj = SceneCamera->ProjectionMatrix;
+	}
+};
+
 int main() {
 
+	/*
 	std::unique_ptr<Engine::Material> rainbowMaterial = std::make_unique<Engine::Material>();
 	rainbowMaterial->Layout.ID = "RainbowMaterial";
 	rainbowMaterial->Layout.VertexShaderPath = "./Assets/Shaders/vert.spv";
@@ -323,6 +371,26 @@ int main() {
 	myScene->AddObject(&q2);
 	myScene->AddObject(&q3);
 	myScene->AddObject(&q4);
+	*/
+
+	std::unique_ptr<Engine::Material> texturedMaterial = std::make_unique<Engine::Material>();
+	texturedMaterial->Layout.ID = "TexturedMaterial";
+	texturedMaterial->Layout.VertexShaderPath = "./Assets/Shaders/textured_vert.spv";
+	texturedMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/textured_frag.spv";
+	texturedMaterial->Layout.TexturePath = "./Assets/Textures/viking_room.png";
+
+	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
+	myScene->AddMaterial(texturedMaterial.get());
+	
+	CustomObject testObject = CustomObject();
+	testObject.ModelPath = "C:/Users/Felipe/Desktop/viking_room.obj";
+	testObject.Material = texturedMaterial.get();
+	testObject.SceneCamera = myScene->MainCamera;
+	testObject.Transformations.translation.y = -0.7f;
+	testObject.Transformations.rotation.x = -90.0f;
+	testObject.Transformations.rotation.z = -116.0f;
+
+	myScene->AddObject(&testObject);
 	
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
@@ -342,8 +410,8 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-	rainbowMaterial.reset();
-	colorMaterial.reset();
+	//rainbowMaterial.reset();
+	//colorMaterial.reset();
 	texturedMaterial.reset();
 	
 	myScene.reset();

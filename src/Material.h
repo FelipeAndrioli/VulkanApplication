@@ -41,7 +41,7 @@ namespace Engine {
 		);
 
 		void CreateIndexBuffer(
-			std::vector<uint16_t> indices, 
+			std::vector<uint32_t> indices, 
 			PhysicalDevice& physicalDevice, 
 			LogicalDevice& logicalDevice, 
 			CommandPool& commandPool

@@ -13,6 +13,7 @@
 #include "../src/Material.h"
 
 #include "../src/Input/Input.h"
+#include "../src/Utils/ModelLoader.h"
 
 namespace Assets {
 	Scene::Scene() {
@@ -135,6 +136,10 @@ namespace Assets {
 				false,
 				material->Texture.get()
 			));
+
+			if (object->ModelPath != nullptr) {
+				Engine::Utils::ModelLoader::LoadModel(*object);
+			}
 
 			m_HelperVertices.insert(m_HelperVertices.end(), object->Meshes->Vertices.begin(), object->Meshes->Vertices.end());
 			m_HelperIndices.insert(m_HelperIndices.end(), object->Meshes->Indices.begin(), object->Meshes->Indices.end());

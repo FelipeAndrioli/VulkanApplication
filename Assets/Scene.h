@@ -57,7 +57,7 @@ namespace Assets {
 		Camera* MainCamera = nullptr;
 	private:
 		std::vector<Vertex> m_HelperVertices;
-		std::vector<uint16_t> m_HelperIndices;
+		std::vector<uint32_t> m_HelperIndices;
 
 		Engine::Material* DefaultMaterial = nullptr;
 

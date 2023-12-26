@@ -45,6 +45,7 @@ namespace Assets {
 		void AddIndex(uint16_t index);
 	public:
 		std::string ID = "";
+		const char* ModelPath = nullptr;
 
 		// TODO: Find a way to remove the camera pointer from the object 
 		Camera* SceneCamera = nullptr;
