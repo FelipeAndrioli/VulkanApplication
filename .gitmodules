@@ -4,3 +4,6 @@
 [submodule "libs/stb"]
 	path = libs/stb
 	url = git@github.com:nothings/stb.git
+[submodule "libs/tinyobjloader"]
+	path = libs/tinyobjloader
+	url = git@github.com:tinyobjloader/tinyobjloader.git
