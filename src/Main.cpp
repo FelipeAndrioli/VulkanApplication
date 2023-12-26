@@ -315,17 +315,17 @@ int main() {
 	auto q1 = MyCubeOne();
 	q1.Rotate = true;
 	q1.Material = rainbowMaterial.get();
-	q1.SceneCamera = &myScene->DefaultCamera;
+	q1.SceneCamera = myScene->MainCamera;
 	auto q2 = MyCubeTwo();
-	q2.SceneCamera = &myScene->DefaultCamera;
+	q2.SceneCamera = myScene->MainCamera;
 	q2.Material = colorMaterial.get();
 	auto q3 = MyCubeThree();
-	q3.SceneCamera = &myScene->DefaultCamera;
+	q3.SceneCamera = myScene->MainCamera;
 	auto q4 = MyCubeOne();
 	q4.Transformations.translation.y = 2.0f;
 	q4.Transformations.rotation.x = 200.0f;
 	q4.Material = texturedMaterial.get();
-	q4.SceneCamera = &myScene->DefaultCamera;
+	q4.SceneCamera = myScene->MainCamera;
 
 	myScene->AddObject(&q1);
 	myScene->AddObject(&q2);

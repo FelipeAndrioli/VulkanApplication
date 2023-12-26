@@ -1,10 +1,24 @@
 #include "Scene.h"
 
+#include "Object.h"
+#include "Camera.h"
+#include "Mesh.h"
+
+#include "../src/Buffer.h"
+#include "../src/DescriptorSets.h"
+#include "../src/LogicalDevice.h"
+#include "../src/PhysicalDevice.h"
+#include "../src/DescriptorSetLayout.h"
+#include "../src/DescriptorPool.h"
+#include "../src/Material.h"
+
+#include "../src/Input/Input.h"
+
 namespace Assets {
 	Scene::Scene() {
 		std::cout << "Starting scene" << std::endl;
 
-		DefaultCamera = Camera(glm::vec3(0.0f, 0.0f, 3.0f), 45.0f, m_Width, m_Height);
+		MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), 45.0f, m_Width, m_Height);
 
 		DefaultMaterial = new Engine::Material();
 		MapMaterials.emplace(DefaultMaterial->Layout.ID, DefaultMaterial);
@@ -19,6 +33,7 @@ namespace Assets {
 		MapMaterials.clear();
 
 		delete DefaultMaterial;
+		delete MainCamera;
 	}
 
 	void Scene::AddObject(Object* object) {
@@ -43,7 +58,7 @@ namespace Assets {
 	}
 
 	void Scene::OnUIRender() {
-		DefaultCamera.OnUIRender();
+		MainCamera->OnUIRender();
 		
 		for (auto object : Objects) {
 			object->OnUIRender();
@@ -52,7 +67,7 @@ namespace Assets {
 
 	void Scene::OnUpdate(float t, const Engine::InputSystem::Input& input) {
 
-		DefaultCamera.OnUpdate(t, input);
+		MainCamera->OnUpdate(t, input);
 
 		for (auto object : Objects) {
 			object->OnUpdate(t);
@@ -65,7 +80,7 @@ namespace Assets {
 		m_Width = width;
 		m_Height = height;
 
-		DefaultCamera.Resize(m_Width, m_Height);
+		MainCamera->Resize(m_Width, m_Height);
 	}
 
 	void Scene::SetupScene(Engine::LogicalDevice& logicalDevice, Engine::PhysicalDevice& physicalDevice,

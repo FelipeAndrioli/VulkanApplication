@@ -3,25 +3,28 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <unordered_map>
 
-#include "Object.h"
-#include "Camera.h"
-
-#include "../src/Buffer.h"
-#include "../src/DescriptorSets.h"
-#include "../src/LogicalDevice.h"
-#include "../src/PhysicalDevice.h"
-#include "../src/DescriptorSetLayout.h"
-#include "../src/DescriptorPool.h"
-#include "../src/Material.h"
-
-#include "../src/Input/Input.h"
+#include "../src/Vulkan.h"
 
 namespace Engine {
-	class ResourceSet;
+	class LogicalDevice;
+	class PhysicalDevice;
+	class CommandPool;
+	class SwapChain;
+	class DepthBuffer;
+	class Material;
+
+	namespace InputSystem {
+		class Input;
+	}
 }
 
 namespace Assets {
+
+	class Camera;
+	class Object;
+	struct Vertex;
 
 	class Scene {
 	public:
@@ -50,7 +53,7 @@ namespace Assets {
 		std::unordered_map<std::string, Engine::Material*> MapMaterials;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 	
-		Camera DefaultCamera;
+		Camera* MainCamera = nullptr;
 	private:
 		std::vector<Vertex> m_HelperVertices;
 		std::vector<uint16_t> m_HelperIndices;

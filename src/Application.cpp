@@ -1,5 +1,7 @@
 #include "Application.h" 
 
+#include "../Assets/Object.h"
+
 namespace Engine {
 	Application::Application(const Settings &settings) : m_Settings(settings) {
 		m_Window.reset(new class Window(m_Settings));
@@ -133,7 +135,6 @@ namespace Engine {
 
 		m_InFlightFences.reset(new class Fence(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
 		m_ComputeInFlightFences.reset(new class Fence(m_LogicalDevice->GetHandle(), MAX_FRAMES_IN_FLIGHT));
-
 	}
 
 	void Application::recreateSwapChain() {
