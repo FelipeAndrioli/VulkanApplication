@@ -1,20 +1,19 @@
 #pragma once
 
 #include "Vulkan.h"
-#include "GraphicsPipeline.h"
-#include "Buffer.h"
-#include "BufferHelper.h"
-#include "PipelineLayout.h"
-#include "LogicalDevice.h"
-#include "PhysicalDevice.h"
-#include "CommandPool.h"
-#include "SwapChain.h"
 #include "MaterialLayout.h"
-#include "DepthBuffer.h"
-#include "Image.h"
-#include "./Utils/TextureLoader.h"
+#include "GraphicsPipeline.h"
 
 namespace Engine {
+	class GraphicsPipeline;
+	class Buffer;
+	class LogicalDevice;
+	class PhysicalDevice;
+	class CommandPool;
+	class SwapChain;
+	class DepthBuffer;
+	class Image;
+
 	class Material {
 	public:
 
