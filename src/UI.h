@@ -9,16 +9,20 @@
 #include "imgui_impl_vulkan.h"
 
 #include "Vulkan.h"
-//#include "Common.h"
-#include "CommandBUffer.h"
-#include "Settings.h"
-#include "Instance.h"
-#include "PhysicalDevice.h"
-#include "LogicalDevice.h"
-#include "SwapChain.h"
-#include "../Assets/Scene.h"
+
+namespace Assets {
+	class Scene;
+}
 
 namespace Engine {
+	class CommandBuffer;
+	class Instance;
+	class PhysicalDevice;
+	class LogicalDevice;
+	class SwapChain;
+
+	struct Settings;
+
 	class UI {
 	public:
 		UI(GLFWwindow* window, Instance* instance, PhysicalDevice* physicalDevice, LogicalDevice* logicalDevice,

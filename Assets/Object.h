@@ -5,14 +5,18 @@
 
 #include "glm/gtc/matrix_transform.hpp"
 
-#include "Mesh.h"
-#include "Camera.h"
-
-#include "../src/Buffer.h"
-#include "../src/DescriptorSets.h"
-#include "../src/Material.h"
+namespace Engine {
+	class Buffer;
+	class DescriptorSets;
+	class Material;
+}
 
 namespace Assets {
+	
+	struct Mesh;
+	struct Vertex;
+
+	class Camera;
 
 	struct Transform {
 		glm::vec3 translation;

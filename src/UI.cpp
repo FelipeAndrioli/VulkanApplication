@@ -1,5 +1,13 @@
 #include "UI.h"
 
+#include "CommandBuffer.h"
+#include "Settings.h"
+#include "Instance.h"
+#include "PhysicalDevice.h"
+#include "LogicalDevice.h"
+#include "SwapChain.h"
+#include "../Assets/Scene.h"
+
 namespace Engine {
 
 	UI::UI(GLFWwindow* window, Instance* instance, PhysicalDevice* physicalDevice, LogicalDevice* logicalDevice, SwapChain* swapChain, 

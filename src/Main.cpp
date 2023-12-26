@@ -36,23 +36,15 @@
 */
 
 #include <iostream>
-#include <stdexcept>
-#include <cstdlib>
-#include <vector>
-#include <array>
-#include <optional>
-#include <set>
-#include <limits>
-#include <algorithm>
-#include <fstream>
-#include <random>
-#include <functional>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Application.h"
-#include "MaterialLayout.h"
+#include "UI.h"
+#include "Material.h"
+
+#include "../Assets/Camera.h"
 #include "../Assets/Scene.h"
 #include "../Assets/Object.h"
 

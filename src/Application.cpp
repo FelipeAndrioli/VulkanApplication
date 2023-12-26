@@ -1,6 +1,32 @@
 #include "Application.h" 
 
+#include "Common.h"
+#include "UI.h"
+#include "Window.h"
+#include "Instance.h"
+#include "Surface.h"
+#include "PhysicalDevice.h"
+#include "LogicalDevice.h"
+#include "SwapChain.h"
+#include "RenderPass.h"
+#include "GraphicsPipeline.h"
+#include "DescriptorSets.h"
+#include "ComputePipeline.h"
+#include "CommandPool.h"
+#include "CommandBuffer.h"
+#include "Buffer.h"
+#include "BufferHelper.h"
+#include "Semaphore.h"
+#include "Fence.h"
+#include "Instance.h"
+#include "DebugUtilsMessenger.h"
+#include "Material.h"
+#include "DepthBuffer.h"
+
+#include "./Input/Input.h"
+
 #include "../Assets/Object.h"
+#include "../Assets/Scene.h"
 
 namespace Engine {
 	Application::Application(const Settings &settings) : m_Settings(settings) {

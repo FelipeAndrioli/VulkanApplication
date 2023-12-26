@@ -1,55 +1,10 @@
 #pragma once
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include <iostream>
-#include <stdexcept>
-#include <cstdlib>
 #include <vector>
-#include <array>
-#include <optional>
-#include <set>
-#include <limits>
-#include <algorithm>
-#include <fstream>
-#include <random>
-#include <functional>
-
-#include <chrono>
-#include <memory>
 
 #include "Vulkan.h"
-#include "Common.h"
-#include "UI.h"
 #include "Settings.h"
-#include "Window.h"
-#include "Instance.h"
-#include "Surface.h"
-#include "PhysicalDevice.h"
-#include "LogicalDevice.h"
-#include "SwapChain.h"
-#include "RenderPass.h"
-#include "GraphicsPipeline.h"
-#include "DescriptorSets.h"
-#include "ComputePipeline.h"
-#include "CommandPool.h"
-#include "CommandBuffer.h"
-#include "Buffer.h"
-#include "BufferHelper.h"
-#include "Semaphore.h"
-#include "Fence.h"
-#include "Instance.h"
-#include "DebugUtilsMessenger.h"
-#include "Material.h"
-#include "DepthBuffer.h"
-
-#include "../Assets/Scene.h"
-
-#include "../src/Input/Input.h"
 
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
@@ -61,7 +16,39 @@ const std::vector<const char*> c_ValidationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
 
+namespace Assets {
+	class Scene;
+}
+
 namespace Engine {
+	namespace InputSystem {
+		class Input;
+	}
+
+	class Window;
+	class Instance;
+	class Surface;
+	class PhysicalDevice;
+	class LogicalDevice;
+	class SwapChain;
+	class GraphicsPipeline;
+	class GraphicsPipeline;
+	class CommandPool;
+	class DebugUtilsMessenger;
+	class Semaphore;
+	class Semaphore;
+	class Semaphore;
+	class Fence;
+	class Fence;
+	class DepthBuffer;
+	class RenderPass;
+	class UI;
+	class CommandBuffer;
+	class Buffer;
+	class CommandBuffer;
+	class Buffer;
+	struct Settings;
+
 	class Application {
 	public:
 		Application(const Settings &settings = Settings());
