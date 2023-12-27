@@ -9,7 +9,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 
 - [x] Depth Buffer 
 - [x] Texture 
-- [x] Camera clas
+- [x] Camera class
 	- [x] Movement 
 	- [x] Turn Movement
 	- [x] Based on Input
