@@ -8,12 +8,13 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 ## Current Work (not in order)
 
 - [x] Depth Buffer 
-- [ ] Texture 
+- [x] Texture 
 - [x] Camera clas
 	- [x] Movement 
 	- [x] Turn Movement
 	- [x] Based on Input
-- [ ] Custom Model loading
+- [x] Custom Model loading
+- [IN PROGRESS] Proper Model/Material/Shader/Texture Set
 - [ ] Default models
 	- [ ] Plane
 	- [ ] Cube
