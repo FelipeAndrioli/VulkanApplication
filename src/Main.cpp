@@ -75,7 +75,7 @@ public:
 			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }}		// bottom back right	7 - OK
 		};
 
-		std::vector<uint16_t> i = {
+		std::vector<uint32_t> i = {
 			0, 2, 6, 2, 4, 6,		// front face
 			0, 6, 7, 0, 1, 7,		// right face
 			3, 4, 2, 3, 5, 4,		// left face
@@ -154,7 +154,7 @@ public:
 			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }}		// bottom back right	7 - OK
 		};
 
-		std::vector<uint16_t> i = {
+		std::vector<uint32_t> i = {
 			0, 2, 6, 2, 4, 6,		// front face
 			0, 6, 7, 0, 1, 7,		// right face
 			3, 4, 2, 3, 5, 4,		// left face
@@ -231,7 +231,7 @@ public:
 			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }}		// bottom back right	7 - OK
 		};
 
-		std::vector<uint16_t> i = {
+		std::vector<uint32_t> i = {
 			0, 2, 6, 2, 4, 6,		// front face
 			0, 6, 7, 0, 1, 7,		// right face
 			3, 4, 2, 3, 5, 4,		// left face
@@ -378,12 +378,14 @@ int main() {
 	texturedMaterial->Layout.VertexShaderPath = "./Assets/Shaders/textured_vert.spv";
 	texturedMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/textured_frag.spv";
 	texturedMaterial->Layout.TexturePath = "./Assets/Textures/viking_room.png";
+	//texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Desktop/container.jpg";
 
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 	myScene->AddMaterial(texturedMaterial.get());
 	
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Desktop/viking_room.obj";
+	//testObject.ModelPath = "C:/Users/Felipe/Desktop/cube.obj";
 	testObject.Material = texturedMaterial.get();
 	testObject.SceneCamera = myScene->MainCamera;
 	testObject.Transformations.translation.y = -0.7f;

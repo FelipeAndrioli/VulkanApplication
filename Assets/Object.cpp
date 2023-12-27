@@ -59,13 +59,13 @@ namespace Assets {
 		Meshes->Vertices.push_back(vertex);
 	}
 
-	void Object::AddIndices(std::vector<uint16_t> indices) {
-		for (const uint16_t& index : indices) {
+	void Object::AddIndices(std::vector<uint32_t> indices) {
+		for (const uint32_t& index : indices) {
 			AddIndex(index);
 		}
 	}
 
-	void Object::AddIndex(uint16_t index) {
+	void Object::AddIndex(uint32_t index) {
 		Meshes->Indices.push_back(index);
 	}
 }

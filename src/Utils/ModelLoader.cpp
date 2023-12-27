@@ -50,18 +50,13 @@ namespace Engine {
 
 					vertex.color = { 1.0f, 1.0f, 1.0f };
 
-					object.Meshes->Vertices.push_back(vertex);
-					object.Meshes->Indices.push_back(static_cast<uint32_t>(object.Meshes->Indices.size()));
-
-					/*
 					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(object.Meshes->Indices.size());
+						uniqueVertices[vertex] = static_cast<uint32_t>(object.Meshes->Vertices.size());
 
 						object.Meshes->Vertices.push_back(vertex);
 					}
 
 					object.Meshes->Indices.push_back(uniqueVertices[vertex]);
-					*/
 				}
 			}
 		}

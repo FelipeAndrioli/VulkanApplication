@@ -41,8 +41,8 @@ namespace Assets {
 
 		void AddVertices(std::vector<Vertex> vertices);
 		void AddVertex(Vertex vertex);
-		void AddIndices(std::vector<uint16_t> indices);
-		void AddIndex(uint16_t index);
+		void AddIndices(std::vector<uint32_t> indices);
+		void AddIndex(uint32_t index);
 	public:
 		std::string ID = "";
 		const char* ModelPath = nullptr;

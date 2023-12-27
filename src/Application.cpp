@@ -233,7 +233,7 @@ namespace Engine {
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		Material* material = p_ActiveScene->MapMaterials.find("Default")->second;
-		uint32_t vertexOffset = 0;
+		int32_t vertexOffset = 0;
 		uint32_t indexOffset = 0;
 
 		for (Assets::Object* object : p_ActiveScene->Objects) {
@@ -301,11 +301,11 @@ namespace Engine {
 				static_cast<uint32_t>(objectIndexCount), 
 				1, 
 				indexOffset, 
-				vertexOffset, 
+				indexOffset,
 				0
 			);
-	
-			vertexOffset += static_cast<uint32_t>(objectVertexCount);
+
+			vertexOffset += static_cast<int32_t>(objectVertexCount);
 			indexOffset += static_cast<uint32_t>(objectIndexCount);
 		}
 		
