@@ -379,7 +379,7 @@ int main() {
 	texturedMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/textured_frag.spv";
 	//texturedMaterial->Layout.TexturePath = "./Assets/Textures/viking_room.png";
 	//texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Desktop/container.jpg";
-	texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/normal.png";
+	texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
 
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 	myScene->AddMaterial(texturedMaterial.get());
