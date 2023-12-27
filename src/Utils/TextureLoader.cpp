@@ -32,6 +32,7 @@ namespace Engine {
 			int texHeight = 0;
 			int texChannels = 0;
 
+			stbi_set_flip_vertically_on_load(true);
 			stbi_uc* pixels = stbi_load(texturePath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
 			VkDeviceSize imageSize = texWidth * texHeight * 4;

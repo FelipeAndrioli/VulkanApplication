@@ -377,20 +377,19 @@ int main() {
 	texturedMaterial->Layout.ID = "TexturedMaterial";
 	texturedMaterial->Layout.VertexShaderPath = "./Assets/Shaders/textured_vert.spv";
 	texturedMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/textured_frag.spv";
-	texturedMaterial->Layout.TexturePath = "./Assets/Textures/viking_room.png";
+	//texturedMaterial->Layout.TexturePath = "./Assets/Textures/viking_room.png";
 	//texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Desktop/container.jpg";
+	texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/normal.png";
 
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 	myScene->AddMaterial(texturedMaterial.get());
 	
 	CustomObject testObject = CustomObject();
-	testObject.ModelPath = "C:/Users/Felipe/Desktop/viking_room.obj";
-	//testObject.ModelPath = "C:/Users/Felipe/Desktop/cube.obj";
+	//testObject.ModelPath = "C:/Users/Felipe/Desktop/viking_room.obj";
+	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.Material = texturedMaterial.get();
 	testObject.SceneCamera = myScene->MainCamera;
-	testObject.Transformations.translation.y = -0.7f;
-	testObject.Transformations.rotation.x = -90.0f;
-	testObject.Transformations.rotation.z = -116.0f;
+	testObject.Transformations.translation.z = -2.0f;
 
 	myScene->AddObject(&testObject);
 	
