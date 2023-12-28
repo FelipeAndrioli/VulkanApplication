@@ -86,8 +86,7 @@ public:
 
 		Transformations.translation.z = -4.0f;
 
-		AddVertices(v);
-		AddIndices(i);
+		this->Meshes.push_back({ v, i });
 	}
 
 	void OnUIRender() {
@@ -166,8 +165,7 @@ public:
 		Transformations.translation.x = 2.0f;
 		Transformations.translation.z = -4.0f;
 
-		AddVertices(v);
-		AddIndices(i);
+		this->Meshes.push_back({ v, i });
 	}
 
 	void OnUIRender() {
@@ -243,8 +241,7 @@ public:
 		Transformations.translation.x = -2.0f;
 		Transformations.translation.z = -4.0f;
 
-		AddVertices(v);
-		AddIndices(i);
+		this->Meshes.push_back({ v, i });
 	}
 
 	void OnUIRender() {

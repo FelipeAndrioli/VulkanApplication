@@ -141,8 +141,12 @@ namespace Assets {
 				Engine::Utils::ModelLoader::LoadModel(*object);
 			}
 
-			m_HelperVertices.insert(m_HelperVertices.end(), object->Meshes->Vertices.begin(), object->Meshes->Vertices.end());
-			m_HelperIndices.insert(m_HelperIndices.end(), object->Meshes->Indices.begin(), object->Meshes->Indices.end());
+			//m_HelperVertices.insert(m_HelperVertices.end(), object->Meshes->Vertices.begin(), object->Meshes->Vertices.end());
+			//m_HelperIndices.insert(m_HelperIndices.end(), object->Meshes->Indices.begin(), object->Meshes->Indices.end());
+			for (Assets::Mesh mesh : object->Meshes) {
+				m_HelperVertices.insert(m_HelperVertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
+				m_HelperIndices.insert(m_HelperIndices.end(), mesh.Indices.begin(), mesh.Indices.end());
+			}
 		}
 	}
 }

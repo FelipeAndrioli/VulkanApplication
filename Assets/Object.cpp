@@ -13,8 +13,6 @@ namespace Assets {
 		Transformations.translation = glm::vec3(0.0f, 0.0f, 0.0f);
 		Transformations.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
 		Transformations.scalation = glm::vec3(1.0f, 1.0f, 1.0f);
-
-		Meshes = new Mesh();
 	}
 
 	Object::~Object() {
@@ -47,25 +45,5 @@ namespace Assets {
 		if (p_UniformBufferObject == nullptr) return;
 
 		memcpy(UniformBuffer->BufferMemory->MemoryMapped[currentImage], p_UniformBufferObject, UniformBufferObjectSize);
-	}
-
-	void Object::AddVertices(std::vector<Vertex> vertices) {
-		for (const Vertex& vertex : vertices) {
-			AddVertex(vertex);
-		}
-	}
-
-	void Object::AddVertex(Vertex vertex) {
-		Meshes->Vertices.push_back(vertex);
-	}
-
-	void Object::AddIndices(std::vector<uint32_t> indices) {
-		for (const uint32_t& index : indices) {
-			AddIndex(index);
-		}
-	}
-
-	void Object::AddIndex(uint32_t index) {
-		Meshes->Indices.push_back(index);
 	}
 }

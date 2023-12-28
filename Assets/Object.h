@@ -38,19 +38,14 @@ namespace Assets {
 		void ResetResources();
 		void SetUniformBufferObject(void* uniformBuffer, size_t uniformBufferSize);
 		void SetObjectUniformBuffer(uint32_t currentImage);
-
-		void AddVertices(std::vector<Vertex> vertices);
-		void AddVertex(Vertex vertex);
-		void AddIndices(std::vector<uint32_t> indices);
-		void AddIndex(uint32_t index);
 	public:
 		std::string ID = "";
 		const char* ModelPath = nullptr;
-
-		// TODO: Find a way to remove the camera pointer from the object 
-		Camera* SceneCamera = nullptr;
-		
+		std::vector<Mesh> Meshes;
 		Engine::Material* Material = nullptr;
+
+		// TODO: Remove camera from here 
+		Camera* SceneCamera = nullptr;
 		
 		Transform Transformations = {};
 	
@@ -58,7 +53,6 @@ namespace Assets {
 		std::unique_ptr<class Engine::Buffer> UniformBuffer;
 		
 		size_t UniformBufferObjectSize = 0;
-		Mesh* Meshes = nullptr;
 	private:
 		void* p_UniformBufferObject = nullptr;
 	};

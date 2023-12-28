@@ -34,6 +34,8 @@ namespace Engine {
 			std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices{};
 
 			for (const auto& shape : shapes) {
+				Assets::Mesh newMesh;
+
 				for (const auto& index : shape.mesh.indices) {
 					Assets::Vertex vertex{};
 
@@ -51,13 +53,16 @@ namespace Engine {
 					vertex.color = { 1.0f, 1.0f, 1.0f };
 
 					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(object.Meshes->Vertices.size());
+						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh.Vertices.size());
 
-						object.Meshes->Vertices.push_back(vertex);
+						newMesh.Vertices.push_back(vertex);
 					}
-
-					object.Meshes->Indices.push_back(uniqueVertices[vertex]);
+					
+					newMesh.Indices.push_back(uniqueVertices[vertex]);
 				}
+			
+				newMesh.MaterialId = shape.mesh.material_ids[0];
+				object.Meshes.push_back(newMesh);
 			}
 		}
 	}

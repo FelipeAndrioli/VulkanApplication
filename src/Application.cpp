@@ -237,76 +237,77 @@ namespace Engine {
 		uint32_t indexOffset = 0;
 
 		for (Assets::Object* object : p_ActiveScene->Objects) {
+			for (Assets::Mesh mesh : object->Meshes) {
+				if (object->Material != material) {
+					material = p_ActiveScene->MapMaterials.find(object->Material->Layout.ID)->second;
 
-			if (object->Material != material) {
-				material = p_ActiveScene->MapMaterials.find(object->Material->Layout.ID)->second;
+					vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->GetGraphicsPipeline()->GetHandle());
 
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->GetGraphicsPipeline()->GetHandle());
+					VkViewport viewport = {};
+					viewport.x = 0.0f;
+					viewport.y = 0.0f;
+					viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
+					viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
+					viewport.minDepth = 0.0f;
+					viewport.maxDepth = 1.0f;
 
-				VkViewport viewport = {};
-				viewport.x = 0.0f;
-				viewport.y = 0.0f;
-				viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
-				viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
-				viewport.minDepth = 0.0f;
-				viewport.maxDepth = 1.0f;
+					vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+					VkRect2D scissor = {};
+					scissor.offset = { 0, 0 };
+					scissor.extent = m_SwapChain->GetSwapChainExtent();
 
-				VkRect2D scissor = {};
-				scissor.offset = { 0, 0 };
-				scissor.extent = m_SwapChain->GetSwapChainExtent();
+					vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+					VkDeviceSize offsets[] = { 0 };
 
-				VkDeviceSize offsets[] = { 0 };
+					vkCmdBindVertexBuffers(
+						commandBuffer, 
+						0, 
+						1,
+						&material->GetVertexBuffers()->GetBuffer(m_CurrentFrame), 
+						offsets
+					);
+			
+					vkCmdBindIndexBuffer(
+						commandBuffer, 
+						material->GetIndexBuffers()->GetBuffer(), 
+						0, 
+						VK_INDEX_TYPE_UINT32
+					);
 
-				vkCmdBindVertexBuffers(
+					indexOffset = 0;
+					vertexOffset = 0;
+				}
+
+				vkCmdBindDescriptorSets(
 					commandBuffer, 
+					VK_PIPELINE_BIND_POINT_GRAPHICS, 
+					material->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 
 					0, 
 					1,
-					&material->GetVertexBuffers()->GetBuffer(m_CurrentFrame), 
-					offsets
-				);
-		
-				vkCmdBindIndexBuffer(
-					commandBuffer, 
-					material->GetIndexBuffers()->GetBuffer(), 
+					&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
 					0, 
-					VK_INDEX_TYPE_UINT32
+					nullptr
 				);
 
-				indexOffset = 0;
-				vertexOffset = 0;
+				object->SetObjectUniformBuffer(m_CurrentFrame);
+
+				auto objectVertexCount = mesh.Vertices.size();
+				auto objectIndexCount = mesh.Indices.size();
+
+				vkCmdDrawIndexed(
+					commandBuffer,
+					static_cast<uint32_t>(objectIndexCount),
+					1,
+					indexOffset,
+					vertexOffset,
+					0
+				);
+
+				vertexOffset += static_cast<int32_t>(objectVertexCount);
+				indexOffset += static_cast<uint32_t>(objectIndexCount);
 			}
-
-			vkCmdBindDescriptorSets(
-				commandBuffer, 
-				VK_PIPELINE_BIND_POINT_GRAPHICS, 
-				material->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 
-				0, 
-				1,
-				&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
-				0, 
-				nullptr
-			);
-
-			object->SetObjectUniformBuffer(m_CurrentFrame);
-
-			auto objectVertexCount = object->Meshes->Vertices.size();
-			auto objectIndexCount = object->Meshes->Indices.size();
-
-			vkCmdDrawIndexed(
-				commandBuffer, 
-				static_cast<uint32_t>(objectIndexCount), 
-				1, 
-				indexOffset, 
-				indexOffset,
-				0
-			);
-
-			vertexOffset += static_cast<int32_t>(objectVertexCount);
-			indexOffset += static_cast<uint32_t>(objectIndexCount);
 		}
 		
 		vkCmdEndRenderPass(commandBuffer);
@@ -333,7 +334,7 @@ namespace Engine {
 		submitInfo.pCommandBuffers = cmdBuffers.data();
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = m_RenderFinishedSemaphores->GetHandle(m_CurrentFrame);
-	
+
 		if (vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, *m_InFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit draw command buffer!");
 		}
