@@ -21,6 +21,7 @@ namespace Assets {
 
 		MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), 45.0f, m_Width, m_Height);
 
+		Materials.reset(new class std::map<std::string, std::unique_ptr<Engine::Material>>);
 		DefaultMaterial = new Engine::Material();
 		MapMaterials.emplace(DefaultMaterial->Layout.ID, DefaultMaterial);
 	}
@@ -29,6 +30,8 @@ namespace Assets {
 		for (auto object : Objects) {
 			object->ResetResources();
 		}
+
+		Materials.reset();
 
 		MapMaterials.erase("Default");
 		MapMaterials.clear();
@@ -138,11 +141,9 @@ namespace Assets {
 			));
 
 			if (object->ModelPath != nullptr) {
-				Engine::Utils::ModelLoader::LoadModel(*object);
+				Engine::Utils::ModelLoader::LoadModelAndMaterials(*object, *Materials, logicalDevice, physicalDevice, commandPool);
 			}
 
-			//m_HelperVertices.insert(m_HelperVertices.end(), object->Meshes->Vertices.begin(), object->Meshes->Vertices.end());
-			//m_HelperIndices.insert(m_HelperIndices.end(), object->Meshes->Indices.begin(), object->Meshes->Indices.end());
 			for (Assets::Mesh mesh : object->Meshes) {
 				m_HelperVertices.insert(m_HelperVertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
 				m_HelperIndices.insert(m_HelperIndices.end(), mesh.Indices.begin(), mesh.Indices.end());

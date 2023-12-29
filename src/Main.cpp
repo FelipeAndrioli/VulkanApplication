@@ -374,16 +374,17 @@ int main() {
 	texturedMaterial->Layout.ID = "TexturedMaterial";
 	texturedMaterial->Layout.VertexShaderPath = "./Assets/Shaders/textured_vert.spv";
 	texturedMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/textured_frag.spv";
-	//texturedMaterial->Layout.TexturePath = "./Assets/Textures/viking_room.png";
-	//texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Desktop/container.jpg";
 	texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
 
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 	myScene->AddMaterial(texturedMaterial.get());
 	
 	CustomObject testObject = CustomObject();
-	//testObject.ModelPath = "C:/Users/Felipe/Desktop/viking_room.obj";
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
+	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+
+	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
+	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
 	testObject.Material = texturedMaterial.get();
 	testObject.SceneCamera = myScene->MainCamera;
 	testObject.Transformations.translation.z = -2.0f;

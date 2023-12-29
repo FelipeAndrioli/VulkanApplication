@@ -11,6 +11,8 @@
 #include "Image.h"
 #include "./Utils/TextureLoader.h"
 
+#include "../../Assets/Texture.h"
+
 namespace Engine {
 	Material::Material() {
 

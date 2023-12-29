@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <map>
 #include <unordered_map>
 #include <string>
 
@@ -52,6 +53,7 @@ namespace Assets {
 	public:
 		std::vector<Object*> Objects;
 		std::unordered_map<std::string, Engine::Material*> MapMaterials;
+		std::unique_ptr<std::map<std::string, std::unique_ptr<Engine::Material>>> Materials;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 	
 		Camera* MainCamera = nullptr;

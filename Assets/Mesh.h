@@ -54,7 +54,7 @@ namespace Assets {
 	struct Mesh {
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;
-		int32_t MaterialId;
+		std::string MaterialName;
 	};	
 }
 

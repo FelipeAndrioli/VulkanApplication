@@ -146,6 +146,7 @@
     <ClCompile Include="Assets\Camera.cpp" />
     <ClCompile Include="Assets\Object.cpp" />
     <ClCompile Include="Assets\Scene.cpp" />
+    <ClCompile Include="Assets\Texture.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="libs\imgui\imgui.cpp" />
@@ -192,6 +193,7 @@
     <ClInclude Include="Assets\Mesh.h" />
     <ClInclude Include="Assets\Object.h" />
     <ClInclude Include="Assets\Scene.h" />
+    <ClInclude Include="Assets\Texture.h" />
     <ClInclude Include="libs\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="libs\imgui\backends\imgui_impl_vulkan.h" />
     <ClInclude Include="libs\imgui\imgui.h" />

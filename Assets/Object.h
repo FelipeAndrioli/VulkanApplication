@@ -41,6 +41,7 @@ namespace Assets {
 	public:
 		std::string ID = "";
 		const char* ModelPath = nullptr;
+		const char* MaterialPath = nullptr;
 		std::vector<Mesh> Meshes;
 		Engine::Material* Material = nullptr;
 

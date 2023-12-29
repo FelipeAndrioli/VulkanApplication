@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "../Vulkan.h"
+#include "../../Assets/Texture.h"
 
 namespace Engine {
 	class LogicalDevice;
@@ -21,6 +22,14 @@ namespace Engine {
 				std::unique_ptr<Image>& texture,
 				const char* texturePath, 
 				LogicalDevice& logicalDevice, 
+				PhysicalDevice& physicalDevice,
+				CommandPool& commandPool
+			);
+
+			static Assets::Texture CreateTexture(
+				Assets::Texture::TextureType textureType,
+				const char* texturePath,
+				LogicalDevice& logicalDevice,
 				PhysicalDevice& physicalDevice,
 				CommandPool& commandPool
 			);

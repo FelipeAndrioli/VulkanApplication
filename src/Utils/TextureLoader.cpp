@@ -98,5 +98,21 @@ namespace Engine {
 
 			texture->CreateImageSampler();
 		}
+
+		Assets::Texture TextureLoader::CreateTexture(
+			Assets::Texture::TextureType textureType, 
+			const char* texturePath, 
+			LogicalDevice& logicalDevice,
+			PhysicalDevice& physicalDevice, 
+			CommandPool& commandPool) {
+		
+			Assets::Texture texture;
+			texture.Type = textureType;
+			texture.Path = texturePath;
+
+			TextureLoader::LoadTexture(texture.TextureImage, texture.Path.c_str(), logicalDevice, physicalDevice, commandPool);
+
+			return texture;
+		}
 	}
 }
