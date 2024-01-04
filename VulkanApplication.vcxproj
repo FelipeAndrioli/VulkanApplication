@@ -146,7 +146,6 @@
     <ClCompile Include="Assets\Camera.cpp" />
     <ClCompile Include="Assets\Object.cpp" />
     <ClCompile Include="Assets\Scene.cpp" />
-    <ClCompile Include="Assets\Texture.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="libs\imgui\imgui.cpp" />
