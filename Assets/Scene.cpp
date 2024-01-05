@@ -31,6 +31,7 @@ namespace Assets {
 			object->ResetResources();
 		}
 
+		Objects.clear();
 		Materials.reset();
 
 		MapMaterials.erase("Default");
@@ -91,6 +92,8 @@ namespace Assets {
 		Engine::CommandPool& commandPool, const Engine::SwapChain& swapChain, const Engine::DepthBuffer& depthBuffer,
 		const VkRenderPass& renderPass) {
 
+		std::cout << "Starting Scene Loading..." << '\n';
+
 		for (Object* object : Objects) {
 			if (object->Material == nullptr) {
 				object->Material = MapMaterials.find("Default")->second;
@@ -103,21 +106,13 @@ namespace Assets {
 			it->second->Create(logicalDevice, physicalDevice, commandPool, swapChain, depthBuffer, renderPass);
 
 			SetObjectResources(it->second, physicalDevice, logicalDevice, commandPool);
-
-			if (m_HelperVertices.size() > 0) {
-				it->second->CreateVertexBuffer(m_HelperVertices, physicalDevice, logicalDevice, commandPool);
-			}
-
-			if (m_HelperIndices.size() > 0) {
-				it->second->CreateIndexBuffer(m_HelperIndices, physicalDevice, logicalDevice, commandPool);
-			}
 		}
+
+		std::cout << "Scene Loaded!" << '\n';
 	}
 	
 	void Scene::SetObjectResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
 		Engine::LogicalDevice& logicalDevice, Engine::CommandPool& commandPool) {
-		m_HelperVertices.clear();
-		m_HelperIndices.clear();
 
 		for (auto object : Objects) {
 			if (object->Material != material) continue;
@@ -142,11 +137,6 @@ namespace Assets {
 
 			if (object->ModelPath != nullptr) {
 				Engine::Utils::ModelLoader::LoadModelAndMaterials(*object, *Materials, logicalDevice, physicalDevice, commandPool);
-			}
-
-			for (Assets::Mesh mesh : object->Meshes) {
-				m_HelperVertices.insert(m_HelperVertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
-				m_HelperIndices.insert(m_HelperIndices.end(), mesh.Indices.begin(), mesh.Indices.end());
 			}
 		}
 	}

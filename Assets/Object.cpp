@@ -16,7 +16,7 @@ namespace Assets {
 	}
 
 	Object::~Object() {
-	
+
 	}
 
 	glm::mat4 Object::GetModelMatrix() {
@@ -32,6 +32,13 @@ namespace Assets {
 	}
 
 	void Object::ResetResources() {
+		for (auto mesh : Meshes) {
+			mesh->VertexBuffer.reset();
+			mesh->IndexBuffer.reset();
+		}
+
+		Meshes.clear();
+
 		UniformBuffer.reset();
 		DescriptorSets.reset();
 	}

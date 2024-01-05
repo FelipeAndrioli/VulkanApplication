@@ -141,7 +141,7 @@
     <ClCompile Include="src\Utils\ModelLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Assets\Texture.cpp">
+    <ClCompile Include="Assets\Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -297,6 +297,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Assets\Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Assets\Shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
