@@ -233,11 +233,9 @@ namespace Engine {
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		Material* material = p_ActiveScene->MapMaterials.find("Default")->second;
-		int32_t vertexOffset = 0;
-		uint32_t indexOffset = 0;
 
 		for (Assets::Object* object : p_ActiveScene->Objects) {
-			for (Assets::Mesh mesh : object->Meshes) {
+			for (const Assets::Mesh* mesh : object->Meshes) {
 				if (object->Material != material) {
 					material = p_ActiveScene->MapMaterials.find(object->Material->Layout.ID)->second;
 
@@ -258,27 +256,24 @@ namespace Engine {
 					scissor.extent = m_SwapChain->GetSwapChainExtent();
 
 					vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-					VkDeviceSize offsets[] = { 0 };
-
-					vkCmdBindVertexBuffers(
-						commandBuffer, 
-						0, 
-						1,
-						&material->GetVertexBuffers()->GetBuffer(m_CurrentFrame), 
-						offsets
-					);
-			
-					vkCmdBindIndexBuffer(
-						commandBuffer, 
-						material->GetIndexBuffers()->GetBuffer(), 
-						0, 
-						VK_INDEX_TYPE_UINT32
-					);
-
-					indexOffset = 0;
-					vertexOffset = 0;
 				}
+
+				VkDeviceSize offsets[] = { 0 };
+				
+				vkCmdBindVertexBuffers(
+					commandBuffer, 
+					0, 
+					1,
+					&mesh->VertexBuffer->GetBuffer(m_CurrentFrame), 
+					offsets
+				);
+		
+				vkCmdBindIndexBuffer(
+					commandBuffer, 
+					mesh->IndexBuffer->GetBuffer(), 
+					0, 
+					VK_INDEX_TYPE_UINT32
+				);
 
 				vkCmdBindDescriptorSets(
 					commandBuffer, 
@@ -293,20 +288,14 @@ namespace Engine {
 
 				object->SetObjectUniformBuffer(m_CurrentFrame);
 
-				auto objectVertexCount = mesh.Vertices.size();
-				auto objectIndexCount = mesh.Indices.size();
-
 				vkCmdDrawIndexed(
 					commandBuffer,
-					static_cast<uint32_t>(objectIndexCount),
+					mesh->Indices.size(),
 					1,
-					indexOffset,
-					vertexOffset,
+					0,
+					0,
 					0
 				);
-
-				vertexOffset += static_cast<int32_t>(objectVertexCount);
-				indexOffset += static_cast<uint32_t>(objectIndexCount);
 			}
 		}
 		

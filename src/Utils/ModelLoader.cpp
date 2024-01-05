@@ -11,6 +11,7 @@
 #include "../LogicalDevice.h"
 #include "../PhysicalDevice.h"
 #include "../CommandPool.h"
+#include "../BufferHelper.h"
 
 #include "../../Assets/Object.h"
 #include "../../Assets/Mesh.h"
@@ -51,7 +52,7 @@ namespace Engine {
 			std::cout << "Loading model meshes..." << '\n';
 
 			for (const auto& shape : shapes) {
-				Assets::Mesh newMesh;
+				Assets::Mesh* newMesh = new Assets::Mesh();
 
 				for (const auto& index : shape.mesh.indices) {
 					Assets::Vertex vertex{};
@@ -70,15 +71,24 @@ namespace Engine {
 					vertex.color = { 1.0f, 1.0f, 1.0f };
 
 					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh.Vertices.size());
+						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh->Vertices.size());
 
-						newMesh.Vertices.push_back(vertex);
+						newMesh->Vertices.push_back(vertex);
 					}
 
-					newMesh.Indices.push_back(uniqueVertices[vertex]);
+					newMesh->Indices.push_back(uniqueVertices[vertex]);
 				}
 
-				newMesh.MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
+				newMesh->MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
+
+				BufferHelper::CreateBuffer(MAX_FRAMES_IN_FLIGHT, logicalDevice, physicalDevice, commandPool, 
+					VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh->Vertices, newMesh->VertexBuffer);
+
+				BufferHelper::CreateBuffer(1, logicalDevice, physicalDevice, commandPool, 
+					VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh->Indices, newMesh->IndexBuffer);
+
 				object.Meshes.push_back(newMesh);
 			}
 

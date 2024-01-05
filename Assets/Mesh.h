@@ -10,6 +10,10 @@
 
 #include "../src/Vulkan.h"
 
+namespace Engine {
+	class Buffer;
+}
+
 namespace Assets {
 	struct Vertex {
 
@@ -55,6 +59,9 @@ namespace Assets {
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;
 		std::string MaterialName;
+
+		std::unique_ptr<class Engine::Buffer> VertexBuffer;
+		std::unique_ptr<class Engine::Buffer> IndexBuffer;
 	};	
 }
 

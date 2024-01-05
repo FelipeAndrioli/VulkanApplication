@@ -4,6 +4,7 @@
 
 #include "LogicalDevice.h"
 #include "PhysicalDevice.h"
+#include "CommandPool.h"
 #include "Vulkan.h"
 #include "Buffer.h"
 
@@ -20,6 +21,18 @@ namespace Engine {
 		template <class T>
 		static void CopyFromStaging(LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, 
 			VkCommandPool& commandPool, const T& content, const VkDeviceSize& contentSize, Buffer* dstBuffer);
+
+		template <class T>
+		static void CreateBuffer(
+			const int bufferQuantity, 
+			LogicalDevice& logicalDevice, 
+			PhysicalDevice& physicalDevice,
+			CommandPool& commandPool, 
+			const VkBufferUsageFlags usageFlags, 
+			const VkMemoryPropertyFlags memoryPropertyFlags,
+			const std::vector<T>& content, 
+			std::unique_ptr<Buffer>& buffer
+		);
 	};
 
 	template <class T>
@@ -57,5 +70,31 @@ namespace Engine {
 
 		stagingBuffer.reset();
 
+	}
+
+	template <class T>
+	static void BufferHelper::CreateBuffer(
+		const int bufferQuantity, 
+		LogicalDevice& logicalDevice, 
+		PhysicalDevice& physicalDevice,
+		CommandPool& commandPool, 
+		const VkBufferUsageFlags usageFlags, 
+		const VkMemoryPropertyFlags memoryPropertyFlags,
+		const std::vector<T>& content, 
+		std::unique_ptr<Buffer>& buffer
+	) {
+	
+		VkDeviceSize bufferSize = sizeof(T) * content.size();
+
+		buffer.reset(new class Buffer(
+			bufferQuantity,
+			logicalDevice,
+			physicalDevice,
+			bufferSize,
+			usageFlags
+		));
+		buffer->AllocateMemory(memoryPropertyFlags);
+
+		CopyFromStaging(logicalDevice, physicalDevice, commandPool.GetHandle(), content, buffer.get());
 	}
 }

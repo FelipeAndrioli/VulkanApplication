@@ -34,23 +34,6 @@ namespace Engine {
 
 		GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline.get(); };
 
-		inline Buffer* GetVertexBuffers() const { return m_VertexBuffer.get(); };
-		inline Buffer* GetIndexBuffers() const { return m_IndexBuffer.get(); };
-
-		void CreateVertexBuffer(
-			std::vector<Assets::Vertex> vertices, 
-			PhysicalDevice& physicalDevice, 
-			LogicalDevice& logicalDevice, 
-			CommandPool& commandPool
-		);
-
-		void CreateIndexBuffer(
-			std::vector<uint32_t> indices, 
-			PhysicalDevice& physicalDevice, 
-			LogicalDevice& logicalDevice, 
-			CommandPool& commandPool
-		);
-
 		void LoadTexture(
 			PhysicalDevice& physicalDevice, 
 			LogicalDevice& logicalDevice, 
@@ -83,12 +66,8 @@ namespace Engine {
 		
 		MaterialLayout Layout = MaterialLayout();
 		std::unique_ptr<class Image> Texture;
-		//std::unique_ptr<std::vector<class Image>> Textures;
 		std::vector<Assets::Texture> Textures;
 	private:
 		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
-		
-		std::unique_ptr<class Buffer> m_VertexBuffer;
-		std::unique_ptr<class Buffer> m_IndexBuffer;
 	};
 }

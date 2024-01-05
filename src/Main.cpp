@@ -86,7 +86,7 @@ public:
 
 		Transformations.translation.z = -4.0f;
 
-		this->Meshes.push_back({ v, i });
+		//this->Meshes.push_back({ v, i });
 	}
 
 	void OnUIRender() {
@@ -165,7 +165,7 @@ public:
 		Transformations.translation.x = 2.0f;
 		Transformations.translation.z = -4.0f;
 
-		this->Meshes.push_back({ v, i });
+		//this->Meshes.push_back({ v, i });
 	}
 
 	void OnUIRender() {
@@ -241,7 +241,7 @@ public:
 		Transformations.translation.x = -2.0f;
 		Transformations.translation.z = -4.0f;
 
-		this->Meshes.push_back({ v, i });
+		//this->Meshes.push_back({ v, i });
 	}
 
 	void OnUIRender() {
@@ -312,6 +312,14 @@ public:
 			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
 			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
 			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
+
+			std::string s_label_x = "Scalation x " + ID;
+			std::string s_label_y = "Scalation y " + ID;
+			std::string s_label_z = "Scalation z " + ID;
+			
+			ImGui::SliderFloat(s_label_x.c_str(), &Transformations.scalation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(s_label_y.c_str(), &Transformations.scalation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(s_label_z.c_str(), &Transformations.scalation.z, -200.0f, 200.0f);
 
 			ImGui::TreePop();
 		}
