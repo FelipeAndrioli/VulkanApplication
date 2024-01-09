@@ -64,7 +64,7 @@ namespace Engine {
 		int Pad2 = 0;
 		int Illum = 0;
 		
-		MaterialLayout Layout = MaterialLayout();
+		//MaterialLayout Layout = MaterialLayout();
 		std::unique_ptr<class Image> Texture;
 		std::vector<Assets::Texture> Textures;
 	private:

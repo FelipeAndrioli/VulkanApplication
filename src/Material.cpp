@@ -37,12 +37,13 @@ namespace Engine {
 		const DepthBuffer& depthBuffer, 
 		const VkRenderPass& renderPass
 	) {
-		m_GraphicsPipeline.reset(new class GraphicsPipeline(Layout, logicalDevice, swapChain, depthBuffer, renderPass));
+		//m_GraphicsPipeline.reset(new class GraphicsPipeline(Layout, logicalDevice, swapChain, depthBuffer, renderPass));
 
-		if (Layout.TexturePath != nullptr) LoadTexture(physicalDevice, logicalDevice, commandPool);
+		//if (Layout.TexturePath != nullptr) LoadTexture(physicalDevice, logicalDevice, commandPool);
 	}
 
 	void Material::LoadTexture(PhysicalDevice& physicalDevice, LogicalDevice& logicalDevice, CommandPool& commandPool) {
+		/*
 		Utils::TextureLoader::LoadTexture(
 			Texture,
 			Layout.TexturePath,
@@ -50,5 +51,6 @@ namespace Engine {
 			physicalDevice,
 			commandPool
 		);
+		*/
 	}
 }

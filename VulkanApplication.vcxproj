@@ -192,6 +192,7 @@
     <ClInclude Include="Assets\Camera.h" />
     <ClInclude Include="Assets\Mesh.h" />
     <ClInclude Include="Assets\Object.h" />
+    <ClInclude Include="Assets\Pipeline.h" />
     <ClInclude Include="Assets\Scene.h" />
     <ClInclude Include="Assets\Shader.h" />
     <ClInclude Include="Assets\Texture.h" />

@@ -4,6 +4,10 @@
 #include <memory>
 #include <string>
 
+#include "../src/Vulkan.h"
+
+#include "Mesh.h"
+
 namespace Assets {
 
 	class VertexShader {
@@ -16,7 +20,11 @@ namespace Assets {
 	public:
 		std::string Name = "";
 		std::string Path = "";
+
+		VkVertexInputBindingDescription BindingDescription = Assets::Vertex::getBindingDescription();
+		std::array<VkVertexInputAttributeDescription, 3> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 	};
+
 	class FragmentShader {
 	public:
 		enum Topology {

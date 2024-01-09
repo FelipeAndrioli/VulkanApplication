@@ -47,6 +47,8 @@
 #include "../Assets/Camera.h"
 #include "../Assets/Scene.h"
 #include "../Assets/Object.h"
+#include "../Assets/Shader.h"
+#include "../Assets/Pipeline.h"
 
 class MyCubeOne : public Assets::Object {
 public:
@@ -378,22 +380,32 @@ int main() {
 	myScene->AddObject(&q4);
 	*/
 
+	/*
 	std::unique_ptr<Engine::Material> texturedMaterial = std::make_unique<Engine::Material>();
 	texturedMaterial->Layout.ID = "TexturedMaterial";
 	texturedMaterial->Layout.VertexShaderPath = "./Assets/Shaders/textured_vert.spv";
 	texturedMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/textured_frag.spv";
 	texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
+	*/
 
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
-	myScene->AddMaterial(texturedMaterial.get());
+
+	Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
+	Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+	//defaultFragmentShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
+	Assets::GraphicsPipeline defaultGraphicsPipeline = Assets::GraphicsPipeline("defaultPipeline", defaultVertexShader, defaultFragmentShader);
+	myScene->AddGraphicsPipeline(defaultGraphicsPipeline);
+	//myScene->AddMaterial(texturedMaterial.get());
 	
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
+	testObject.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
 	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+	testObject.PipelineName = defaultGraphicsPipeline.Name;
 
 	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
-	testObject.Material = texturedMaterial.get();
+	//testObject.Material = texturedMaterial.get();
 	testObject.SceneCamera = myScene->MainCamera;
 	testObject.Transformations.translation.z = -2.0f;
 
@@ -419,7 +431,7 @@ int main() {
 
 	//rainbowMaterial.reset();
 	//colorMaterial.reset();
-	texturedMaterial.reset();
+	//texturedMaterial.reset();
 	
 	myScene.reset();
 	app.reset();

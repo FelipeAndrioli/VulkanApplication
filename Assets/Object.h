@@ -9,6 +9,8 @@ namespace Engine {
 	class Buffer;
 	class DescriptorSets;
 	class Material;
+	class Image;
+	class GraphicsPipeline;
 }
 
 namespace Assets {
@@ -40,10 +42,18 @@ namespace Assets {
 		void SetObjectUniformBuffer(uint32_t currentImage);
 	public:
 		std::string ID = "";
+		std::string PipelineName = "";
+
 		const char* ModelPath = nullptr;
 		const char* MaterialPath = nullptr;
 		std::vector<Mesh*> Meshes;
-		Engine::Material* Material = nullptr;
+
+		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
+		//Engine::Material* Material = nullptr;
+		 
+		// temporary
+		std::unique_ptr<class Engine::Image> m_Texture;
+		std::string TexturePath = "";
 
 		// TODO: Remove camera from here 
 		Camera* SceneCamera = nullptr;

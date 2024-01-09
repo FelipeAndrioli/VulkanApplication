@@ -16,6 +16,7 @@ namespace Engine {
 	class SwapChain;
 	class DepthBuffer;
 	class Material;
+	class GraphicsPipeline;
 
 	namespace InputSystem {
 		class Input;
@@ -26,6 +27,8 @@ namespace Assets {
 
 	class Camera;
 	class Object;
+	class GraphicsPipeline;
+
 	struct Vertex;
 
 	class Scene {
@@ -35,7 +38,7 @@ namespace Assets {
 		~Scene();
 
 		void AddObject(Object* object);
-		void AddMaterial(Engine::Material* material);
+		void AddGraphicsPipeline(Assets::GraphicsPipeline newPipeline);
 
 		void OnCreate();
 		void OnUIRender();
@@ -52,21 +55,14 @@ namespace Assets {
 		
 	public:
 		std::vector<Object*> Objects;
-		std::unordered_map<std::string, Engine::Material*> MapMaterials;
+		std::vector<Assets::GraphicsPipeline> GraphicsPipelines;
+		std::map<std::string, std::unique_ptr<class Engine::GraphicsPipeline>> RenderGraphicsPipelines;
 		std::unique_ptr<std::map<std::string, std::unique_ptr<Engine::Material>>> Materials;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 	
 		Camera* MainCamera = nullptr;
 	private:
-		std::vector<Vertex> m_HelperVertices;
-		std::vector<uint32_t> m_HelperIndices;
-
-		Engine::Material* DefaultMaterial = nullptr;
-
 		uint32_t m_Width = 800;
 		uint32_t m_Height = 600;
-	private:
-		void SetObjectResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
-			Engine::LogicalDevice& logicalDevice, Engine::CommandPool& commandPool);
 	};
 }

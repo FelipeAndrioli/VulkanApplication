@@ -37,6 +37,9 @@ namespace Assets {
 			mesh->IndexBuffer.reset();
 		}
 
+		//temporary
+		m_Texture.reset();
+
 		Meshes.clear();
 
 		UniformBuffer.reset();

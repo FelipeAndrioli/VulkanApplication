@@ -4,15 +4,16 @@
 
 namespace Engine {
 	GraphicsPipeline::GraphicsPipeline(
-		const MaterialLayout& materialLayout, 
+		const Assets::VertexShader& vertexShader,
+		const Assets::FragmentShader& fragmentShader, 
 		LogicalDevice& logicalDevice, 
 		const SwapChain& swapChain, 
 		const DepthBuffer& depthBuffer, 
 		const VkRenderPass& renderPass)
 		: p_LogicalDevice(&logicalDevice) {
 
-		auto bindingDescription = materialLayout.BindingDescription;
-		auto attributeDescriptions = materialLayout.AttributeDescriptions;
+		auto bindingDescription = vertexShader.BindingDescription;
+		auto attributeDescriptions = vertexShader.AttributeDescriptions;
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -23,7 +24,7 @@ namespace Engine {
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssembly.topology = static_cast<VkPrimitiveTopology>(materialLayout.Topology);
+		inputAssembly.topology = static_cast<VkPrimitiveTopology>(fragmentShader.TopologyMode);
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 		VkViewport viewport{};
@@ -49,10 +50,10 @@ namespace Engine {
 		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizer.depthClampEnable = VK_FALSE;
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
-		rasterizer.polygonMode = static_cast<VkPolygonMode>(materialLayout.PolygonMode);
-		rasterizer.lineWidth = materialLayout.LineWidth;
-		rasterizer.cullMode = materialLayout.CullMode;
-		rasterizer.frontFace = static_cast<VkFrontFace>(materialLayout.FrontFace);
+		rasterizer.polygonMode = static_cast<VkPolygonMode>(fragmentShader.PolygonMode);
+		rasterizer.lineWidth = fragmentShader.LineWidth;
+		rasterizer.cullMode = fragmentShader.CullingMode;
+		rasterizer.frontFace = static_cast<VkFrontFace>(fragmentShader.FrontFaceMode);
 		rasterizer.depthBiasEnable = VK_FALSE;
 		rasterizer.depthBiasConstantFactor = 0.0f;
 		rasterizer.depthBiasClamp = 0.0f;
@@ -121,8 +122,8 @@ namespace Engine {
 
 		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
 
-		ShaderModule vertShaderModule(materialLayout.VertexShaderPath, p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
-		ShaderModule fragShaderModule(materialLayout.FragmentShaderPath, p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
+		ShaderModule vertShaderModule(vertexShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
+		ShaderModule fragShaderModule(fragmentShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderModule.GetShaderStageInfo(), fragShaderModule.GetShaderStageInfo() };
 
