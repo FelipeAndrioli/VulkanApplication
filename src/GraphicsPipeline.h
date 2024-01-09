@@ -14,7 +14,6 @@
 #include "DescriptorSets.h"
 #include "DescriptorPool.h"
 #include "Buffer.h"
-#include "MaterialLayout.h"
 #include "DepthBuffer.h"
 
 #include "../Assets/Shader.h"

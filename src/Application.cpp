@@ -260,26 +260,6 @@ namespace Engine {
 				for (const Assets::Mesh* mesh : object->Meshes) {
 					if (material == nullptr || mesh->MaterialName != material->Name) {
 						material = p_ActiveScene->Materials->find(mesh->MaterialName)->second.get();
-
-						/*
-						vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->GetGraphicsPipeline()->GetHandle());
-
-						VkViewport viewport = {};
-						viewport.x = 0.0f;
-						viewport.y = 0.0f;
-						viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
-						viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
-						viewport.minDepth = 0.0f;
-						viewport.maxDepth = 1.0f;
-
-						vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-						VkRect2D scissor = {};
-						scissor.offset = { 0, 0 };
-						scissor.extent = m_SwapChain->GetSwapChainExtent();
-
-						vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-						*/
 					}
 
 					VkDeviceSize offsets[] = { 0 };
@@ -302,7 +282,6 @@ namespace Engine {
 					vkCmdBindDescriptorSets(
 						commandBuffer, 
 						VK_PIPELINE_BIND_POINT_GRAPHICS, 
-						//material->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 
 						it->second->GetPipelineLayout().GetHandle(),
 						0, 
 						1,

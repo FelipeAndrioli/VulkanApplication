@@ -260,9 +260,6 @@
     <ClInclude Include="src\Timestep.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\MaterialLayout.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\Material.h">
       <Filter>Header Files</Filter>
     </ClInclude>

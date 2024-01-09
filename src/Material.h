@@ -1,45 +1,21 @@
 #pragma once
 
-#include "Vulkan.h"
-#include "MaterialLayout.h"
-#include "GraphicsPipeline.h"
+#include <string>
+#include <vector>
+
+#include <glm/glm.hpp>
 
 namespace Assets {
 	struct Texture;
 }
 
 namespace Engine {
-	class GraphicsPipeline;
-	class Buffer;
-	class LogicalDevice;
-	class PhysicalDevice;
-	class CommandPool;
-	class SwapChain;
-	class DepthBuffer;
-	class Image;
-
 	class Material {
 	public:
 
 		Material();
 		~Material();
 	
-		void Create(LogicalDevice& logicalDevice,
-			PhysicalDevice& physicalDevice,
-			CommandPool& commandPool,
-			const SwapChain& swapChain,
-			const DepthBuffer& depthBuffer,
-			const VkRenderPass& renderPass
-		);
-
-		GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline.get(); };
-
-		void LoadTexture(
-			PhysicalDevice& physicalDevice, 
-			LogicalDevice& logicalDevice, 
-			CommandPool& commandPool
-		);
-
 	public:
 		std::string Name = "";
 
@@ -64,10 +40,6 @@ namespace Engine {
 		int Pad2 = 0;
 		int Illum = 0;
 		
-		//MaterialLayout Layout = MaterialLayout();
-		std::unique_ptr<class Image> Texture;
 		std::vector<Assets::Texture> Textures;
-	private:
-		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
 	};
 }

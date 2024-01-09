@@ -12,6 +12,7 @@
 #include "../src/DescriptorSetLayout.h"
 #include "../src/DescriptorPool.h"
 #include "../src/Material.h"
+#include "../src/GraphicsPipeline.h"
 
 #include "../src/Input/Input.h"
 #include "../src/Utils/ModelLoader.h"
@@ -132,7 +133,6 @@ namespace Assets {
 				bufferSize,
 				logicalDevice.GetHandle(),
 				object->SelectedGraphicsPipeline->GetDescriptorPool().GetHandle(),
-				//material->GetGraphicsPipeline()->GetDescriptorSetLayout().GetHandle(),
 				object->SelectedGraphicsPipeline->GetDescriptorSetLayout().GetHandle(),
 				object->UniformBuffer.get(),
 				nullptr,
