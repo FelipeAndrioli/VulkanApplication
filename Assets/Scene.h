@@ -55,8 +55,8 @@ namespace Assets {
 		
 	public:
 		std::vector<Object*> Objects;
-		std::vector<Assets::GraphicsPipeline> GraphicsPipelines;
-		std::map<std::string, std::unique_ptr<class Engine::GraphicsPipeline>> RenderGraphicsPipelines;
+		std::vector<Assets::GraphicsPipeline> GraphicsPipelinesData;
+		std::map<std::string, std::unique_ptr<class Engine::GraphicsPipeline>> GraphicsPipelines;
 		std::unique_ptr<std::map<std::string, std::unique_ptr<Engine::Material>>> Materials;
 		std::vector<VkRenderPassBeginInfo*> RenderPassBeginInfo;
 	
