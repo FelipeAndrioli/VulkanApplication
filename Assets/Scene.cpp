@@ -35,12 +35,14 @@ namespace Assets {
 		Objects.clear();
 		Materials.reset();
 
-		GraphicsPipelines.clear();
+		GraphicsPipelinesData.clear();
 
 		std::map<std::string, std::unique_ptr<Engine::GraphicsPipeline>>::iterator it;
-		for (it = RenderGraphicsPipelines.begin(); it != RenderGraphicsPipelines.end(); it++) {
+		for (it = GraphicsPipelines.begin(); it != GraphicsPipelines.end(); it++) {
 			it->second.reset();
 		}
+
+		GraphicsPipelines.clear();
 
 		delete MainCamera;
 	}
@@ -50,7 +52,7 @@ namespace Assets {
 	}
 
 	void Scene::AddGraphicsPipeline(Assets::GraphicsPipeline newPipeline) {
-		GraphicsPipelines.push_back(newPipeline);
+		GraphicsPipelinesData.push_back(newPipeline);
 	}
 
 	void Scene::OnCreate() {
@@ -98,8 +100,8 @@ namespace Assets {
 
 		std::cout << "Starting Scene Loading..." << '\n';
 
-		for (const Assets::GraphicsPipeline& graphicsPipeline : GraphicsPipelines) {
-			RenderGraphicsPipelines.insert(std::make_pair(graphicsPipeline.Name, new class Engine::GraphicsPipeline(
+		for (const Assets::GraphicsPipeline& graphicsPipeline : GraphicsPipelinesData) {
+			GraphicsPipelines.insert(std::make_pair(graphicsPipeline.Name, new class Engine::GraphicsPipeline(
 				graphicsPipeline.m_VertexShader,
 				graphicsPipeline.m_FragmentShader,
 				logicalDevice,
@@ -111,7 +113,7 @@ namespace Assets {
 
 		for (Object* object : Objects) {
 
-			object->SelectedGraphicsPipeline = RenderGraphicsPipelines.find(object->PipelineName)->second.get();
+			object->SelectedGraphicsPipeline = GraphicsPipelines.find(object->PipelineName)->second.get();
 
 			// temporary
 			Engine::Utils::TextureLoader::LoadTexture(

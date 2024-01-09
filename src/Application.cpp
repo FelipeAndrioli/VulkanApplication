@@ -234,7 +234,7 @@ namespace Engine {
 
 		std::map<std::string, std::unique_ptr<class Engine::GraphicsPipeline>>::iterator it;
 
-		for (it = p_ActiveScene->RenderGraphicsPipelines.begin(); it != p_ActiveScene->RenderGraphicsPipelines.end(); it++) {
+		for (it = p_ActiveScene->GraphicsPipelines.begin(); it != p_ActiveScene->GraphicsPipelines.end(); it++) {
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, it->second->GetHandle());
 
 			VkViewport viewport = {};
