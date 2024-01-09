@@ -232,70 +232,75 @@ namespace Engine {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		Material* material = p_ActiveScene->MapMaterials.find("Default")->second;
+		std::map<std::string, std::unique_ptr<class Engine::GraphicsPipeline>>::iterator it;
 
-		for (Assets::Object* object : p_ActiveScene->Objects) {
-			for (const Assets::Mesh* mesh : object->Meshes) {
-				if (object->Material != material) {
-					material = p_ActiveScene->MapMaterials.find(object->Material->Layout.ID)->second;
+		for (it = p_ActiveScene->RenderGraphicsPipelines.begin(); it != p_ActiveScene->RenderGraphicsPipelines.end(); it++) {
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, it->second->GetHandle());
 
-					vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->GetGraphicsPipeline()->GetHandle());
+			VkViewport viewport = {};
+			viewport.x = 0.0f;
+			viewport.y = 0.0f;
+			viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
+			viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
 
-					VkViewport viewport = {};
-					viewport.x = 0.0f;
-					viewport.y = 0.0f;
-					viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
-					viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
-					viewport.minDepth = 0.0f;
-					viewport.maxDepth = 1.0f;
+			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-					vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+			VkRect2D scissor = {};
+			scissor.offset = { 0, 0 };
+			scissor.extent = m_SwapChain->GetSwapChainExtent();
 
-					VkRect2D scissor = {};
-					scissor.offset = { 0, 0 };
-					scissor.extent = m_SwapChain->GetSwapChainExtent();
+			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-					vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-				}
-
-				VkDeviceSize offsets[] = { 0 };
+			for (Assets::Object* object : p_ActiveScene->Objects) {
 				
-				vkCmdBindVertexBuffers(
-					commandBuffer, 
-					0, 
-					1,
-					&mesh->VertexBuffer->GetBuffer(m_CurrentFrame), 
-					offsets
-				);
-		
-				vkCmdBindIndexBuffer(
-					commandBuffer, 
-					mesh->IndexBuffer->GetBuffer(), 
-					0, 
-					VK_INDEX_TYPE_UINT32
-				);
+				Material* material = nullptr;
 
-				vkCmdBindDescriptorSets(
-					commandBuffer, 
-					VK_PIPELINE_BIND_POINT_GRAPHICS, 
-					material->GetGraphicsPipeline()->GetPipelineLayout().GetHandle(), 
-					0, 
-					1,
-					&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
-					0, 
-					nullptr
-				);
+				for (const Assets::Mesh* mesh : object->Meshes) {
+					if (material == nullptr || mesh->MaterialName != material->Name) {
+						material = p_ActiveScene->Materials->find(mesh->MaterialName)->second.get();
+					}
 
-				object->SetObjectUniformBuffer(m_CurrentFrame);
+					VkDeviceSize offsets[] = { 0 };
+					
+					vkCmdBindVertexBuffers(
+						commandBuffer, 
+						0, 
+						1,
+						&mesh->VertexBuffer->GetBuffer(m_CurrentFrame), 
+						offsets
+					);
+			
+					vkCmdBindIndexBuffer(
+						commandBuffer, 
+						mesh->IndexBuffer->GetBuffer(), 
+						0, 
+						VK_INDEX_TYPE_UINT32
+					);
 
-				vkCmdDrawIndexed(
-					commandBuffer,
-					mesh->Indices.size(),
-					1,
-					0,
-					0,
-					0
-				);
+					vkCmdBindDescriptorSets(
+						commandBuffer, 
+						VK_PIPELINE_BIND_POINT_GRAPHICS, 
+						it->second->GetPipelineLayout().GetHandle(),
+						0, 
+						1,
+						&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
+						0, 
+						nullptr
+					);
+
+					object->SetObjectUniformBuffer(m_CurrentFrame);
+
+					vkCmdDrawIndexed(
+						commandBuffer,
+						static_cast<uint32_t>(mesh->Indices.size()),
+						1,
+						0,
+						0,
+						0
+					);
+				}
 			}
 		}
 		

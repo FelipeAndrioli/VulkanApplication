@@ -4,8 +4,28 @@
 #include <memory>
 #include <string>
 
+#include "../src/Vulkan.h"
+
+#include "Mesh.h"
+
 namespace Assets {
-	class Shader {
+
+	class VertexShader {
+	public:
+		VertexShader();
+		VertexShader(std::string Name);
+		VertexShader(std::string Name, std::string Path);
+		~VertexShader();
+
+	public:
+		std::string Name = "";
+		std::string Path = "";
+
+		VkVertexInputBindingDescription BindingDescription = Assets::Vertex::getBindingDescription();
+		std::array<VkVertexInputAttributeDescription, 3> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+	};
+
+	class FragmentShader {
 	public:
 		enum Topology {
 			POINT_LIST					= 0,
@@ -39,25 +59,33 @@ namespace Assets {
 			CLOCKWISE			= 1
 		};
 
-		enum Type {
-			VERTEX		= 0,
-			FRAGMENT	= 1,
-			COMPUTE		= 2
-		};
+		FragmentShader();
+		FragmentShader(std::string shaderName);
+		FragmentShader(std::string shaderName, std::string shaderPath);
 
-		Shader();
-		~Shader();
+		~FragmentShader();
 	
 	public:
 		std::string Path = "";
 		std::string Name = "";
 		
-		Type ShaderType;
 		Topology TopologyMode = TRIANGLE_LIST;
 		Polygon PolygonMode = FILL;
 		Culling CullingMode = CULL_BACK;
 		FrontFace FrontFaceMode = COUNTER_CLOCKWISE;
 
 		float LineWidth = 1.0f;
+	};
+
+	class ComputeShader {
+	public:
+		ComputeShader();
+		ComputeShader(std::string Name);
+		ComputeShader(std::string Name, std::string Path);
+		~ComputeShader();
+
+	public:
+		std::string Name;
+		std::string Path;
 	};
 }

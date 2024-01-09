@@ -4,6 +4,8 @@
 #include <stdexcept>
 
 #include "../Vulkan.h"
+#include "../Image.h"
+
 #include "../../Assets/Texture.h"
 
 namespace Engine {
@@ -19,7 +21,7 @@ namespace Engine {
 			~TextureLoader();
 
 			static void LoadTexture(
-				std::unique_ptr<Image>& texture,
+				std::unique_ptr<class Image>& texture,
 				const char* texturePath, 
 				LogicalDevice& logicalDevice, 
 				PhysicalDevice& physicalDevice,

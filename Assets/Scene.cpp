@@ -3,6 +3,7 @@
 #include "Object.h"
 #include "Camera.h"
 #include "Mesh.h"
+#include "Pipeline.h"
 
 #include "../src/Buffer.h"
 #include "../src/DescriptorSets.h"
@@ -11,9 +12,11 @@
 #include "../src/DescriptorSetLayout.h"
 #include "../src/DescriptorPool.h"
 #include "../src/Material.h"
+#include "../src/GraphicsPipeline.h"
 
 #include "../src/Input/Input.h"
 #include "../src/Utils/ModelLoader.h"
+#include "../src/Utils/TextureLoader.h"
 
 namespace Assets {
 	Scene::Scene() {
@@ -22,8 +25,6 @@ namespace Assets {
 		MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), 45.0f, m_Width, m_Height);
 
 		Materials.reset(new class std::map<std::string, std::unique_ptr<Engine::Material>>);
-		DefaultMaterial = new Engine::Material();
-		MapMaterials.emplace(DefaultMaterial->Layout.ID, DefaultMaterial);
 	}
 
 	Scene::~Scene() {
@@ -34,10 +35,13 @@ namespace Assets {
 		Objects.clear();
 		Materials.reset();
 
-		MapMaterials.erase("Default");
-		MapMaterials.clear();
+		GraphicsPipelines.clear();
 
-		delete DefaultMaterial;
+		std::map<std::string, std::unique_ptr<Engine::GraphicsPipeline>>::iterator it;
+		for (it = RenderGraphicsPipelines.begin(); it != RenderGraphicsPipelines.end(); it++) {
+			it->second.reset();
+		}
+
 		delete MainCamera;
 	}
 
@@ -45,8 +49,8 @@ namespace Assets {
 		Objects.push_back(object);
 	}
 
-	void Scene::AddMaterial(Engine::Material* material) {
-		MapMaterials.emplace(material->Layout.ID, material);
+	void Scene::AddGraphicsPipeline(Assets::GraphicsPipeline newPipeline) {
+		GraphicsPipelines.push_back(newPipeline);
 	}
 
 	void Scene::OnCreate() {
@@ -94,28 +98,29 @@ namespace Assets {
 
 		std::cout << "Starting Scene Loading..." << '\n';
 
+		for (const Assets::GraphicsPipeline& graphicsPipeline : GraphicsPipelines) {
+			RenderGraphicsPipelines.insert(std::make_pair(graphicsPipeline.Name, new class Engine::GraphicsPipeline(
+				graphicsPipeline.m_VertexShader,
+				graphicsPipeline.m_FragmentShader,
+				logicalDevice,
+				swapChain,
+				depthBuffer,
+				renderPass
+			)));
+		}
+
 		for (Object* object : Objects) {
-			if (object->Material == nullptr) {
-				object->Material = MapMaterials.find("Default")->second;
-			}
-		}
 
-		std::unordered_map<std::string, Engine::Material*>::iterator it;
+			object->SelectedGraphicsPipeline = RenderGraphicsPipelines.find(object->PipelineName)->second.get();
 
-		for (it = MapMaterials.begin(); it != MapMaterials.end(); it++) {
-			it->second->Create(logicalDevice, physicalDevice, commandPool, swapChain, depthBuffer, renderPass);
-
-			SetObjectResources(it->second, physicalDevice, logicalDevice, commandPool);
-		}
-
-		std::cout << "Scene Loaded!" << '\n';
-	}
-	
-	void Scene::SetObjectResources(Engine::Material* material, Engine::PhysicalDevice& physicalDevice, 
-		Engine::LogicalDevice& logicalDevice, Engine::CommandPool& commandPool) {
-
-		for (auto object : Objects) {
-			if (object->Material != material) continue;
+			// temporary
+			Engine::Utils::TextureLoader::LoadTexture(
+				object->m_Texture,
+				object->TexturePath.c_str(),
+				logicalDevice,
+				physicalDevice,
+				commandPool
+			);
 
 			VkDeviceSize bufferSize = sizeof(object->UniformBufferObjectSize);
 
@@ -127,17 +132,20 @@ namespace Assets {
 			object->DescriptorSets.reset(new class Engine::DescriptorSets(
 				bufferSize,
 				logicalDevice.GetHandle(),
-				material->GetGraphicsPipeline()->GetDescriptorPool().GetHandle(),
-				material->GetGraphicsPipeline()->GetDescriptorSetLayout().GetHandle(),
+				object->SelectedGraphicsPipeline->GetDescriptorPool().GetHandle(),
+				object->SelectedGraphicsPipeline->GetDescriptorSetLayout().GetHandle(),
 				object->UniformBuffer.get(),
 				nullptr,
 				false,
-				material->Texture.get()
+				object->m_Texture.get()
 			));
 
 			if (object->ModelPath != nullptr) {
 				Engine::Utils::ModelLoader::LoadModelAndMaterials(*object, *Materials, logicalDevice, physicalDevice, commandPool);
 			}
+
 		}
+
+		std::cout << "Scene Loaded!" << '\n';
 	}
 }

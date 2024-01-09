@@ -14,10 +14,9 @@
 #include "DescriptorSets.h"
 #include "DescriptorPool.h"
 #include "Buffer.h"
-#include "MaterialLayout.h"
 #include "DepthBuffer.h"
 
-#include "../Assets/Mesh.h"
+#include "../Assets/Shader.h"
 
 namespace Engine {
 	class LogicalDevice;
@@ -26,7 +25,8 @@ namespace Engine {
 	class GraphicsPipeline {
 	public:
 		GraphicsPipeline(
-			const MaterialLayout& materialLayout, 
+			const Assets::VertexShader& vertexShader, 
+			const Assets::FragmentShader& fragmentShader, 
 			LogicalDevice& logicalDevice, 
 			const SwapChain& swapChain, 
 			const DepthBuffer& depthBuffer, 

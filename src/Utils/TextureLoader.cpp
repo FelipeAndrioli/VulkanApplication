@@ -9,7 +9,6 @@
 #include "../PhysicalDevice.h"
 #include "../CommandPool.h"
 #include "../CommandBuffer.h"
-#include "../Image.h"
 
 namespace Engine {
 	namespace Utils {
