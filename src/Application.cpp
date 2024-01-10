@@ -107,7 +107,7 @@ namespace Engine {
 		*/
 		
 		createSyncObjects();
-	
+
 		p_ActiveScene->SetupScene(*m_LogicalDevice, *m_PhysicalDevice, *m_CommandPool, *m_SwapChain, *m_DepthBuffer, 
 			m_DefaultRenderPass->GetHandle());
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
@@ -253,13 +253,25 @@ namespace Engine {
 
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+			/*
+			it->second->BindSceneDescriptorSet();
+			it->second->UpdateSceneBuffer(p_ActiveScene);
+			*/
+
 			for (Assets::Object* object : p_ActiveScene->Objects) {
-				
+		
+				/*
+				it->second->BindObjectDescriptorSet();
+				it->second->UpdateObjectBuffer(object);
+				*/
+
 				Material* material = nullptr;
 
 				for (const Assets::Mesh* mesh : object->Meshes) {
 					if (material == nullptr || mesh->MaterialName != material->Name) {
-						material = p_ActiveScene->Materials->find(mesh->MaterialName)->second.get();
+						if (p_ActiveScene->Materials->find(mesh->MaterialName) != p_ActiveScene->Materials->end()) {
+							material = p_ActiveScene->Materials->find(mesh->MaterialName)->second.get();
+						}
 					}
 
 					VkDeviceSize offsets[] = { 0 };

@@ -124,7 +124,7 @@ namespace Assets {
 				commandPool
 			);
 
-			VkDeviceSize bufferSize = sizeof(object->UniformBufferObjectSize);
+			VkDeviceSize bufferSize = object->UniformBufferObjectSize;
 
 			object->UniformBuffer.reset(new class Engine::Buffer(Engine::MAX_FRAMES_IN_FLIGHT, logicalDevice, physicalDevice,
 				bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT));
