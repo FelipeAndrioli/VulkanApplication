@@ -37,7 +37,7 @@ namespace Assets {
 		Scene();
 		~Scene();
 
-		void AddObject(Object* object);
+		void AddRenderableObject(Object* object);
 		void AddGraphicsPipeline(Assets::GraphicsPipeline newPipeline);
 
 		void OnCreate();
@@ -54,7 +54,7 @@ namespace Assets {
 			const VkRenderPass& renderPass);
 		
 	public:
-		std::vector<Object*> Objects;
+		std::vector<Object*> RenderableObjects;
 		std::vector<Assets::GraphicsPipeline> GraphicsPipelinesData;
 		std::map<std::string, std::unique_ptr<class Engine::GraphicsPipeline>> GraphicsPipelines;
 		std::unique_ptr<std::map<std::string, std::unique_ptr<Engine::Material>>> Materials;

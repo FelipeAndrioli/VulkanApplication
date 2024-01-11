@@ -258,7 +258,7 @@ namespace Engine {
 			it->second->UpdateSceneBuffer(p_ActiveScene);
 			*/
 
-			for (Assets::Object* object : p_ActiveScene->Objects) {
+			for (Assets::Object* object : p_ActiveScene->RenderableObjects) {
 		
 				/*
 				it->second->BindObjectDescriptorSet();

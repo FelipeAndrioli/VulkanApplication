@@ -28,11 +28,11 @@ namespace Assets {
 	}
 
 	Scene::~Scene() {
-		for (auto object : Objects) {
+		for (auto object : RenderableObjects) {
 			object->ResetResources();
 		}
 
-		Objects.clear();
+		RenderableObjects.clear();
 		Materials.reset();
 
 		GraphicsPipelinesData.clear();
@@ -47,8 +47,8 @@ namespace Assets {
 		delete MainCamera;
 	}
 
-	void Scene::AddObject(Object* object) {
-		Objects.push_back(object);
+	void Scene::AddRenderableObject(Object* object) {
+		RenderableObjects.push_back(object);
 	}
 
 	void Scene::AddGraphicsPipeline(Assets::GraphicsPipeline newPipeline) {
@@ -56,8 +56,8 @@ namespace Assets {
 	}
 
 	void Scene::OnCreate() {
-		for (size_t i = 0; i < Objects.size(); i++) {
-			auto object = Objects[i];
+		for (size_t i = 0; i < RenderableObjects.size(); i++) {
+			auto object = RenderableObjects[i];
 
 			if (object->ID == "") {
 				object->ID = "object_";
@@ -71,7 +71,7 @@ namespace Assets {
 	void Scene::OnUIRender() {
 		MainCamera->OnUIRender();
 		
-		for (auto object : Objects) {
+		for (auto object : RenderableObjects) {
 			object->OnUIRender();
 		}
 	}
@@ -80,7 +80,7 @@ namespace Assets {
 
 		MainCamera->OnUpdate(t, input);
 
-		for (auto object : Objects) {
+		for (auto object : RenderableObjects) {
 			object->OnUpdate(t);
 		}
 	}
@@ -111,7 +111,7 @@ namespace Assets {
 			)));
 		}
 
-		for (Object* object : Objects) {
+		for (Object* object : RenderableObjects) {
 
 			object->SelectedGraphicsPipeline = GraphicsPipelines.find(object->PipelineName)->second.get();
 

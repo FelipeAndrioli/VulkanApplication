@@ -408,7 +408,7 @@ int main() {
 	testObject.SceneCamera = myScene->MainCamera;
 	testObject.Transformations.translation.z = -2.0f;
 
-	myScene->AddObject(&testObject);
+	myScene->AddRenderableObject(&testObject);
 	
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
