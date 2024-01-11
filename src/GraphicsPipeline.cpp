@@ -101,13 +101,15 @@ namespace Engine {
 
 		m_DescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, p_LogicalDevice->GetHandle()));
 
+
+		// TODO: in near future if we want to make the shader inputs dynamic, will have to rework this, maybe remove the descriptor pool from here
 		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
 
 		size_t maxDescriptorSets = 10;
 
 		for (size_t i = 0; i < maxDescriptorSets; i++) {
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
+			//poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
 
 			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
 			// because our sets reference the SSBOs of the last and current frame (for now).
