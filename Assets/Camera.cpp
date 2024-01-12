@@ -100,7 +100,7 @@ namespace Assets {
 	}
 
 	void Camera::UpdateProjectionMatrix() {
-		ProjectionMatrix = glm::perspective(glm::radians(Fov), 800 / (float) 600, Near, Far);
+		ProjectionMatrix = glm::perspective(glm::radians(Fov), m_Width / (float) m_Height, Near, Far);
 		ProjectionMatrix[1][1] *= -1;
 	}
 
