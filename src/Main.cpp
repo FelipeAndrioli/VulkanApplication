@@ -408,7 +408,20 @@ int main() {
 	testObject.SceneCamera = myScene->MainCamera;
 	testObject.Transformations.translation.z = -2.0f;
 
+	CustomObject testObject2 = CustomObject();
+	testObject2.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
+	testObject2.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
+	testObject2.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
+	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
+	testObject2.PipelineName = defaultGraphicsPipeline.Name;
+
+	testObject2.SceneCamera = myScene->MainCamera;
+	testObject2.Transformations.translation.x = 5.0f;
+	testObject2.Transformations.translation.z = -2.0f;
+
 	myScene->AddRenderableObject(&testObject);
+	myScene->AddRenderableObject(&testObject2);
 	
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
