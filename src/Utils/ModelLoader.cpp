@@ -47,59 +47,19 @@ namespace Engine {
 				throw std::runtime_error(warn + error);
 			}
 
-			std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices{};
-
-			std::cout << "Loading model meshes..." << '\n';
-
-			for (const auto& shape : shapes) {
-				Assets::Mesh* newMesh = new Assets::Mesh();
-
-				for (const auto& index : shape.mesh.indices) {
-					Assets::Vertex vertex{};
-
-					vertex.pos = {
-						attributes.vertices[3 * index.vertex_index + 0],
-						attributes.vertices[3 * index.vertex_index + 1],
-						attributes.vertices[3 * index.vertex_index + 2]
-					};
-
-					vertex.texCoord = {
-						attributes.texcoords[2 * index.texcoord_index + 0],
-						1.0f - attributes.texcoords[2 * index.texcoord_index + 1]
-					};
-
-					vertex.color = { 1.0f, 1.0f, 1.0f };
-
-					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh->Vertices.size());
-
-						newMesh->Vertices.push_back(vertex);
-					}
-
-					newMesh->Indices.push_back(uniqueVertices[vertex]);
-				}
-
-				newMesh->MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
-
-				BufferHelper::CreateBuffer(MAX_FRAMES_IN_FLIGHT, logicalDevice, physicalDevice, commandPool, 
-					VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh->Vertices, newMesh->VertexBuffer);
-
-				BufferHelper::CreateBuffer(1, logicalDevice, physicalDevice, commandPool, 
-					VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh->Indices, newMesh->IndexBuffer);
-
-				object.Meshes.push_back(newMesh);
-			}
-
-			if (materials.size() == 0) return;
+			//if (materials.size() == 0) return;
 
 			std::cout << "Loading model materials..." << '\n';
 
-			std::string modelBasePath = object.MaterialPath;
+			std::string modelBasePath = materials.size() > 0 ? object.MaterialPath : "";
 			modelBasePath.append("/");
 
-			for (const auto& material : materials) {
+			//for (const auto& material : materials) {
+			for (size_t i = 0; i < materials.size(); i++) {
+				const auto& material = materials[i];
+
+				if (sceneMaterials.find(material.name) != sceneMaterials.end())
+					continue;
 
 				sceneMaterials[material.name].reset(new class Material());
 
@@ -277,6 +237,52 @@ namespace Engine {
 						)
 					);
 				}
+			}
+
+			std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices{};
+
+			std::cout << "Loading model meshes..." << '\n';
+
+			for (const auto& shape : shapes) {
+				Assets::Mesh* newMesh = new Assets::Mesh();
+
+				for (const auto& index : shape.mesh.indices) {
+					Assets::Vertex vertex{};
+
+					vertex.pos = {
+						attributes.vertices[3 * index.vertex_index + 0],
+						attributes.vertices[3 * index.vertex_index + 1],
+						attributes.vertices[3 * index.vertex_index + 2]
+					};
+
+					vertex.texCoord = {
+						attributes.texcoords[2 * index.texcoord_index + 0],
+						1.0f - attributes.texcoords[2 * index.texcoord_index + 1]
+					};
+
+					vertex.color = { 1.0f, 1.0f, 1.0f };
+
+					if (uniqueVertices.count(vertex) == 0) {
+						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh->Vertices.size());
+
+						newMesh->Vertices.push_back(vertex);
+					}
+
+					newMesh->Indices.push_back(uniqueVertices[vertex]);
+				}
+
+				newMesh->MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
+				newMesh->Material.reset(sceneMaterials.find(newMesh->MaterialName) == sceneMaterials.end() ? nullptr : sceneMaterials.find(newMesh->MaterialName)->second.get());
+
+				BufferHelper::CreateBuffer(MAX_FRAMES_IN_FLIGHT, logicalDevice, physicalDevice, commandPool, 
+					VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh->Vertices, newMesh->VertexBuffer);
+
+				BufferHelper::CreateBuffer(1, logicalDevice, physicalDevice, commandPool, 
+					VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh->Indices, newMesh->IndexBuffer);
+
+				object.Meshes.push_back(newMesh);
 			}
 		}
 	}

@@ -25,8 +25,12 @@
 
 #include "./Input/Input.h"
 
+#include "./Utils/ModelLoader.h"
+#include "./Utils/TextureLoader.h"
+
 #include "../Assets/Object.h"
 #include "../Assets/Scene.h"
+#include "../Assets/Pipeline.h"
 
 namespace Engine {
 	Application::Application(const Settings &settings) : m_Settings(settings) {
@@ -88,6 +92,7 @@ namespace Engine {
 	}
 
 	void Application::InitVulkan() {
+		// Init Vulkan Essentials
 		m_Surface.reset(new class Surface(m_Instance->GetHandle(), *m_Window->GetHandle()));
 		m_PhysicalDevice.reset(new class PhysicalDevice(m_Instance->GetHandle(), m_Surface->GetHandle()));
 		m_LogicalDevice.reset(new class LogicalDevice(m_Instance.get(), m_PhysicalDevice.get()));
@@ -108,12 +113,77 @@ namespace Engine {
 		
 		createSyncObjects();
 
-		p_ActiveScene->SetupScene(*m_LogicalDevice, *m_PhysicalDevice, *m_CommandPool, *m_SwapChain, *m_DepthBuffer, 
-			m_DefaultRenderPass->GetHandle());
+		// Init Scene
+		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Engine::Material>>);
+		for (const Assets::GraphicsPipeline& sceneGraphicsPipeline : p_ActiveScene->SceneGraphicsPipelines) {
+			m_GraphicsPipelines.insert(std::make_pair(sceneGraphicsPipeline.Name, new class GraphicsPipeline(
+				sceneGraphicsPipeline.m_VertexShader,
+				sceneGraphicsPipeline.m_FragmentShader,
+				*m_LogicalDevice,
+				*m_SwapChain,
+				*m_DepthBuffer,
+				m_DefaultRenderPass->GetHandle()
+			)));
+		}
+
+		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
+			Utils::ModelLoader::LoadModelAndMaterials(
+				*renderableObject,
+				*m_Materials,
+				*m_LogicalDevice.get(),
+				*m_PhysicalDevice.get(),
+				*m_CommandPool.get()
+			);
+
+			renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName)->second.get();
+
+			// temporary begin
+			Utils::TextureLoader::LoadTexture(
+				renderableObject->m_Texture,
+				renderableObject->TexturePath.c_str(),
+				*m_LogicalDevice.get(),
+				*m_PhysicalDevice.get(),
+				*m_CommandPool.get()
+			);
+
+			VkDeviceSize bufferSize = renderableObject->UniformBufferObjectSize;
+
+			renderableObject->UniformBuffer.reset(new class Engine::Buffer(
+				Engine::MAX_FRAMES_IN_FLIGHT, 
+				*m_LogicalDevice.get(), 
+				*m_PhysicalDevice.get(),
+				bufferSize, 
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+			));
+			renderableObject->UniformBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			renderableObject->UniformBuffer->BufferMemory->MapMemory();
+
+			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
+				bufferSize,
+				m_LogicalDevice->GetHandle(),
+				renderableObject->SelectedGraphicsPipeline->GetDescriptorPool().GetHandle(),
+				renderableObject->SelectedGraphicsPipeline->GetDescriptorSetLayout().GetHandle(),
+				renderableObject->UniformBuffer.get(),
+				nullptr,
+				false,
+				renderableObject->m_Texture.get()
+			));
+			// temporary end
+		}
+
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 	}
 
 	void Application::Shutdown() {
+
+		std::map<std::string, std::unique_ptr<Engine::GraphicsPipeline>>::iterator it;
+		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
+			it->second.reset();
+		}
+
+		m_GraphicsPipelines.clear();
+		m_Materials.reset();
+
 		m_UI.reset();
 
 		m_SwapChain.reset();
@@ -130,7 +200,6 @@ namespace Engine {
 		m_CommandBuffers.reset();
 		m_ComputeCommandBuffers.reset();
 
-		m_GraphicsPipeline.reset();
 		m_TempRayTracerPipeline.reset();
 
 		m_IndexBuffer.reset();
@@ -232,9 +301,9 @@ namespace Engine {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		std::map<std::string, std::unique_ptr<class Engine::GraphicsPipeline>>::iterator it;
+		std::map<std::string, std::unique_ptr<class GraphicsPipeline>>::iterator it;
 
-		for (it = p_ActiveScene->GraphicsPipelines.begin(); it != p_ActiveScene->GraphicsPipelines.end(); it++) {
+		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, it->second->GetHandle());
 
 			VkViewport viewport = {};
@@ -259,7 +328,8 @@ namespace Engine {
 			*/
 
 			for (Assets::Object* object : p_ActiveScene->RenderableObjects) {
-		
+				if (object->SelectedGraphicsPipeline != it->second.get())
+					continue;
 				/*
 				it->second->BindObjectDescriptorSet();
 				it->second->UpdateObjectBuffer(object);
@@ -268,9 +338,9 @@ namespace Engine {
 				Material* material = nullptr;
 
 				for (const Assets::Mesh* mesh : object->Meshes) {
-					if (material == nullptr || mesh->MaterialName != material->Name) {
-						if (p_ActiveScene->Materials->find(mesh->MaterialName) != p_ActiveScene->Materials->end()) {
-							material = p_ActiveScene->Materials->find(mesh->MaterialName)->second.get();
+					if (material == nullptr || mesh->Material.get() != material) {
+						if (m_Materials->find(mesh->MaterialName) != m_Materials->end()) {
+							material = m_Materials->find(mesh->MaterialName)->second.get();
 						}
 					}
 
