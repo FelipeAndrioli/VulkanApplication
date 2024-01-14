@@ -392,9 +392,15 @@ int main() {
 
 	Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
 	Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/textured_frag.spv");
-	//defaultFragmentShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
 	Assets::GraphicsPipeline defaultGraphicsPipeline = Assets::GraphicsPipeline("defaultPipeline", defaultVertexShader, defaultFragmentShader);
 	myScene->AddGraphicsPipeline(defaultGraphicsPipeline);
+
+	Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
+	Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+	wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
+	Assets::GraphicsPipeline wireFramePipeline = Assets::GraphicsPipeline("wireframePipeline", wireframeVertexShader, wireframeFragShader);
+	myScene->AddGraphicsPipeline(wireFramePipeline);
+
 	//myScene->AddMaterial(texturedMaterial.get());
 	
 	CustomObject testObject = CustomObject();
@@ -414,7 +420,7 @@ int main() {
 	testObject2.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
-	testObject2.PipelineName = defaultGraphicsPipeline.Name;
+	testObject2.PipelineName = wireFramePipeline.Name;
 
 	testObject2.SceneCamera = myScene->MainCamera;
 	testObject2.Transformations.translation.x = 5.0f;
