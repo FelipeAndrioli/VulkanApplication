@@ -35,6 +35,7 @@ namespace Assets {
 		for (auto mesh : Meshes) {
 			mesh->VertexBuffer.reset();
 			mesh->IndexBuffer.reset();
+			//mesh->Material.reset();
 		}
 
 		//temporary

@@ -12,6 +12,7 @@
 
 namespace Engine {
 	class Buffer;
+	class Material;
 }
 
 namespace Assets {
@@ -62,6 +63,8 @@ namespace Assets {
 
 		std::unique_ptr<class Engine::Buffer> VertexBuffer;
 		std::unique_ptr<class Engine::Buffer> IndexBuffer;
+
+		std::unique_ptr<class Engine::Material> Material;
 	};	
 }
 

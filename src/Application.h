@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <vector>
+#include <map>
 
 #include "Vulkan.h"
 #include "Settings.h"
@@ -32,7 +33,6 @@ namespace Engine {
 	class LogicalDevice;
 	class SwapChain;
 	class GraphicsPipeline;
-	class GraphicsPipeline;
 	class CommandPool;
 	class DebugUtilsMessenger;
 	class Semaphore;
@@ -47,6 +47,8 @@ namespace Engine {
 	class Buffer;
 	class CommandBuffer;
 	class Buffer;
+	class Material;
+
 	struct Settings;
 
 	class Application {
@@ -89,7 +91,6 @@ namespace Engine {
 		std::unique_ptr<class LogicalDevice> m_LogicalDevice;
 		std::unique_ptr<class SwapChain> m_SwapChain;
 
-		std::unique_ptr<class GraphicsPipeline> m_GraphicsPipeline;
 		std::unique_ptr<class GraphicsPipeline> m_TempRayTracerPipeline;
 		//std::unique_ptr<class ComputePipeline> m_ComputePipeline;
 
@@ -127,5 +128,8 @@ namespace Engine {
 		Assets::Scene* p_ActiveScene = nullptr;
 
 		bool m_FramebufferResized = false;
+
+		std::map<std::string, std::unique_ptr<class GraphicsPipeline>> m_GraphicsPipelines;
+		std::unique_ptr<std::map<std::string, std::unique_ptr<class Material>>> m_Materials;
 	};
 }

@@ -46,6 +46,9 @@ namespace Assets {
 
 		const char* ModelPath = nullptr;
 		const char* MaterialPath = nullptr;
+
+		bool Textured = false;
+
 		std::vector<Mesh*> Meshes;
 
 		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
