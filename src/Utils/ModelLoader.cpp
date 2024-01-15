@@ -47,14 +47,11 @@ namespace Engine {
 				throw std::runtime_error(warn + error);
 			}
 
-			//if (materials.size() == 0) return;
-
 			std::cout << "Loading model materials..." << '\n';
 
 			std::string modelBasePath = materials.size() > 0 ? object.MaterialPath : "";
 			modelBasePath.append("/");
 
-			//for (const auto& material : materials) {
 			for (size_t i = 0; i < materials.size(); i++) {
 				const auto& material = materials[i];
 
@@ -63,6 +60,7 @@ namespace Engine {
 
 				sceneMaterials[material.name].reset(new class Material());
 
+				// TODO: move material properties to a material property struct
 				sceneMaterials[material.name]->Name = material.name;
 				sceneMaterials[material.name]->Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2] };
 				sceneMaterials[material.name]->Specular = { material.specular[0], material.specular[1], material.specular[2] };
