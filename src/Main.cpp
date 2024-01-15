@@ -52,19 +52,9 @@
 
 class MyCubeOne : public Assets::Object {
 public:
-	struct UniformBufferObject {
-		glm::mat4 object = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-	};
-
-	UniformBufferObject *ubo = new UniformBufferObject();
-
 	bool Rotate = false;
 
 	void OnCreate() {
-
-		SetUniformBufferObject(ubo, sizeof(*ubo));
 
 		std::vector<Assets::Vertex> v = {
 			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
@@ -120,29 +110,12 @@ public:
 		if (Rotate) {
 			Transformations.rotation.x += t * 0.05f;
 		}
-
-		ubo->object = GetModelMatrix();
-		ubo->view = SceneCamera->ViewMatrix;
-		ubo->proj = SceneCamera->ProjectionMatrix;
 	}
 };
 
 class MyCubeTwo : public Assets::Object {
 public:
-
-	struct UniformBufferObject {
-		glm::mat4 object = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-
-		glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
-	};
-
-	UniformBufferObject *ubo = new UniformBufferObject();
-
 	void OnCreate() {
-
-		SetUniformBufferObject(ubo, sizeof(*ubo));
 
 		std::vector<Assets::Vertex> v = {
 			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
@@ -190,7 +163,7 @@ public:
 			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
 			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
 			
-			ImGui::ColorEdit3("Color", glm::value_ptr(ubo->color));
+			//ImGui::ColorEdit3("Color", glm::value_ptr(ubo->color));
 
 			ImGui::TreePop();
 		}
@@ -198,27 +171,13 @@ public:
 
 	void OnUpdate(float t) {
 		Transformations.rotation.y += t * 0.05f;
-
-		ubo->object = GetModelMatrix();
-		ubo->view = SceneCamera->ViewMatrix;
-		ubo->proj = SceneCamera->ProjectionMatrix;
 	}
 };
 
 class MyCubeThree : public Assets::Object {
 public:
 
-	struct UniformBufferObject {
-		glm::mat4 object = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-	};
-
-	UniformBufferObject *ubo = new UniformBufferObject();
-
 	void OnCreate() {
-
-		SetUniformBufferObject(ubo, sizeof(*ubo));
 
 		std::vector<Assets::Vertex> v = {
 			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
@@ -272,27 +231,13 @@ public:
 
 	void OnUpdate(float t) {
 		Transformations.rotation.z += t * 0.05f;
-
-		ubo->object = GetModelMatrix();
-		ubo->view = SceneCamera->ViewMatrix;
-		ubo->proj = SceneCamera->ProjectionMatrix;
 	}
 };
 
 class CustomObject : public Assets::Object {
 public:
-
-	struct UniformBufferObject {
-		glm::mat4 object = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-	};
-
-	UniformBufferObject *ubo = new UniformBufferObject();
-
 	void OnCreate() {
 
-		SetUniformBufferObject(ubo, sizeof(*ubo));
 	}
 
 	void OnUIRender() {
@@ -328,9 +273,7 @@ public:
 	}
 
 	void OnUpdate(float t) {
-		ubo->object = GetModelMatrix();
-		ubo->view = SceneCamera->ViewMatrix;
-		ubo->proj = SceneCamera->ProjectionMatrix;
+
 	}
 };
 
@@ -406,13 +349,14 @@ int main() {
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
-	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
 	testObject.PipelineName = defaultGraphicsPipeline.Name;
 
-	testObject.SceneCamera = myScene->MainCamera;
 	testObject.Transformations.translation.z = -2.0f;
+
+	myScene->AddRenderableObject(&testObject);
 
 	CustomObject testObject2 = CustomObject();
 	testObject2.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
@@ -422,11 +366,9 @@ int main() {
 	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
 	testObject2.PipelineName = wireFramePipeline.Name;
 
-	testObject2.SceneCamera = myScene->MainCamera;
 	testObject2.Transformations.translation.x = 5.0f;
 	testObject2.Transformations.translation.z = -2.0f;
-
-	myScene->AddRenderableObject(&testObject);
+	
 	myScene->AddRenderableObject(&testObject2);
 	
 	Engine::Settings settings;

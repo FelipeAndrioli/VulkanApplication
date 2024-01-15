@@ -43,18 +43,7 @@ namespace Assets {
 
 		Meshes.clear();
 
-		UniformBuffer.reset();
+		GPUDataBuffer.reset();
 		DescriptorSets.reset();
-	}
-
-	void Object::SetUniformBufferObject(void* uniformBuffer, size_t uniformBufferSize) {
-		p_UniformBufferObject = uniformBuffer;
-		UniformBufferObjectSize = uniformBufferSize;
-	}
-
-	void Object::SetObjectUniformBuffer(uint32_t currentImage) {
-		if (p_UniformBufferObject == nullptr) return;
-
-		memcpy(UniformBuffer->BufferMemory->MemoryMapped[currentImage], p_UniformBufferObject, UniformBufferObjectSize);
 	}
 }

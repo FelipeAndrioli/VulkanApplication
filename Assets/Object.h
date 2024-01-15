@@ -38,8 +38,6 @@ namespace Assets {
 		glm::mat4 GetModelMatrix();
 
 		void ResetResources();
-		void SetUniformBufferObject(void* uniformBuffer, size_t uniformBufferSize);
-		void SetObjectUniformBuffer(uint32_t currentImage);
 	public:
 		std::string ID = "";
 		std::string PipelineName = "";
@@ -52,22 +50,14 @@ namespace Assets {
 		std::vector<Mesh*> Meshes;
 
 		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
-		//Engine::Material* Material = nullptr;
 		 
 		// temporary
 		std::unique_ptr<class Engine::Image> m_Texture;
 		std::string TexturePath = "";
 
-		// TODO: Remove camera from here 
-		Camera* SceneCamera = nullptr;
-		
 		Transform Transformations = {};
 	
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
-		std::unique_ptr<class Engine::Buffer> UniformBuffer;
-		
-		size_t UniformBufferObjectSize = 0;
-	private:
-		void* p_UniformBufferObject = nullptr;
+		std::unique_ptr<class Engine::Buffer> GPUDataBuffer;
 	};
 }

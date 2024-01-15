@@ -31,6 +31,7 @@
 #include "../Assets/Object.h"
 #include "../Assets/Scene.h"
 #include "../Assets/Pipeline.h"
+#include "../Assets/Camera.h"
 
 namespace Engine {
 	Application::Application(const Settings &settings) : m_Settings(settings) {
@@ -113,8 +114,35 @@ namespace Engine {
 		
 		createSyncObjects();
 
+		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
+
+		size_t maxDescriptorSets = 10;
+
+		for (size_t i = 0; i < maxDescriptorSets; i++) {
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
+			//poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
+
+			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
+			// because our sets reference the SSBOs of the last and current frame (for now).
+
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT });
+		}
+
+		m_DescriptorPool.reset(new class DescriptorPool(
+			m_LogicalDevice->GetHandle(), 
+			poolDescriptorBindings, 
+			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
+
 		// Init Scene
 		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Engine::Material>>);
+
+		std::vector<DescriptorBinding> descriptorBindings = {
+			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
+			{ 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
+		};
+
+		m_ObjectGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, m_LogicalDevice->GetHandle()));
+
 		for (const Assets::GraphicsPipeline& sceneGraphicsPipeline : p_ActiveScene->SceneGraphicsPipelines) {
 			m_GraphicsPipelines.insert(std::make_pair(sceneGraphicsPipeline.Name, new class GraphicsPipeline(
 				sceneGraphicsPipeline.m_VertexShader,
@@ -122,7 +150,8 @@ namespace Engine {
 				*m_LogicalDevice,
 				*m_SwapChain,
 				*m_DepthBuffer,
-				m_DefaultRenderPass->GetHandle()
+				m_DefaultRenderPass->GetHandle(),
+				*m_ObjectGPUDataDescriptorSetLayout.get()
 			)));
 		}
 
@@ -145,36 +174,39 @@ namespace Engine {
 				*m_PhysicalDevice.get(),
 				*m_CommandPool.get()
 			);
+			// temporary end
 
-			VkDeviceSize bufferSize = renderableObject->UniformBufferObjectSize;
+			VkDeviceSize bufferSize = sizeof(ObjectGPUData);
 
-			renderableObject->UniformBuffer.reset(new class Engine::Buffer(
+			renderableObject->GPUDataBuffer.reset(new class Engine::Buffer(
 				Engine::MAX_FRAMES_IN_FLIGHT, 
 				*m_LogicalDevice.get(), 
 				*m_PhysicalDevice.get(),
 				bufferSize, 
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
 			));
-			renderableObject->UniformBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			renderableObject->UniformBuffer->BufferMemory->MapMemory();
+
+			renderableObject->GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			renderableObject->GPUDataBuffer->BufferMemory->MapMemory();
 
 			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
 				bufferSize,
 				m_LogicalDevice->GetHandle(),
-				renderableObject->SelectedGraphicsPipeline->GetDescriptorPool().GetHandle(),
-				renderableObject->SelectedGraphicsPipeline->GetDescriptorSetLayout().GetHandle(),
-				renderableObject->UniformBuffer.get(),
+				m_DescriptorPool->GetHandle(),
+				m_ObjectGPUDataDescriptorSetLayout->GetHandle(),
+				renderableObject->GPUDataBuffer.get(),
 				nullptr,
 				false,
 				renderableObject->m_Texture.get()
 			));
-			// temporary end
 		}
 
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 	}
 
 	void Application::Shutdown() {
+
+		m_ObjectGPUDataDescriptorSetLayout.reset();
 
 		std::map<std::string, std::unique_ptr<Engine::GraphicsPipeline>>::iterator it;
 		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
@@ -183,6 +215,7 @@ namespace Engine {
 
 		m_GraphicsPipelines.clear();
 		m_Materials.reset();
+		m_DescriptorPool.reset();
 
 		m_UI.reset();
 
@@ -322,18 +355,28 @@ namespace Engine {
 
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-			/*
-			it->second->BindSceneDescriptorSet();
-			it->second->UpdateSceneBuffer(p_ActiveScene);
-			*/
+			ObjectGPUData* objectGPUData = new ObjectGPUData();
+			objectGPUData->view = p_ActiveScene->MainCamera->ViewMatrix;
+			objectGPUData->proj = p_ActiveScene->MainCamera->ProjectionMatrix;
 
 			for (Assets::Object* object : p_ActiveScene->RenderableObjects) {
 				if (object->SelectedGraphicsPipeline != it->second.get())
 					continue;
-				/*
-				it->second->BindObjectDescriptorSet();
-				it->second->UpdateObjectBuffer(object);
-				*/
+
+				objectGPUData->model = object->GetModelMatrix();
+
+				vkCmdBindDescriptorSets(
+					commandBuffer, 
+					VK_PIPELINE_BIND_POINT_GRAPHICS, 
+					it->second->GetPipelineLayout().GetHandle(),
+					0, 
+					1,
+					&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
+					0, 
+					nullptr
+				);
+
+				memcpy(object->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], objectGPUData, sizeof(ObjectGPUData));
 
 				Material* material = nullptr;
 
@@ -360,19 +403,6 @@ namespace Engine {
 						0, 
 						VK_INDEX_TYPE_UINT32
 					);
-
-					vkCmdBindDescriptorSets(
-						commandBuffer, 
-						VK_PIPELINE_BIND_POINT_GRAPHICS, 
-						it->second->GetPipelineLayout().GetHandle(),
-						0, 
-						1,
-						&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame), 
-						0, 
-						nullptr
-					);
-
-					object->SetObjectUniformBuffer(m_CurrentFrame);
 
 					vkCmdDrawIndexed(
 						commandBuffer,

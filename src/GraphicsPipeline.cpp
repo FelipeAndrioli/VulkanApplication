@@ -9,7 +9,8 @@ namespace Engine {
 		LogicalDevice& logicalDevice, 
 		const SwapChain& swapChain, 
 		const DepthBuffer& depthBuffer, 
-		const VkRenderPass& renderPass)
+		const VkRenderPass& renderPass,
+		DescriptorSetLayout& descriptorSetLayout)
 		: p_LogicalDevice(&logicalDevice) {
 
 		auto bindingDescription = vertexShader.BindingDescription;
@@ -94,35 +95,9 @@ namespace Engine {
 		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 		dynamicState.pDynamicStates = dynamicStates.data();
 
-		std::vector<DescriptorBinding> descriptorBindings = {
-			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
-			{ 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
-		};
-
-		m_DescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, p_LogicalDevice->GetHandle()));
-
-
-		// TODO: in near future if we want to make the shader inputs dynamic, will have to rework this, maybe remove the descriptor pool from here
-		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
-
-		size_t maxDescriptorSets = 10;
-
-		for (size_t i = 0; i < maxDescriptorSets; i++) {
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
-			//poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
-
-			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
-			// because our sets reference the SSBOs of the last and current frame (for now).
-
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT });
-		}
-
-		m_DescriptorPool.reset(new class DescriptorPool(p_LogicalDevice->GetHandle(), poolDescriptorBindings, 
-			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
-
 		std::vector<BufferDescriptor> bufferDescriptor = {};
 
-		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), m_DescriptorSetLayout.get()));
+		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), &descriptorSetLayout));
 
 		ShaderModule vertShaderModule(vertexShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
 		ShaderModule fragShaderModule(fragmentShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -168,9 +143,8 @@ namespace Engine {
 	GraphicsPipeline::~GraphicsPipeline() {
 		vkDestroyPipeline(p_LogicalDevice->GetHandle(), m_GraphicsPipeline, nullptr);
 
-		m_DescriptorPool.reset();
 		m_GraphicsPipelineLayout.reset();
-		m_DescriptorSetLayout.reset();
+		//m_DescriptorSetLayout.reset();
 
 		p_LogicalDevice = nullptr;
 	}

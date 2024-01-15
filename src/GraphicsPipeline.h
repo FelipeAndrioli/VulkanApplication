@@ -30,20 +30,16 @@ namespace Engine {
 			LogicalDevice& logicalDevice, 
 			const SwapChain& swapChain, 
 			const DepthBuffer& depthBuffer, 
-			const VkRenderPass& renderPass);
+			const VkRenderPass& renderPass,
+			DescriptorSetLayout& descriptorSetLayout);
 		~GraphicsPipeline();
 
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };
 		inline PipelineLayout& GetPipelineLayout() { return *m_GraphicsPipelineLayout; };
-		inline DescriptorSetLayout& GetDescriptorSetLayout() { return *m_DescriptorSetLayout; };
-		inline DescriptorPool& GetDescriptorPool() { return *m_DescriptorPool; };
 	private:
 		VkPipeline m_GraphicsPipeline = VK_NULL_HANDLE;
-
 		LogicalDevice* p_LogicalDevice = nullptr;
 
-		std::unique_ptr<class DescriptorSetLayout> m_DescriptorSetLayout;
-		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
 		std::unique_ptr<class PipelineLayout> m_GraphicsPipelineLayout;
 	};
 }
