@@ -1,11 +1,9 @@
 #include "Object.h"
 
 #include "Mesh.h"
-#include "Camera.h"
 
 #include "../src/Buffer.h"
 #include "../src/DescriptorSets.h"
-#include "../src/Material.h"
 
 namespace Assets {
 	Object::Object() {

@@ -14,11 +14,7 @@ namespace Engine {
 }
 
 namespace Assets {
-	
 	struct Mesh;
-	struct Vertex;
-
-	class Camera;
 
 	struct Transform {
 		glm::vec3 translation;
