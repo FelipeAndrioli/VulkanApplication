@@ -107,11 +107,6 @@ namespace Engine {
 		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
 			m_LogicalDevice->GetHandle()));
 
-		/*
-		m_ComputeCommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), 
-			m_LogicalDevice->GetHandle()));
-		*/
-		
 		createSyncObjects();
 
 		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
@@ -216,39 +211,24 @@ namespace Engine {
 		m_GraphicsPipelines.clear();
 		m_Materials.reset();
 		m_DescriptorPool.reset();
-
 		m_UI.reset();
-
 		m_SwapChain.reset();
-
-		m_ComputeUniformBuffers.reset();
-		//m_ComputePipeline.reset();
-
 		m_DepthBuffer.reset();
 
 		ClearFramebuffers();
 
 		m_DefaultRenderPass.reset();
-
 		m_CommandBuffers.reset();
-		m_ComputeCommandBuffers.reset();
-
-		m_TempRayTracerPipeline.reset();
-
 		m_IndexBuffer.reset();
 		m_ShaderStorageBuffers.reset();
 		m_VertexBuffers.reset();
-
 		m_DebugMessenger.reset();
 		m_InFlightFences.reset();
 		m_ComputeInFlightFences.reset();
-
 		m_ImageAvailableSemaphores.reset();
 		m_RenderFinishedSemaphores.reset();
 		m_ComputeFinishedSemaphores.reset();
-
 		m_CommandPool.reset();
-
 		m_LogicalDevice.reset();
 		m_Surface.reset();
 		m_Instance.reset();
