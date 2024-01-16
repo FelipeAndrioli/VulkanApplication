@@ -263,13 +263,8 @@ public:
 			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
 			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
 
-			std::string s_label_x = "Scalation x " + ID;
-			std::string s_label_y = "Scalation y " + ID;
-			std::string s_label_z = "Scalation z " + ID;
-			
-			ImGui::SliderFloat(s_label_x.c_str(), &Transformations.scalation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(s_label_y.c_str(), &Transformations.scalation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(s_label_z.c_str(), &Transformations.scalation.z, -200.0f, 200.0f);
+			std::string s_label = "Scale Handler " + ID;
+			ImGui::SliderFloat(s_label.c_str(), &Transformations.scaleHandler, 0.0f, 2.0f);
 
 			ImGui::Checkbox("Rotate", &rotate);
 
@@ -383,8 +378,8 @@ int main() {
 	
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
-	settings.Width = 800;
-	settings.Height = 600;
+	settings.Width = 1600;
+	settings.Height = 900;
 
 	std::unique_ptr<Engine::Application> app = std::make_unique<Engine::Application>(settings);
 

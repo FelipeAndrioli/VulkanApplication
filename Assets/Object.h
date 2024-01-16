@@ -19,7 +19,8 @@ namespace Assets {
 	struct Transform {
 		glm::vec3 translation;
 		glm::vec3 rotation;
-		glm::vec3 scalation;
+
+		float scaleHandler;
 	};
 
 	class Object {
