@@ -236,6 +236,9 @@ public:
 
 class CustomObject : public Assets::Object {
 public:
+
+	bool rotate = false;
+
 	void OnCreate() {
 
 	}
@@ -268,12 +271,19 @@ public:
 			ImGui::SliderFloat(s_label_y.c_str(), &Transformations.scalation.y, -200.0f, 200.0f);
 			ImGui::SliderFloat(s_label_z.c_str(), &Transformations.scalation.z, -200.0f, 200.0f);
 
+			ImGui::Checkbox("Rotate", &rotate);
+
 			ImGui::TreePop();
 		}
 	}
 
 	void OnUpdate(float t) {
+		if (rotate) {
+			Transformations.rotation.y += 0.1 * t;
 
+			if (Transformations.rotation.y > 360.0f)
+				Transformations.rotation.y = 0.0f;
+		}
 	}
 };
 
