@@ -4,6 +4,8 @@
 #include <vector>
 #include <map>
 
+#include <glm/glm.hpp>
+
 #include "Vulkan.h"
 #include "Settings.h"
 
@@ -50,6 +52,12 @@ namespace Engine {
 	class Material;
 
 	struct Settings;
+
+	struct ObjectGPUData {
+		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 view = glm::mat4(1.0f);
+		glm::mat4 proj = glm::mat4(1.0f);
+	};
 
 	class Application {
 	public:
@@ -129,7 +137,17 @@ namespace Engine {
 
 		bool m_FramebufferResized = false;
 
+		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
+
 		std::map<std::string, std::unique_ptr<class GraphicsPipeline>> m_GraphicsPipelines;
 		std::unique_ptr<std::map<std::string, std::unique_ptr<class Material>>> m_Materials;
+
+		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
+
+		/*
+		std::unique_ptr<class Buffer> m_SceneGPUDataBuffer;
+		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;
+		std::unique_ptr<class DescriptorSets> m_SceneGPUDataDescriptorSets;
+		*/
 	};
 }

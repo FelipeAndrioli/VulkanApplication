@@ -52,19 +52,9 @@
 
 class MyCubeOne : public Assets::Object {
 public:
-	struct UniformBufferObject {
-		glm::mat4 object = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-	};
-
-	UniformBufferObject *ubo = new UniformBufferObject();
-
 	bool Rotate = false;
 
 	void OnCreate() {
-
-		SetUniformBufferObject(ubo, sizeof(*ubo));
 
 		std::vector<Assets::Vertex> v = {
 			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
@@ -120,29 +110,12 @@ public:
 		if (Rotate) {
 			Transformations.rotation.x += t * 0.05f;
 		}
-
-		ubo->object = GetModelMatrix();
-		ubo->view = SceneCamera->ViewMatrix;
-		ubo->proj = SceneCamera->ProjectionMatrix;
 	}
 };
 
 class MyCubeTwo : public Assets::Object {
 public:
-
-	struct UniformBufferObject {
-		glm::mat4 object = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-
-		glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
-	};
-
-	UniformBufferObject *ubo = new UniformBufferObject();
-
 	void OnCreate() {
-
-		SetUniformBufferObject(ubo, sizeof(*ubo));
 
 		std::vector<Assets::Vertex> v = {
 			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
@@ -190,7 +163,7 @@ public:
 			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
 			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
 			
-			ImGui::ColorEdit3("Color", glm::value_ptr(ubo->color));
+			//ImGui::ColorEdit3("Color", glm::value_ptr(ubo->color));
 
 			ImGui::TreePop();
 		}
@@ -198,27 +171,13 @@ public:
 
 	void OnUpdate(float t) {
 		Transformations.rotation.y += t * 0.05f;
-
-		ubo->object = GetModelMatrix();
-		ubo->view = SceneCamera->ViewMatrix;
-		ubo->proj = SceneCamera->ProjectionMatrix;
 	}
 };
 
 class MyCubeThree : public Assets::Object {
 public:
 
-	struct UniformBufferObject {
-		glm::mat4 object = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-	};
-
-	UniformBufferObject *ubo = new UniformBufferObject();
-
 	void OnCreate() {
-
-		SetUniformBufferObject(ubo, sizeof(*ubo));
 
 		std::vector<Assets::Vertex> v = {
 			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
@@ -272,27 +231,16 @@ public:
 
 	void OnUpdate(float t) {
 		Transformations.rotation.z += t * 0.05f;
-
-		ubo->object = GetModelMatrix();
-		ubo->view = SceneCamera->ViewMatrix;
-		ubo->proj = SceneCamera->ProjectionMatrix;
 	}
 };
 
 class CustomObject : public Assets::Object {
 public:
 
-	struct UniformBufferObject {
-		glm::mat4 object = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-	};
-
-	UniformBufferObject *ubo = new UniformBufferObject();
+	bool rotate = false;
 
 	void OnCreate() {
 
-		SetUniformBufferObject(ubo, sizeof(*ubo));
 	}
 
 	void OnUIRender() {
@@ -315,22 +263,22 @@ public:
 			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
 			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
 
-			std::string s_label_x = "Scalation x " + ID;
-			std::string s_label_y = "Scalation y " + ID;
-			std::string s_label_z = "Scalation z " + ID;
-			
-			ImGui::SliderFloat(s_label_x.c_str(), &Transformations.scalation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(s_label_y.c_str(), &Transformations.scalation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(s_label_z.c_str(), &Transformations.scalation.z, -200.0f, 200.0f);
+			std::string s_label = "Scale Handler " + ID;
+			ImGui::SliderFloat(s_label.c_str(), &Transformations.scaleHandler, 0.0f, 2.0f);
+
+			ImGui::Checkbox("Rotate", &rotate);
 
 			ImGui::TreePop();
 		}
 	}
 
 	void OnUpdate(float t) {
-		ubo->object = GetModelMatrix();
-		ubo->view = SceneCamera->ViewMatrix;
-		ubo->proj = SceneCamera->ProjectionMatrix;
+		if (rotate) {
+			Transformations.rotation.y += 0.1 * t;
+
+			if (Transformations.rotation.y > 360.0f)
+				Transformations.rotation.y = 0.0f;
+		}
 	}
 };
 
@@ -392,21 +340,28 @@ int main() {
 
 	Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
 	Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/textured_frag.spv");
-	//defaultFragmentShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
 	Assets::GraphicsPipeline defaultGraphicsPipeline = Assets::GraphicsPipeline("defaultPipeline", defaultVertexShader, defaultFragmentShader);
 	myScene->AddGraphicsPipeline(defaultGraphicsPipeline);
+
+	Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
+	Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+	wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
+	Assets::GraphicsPipeline wireFramePipeline = Assets::GraphicsPipeline("wireframePipeline", wireframeVertexShader, wireframeFragShader);
+	myScene->AddGraphicsPipeline(wireFramePipeline);
+
 	//myScene->AddMaterial(texturedMaterial.get());
 	
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
-	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
 	testObject.PipelineName = defaultGraphicsPipeline.Name;
 
-	testObject.SceneCamera = myScene->MainCamera;
 	testObject.Transformations.translation.z = -2.0f;
+
+	myScene->AddRenderableObject(&testObject);
 
 	CustomObject testObject2 = CustomObject();
 	testObject2.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
@@ -414,19 +369,17 @@ int main() {
 	testObject2.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
-	testObject2.PipelineName = defaultGraphicsPipeline.Name;
+	testObject2.PipelineName = wireFramePipeline.Name;
 
-	testObject2.SceneCamera = myScene->MainCamera;
 	testObject2.Transformations.translation.x = 5.0f;
 	testObject2.Transformations.translation.z = -2.0f;
-
-	myScene->AddRenderableObject(&testObject);
+	
 	myScene->AddRenderableObject(&testObject2);
 	
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
-	settings.Width = 800;
-	settings.Height = 600;
+	settings.Width = 1600;
+	settings.Height = 900;
 
 	std::unique_ptr<Engine::Application> app = std::make_unique<Engine::Application>(settings);
 
