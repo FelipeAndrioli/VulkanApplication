@@ -7,7 +7,6 @@
 #include <map>
 #include <stdexcept>
 
-#include "../Material.h"
 #include "../LogicalDevice.h"
 #include "../PhysicalDevice.h"
 #include "../CommandPool.h"
@@ -16,6 +15,7 @@
 #include "../../Assets/Object.h"
 #include "../../Assets/Mesh.h"
 #include "../../Assets/Texture.h"
+#include "../../Assets/Material.h"
 
 #include "./TextureLoader.h"
 
@@ -31,7 +31,7 @@ namespace Engine {
 
 		void ModelLoader::LoadModelAndMaterials(
 			Assets::Object& object, 
-			std::map<std::string, std::unique_ptr<Engine::Material>>& sceneMaterials,
+			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
 			Engine::LogicalDevice& logicalDevice,
 			Engine::PhysicalDevice& physicalDevice,
 			Engine::CommandPool& commandPool) {
@@ -58,7 +58,7 @@ namespace Engine {
 				if (sceneMaterials.find(material.name) != sceneMaterials.end())
 					continue;
 
-				sceneMaterials[material.name].reset(new class Material());
+				sceneMaterials[material.name].reset(new class Assets::Material());
 
 				// TODO: move material properties to a material property struct
 				sceneMaterials[material.name]->Name = material.name;

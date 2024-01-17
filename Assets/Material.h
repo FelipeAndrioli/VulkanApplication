@@ -7,9 +7,7 @@
 
 namespace Assets {
 	struct Texture;
-}
 
-namespace Engine {
 	class Material {
 	public:
 

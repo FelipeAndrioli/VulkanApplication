@@ -42,7 +42,6 @@
 
 #include "Application.h"
 #include "UI.h"
-#include "Material.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Scene.h"
@@ -274,7 +273,7 @@ public:
 
 	void OnUpdate(float t) {
 		if (rotate) {
-			Transformations.rotation.y += 0.1 * t;
+			Transformations.rotation.y += 0.1f * t;
 
 			if (Transformations.rotation.y > 360.0f)
 				Transformations.rotation.y = 0.0f;
@@ -354,7 +353,7 @@ int main() {
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
-	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
 	testObject.PipelineName = defaultGraphicsPipeline.Name;

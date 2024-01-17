@@ -1,6 +1,7 @@
 #include "Object.h"
 
 #include "Mesh.h"
+#include "Texture.h"
 
 #include "../src/Buffer.h"
 #include "../src/DescriptorSets.h"

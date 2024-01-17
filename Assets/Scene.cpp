@@ -11,7 +11,6 @@
 #include "../src/PhysicalDevice.h"
 #include "../src/DescriptorSetLayout.h"
 #include "../src/DescriptorPool.h"
-#include "../src/Material.h"
 #include "../src/GraphicsPipeline.h"
 
 #include "../src/Input/Input.h"

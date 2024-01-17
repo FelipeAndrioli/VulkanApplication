@@ -20,7 +20,6 @@
 #include "Fence.h"
 #include "Instance.h"
 #include "DebugUtilsMessenger.h"
-#include "Material.h"
 #include "DepthBuffer.h"
 
 #include "./Input/Input.h"
@@ -32,6 +31,7 @@
 #include "../Assets/Scene.h"
 #include "../Assets/Pipeline.h"
 #include "../Assets/Camera.h"
+#include "../Assets/Material.h"
 
 namespace Engine {
 	Application::Application(const Settings &settings) : m_Settings(settings) {
@@ -130,7 +130,7 @@ namespace Engine {
 			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
 
 		// Init Scene
-		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Engine::Material>>);
+		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Assets::Material>>);
 
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
@@ -405,7 +405,7 @@ namespace Engine {
 
 				memcpy(object->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], objectGPUData, sizeof(ObjectGPUData));
 
-				Material* material = nullptr;
+				Assets::Material* material = nullptr;
 
 				for (const Assets::Mesh* mesh : object->Meshes) {
 					if (material == nullptr || mesh->Material.get() != material) {

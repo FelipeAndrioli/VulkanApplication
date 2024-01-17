@@ -7,10 +7,10 @@
 
 namespace Assets {
 	class Object;
+	class Material;
 }
 
 namespace Engine {
-	class Material;
 	class LogicalDevice;
 	class PhysicalDevice;
 	class CommandPool;
@@ -23,7 +23,7 @@ namespace Engine {
 
 			static void LoadModelAndMaterials(
 				Assets::Object& object, 
-				std::map<std::string, std::unique_ptr<Engine::Material>>& sceneMaterials,
+				std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
 				Engine::LogicalDevice& logicalDevice,
 				Engine::PhysicalDevice& physicalDevice,
 				Engine::CommandPool& commandPool

@@ -8,13 +8,13 @@
 namespace Engine {
 	class Buffer;
 	class DescriptorSets;
-	class Material;
 	class Image;
 	class GraphicsPipeline;
 }
 
 namespace Assets {
 	struct Mesh;
+	struct Texture;
 
 	struct Transform {
 		glm::vec3 translation;
@@ -33,6 +33,8 @@ namespace Assets {
 		virtual void OnUIRender() = 0;
 
 		glm::mat4 GetModelMatrix();
+
+		std::vector<Assets::Texture*> GetTextures();
 
 		void ResetResources();
 	public:
