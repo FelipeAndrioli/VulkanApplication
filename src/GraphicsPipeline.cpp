@@ -10,7 +10,7 @@ namespace Engine {
 		const SwapChain& swapChain, 
 		const DepthBuffer& depthBuffer, 
 		const VkRenderPass& renderPass,
-		DescriptorSetLayout& descriptorSetLayout)
+		std::vector<DescriptorSetLayout*> descriptorSetLayouts)
 		: p_LogicalDevice(&logicalDevice) {
 
 		auto bindingDescription = vertexShader.BindingDescription;
@@ -97,7 +97,7 @@ namespace Engine {
 
 		std::vector<BufferDescriptor> bufferDescriptor = {};
 
-		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), &descriptorSetLayout));
+		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), descriptorSetLayouts));
 
 		ShaderModule vertShaderModule(vertexShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
 		ShaderModule fragShaderModule(fragmentShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);

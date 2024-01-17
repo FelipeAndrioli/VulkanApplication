@@ -1,13 +1,18 @@
 #include "PipelineLayout.h"
 
 namespace Engine {
-	PipelineLayout::PipelineLayout(VkDevice& logicalDevice, DescriptorSetLayout* descriptorSetLayout) : p_LogicalDevice(logicalDevice) {
-		VkDescriptorSetLayout descriptorSetLayouts[] = { descriptorSetLayout->GetHandle() };
+	PipelineLayout::PipelineLayout(VkDevice& logicalDevice, std::vector<DescriptorSetLayout*> descriptorSetLayouts) 
+		: p_LogicalDevice(logicalDevice) {
+		std::vector<VkDescriptorSetLayout> innerDescriptorSetLayouts = {};
+
+		for (auto& descriptorSetLayout : descriptorSetLayouts) {
+			innerDescriptorSetLayouts.push_back(descriptorSetLayout->GetHandle());
+		}
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1;
-		pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts;
+		pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(innerDescriptorSetLayouts.size());
+		pipelineLayoutInfo.pSetLayouts = innerDescriptorSetLayouts.data();
 		//pipelineLayoutInfo.setLayoutCount = 0;
 		//pipelineLayoutInfo.pSetLayouts = nullptr;
 
