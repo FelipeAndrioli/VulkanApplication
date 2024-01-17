@@ -55,6 +55,9 @@ namespace Engine {
 
 	struct ObjectGPUData {
 		glm::mat4 model = glm::mat4(1.0f);
+	};
+
+	struct SceneGPUData {
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
 	};
@@ -144,10 +147,8 @@ namespace Engine {
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 
-		/*
 		std::unique_ptr<class Buffer> m_SceneGPUDataBuffer;
 		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSets> m_SceneGPUDataDescriptorSets;
-		*/
 	};
 }

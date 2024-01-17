@@ -25,13 +25,13 @@ namespace Engine {
 	class GraphicsPipeline {
 	public:
 		GraphicsPipeline(
-			const Assets::VertexShader& vertexShader, 
-			const Assets::FragmentShader& fragmentShader, 
-			LogicalDevice& logicalDevice, 
-			const SwapChain& swapChain, 
-			const DepthBuffer& depthBuffer, 
+			const Assets::VertexShader& vertexShader,
+			const Assets::FragmentShader& fragmentShader,
+			LogicalDevice& logicalDevice,
+			const SwapChain& swapChain,
+			const DepthBuffer& depthBuffer,
 			const VkRenderPass& renderPass,
-			DescriptorSetLayout& descriptorSetLayout);
+			std::vector<DescriptorSetLayout*> descriptorSetLayouts);
 		~GraphicsPipeline();
 
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };

@@ -25,4 +25,5 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 ## Future Work (not in order)
 
 - [ ] Render Graph
+- [ ] glTF
 - [ ] Ray Tracer
