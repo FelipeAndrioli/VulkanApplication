@@ -11,6 +11,8 @@
 #include "../PhysicalDevice.h"
 #include "../CommandPool.h"
 #include "../BufferHelper.h"
+#include "../Buffer.h"
+#include "../DescriptorSets.h"
 
 #include "../../Assets/Object.h"
 #include "../../Assets/Mesh.h"
@@ -61,180 +63,230 @@ namespace Engine {
 				sceneMaterials[material.name].reset(new class Assets::Material());
 
 				// TODO: move material properties to a material property struct
-				sceneMaterials[material.name]->Name = material.name;
-				sceneMaterials[material.name]->Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2] };
-				sceneMaterials[material.name]->Specular = { material.specular[0], material.specular[1], material.specular[2] };
-				sceneMaterials[material.name]->Transmittance = { material.transmittance[0], material.transmittance[1], material.transmittance[2] };
-				sceneMaterials[material.name]->Emission = { material.emission[0], material.emission[1], material.emission[2] };
-				sceneMaterials[material.name]->Shininess = material.shininess;
-				sceneMaterials[material.name]->Ior = material.ior;
-				sceneMaterials[material.name]->Dissolve = material.dissolve;
-				sceneMaterials[material.name]->Roughness = material.roughness;
-				sceneMaterials[material.name]->Metallic = material.metallic;
-				sceneMaterials[material.name]->Sheen = material.sheen;
-				sceneMaterials[material.name]->ClearcoatThickness = material.clearcoat_thickness;
-				sceneMaterials[material.name]->ClearcoatRoughness = material.clearcoat_roughness;
-				sceneMaterials[material.name]->Anisotropy = material.anisotropy;
-				sceneMaterials[material.name]->AnisotropyRotation = material.anisotropy_rotation;
-				//sceneMaterials[material.name]->Pad0 = material.pad0;
-				sceneMaterials[material.name]->Pad2 = material.pad2;
-				sceneMaterials[material.name]->Illum = material.illum;
+				sceneMaterials[material.name]->Properties.Name = material.name;
+				sceneMaterials[material.name]->Properties.Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2] };
+				sceneMaterials[material.name]->Properties.Specular = { material.specular[0], material.specular[1], material.specular[2] };
+				sceneMaterials[material.name]->Properties.Transmittance = { material.transmittance[0], material.transmittance[1], material.transmittance[2] };
+				sceneMaterials[material.name]->Properties.Emission = { material.emission[0], material.emission[1], material.emission[2] };
+				sceneMaterials[material.name]->Properties.Shininess = material.shininess;
+				sceneMaterials[material.name]->Properties.Ior = material.ior;
+				sceneMaterials[material.name]->Properties.Dissolve = material.dissolve;
+				sceneMaterials[material.name]->Properties.Roughness = material.roughness;
+				sceneMaterials[material.name]->Properties.Metallic = material.metallic;
+				sceneMaterials[material.name]->Properties.Sheen = material.sheen;
+				sceneMaterials[material.name]->Properties.ClearcoatThickness = material.clearcoat_thickness;
+				sceneMaterials[material.name]->Properties.ClearcoatRoughness = material.clearcoat_roughness;
+				sceneMaterials[material.name]->Properties.Anisotropy = material.anisotropy;
+				sceneMaterials[material.name]->Properties.AnisotropyRotation = material.anisotropy_rotation;
+				//sceneMaterials[material.name]->Properties.Pad0 = material.pad0;
+				sceneMaterials[material.name]->Properties.Pad2 = material.pad2;
+				sceneMaterials[material.name]->Properties.Illum = material.illum;
 
 				if (material.ambient_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::AMBIENT,
-							(modelBasePath + material.ambient_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::AMBIENT,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::AMBIENT,
+								(modelBasePath + material.ambient_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 
 				if (material.diffuse_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::DIFFUSE,
-							(modelBasePath + material.diffuse_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::DIFFUSE,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::DIFFUSE,
+								(modelBasePath + material.diffuse_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.specular_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::SPECULAR,
-							(modelBasePath + material.specular_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::SPECULAR,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::SPECULAR,
+								(modelBasePath + material.specular_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.specular_highlight_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::SPECULAR_HIGHTLIGHT,
-							(modelBasePath + material.specular_highlight_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::SPECULAR_HIGHTLIGHT,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::SPECULAR_HIGHTLIGHT,
+								(modelBasePath + material.specular_highlight_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.bump_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::BUMP,
-							(modelBasePath + material.bump_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::BUMP,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::BUMP,
+								(modelBasePath + material.bump_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.displacement_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::DISPLACEMENT,
-							(modelBasePath + material.displacement_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::DISPLACEMENT,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::DISPLACEMENT,
+								(modelBasePath + material.displacement_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.alpha_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::ALPHA,
-							(modelBasePath + material.alpha_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::ALPHA,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::ALPHA,
+								(modelBasePath + material.alpha_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.reflection_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::REFLECTION,
-							(modelBasePath + material.reflection_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::REFLECTION,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::REFLECTION,
+								(modelBasePath + material.reflection_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.roughness_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::ROUGHNESS,
-							(modelBasePath + material.roughness_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::ROUGHNESS,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::ROUGHNESS,
+								(modelBasePath + material.roughness_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.metallic_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::METALLIC,
-							(modelBasePath + material.metallic_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::METALLIC,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::METALLIC,
+								(modelBasePath + material.metallic_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.sheen_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::SHEEN,
-							(modelBasePath + material.sheen_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::SHEEN,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::SHEEN,
+								(modelBasePath + material.sheen_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.emissive_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::EMISSIVE,
-							(modelBasePath + material.emissive_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::EMISSIVE,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::EMISSIVE,
+								(modelBasePath + material.emissive_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
 				
 				if (material.normal_texname != "") {
-					sceneMaterials[material.name]->Textures.push_back(
-						TextureLoader::CreateTexture(
-							Assets::Texture::TextureType::NORMAL,
-							(modelBasePath + material.normal_texname).c_str(),
-							logicalDevice,
-							physicalDevice,
-							commandPool
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::NORMAL,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::NORMAL,
+								(modelBasePath + material.normal_texname).c_str(),
+								logicalDevice,
+								physicalDevice,
+								commandPool
+							)
 						)
 					);
 				}
+
+				/*
+				VkDeviceSize bufferSize = sizeof(Assets::Material::MaterialProperties);
+
+				sceneMaterials[material.name]->GPUDataBuffer.reset(
+					new class Engine::Buffer(
+						MAX_FRAMES_IN_FLIGHT,
+						logicalDevice,
+						physicalDevice,
+						bufferSize,
+						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+					)
+				);
+				sceneMaterials[material.name]->GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+				sceneMaterials[material.name]->GPUDataBuffer->BufferMemory->MapMemory();
+
+				sceneMaterials[material.name]->DescriptorSets.reset(
+					new class Engine::DescriptorSets(
+						bufferSize,
+						logicalDevice.GetHandle(),
+						descriptorPool
+					)
+				);
+				*/
 			}
 
 			std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices{};

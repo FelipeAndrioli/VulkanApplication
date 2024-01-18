@@ -145,6 +145,14 @@ namespace Engine {
 
 		m_SceneGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(sceneDescriptorBindings, m_LogicalDevice->GetHandle()));
 
+		std::vector<DescriptorBinding> materialDescriptorBindings = {
+			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
+			{ 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
+		};
+
+		m_MaterialGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(materialDescriptorBindings, m_LogicalDevice->GetHandle()));
+
+
 		for (const Assets::GraphicsPipeline& sceneGraphicsPipeline : p_ActiveScene->SceneGraphicsPipelines) {
 			m_GraphicsPipelines.insert(std::make_pair(sceneGraphicsPipeline.Name, new class GraphicsPipeline(
 				sceneGraphicsPipeline.m_VertexShader,
@@ -153,7 +161,7 @@ namespace Engine {
 				*m_SwapChain,
 				*m_DepthBuffer,
 				m_DefaultRenderPass->GetHandle(),
-				std::vector<DescriptorSetLayout*>{ m_SceneGPUDataDescriptorSetLayout.get(), m_ObjectGPUDataDescriptorSetLayout.get() }
+				std::vector<DescriptorSetLayout*> { m_SceneGPUDataDescriptorSetLayout.get(), m_ObjectGPUDataDescriptorSetLayout.get(), m_MaterialGPUDataDescriptorSetLayout.get() }
 			)));
 		}
 
@@ -226,6 +234,38 @@ namespace Engine {
 			nullptr
 		));
 
+		bufferSize = sizeof(Assets::Material::Properties);
+
+		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
+
+		for (it = m_Materials->begin(); it != m_Materials->end(); it++) {
+			it->second->GPUDataBuffer.reset(
+				new class Buffer(
+					MAX_FRAMES_IN_FLIGHT,
+					*m_LogicalDevice.get(),
+					*m_PhysicalDevice.get(),
+					bufferSize,
+					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+				)
+			);
+
+			it->second->GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			it->second->GPUDataBuffer->BufferMemory->MapMemory();
+
+			it->second->DescriptorSets.reset(
+				new class DescriptorSets(
+					bufferSize,
+					m_LogicalDevice->GetHandle(),
+					m_DescriptorPool->GetHandle(),
+					m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
+					it->second->GPUDataBuffer.get(),
+					nullptr,
+					false,
+					it->second->Textures.find(Assets::TextureType::DIFFUSE)->second.TextureImage.get()
+				)
+			);
+		}
+
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 	}
 
@@ -233,6 +273,8 @@ namespace Engine {
 
 		m_ObjectGPUDataDescriptorSetLayout.reset();
 		m_SceneGPUDataDescriptorSetLayout.reset();
+		m_MaterialGPUDataDescriptorSetLayout.reset();
+
 		m_SceneGPUDataDescriptorSets.reset();
 		m_SceneGPUDataBuffer.reset();
 
@@ -411,6 +453,23 @@ namespace Engine {
 					if (material == nullptr || mesh->Material.get() != material) {
 						if (m_Materials->find(mesh->MaterialName) != m_Materials->end()) {
 							material = m_Materials->find(mesh->MaterialName)->second.get();
+
+							/*
+							Assets::Material::MaterialProperties* materialGPUData = new Assets::Material::MaterialProperties();
+
+							vkCmdBindDescriptorSets(
+								commandBuffer, 
+								VK_PIPELINE_BIND_POINT_GRAPHICS, 
+								it->second->GetPipelineLayout().GetHandle(),
+								2, 
+								1,
+								&material->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
+								0, 
+								nullptr
+							);
+
+							memcpy(material->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], materialGPUData, sizeof(Assets::Material::MaterialProperties));
+							*/	
 						}
 					}
 

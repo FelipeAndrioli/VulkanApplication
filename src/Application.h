@@ -146,9 +146,10 @@ namespace Engine {
 		std::unique_ptr<std::map<std::string, std::unique_ptr<class Assets::Material>>> m_Materials;
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
+		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;
+		std::unique_ptr<class DescriptorSetLayout> m_MaterialGPUDataDescriptorSetLayout;
 
 		std::unique_ptr<class Buffer> m_SceneGPUDataBuffer;
-		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSets> m_SceneGPUDataDescriptorSets;
 	};
 }

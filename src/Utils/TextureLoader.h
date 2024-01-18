@@ -29,7 +29,7 @@ namespace Engine {
 			);
 
 			static Assets::Texture CreateTexture(
-				Assets::Texture::TextureType textureType,
+				Assets::TextureType textureType,
 				const char* texturePath,
 				LogicalDevice& logicalDevice,
 				PhysicalDevice& physicalDevice,
