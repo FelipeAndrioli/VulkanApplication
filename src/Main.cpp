@@ -354,6 +354,7 @@ int main() {
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
 	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+	testObject.FlipTexturesVertically = true;
 	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
 	testObject.PipelineName = defaultGraphicsPipeline.Name;
@@ -364,8 +365,8 @@ int main() {
 
 	CustomObject testObject2 = CustomObject();
 	testObject2.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
-	testObject2.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
 	testObject2.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+	testObject.FlipTexturesVertically = true;
 	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
 	testObject2.PipelineName = wireFramePipeline.Name;
@@ -374,7 +375,23 @@ int main() {
 	testObject2.Transformations.translation.z = -2.0f;
 	
 	myScene->AddRenderableObject(&testObject2);
-	
+
+	CustomObject sword = CustomObject();
+	sword.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/sword/sword.obj";
+	sword.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/sword";
+	sword.PipelineName = defaultGraphicsPipeline.Name;
+	sword.Transformations.translation.x = -5.0f;
+	sword.Transformations.translation.z = -2.0f;
+	myScene->AddRenderableObject(&sword);
+
+	/*
+	CustomObject model = CustomObject();
+	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/model.obj";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/";
+	model.PipelineName = defaultGraphicsPipeline.Name;
+	myScene->AddRenderableObject(&model);
+	*/
+
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
 	settings.Width = 1600;
