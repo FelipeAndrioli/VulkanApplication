@@ -45,6 +45,7 @@ namespace Assets {
 		const char* MaterialPath = nullptr;
 
 		bool Textured = false;
+		bool FlipTexturesVertically = false;
 
 		std::vector<Mesh*> Meshes;
 
