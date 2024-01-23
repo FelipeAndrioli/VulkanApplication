@@ -28,6 +28,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [ ] Sort
 	- [ ] Objects per pipeline
 	- [ ] Meshes per material
+- [ ] Add material instance per object and bind if from there to have customized properties of the same material
 	
 ## Future Work (not in order)
 
