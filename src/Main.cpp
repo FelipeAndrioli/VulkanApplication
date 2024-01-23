@@ -337,10 +337,15 @@ int main() {
 
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 
-	Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
-	Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+	Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/vert.spv");
+	Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/frag.spv"); 
 	Assets::GraphicsPipeline defaultGraphicsPipeline = Assets::GraphicsPipeline("defaultPipeline", defaultVertexShader, defaultFragmentShader);
 	myScene->AddGraphicsPipeline(defaultGraphicsPipeline);
+
+	Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "./Assets/Shaders/textured_vert.spv");
+	Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+	Assets::GraphicsPipeline texturedGraphicsPipeline = Assets::GraphicsPipeline("texturedPipeline", texturedVertexShader, texturedFragmentShader);
+	myScene->AddGraphicsPipeline(texturedGraphicsPipeline);
 
 	Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
 	Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
@@ -348,10 +353,12 @@ int main() {
 	Assets::GraphicsPipeline wireFramePipeline = Assets::GraphicsPipeline("wireframePipeline", wireframeVertexShader, wireframeFragShader);
 	myScene->AddGraphicsPipeline(wireFramePipeline);
 
+	/*
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	testObject.FlipTexturesVertically = true;
+	//testObject.PipelineName = texturedGraphicsPipeline.Name;
 	testObject.PipelineName = defaultGraphicsPipeline.Name;
 
 	testObject.Transformations.translation.z = -2.0f;
@@ -375,14 +382,13 @@ int main() {
 	sword.Transformations.translation.x = -5.0f;
 	sword.Transformations.translation.z = -2.0f;
 	myScene->AddRenderableObject(&sword);
-
-	/*
+	*/
 	CustomObject model = CustomObject();
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/model.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/";
-	model.PipelineName = defaultGraphicsPipeline.Name;
+	//model.PipelineName = defaultGraphicsPipeline.Name;
+	model.PipelineName = texturedGraphicsPipeline.Name;
 	myScene->AddRenderableObject(&model);
-	*/
 
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
