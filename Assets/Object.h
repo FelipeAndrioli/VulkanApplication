@@ -34,8 +34,6 @@ namespace Assets {
 
 		glm::mat4 GetModelMatrix();
 
-		std::vector<Assets::Texture*> GetTextures();
-
 		void ResetResources();
 	public:
 		std::string ID = "";
@@ -51,10 +49,6 @@ namespace Assets {
 
 		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
 		 
-		// temporary
-		std::unique_ptr<class Engine::Image> m_Texture;
-		std::string TexturePath = "";
-
 		Transform Transformations = {};
 	
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
