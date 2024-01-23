@@ -82,12 +82,12 @@ namespace Engine {
 				sceneMaterials[material.name]->Properties.Pad2 = material.pad2;
 				sceneMaterials[material.name]->Properties.Illum = material.illum;
 
-				if (material.ambient_texname != "") {
+				if (material.ambient_texname != "" && fileExists(modelBasePath.append(material.ambient_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::AMBIENT,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::AMBIENT,
-								(modelBasePath + material.ambient_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -96,12 +96,12 @@ namespace Engine {
 					);
 				}
 
-				if (material.diffuse_texname != "") {
+				if (material.diffuse_texname != "" && fileExists(modelBasePath.append(material.diffuse_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::DIFFUSE,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::DIFFUSE,
-								(modelBasePath + material.diffuse_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -110,12 +110,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.specular_texname != "") {
+				if (material.specular_texname != "" && fileExists(modelBasePath.append(material.specular_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::SPECULAR,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::SPECULAR,
-								(modelBasePath + material.specular_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -124,12 +124,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.specular_highlight_texname != "") {
+				if (material.specular_highlight_texname != "" && fileExists(modelBasePath.append(material.specular_highlight_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::SPECULAR_HIGHTLIGHT,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::SPECULAR_HIGHTLIGHT,
-								(modelBasePath + material.specular_highlight_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -138,12 +138,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.bump_texname != "") {
+				if (material.bump_texname != "" && fileExists(modelBasePath.append(material.bump_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::BUMP,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::BUMP,
-								(modelBasePath + material.bump_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -152,12 +152,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.displacement_texname != "") {
+				if (material.displacement_texname != "" && fileExists(modelBasePath.append(material.displacement_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::DISPLACEMENT,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::DISPLACEMENT,
-								(modelBasePath + material.displacement_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -166,12 +166,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.alpha_texname != "") {
+				if (material.alpha_texname != "" && fileExists(modelBasePath.append(material.alpha_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::ALPHA,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::ALPHA,
-								(modelBasePath + material.alpha_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -180,12 +180,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.reflection_texname != "") {
+				if (material.reflection_texname != "" && fileExists(modelBasePath.append(material.reflection_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::REFLECTION,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::REFLECTION,
-								(modelBasePath + material.reflection_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -194,12 +194,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.roughness_texname != "") {
+				if (material.roughness_texname != "" && fileExists(modelBasePath.append(material.roughness_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::ROUGHNESS,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::ROUGHNESS,
-								(modelBasePath + material.roughness_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -208,12 +208,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.metallic_texname != "") {
+				if (material.metallic_texname != "" && fileExists(modelBasePath.append(material.metallic_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::METALLIC,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::METALLIC,
-								(modelBasePath + material.metallic_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -222,12 +222,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.sheen_texname != "") {
+				if (material.sheen_texname != "" && fileExists(modelBasePath.append(material.sheen_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::SHEEN,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::SHEEN,
-								(modelBasePath + material.sheen_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -236,12 +236,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.emissive_texname != "") {
+				if (material.emissive_texname != "" && fileExists(modelBasePath.append(material.emissive_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::EMISSIVE,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::EMISSIVE,
-								(modelBasePath + material.emissive_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool
@@ -250,12 +250,12 @@ namespace Engine {
 					);
 				}
 				
-				if (material.normal_texname != "") {
+				if (material.normal_texname != "" && fileExists(modelBasePath.append(material.normal_texname))) {
 					sceneMaterials[material.name]->Textures.insert(
 						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::NORMAL,
 							TextureLoader::CreateTexture(
 								Assets::TextureType::NORMAL,
-								(modelBasePath + material.normal_texname).c_str(),
+								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
 								commandPool

@@ -28,6 +28,11 @@ namespace Engine {
 				Engine::PhysicalDevice& physicalDevice,
 				Engine::CommandPool& commandPool
 			);
+
+			static inline bool fileExists(const std::string& path) {
+				struct stat buffer;
+				return (stat(path.c_str(), &buffer) == 0);
+			}
 		};
 	}
 }
