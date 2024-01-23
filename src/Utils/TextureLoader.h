@@ -25,7 +25,8 @@ namespace Engine {
 				const char* texturePath, 
 				LogicalDevice& logicalDevice, 
 				PhysicalDevice& physicalDevice,
-				CommandPool& commandPool
+				CommandPool& commandPool,
+				bool flipTextureVertically
 			);
 
 			static Assets::Texture CreateTexture(
@@ -33,7 +34,8 @@ namespace Engine {
 				const char* texturePath,
 				LogicalDevice& logicalDevice,
 				PhysicalDevice& physicalDevice,
-				CommandPool& commandPool
+				CommandPool& commandPool,
+				bool flipTextureVertically
 			);
 		};
 	}

@@ -90,7 +90,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -104,7 +105,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -118,7 +120,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -132,7 +135,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -146,7 +150,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -160,7 +165,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -174,7 +180,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -188,7 +195,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -202,7 +210,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -216,7 +225,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -230,7 +240,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -244,7 +255,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
@@ -258,7 +270,8 @@ namespace Engine {
 								modelBasePath.c_str(),
 								logicalDevice,
 								physicalDevice,
-								commandPool
+								commandPool,
+								object.FlipTexturesVertically
 							)
 						)
 					);
