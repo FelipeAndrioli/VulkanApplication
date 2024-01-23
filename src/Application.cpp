@@ -111,17 +111,19 @@ namespace Engine {
 
 		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
 
-		size_t maxDescriptorSets = 10;
+		size_t maxDescriptorSets = 30;
+		uint32_t buffers = 10;
 
 		for (size_t i = 0; i < maxDescriptorSets; i++) {
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
 			//poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
 
 			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
 			// because our sets reference the SSBOs of the last and current frame (for now).
 
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT });
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, buffers });
 		}
 
 		m_DescriptorPool.reset(new class DescriptorPool(
@@ -134,7 +136,6 @@ namespace Engine {
 
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
-			{ 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
 		};
 
 		m_ObjectGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, m_LogicalDevice->GetHandle()));
@@ -165,6 +166,8 @@ namespace Engine {
 			)));
 		}
 
+		// Load OBJ Model and its materials
+		// Initialize object GPU Buffer and Descriptor Sets
 		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
 			Utils::ModelLoader::LoadModelAndMaterials(
 				*renderableObject,
@@ -175,16 +178,6 @@ namespace Engine {
 			);
 
 			renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName)->second.get();
-
-			// temporary begin
-			Utils::TextureLoader::LoadTexture(
-				renderableObject->m_Texture,
-				renderableObject->TexturePath.c_str(),
-				*m_LogicalDevice.get(),
-				*m_PhysicalDevice.get(),
-				*m_CommandPool.get()
-			);
-			// temporary end
 
 			VkDeviceSize bufferSize = sizeof(ObjectGPUData);
 
@@ -207,10 +200,11 @@ namespace Engine {
 				renderableObject->GPUDataBuffer.get(),
 				nullptr,
 				false,
-				renderableObject->m_Texture.get()
+				nullptr
 			));
 		}
 
+		// Initialize Scene GPU Buffer and Descriptor Sets
 		VkDeviceSize bufferSize = sizeof(SceneGPUData);
 
 		m_SceneGPUDataBuffer.reset(new class Buffer(
@@ -234,6 +228,7 @@ namespace Engine {
 			nullptr
 		));
 
+		// Initialize material GPU Data and Descriptor Sets
 		bufferSize = sizeof(Assets::Material::Properties);
 
 		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
@@ -252,6 +247,9 @@ namespace Engine {
 			it->second->GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			it->second->GPUDataBuffer->BufferMemory->MapMemory();
 
+			// what if we don't find the texture or the material doesn't have any texture?
+
+			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE) == it->second->Textures.end() ? nullptr : it->second->Textures.find(Assets::TextureType::DIFFUSE)->second.TextureImage.get();
 			it->second->DescriptorSets.reset(
 				new class DescriptorSets(
 					bufferSize,
@@ -261,7 +259,7 @@ namespace Engine {
 					it->second->GPUDataBuffer.get(),
 					nullptr,
 					false,
-					it->second->Textures.find(Assets::TextureType::DIFFUSE)->second.TextureImage.get()
+					textureImage
 				)
 			);
 		}
@@ -454,8 +452,8 @@ namespace Engine {
 						if (m_Materials->find(mesh->MaterialName) != m_Materials->end()) {
 							material = m_Materials->find(mesh->MaterialName)->second.get();
 
-							/*
 							Assets::Material::MaterialProperties* materialGPUData = new Assets::Material::MaterialProperties();
+							materialGPUData = &material->Properties;
 
 							vkCmdBindDescriptorSets(
 								commandBuffer, 
@@ -469,7 +467,6 @@ namespace Engine {
 							);
 
 							memcpy(material->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], materialGPUData, sizeof(Assets::Material::MaterialProperties));
-							*/	
 						}
 					}
 
