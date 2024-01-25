@@ -82,289 +82,185 @@ namespace Engine {
 				sceneMaterials[material.name]->Properties.Pad2 = material.pad2;
 				sceneMaterials[material.name]->Properties.Illum = material.illum;
 
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::AMBIENT, 
-					material.ambient_texname,
+					material.ambient_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::AMBIENT,
-					material.ambient_texname,
-					material.name
-				);
-
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::DIFFUSE, 
-					material.diffuse_texname,
+					material.diffuse_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::DIFFUSE,
-					material.diffuse_texname,
-					material.name
-				);
-
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::DIFFUSE,
-					"error_texture.jpg",
-					material.name
-				);
-
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::DIFFUSE, 
 					"error_texture.jpg",
 					"./Assets/Textures/",
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
-					false
+					object.FlipTexturesVertically
 				);
 
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::SPECULAR, 
-					material.specular_texname,
+					material.specular_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::SPECULAR,
-					material.specular_texname,
-					material.name
-				);
-
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::SPECULAR_HIGHTLIGHT, 
-					material.specular_highlight_texname,
+					material.specular_highlight_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::SPECULAR_HIGHTLIGHT,
-					material.specular_highlight_texname,
-					material.name
-				);
-
-				ModelLoader::ValidateAndInsertTexture(
-					loadedTextures, 
-					Assets::TextureType::SPECULAR_HIGHTLIGHT, 
-					material.specular_highlight_texname,
-					modelBasePath, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::SPECULAR_HIGHTLIGHT,
-					material.specular_highlight_texname,
-					material.name
-				);
-	
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::BUMP, 
-					material.bump_texname,
+					material.bump_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::BUMP,
-					material.bump_texname,
-					material.name
-				);
-					
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::DISPLACEMENT, 
-					material.displacement_texname,
+					material.displacement_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
-
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::DISPLACEMENT,
-					material.displacement_texname,
-					material.name
-				);			
-
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::ALPHA, 
 					material.alpha_texname,
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::ALPHA,
-					material.alpha_texname,
-					material.name
-				);
-	
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::REFLECTION, 
-					material.reflection_texname,
+					material.reflection_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::REFLECTION,
-					material.reflection_texname,
-					material.name
-				);			
-
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::ROUGHNESS, 
-					material.roughness_texname,
+					material.roughness_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::ROUGHNESS,
-					material.roughness_texname,
-					material.name
-				);			
-
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::METALLIC, 
-					material.metallic_texname,
+					material.metallic_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::METALLIC,
-					material.metallic_texname,
-					material.name
-				);
-	
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::SHEEN, 
-					material.sheen_texname,
+					material.sheen_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::SHEEN,
-					material.sheen_texname,
-					material.name
-				);
-	
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::EMISSIVE, 
-					material.emissive_texname,
+					material.emissive_texname, 
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
 				);
 
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::EMISSIVE,
-					material.emissive_texname,
-					material.name
-				);			
-
-				ModelLoader::ValidateAndInsertTexture(
+				ModelLoader::ProcessTexture(
+					sceneMaterials, 
 					loadedTextures, 
 					Assets::TextureType::NORMAL, 
 					material.normal_texname,
 					modelBasePath, 
+					material.name, 
 					logicalDevice, 
 					physicalDevice, 
 					commandPool, 
 					object.FlipTexturesVertically
-				);
-
-				ModelLoader::LoadTextureToMaterial(
-					sceneMaterials,
-					loadedTextures,
-					Assets::TextureType::NORMAL,
-					material.normal_texname,
-					material.name
 				);
 			}
 
@@ -413,6 +309,22 @@ namespace Engine {
 
 				object.Meshes.push_back(newMesh);
 			}
+		}
+
+		void ModelLoader::ProcessTexture(
+			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
+			std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+			Assets::TextureType textureType,
+			std::string textureName,
+			std::string basePath,
+			std::string materialName,
+			Engine::LogicalDevice& logicalDevice,
+			Engine::PhysicalDevice& physicalDevice,
+			Engine::CommandPool& commandPool,
+			bool flipTexturesVertically
+		) {
+			ValidateAndInsertTexture(loadedTextures, textureType, textureName, basePath, logicalDevice, physicalDevice, commandPool, flipTexturesVertically);
+			LoadTextureToMaterial(sceneMaterials, loadedTextures, textureType, textureName, materialName);
 		}
 
 		void ModelLoader::ValidateAndInsertTexture(

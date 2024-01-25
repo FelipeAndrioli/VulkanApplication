@@ -353,6 +353,13 @@ int main() {
 	Assets::GraphicsPipeline wireFramePipeline = Assets::GraphicsPipeline("wireframePipeline", wireframeVertexShader, wireframeFragShader);
 	myScene->AddGraphicsPipeline(wireFramePipeline);
 
+	CustomObject model = CustomObject();
+	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
+	model.PipelineName = texturedGraphicsPipeline.Name;
+	model.Transformations.scaleHandler = 0.008f;
+	myScene->AddRenderableObject(&model);
+
 	/*
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
@@ -363,13 +370,6 @@ int main() {
 	testObject.Transformations.translation.z = -2.0f;
 
 	myScene->AddRenderableObject(&testObject);
-
-	CustomObject model = CustomObject();
-	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
-	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
-	model.PipelineName = texturedGraphicsPipeline.Name;
-	model.Transformations.scaleHandler = 0.008f;
-	myScene->AddRenderableObject(&model);
 
 	CustomObject testObject2 = CustomObject();
 	testObject2.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";

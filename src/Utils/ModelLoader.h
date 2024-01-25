@@ -39,6 +39,19 @@ namespace Engine {
 			}
 
 		private:
+			static void ProcessTexture(
+				std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
+				std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+				Assets::TextureType textureType,
+				std::string textureName,
+				std::string basePath,
+				std::string materialName,
+				Engine::LogicalDevice& logicalDevice,
+				Engine::PhysicalDevice& physicalDevice,
+				Engine::CommandPool& commandPool,
+				bool flipTexturesVertically
+			);
+
 			static void ValidateAndInsertTexture(
 				std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
 				Assets::TextureType textureType,
@@ -49,7 +62,6 @@ namespace Engine {
 				Engine::CommandPool& commandPool,
 				bool flipTexturesVertically
 			);
-
 
 			static void LoadTextureToMaterial(
 				std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
