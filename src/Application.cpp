@@ -111,7 +111,7 @@ namespace Engine {
 
 		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
 
-		size_t maxDescriptorSets = 30;
+		size_t maxDescriptorSets = 50;
 		uint32_t buffers = 10;
 
 		for (size_t i = 0; i < maxDescriptorSets; i++) {
@@ -248,7 +248,6 @@ namespace Engine {
 			it->second->GPUDataBuffer->BufferMemory->MapMemory();
 
 			// what if we don't find the texture or the material doesn't have any texture?
-
 			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE) == it->second->Textures.end() ? nullptr : it->second->Textures.find(Assets::TextureType::DIFFUSE)->second.TextureImage.get();
 			it->second->DescriptorSets.reset(
 				new class DescriptorSets(
