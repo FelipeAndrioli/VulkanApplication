@@ -273,7 +273,7 @@ public:
 
 	void OnUpdate(float t) {
 		if (rotate) {
-			Transformations.rotation.y += 0.1f * t;
+			Transformations.rotation.y += 0.01f * t;
 
 			if (Transformations.rotation.y > 360.0f)
 				Transformations.rotation.y = 0.0f;
@@ -353,6 +353,13 @@ int main() {
 	Assets::GraphicsPipeline wireFramePipeline = Assets::GraphicsPipeline("wireframePipeline", wireframeVertexShader, wireframeFragShader);
 	myScene->AddGraphicsPipeline(wireFramePipeline);
 
+	CustomObject model = CustomObject();
+	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
+	model.PipelineName = texturedGraphicsPipeline.Name;
+	model.Transformations.scaleHandler = 0.008f;
+	myScene->AddRenderableObject(&model);
+
 	/*
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
@@ -382,13 +389,14 @@ int main() {
 	sword.Transformations.translation.x = -5.0f;
 	sword.Transformations.translation.z = -2.0f;
 	myScene->AddRenderableObject(&sword);
-	*/
+	
 	CustomObject model = CustomObject();
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/model.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/";
 	//model.PipelineName = defaultGraphicsPipeline.Name;
 	model.PipelineName = texturedGraphicsPipeline.Name;
 	myScene->AddRenderableObject(&model);
+	*/
 
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
