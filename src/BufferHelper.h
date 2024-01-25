@@ -30,6 +30,18 @@ namespace Engine {
 			CommandPool& commandPool, 
 			const VkBufferUsageFlags usageFlags, 
 			const VkMemoryPropertyFlags memoryPropertyFlags,
+			const T& content, 
+			std::unique_ptr<Buffer>& buffer
+		);
+
+		template <class T>
+		static void CreateBuffer(
+			const int bufferQuantity, 
+			LogicalDevice& logicalDevice, 
+			PhysicalDevice& physicalDevice,
+			CommandPool& commandPool, 
+			const VkBufferUsageFlags usageFlags, 
+			const VkMemoryPropertyFlags memoryPropertyFlags,
 			const std::vector<T>& content, 
 			std::unique_ptr<Buffer>& buffer
 		);
@@ -70,6 +82,32 @@ namespace Engine {
 
 		stagingBuffer.reset();
 
+	}
+	
+	template <class T>
+	static void BufferHelper::CreateBuffer(
+		const int bufferQuantity, 
+		LogicalDevice& logicalDevice, 
+		PhysicalDevice& physicalDevice,
+		CommandPool& commandPool, 
+		const VkBufferUsageFlags usageFlags, 
+		const VkMemoryPropertyFlags memoryPropertyFlags,
+		const T& content, 
+		std::unique_ptr<Buffer>& buffer
+	) {
+	
+		VkDeviceSize bufferSize = sizeof(T);
+
+		buffer.reset(new class Buffer(
+			bufferQuantity,
+			logicalDevice,
+			physicalDevice,
+			bufferSize,
+			usageFlags
+		));
+		buffer->AllocateMemory(memoryPropertyFlags);
+
+		CopyFromStaging(logicalDevice, physicalDevice, commandPool.GetHandle(), content, buffer.get());
 	}
 
 	template <class T>

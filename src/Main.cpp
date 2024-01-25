@@ -42,7 +42,6 @@
 
 #include "Application.h"
 #include "UI.h"
-#include "Material.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Scene.h"
@@ -274,7 +273,7 @@ public:
 
 	void OnUpdate(float t) {
 		if (rotate) {
-			Transformations.rotation.y += 0.1 * t;
+			Transformations.rotation.y += 0.01f * t;
 
 			if (Transformations.rotation.y > 360.0f)
 				Transformations.rotation.y = 0.0f;
@@ -338,10 +337,15 @@ int main() {
 
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 
-	Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
-	Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+	Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/vert.spv");
+	Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/frag.spv"); 
 	Assets::GraphicsPipeline defaultGraphicsPipeline = Assets::GraphicsPipeline("defaultPipeline", defaultVertexShader, defaultFragmentShader);
 	myScene->AddGraphicsPipeline(defaultGraphicsPipeline);
+
+	Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "./Assets/Shaders/textured_vert.spv");
+	Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+	Assets::GraphicsPipeline texturedGraphicsPipeline = Assets::GraphicsPipeline("texturedPipeline", texturedVertexShader, texturedFragmentShader);
+	myScene->AddGraphicsPipeline(texturedGraphicsPipeline);
 
 	Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
 	Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
@@ -349,15 +353,19 @@ int main() {
 	Assets::GraphicsPipeline wireFramePipeline = Assets::GraphicsPipeline("wireframePipeline", wireframeVertexShader, wireframeFragShader);
 	myScene->AddGraphicsPipeline(wireFramePipeline);
 
-	//myScene->AddMaterial(texturedMaterial.get());
-	
+	CustomObject model = CustomObject();
+	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
+	model.PipelineName = texturedGraphicsPipeline.Name;
+	model.Transformations.scaleHandler = 0.008f;
+	myScene->AddRenderableObject(&model);
+
+	/*
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
-	testObject.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
-	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
-	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
-	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
-	testObject.PipelineName = defaultGraphicsPipeline.Name;
+	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+	testObject.FlipTexturesVertically = true;
+	testObject.PipelineName = texturedGraphicsPipeline.Name;
 
 	testObject.Transformations.translation.z = -2.0f;
 
@@ -365,17 +373,30 @@ int main() {
 
 	CustomObject testObject2 = CustomObject();
 	testObject2.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
-	testObject2.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
 	testObject2.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
-	//testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
-	//testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
+	testObject2.FlipTexturesVertically = true;
 	testObject2.PipelineName = wireFramePipeline.Name;
-
 	testObject2.Transformations.translation.x = 5.0f;
 	testObject2.Transformations.translation.z = -2.0f;
 	
 	myScene->AddRenderableObject(&testObject2);
+
+	CustomObject sword = CustomObject();
+	sword.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/sword/sword.obj";
+	sword.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/sword";
+	sword.PipelineName = defaultGraphicsPipeline.Name;
+	sword.Transformations.translation.x = -5.0f;
+	sword.Transformations.translation.z = -2.0f;
+	myScene->AddRenderableObject(&sword);
 	
+	CustomObject model = CustomObject();
+	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/model.obj";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/";
+	//model.PipelineName = defaultGraphicsPipeline.Name;
+	model.PipelineName = texturedGraphicsPipeline.Name;
+	myScene->AddRenderableObject(&model);
+	*/
+
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
 	settings.Width = 1600;

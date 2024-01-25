@@ -12,10 +12,11 @@
 
 namespace Engine {
 	class Buffer;
-	class Material;
 }
 
 namespace Assets {
+	class Material;
+
 	struct Vertex {
 
 		glm::vec3 pos;
@@ -64,7 +65,7 @@ namespace Assets {
 		std::unique_ptr<class Engine::Buffer> VertexBuffer;
 		std::unique_ptr<class Engine::Buffer> IndexBuffer;
 
-		std::unique_ptr<class Engine::Material> Material;
+		std::unique_ptr<class Assets::Material> Material;
 	};	
 }
 

@@ -20,7 +20,6 @@
 #include "Fence.h"
 #include "Instance.h"
 #include "DebugUtilsMessenger.h"
-#include "Material.h"
 #include "DepthBuffer.h"
 
 #include "./Input/Input.h"
@@ -32,6 +31,7 @@
 #include "../Assets/Scene.h"
 #include "../Assets/Pipeline.h"
 #include "../Assets/Camera.h"
+#include "../Assets/Material.h"
 
 namespace Engine {
 	Application::Application(const Settings &settings) : m_Settings(settings) {
@@ -111,17 +111,19 @@ namespace Engine {
 
 		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
 
-		size_t maxDescriptorSets = 10;
+		size_t maxDescriptorSets = 50;
+		uint32_t buffers = 10;
 
 		for (size_t i = 0; i < maxDescriptorSets; i++) {
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT });
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
 			//poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
 
 			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
 			// because our sets reference the SSBOs of the last and current frame (for now).
 
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT });
+			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, buffers });
 		}
 
 		m_DescriptorPool.reset(new class DescriptorPool(
@@ -130,11 +132,11 @@ namespace Engine {
 			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
 
 		// Init Scene
-		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Engine::Material>>);
+		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Assets::Material>>);
+		m_LoadedTextures.reset(new class std::map<std::string, std::unique_ptr<Assets::Texture>>);
 
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
-			{ 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
 		};
 
 		m_ObjectGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(descriptorBindings, m_LogicalDevice->GetHandle()));
@@ -145,6 +147,14 @@ namespace Engine {
 
 		m_SceneGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(sceneDescriptorBindings, m_LogicalDevice->GetHandle()));
 
+		std::vector<DescriptorBinding> materialDescriptorBindings = {
+			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
+			{ 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
+		};
+
+		m_MaterialGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(materialDescriptorBindings, m_LogicalDevice->GetHandle()));
+
+
 		for (const Assets::GraphicsPipeline& sceneGraphicsPipeline : p_ActiveScene->SceneGraphicsPipelines) {
 			m_GraphicsPipelines.insert(std::make_pair(sceneGraphicsPipeline.Name, new class GraphicsPipeline(
 				sceneGraphicsPipeline.m_VertexShader,
@@ -153,30 +163,23 @@ namespace Engine {
 				*m_SwapChain,
 				*m_DepthBuffer,
 				m_DefaultRenderPass->GetHandle(),
-				std::vector<DescriptorSetLayout*>{ m_SceneGPUDataDescriptorSetLayout.get(), m_ObjectGPUDataDescriptorSetLayout.get() }
+				std::vector<DescriptorSetLayout*> { m_SceneGPUDataDescriptorSetLayout.get(), m_ObjectGPUDataDescriptorSetLayout.get(), m_MaterialGPUDataDescriptorSetLayout.get() }
 			)));
 		}
 
+		// Load OBJ Model and its materials
+		// Initialize object GPU Buffer and Descriptor Sets
 		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
 			Utils::ModelLoader::LoadModelAndMaterials(
 				*renderableObject,
 				*m_Materials,
+				*m_LoadedTextures,
 				*m_LogicalDevice.get(),
 				*m_PhysicalDevice.get(),
 				*m_CommandPool.get()
 			);
 
 			renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName)->second.get();
-
-			// temporary begin
-			Utils::TextureLoader::LoadTexture(
-				renderableObject->m_Texture,
-				renderableObject->TexturePath.c_str(),
-				*m_LogicalDevice.get(),
-				*m_PhysicalDevice.get(),
-				*m_CommandPool.get()
-			);
-			// temporary end
 
 			VkDeviceSize bufferSize = sizeof(ObjectGPUData);
 
@@ -199,10 +202,11 @@ namespace Engine {
 				renderableObject->GPUDataBuffer.get(),
 				nullptr,
 				false,
-				renderableObject->m_Texture.get()
+				nullptr
 			));
 		}
 
+		// Initialize Scene GPU Buffer and Descriptor Sets
 		VkDeviceSize bufferSize = sizeof(SceneGPUData);
 
 		m_SceneGPUDataBuffer.reset(new class Buffer(
@@ -226,6 +230,41 @@ namespace Engine {
 			nullptr
 		));
 
+		// Initialize material GPU Data and Descriptor Sets
+		bufferSize = sizeof(Assets::Material::Properties);
+
+		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
+
+		for (it = m_Materials->begin(); it != m_Materials->end(); it++) {
+			it->second->GPUDataBuffer.reset(
+				new class Buffer(
+					MAX_FRAMES_IN_FLIGHT,
+					*m_LogicalDevice.get(),
+					*m_PhysicalDevice.get(),
+					bufferSize,
+					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+				)
+			);
+
+			it->second->GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			it->second->GPUDataBuffer->BufferMemory->MapMemory();
+
+			// what if we don't find the texture or the material doesn't have any texture?
+			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE) == it->second->Textures.end() ? nullptr : it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
+			it->second->DescriptorSets.reset(
+				new class DescriptorSets(
+					bufferSize,
+					m_LogicalDevice->GetHandle(),
+					m_DescriptorPool->GetHandle(),
+					m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
+					it->second->GPUDataBuffer.get(),
+					nullptr,
+					false,
+					textureImage
+				)
+			);
+		}
+
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 	}
 
@@ -233,6 +272,8 @@ namespace Engine {
 
 		m_ObjectGPUDataDescriptorSetLayout.reset();
 		m_SceneGPUDataDescriptorSetLayout.reset();
+		m_MaterialGPUDataDescriptorSetLayout.reset();
+
 		m_SceneGPUDataDescriptorSets.reset();
 		m_SceneGPUDataBuffer.reset();
 
@@ -243,6 +284,7 @@ namespace Engine {
 
 		m_GraphicsPipelines.clear();
 		m_Materials.reset();
+		m_LoadedTextures.reset();
 		m_DescriptorPool.reset();
 		m_UI.reset();
 		m_SwapChain.reset();
@@ -405,12 +447,28 @@ namespace Engine {
 
 				memcpy(object->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], objectGPUData, sizeof(ObjectGPUData));
 
-				Material* material = nullptr;
+				Assets::Material* material = nullptr;
 
 				for (const Assets::Mesh* mesh : object->Meshes) {
 					if (material == nullptr || mesh->Material.get() != material) {
 						if (m_Materials->find(mesh->MaterialName) != m_Materials->end()) {
 							material = m_Materials->find(mesh->MaterialName)->second.get();
+
+							Assets::Material::MaterialProperties* materialGPUData = new Assets::Material::MaterialProperties();
+							materialGPUData = &material->Properties;
+
+							vkCmdBindDescriptorSets(
+								commandBuffer, 
+								VK_PIPELINE_BIND_POINT_GRAPHICS, 
+								it->second->GetPipelineLayout().GetHandle(),
+								2, 
+								1,
+								&material->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
+								0, 
+								nullptr
+							);
+
+							memcpy(material->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], materialGPUData, sizeof(Assets::Material::MaterialProperties));
 						}
 					}
 

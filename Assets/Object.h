@@ -8,13 +8,13 @@
 namespace Engine {
 	class Buffer;
 	class DescriptorSets;
-	class Material;
 	class Image;
 	class GraphicsPipeline;
 }
 
 namespace Assets {
 	struct Mesh;
+	struct Texture;
 
 	struct Transform {
 		glm::vec3 translation;
@@ -43,15 +43,12 @@ namespace Assets {
 		const char* MaterialPath = nullptr;
 
 		bool Textured = false;
+		bool FlipTexturesVertically = false;
 
 		std::vector<Mesh*> Meshes;
 
 		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
 		 
-		// temporary
-		std::unique_ptr<class Engine::Image> m_Texture;
-		std::string TexturePath = "";
-
 		Transform Transformations = {};
 	
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;

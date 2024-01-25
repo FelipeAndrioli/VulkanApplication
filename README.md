@@ -15,6 +15,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Based on Input
 - [x] Custom Model loading
 - [IN PROGRESS] Proper Model/Material/Shader/Texture Set
+- [IN PROGRESS] Refactor (Builder)
 - [ ] Default models
 	- [ ] Plane
 	- [ ] Cube
@@ -22,6 +23,13 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [ ] Scene selection
 - [ ] Compute Shaders
 
+## Small problems to remember to solve
+
+- [ ] Sort
+	- [ ] Objects per pipeline
+	- [ ] Meshes per material
+- [ ] Add material instance per object and bind if from there to have customized properties of the same material
+	
 ## Future Work (not in order)
 
 - [ ] Render Graph

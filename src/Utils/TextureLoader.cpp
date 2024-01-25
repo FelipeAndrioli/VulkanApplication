@@ -25,13 +25,14 @@ namespace Engine {
 			const char* texturePath, 
 			LogicalDevice& logicalDevice, 
 			PhysicalDevice& physicalDevice, 
-			CommandPool& commandPool
+			CommandPool& commandPool,
+			bool flipTextureVertically
 		) {
 			int texWidth = 0;
 			int texHeight = 0;
 			int texChannels = 0;
 
-			stbi_set_flip_vertically_on_load(true);
+			stbi_set_flip_vertically_on_load(flipTextureVertically);
 			stbi_uc* pixels = stbi_load(texturePath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
 			VkDeviceSize imageSize = texWidth * texHeight * 4;
@@ -99,17 +100,24 @@ namespace Engine {
 		}
 
 		Assets::Texture TextureLoader::CreateTexture(
-			Assets::Texture::TextureType textureType, 
+			Assets::TextureType textureType, 
 			const char* texturePath, 
 			LogicalDevice& logicalDevice,
 			PhysicalDevice& physicalDevice, 
-			CommandPool& commandPool) {
+			CommandPool& commandPool,
+			bool flipTextureVertically) {
 		
 			Assets::Texture texture;
-			texture.Type = textureType;
 			texture.Path = texturePath;
 
-			TextureLoader::LoadTexture(texture.TextureImage, texture.Path.c_str(), logicalDevice, physicalDevice, commandPool);
+			TextureLoader::LoadTexture(
+				texture.TextureImage, 
+				texture.Path.c_str(), 
+				logicalDevice, 
+				physicalDevice, 
+				commandPool, 
+				flipTextureVertically
+			);
 
 			return texture;
 		}

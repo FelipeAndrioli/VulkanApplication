@@ -15,7 +15,6 @@ namespace Engine {
 	class CommandPool;
 	class SwapChain;
 	class DepthBuffer;
-	class Material;
 	class GraphicsPipeline;
 
 	namespace InputSystem {

@@ -25,15 +25,17 @@ namespace Engine {
 				const char* texturePath, 
 				LogicalDevice& logicalDevice, 
 				PhysicalDevice& physicalDevice,
-				CommandPool& commandPool
+				CommandPool& commandPool,
+				bool flipTextureVertically
 			);
 
 			static Assets::Texture CreateTexture(
-				Assets::Texture::TextureType textureType,
+				Assets::TextureType textureType,
 				const char* texturePath,
 				LogicalDevice& logicalDevice,
 				PhysicalDevice& physicalDevice,
-				CommandPool& commandPool
+				CommandPool& commandPool,
+				bool flipTextureVertically
 			);
 		};
 	}
