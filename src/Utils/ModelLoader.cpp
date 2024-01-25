@@ -275,30 +275,6 @@ namespace Engine {
 						)
 					);
 				}
-
-				/*
-				VkDeviceSize bufferSize = sizeof(Assets::Material::MaterialProperties);
-
-				sceneMaterials[material.name]->GPUDataBuffer.reset(
-					new class Engine::Buffer(
-						MAX_FRAMES_IN_FLIGHT,
-						logicalDevice,
-						physicalDevice,
-						bufferSize,
-						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-					)
-				);
-				sceneMaterials[material.name]->GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-				sceneMaterials[material.name]->GPUDataBuffer->BufferMemory->MapMemory();
-
-				sceneMaterials[material.name]->DescriptorSets.reset(
-					new class Engine::DescriptorSets(
-						bufferSize,
-						logicalDevice.GetHandle(),
-						descriptorPool
-					)
-				);
-				*/
 			}
 
 			std::cout << "Loading model meshes..." << '\n';
