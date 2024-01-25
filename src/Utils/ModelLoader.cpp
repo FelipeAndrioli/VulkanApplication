@@ -301,11 +301,11 @@ namespace Engine {
 				*/
 			}
 
-			std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices{};
-
 			std::cout << "Loading model meshes..." << '\n';
 
 			for (const auto& shape : shapes) {
+				std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices{};
+
 				Assets::Mesh* newMesh = new Assets::Mesh();
 
 				for (const auto& index : shape.mesh.indices) {
