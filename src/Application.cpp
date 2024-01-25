@@ -133,6 +133,7 @@ namespace Engine {
 
 		// Init Scene
 		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Assets::Material>>);
+		m_LoadedTextures.reset(new class std::map<std::string, std::unique_ptr<Assets::Texture>>);
 
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
@@ -172,6 +173,7 @@ namespace Engine {
 			Utils::ModelLoader::LoadModelAndMaterials(
 				*renderableObject,
 				*m_Materials,
+				*m_LoadedTextures,
 				*m_LogicalDevice.get(),
 				*m_PhysicalDevice.get(),
 				*m_CommandPool.get()
@@ -248,7 +250,7 @@ namespace Engine {
 			it->second->GPUDataBuffer->BufferMemory->MapMemory();
 
 			// what if we don't find the texture or the material doesn't have any texture?
-			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE) == it->second->Textures.end() ? nullptr : it->second->Textures.find(Assets::TextureType::DIFFUSE)->second.TextureImage.get();
+			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE) == it->second->Textures.end() ? nullptr : it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
 			it->second->DescriptorSets.reset(
 				new class DescriptorSets(
 					bufferSize,
@@ -282,6 +284,7 @@ namespace Engine {
 
 		m_GraphicsPipelines.clear();
 		m_Materials.reset();
+		m_LoadedTextures.reset();
 		m_DescriptorPool.reset();
 		m_UI.reset();
 		m_SwapChain.reset();

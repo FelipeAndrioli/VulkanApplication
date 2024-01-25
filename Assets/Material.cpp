@@ -13,9 +13,9 @@ namespace Assets {
 
 	Material::~Material() {
 
-		std::map<Assets::TextureType, Assets::Texture>::iterator it;
+		std::map<Assets::TextureType, Assets::Texture*>::iterator it;
 		for (it = Textures.begin(); it != Textures.end(); it++) {
-			it->second.TextureImage.reset();
+			it->second->TextureImage.reset();
 		}
 
 		Textures.clear();

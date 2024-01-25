@@ -34,6 +34,7 @@ namespace Engine {
 		void ModelLoader::LoadModelAndMaterials(
 			Assets::Object& object, 
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
+			std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
 			Engine::LogicalDevice& logicalDevice,
 			Engine::PhysicalDevice& physicalDevice,
 			Engine::CommandPool& commandPool) {
@@ -81,213 +82,290 @@ namespace Engine {
 				sceneMaterials[material.name]->Properties.Pad2 = material.pad2;
 				sceneMaterials[material.name]->Properties.Illum = material.illum;
 
-				if (material.ambient_texname != "" && fileExists(modelBasePath + material.ambient_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::AMBIENT,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::AMBIENT,
-								(modelBasePath + material.ambient_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::AMBIENT, 
+					material.ambient_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
 
-				if (material.diffuse_texname != "" && fileExists(modelBasePath + material.diffuse_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::DIFFUSE,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::DIFFUSE,
-								(modelBasePath + material.diffuse_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				} else {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::DIFFUSE,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::DIFFUSE,
-								"./Assets/Textures/error_texture.jpg",
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.specular_texname != "" && fileExists(modelBasePath + material.specular_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::SPECULAR,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::SPECULAR,
-								(modelBasePath + material.specular_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.specular_highlight_texname != "" && fileExists(modelBasePath + material.specular_highlight_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::SPECULAR_HIGHTLIGHT,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::SPECULAR_HIGHTLIGHT,
-								(modelBasePath + material.specular_highlight_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.bump_texname != "" && fileExists(modelBasePath + material.bump_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::BUMP,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::BUMP,
-								(modelBasePath + material.bump_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.displacement_texname != "" && fileExists(modelBasePath + material.displacement_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::DISPLACEMENT,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::DISPLACEMENT,
-								(modelBasePath+ material.displacement_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.alpha_texname != "" && fileExists(modelBasePath + material.alpha_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::ALPHA,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::ALPHA,
-								(modelBasePath + material.alpha_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.reflection_texname != "" && fileExists(modelBasePath + material.reflection_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::REFLECTION,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::REFLECTION,
-								(modelBasePath + material.reflection_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.roughness_texname != "" && fileExists(modelBasePath + material.roughness_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::ROUGHNESS,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::ROUGHNESS,
-								(modelBasePath + material.roughness_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.metallic_texname != "" && fileExists(modelBasePath + material.metallic_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::METALLIC,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::METALLIC,
-								(modelBasePath + material.metallic_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.sheen_texname != "" && fileExists(modelBasePath + material.sheen_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::SHEEN,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::SHEEN,
-								(modelBasePath + material.sheen_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.emissive_texname != "" && fileExists(modelBasePath + material.emissive_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::EMISSIVE,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::EMISSIVE,
-								(modelBasePath + material.emissive_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
-				
-				if (material.normal_texname != "" && fileExists(modelBasePath + material.normal_texname)) {
-					sceneMaterials[material.name]->Textures.insert(
-						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::NORMAL,
-							TextureLoader::CreateTexture(
-								Assets::TextureType::NORMAL,
-								(modelBasePath + material.normal_texname).c_str(),
-								logicalDevice,
-								physicalDevice,
-								commandPool,
-								object.FlipTexturesVertically
-							)
-						)
-					);
-				}
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::AMBIENT,
+					material.ambient_texname,
+					material.name
+				);
+
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::DIFFUSE, 
+					material.diffuse_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::DIFFUSE,
+					material.diffuse_texname,
+					material.name
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::DIFFUSE,
+					"error_texture.jpg",
+					material.name
+				);
+
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::DIFFUSE, 
+					"error_texture.jpg",
+					"./Assets/Textures/",
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					false
+				);
+
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::SPECULAR, 
+					material.specular_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::SPECULAR,
+					material.specular_texname,
+					material.name
+				);
+
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::SPECULAR_HIGHTLIGHT, 
+					material.specular_highlight_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::SPECULAR_HIGHTLIGHT,
+					material.specular_highlight_texname,
+					material.name
+				);
+
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::SPECULAR_HIGHTLIGHT, 
+					material.specular_highlight_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::SPECULAR_HIGHTLIGHT,
+					material.specular_highlight_texname,
+					material.name
+				);
+	
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::BUMP, 
+					material.bump_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::BUMP,
+					material.bump_texname,
+					material.name
+				);
+					
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::DISPLACEMENT, 
+					material.displacement_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::DISPLACEMENT,
+					material.displacement_texname,
+					material.name
+				);			
+
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::ALPHA, 
+					material.alpha_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::ALPHA,
+					material.alpha_texname,
+					material.name
+				);
+	
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::REFLECTION, 
+					material.reflection_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::REFLECTION,
+					material.reflection_texname,
+					material.name
+				);			
+
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::ROUGHNESS, 
+					material.roughness_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::ROUGHNESS,
+					material.roughness_texname,
+					material.name
+				);			
+
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::METALLIC, 
+					material.metallic_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::METALLIC,
+					material.metallic_texname,
+					material.name
+				);
+	
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::SHEEN, 
+					material.sheen_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::SHEEN,
+					material.sheen_texname,
+					material.name
+				);
+	
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::EMISSIVE, 
+					material.emissive_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::EMISSIVE,
+					material.emissive_texname,
+					material.name
+				);			
+
+				ModelLoader::ValidateAndInsertTexture(
+					loadedTextures, 
+					Assets::TextureType::NORMAL, 
+					material.normal_texname,
+					modelBasePath, 
+					logicalDevice, 
+					physicalDevice, 
+					commandPool, 
+					object.FlipTexturesVertically
+				);
+
+				ModelLoader::LoadTextureToMaterial(
+					sceneMaterials,
+					loadedTextures,
+					Assets::TextureType::NORMAL,
+					material.normal_texname,
+					material.name
+				);
 			}
 
 			std::cout << "Loading model meshes..." << '\n';
@@ -334,6 +412,50 @@ namespace Engine {
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh->Indices, newMesh->IndexBuffer);
 
 				object.Meshes.push_back(newMesh);
+			}
+		}
+
+		void ModelLoader::ValidateAndInsertTexture(
+				std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+				Assets::TextureType textureType,
+				std::string textureName,
+				std::string basePath,
+				Engine::LogicalDevice& logicalDevice,
+				Engine::PhysicalDevice& physicalDevice,
+				Engine::CommandPool& commandPool,
+				bool flipTexturesVertically
+			) {
+
+			if (loadedTextures.find(textureName) != loadedTextures.end())
+				return;
+
+			if (textureName != "" && fileExists(basePath + textureName)) {
+				loadedTextures[textureName].reset(new struct Assets::Texture(
+					TextureLoader::CreateTexture(
+						textureType,
+						(basePath + textureName).c_str(),
+						logicalDevice,
+						physicalDevice,
+						commandPool,
+						flipTexturesVertically
+					)
+				));
+			}
+		}
+
+		void ModelLoader::LoadTextureToMaterial(
+			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
+			std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+			Assets::TextureType textureType,
+			std::string textureName,
+			std::string materialName
+		) {
+			if (loadedTextures.find(textureName) != loadedTextures.end()) {
+				sceneMaterials[materialName]->Textures.insert({
+						textureType,
+						loadedTextures.find(textureName)->second.get()
+					}
+				);
 			}
 		}
 	}
