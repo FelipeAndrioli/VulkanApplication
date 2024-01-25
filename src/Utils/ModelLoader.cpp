@@ -109,6 +109,19 @@ namespace Engine {
 							)
 						)
 					);
+				} else {
+					sceneMaterials[material.name]->Textures.insert(
+						std::make_pair<Assets::TextureType, Assets::Texture>(Assets::TextureType::DIFFUSE,
+							TextureLoader::CreateTexture(
+								Assets::TextureType::DIFFUSE,
+								"./Assets/Textures/error_texture.jpg",
+								logicalDevice,
+								physicalDevice,
+								commandPool,
+								object.FlipTexturesVertically
+							)
+						)
+					);
 				}
 				
 				if (material.specular_texname != "" && fileExists(modelBasePath + material.specular_texname)) {
