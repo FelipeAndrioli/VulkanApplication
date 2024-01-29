@@ -272,6 +272,7 @@
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="Assets\Textures\error_texture.jpg" />
     <Image Include="Assets\Textures\statue_test.jpg" />
     <Image Include="Assets\Textures\viking_room.png" />
   </ItemGroup>
