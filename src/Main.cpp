@@ -353,14 +353,6 @@ int main() {
 	Assets::GraphicsPipeline wireFramePipeline = Assets::GraphicsPipeline("wireframePipeline", wireframeVertexShader, wireframeFragShader);
 	myScene->AddGraphicsPipeline(wireFramePipeline);
 
-	CustomObject model = CustomObject();
-	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
-	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
-	model.PipelineName = texturedGraphicsPipeline.Name;
-	model.Transformations.scaleHandler = 0.008f;
-	myScene->AddRenderableObject(&model);
-
-	/*
 	CustomObject testObject = CustomObject();
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
@@ -381,14 +373,22 @@ int main() {
 	
 	myScene->AddRenderableObject(&testObject2);
 
-	CustomObject sword = CustomObject();
-	sword.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/sword/sword.obj";
-	sword.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/sword";
-	sword.PipelineName = defaultGraphicsPipeline.Name;
-	sword.Transformations.translation.x = -5.0f;
-	sword.Transformations.translation.z = -2.0f;
-	myScene->AddRenderableObject(&sword);
-	
+
+	/*
+	CustomObject model = CustomObject();
+	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
+	model.PipelineName = texturedGraphicsPipeline.Name;
+	model.Transformations.scaleHandler = 0.008f;
+	myScene->AddRenderableObject(&model);
+
+	CustomObject model = CustomObject();
+	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace/palace.obj";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace";
+	model.PipelineName = texturedGraphicsPipeline.Name;
+	model.Transformations.translation.z = -2.0f;
+	myScene->AddRenderableObject(&model);
+		
 	CustomObject model = CustomObject();
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/model.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/";
