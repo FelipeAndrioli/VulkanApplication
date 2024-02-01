@@ -14,8 +14,9 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Turn Movement
 	- [x] Based on Input
 - [x] Custom Model loading
-- [IN PROGRESS] Proper Model/Material/Shader/Texture Set
-- [IN PROGRESS] Refactor (Builder)
+- [x] Proper Model/Material/Shader/Texture Set
+- [IN PROGRESS] Memory Allocating Issue
+- [ ] Refactor (Builder)
 - [ ] Default models
 	- [ ] Plane
 	- [ ] Cube
