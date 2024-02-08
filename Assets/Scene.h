@@ -56,9 +56,8 @@ namespace Assets {
 	
 		Camera* MainCamera = nullptr;
 
-		//std::unique_ptr<class Engine::Buffer> SceneGeometryBuffer;
-		std::unique_ptr<class Engine::Buffer> SceneVertexBuffer;
-		std::unique_ptr<class Engine::Buffer> SceneIndexBuffer;
+		std::unique_ptr<class Engine::Buffer> SceneGeometryBuffer;
+		size_t VertexOffset = 0;
 	private:
 		uint32_t m_Width = 800;
 		uint32_t m_Height = 600;

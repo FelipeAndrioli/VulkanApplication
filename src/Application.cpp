@@ -388,19 +388,19 @@ namespace Engine {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		VkDeviceSize offsets[] = { 0 };
+		VkDeviceSize offsets[] = { p_ActiveScene->VertexOffset };
 
 		vkCmdBindVertexBuffers(
-			commandBuffer, 
+			commandBuffer,
 			0,
 			1,
-			&p_ActiveScene->SceneVertexBuffer->GetBuffer(m_CurrentFrame),
+			&p_ActiveScene->SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
 			offsets
 		);
 
 		vkCmdBindIndexBuffer(
-			commandBuffer, 
-			p_ActiveScene->SceneIndexBuffer->GetBuffer(0),
+			commandBuffer,
+			p_ActiveScene->SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
 			0,
 			VK_INDEX_TYPE_UINT32
 		);

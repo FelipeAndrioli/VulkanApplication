@@ -101,44 +101,46 @@ namespace Assets {
 			}
 		}
 
-		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * vertices.size();
+		VertexOffset = sizeof(uint32_t) * indices.size();
 
-		SceneVertexBuffer.reset(new class Engine::Buffer(
+		/*	Scene Geometry Buffer Layout
+			[index obj1 | index obj2 | index obj3 | vertex obj1 | vertex obj2 | vertex obj3]
+		*/
+
+		// TODO: remove buffer initialization from scene
+		VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size() + sizeof(Assets::Vertex) * vertices.size();
+		
+		SceneGeometryBuffer.reset(new class Engine::Buffer(
 			Engine::MAX_FRAMES_IN_FLIGHT,
 			logicalDevice,
 			physicalDevice,
 			bufferSize,
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT
 		));
-		SceneVertexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	
-		Engine::BufferHelper::CopyFromStaging(
-			logicalDevice, 
-			physicalDevice, 
-			commandPool.GetHandle(),
-			vertices, 
-			SceneVertexBuffer.get());
 
-		bufferSize = sizeof(uint32_t) * indices.size();
+		SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-		SceneIndexBuffer.reset(new class Engine::Buffer(
-			1,
+		Engine::BufferHelper::AppendData(
 			logicalDevice,
 			physicalDevice,
-			bufferSize,
-			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-			VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-			VK_BUFFER_USAGE_TRANSFER_DST_BIT
-		));
-		SceneIndexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			commandPool,
+			indices,
+			*SceneGeometryBuffer.get(),
+			0,
+			0
+		);
 
-		Engine::BufferHelper::CopyFromStaging(
-			logicalDevice, 
-			physicalDevice, 
-			commandPool.GetHandle(),
-			indices, 
-			SceneIndexBuffer.get());
+		Engine::BufferHelper::AppendData(
+			logicalDevice,
+			physicalDevice,
+			commandPool,
+			vertices,
+			*SceneGeometryBuffer.get(),
+			0,
+			sizeof(uint32_t) * indices.size()
+		);
 	}
 }
