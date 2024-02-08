@@ -23,6 +23,10 @@ namespace Engine {
 			VkCommandPool& commandPool, const T& content, const VkDeviceSize& contentSize, Buffer* dstBuffer);
 
 		template <class T>
+		static void AppendData(LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, CommandPool& commandPool,
+			const std::vector<T>& content, Buffer& buffer, size_t srcOffset, size_t dstOffset);
+
+		template <class T>
 		static void CreateBuffer(
 			const int bufferQuantity, 
 			LogicalDevice& logicalDevice, 
@@ -83,7 +87,21 @@ namespace Engine {
 		stagingBuffer.reset();
 
 	}
-	
+
+	template <class T>
+	void BufferHelper::AppendData(LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, CommandPool& commandPool,
+		const std::vector<T>& content, Buffer& buffer, size_t srcOffset, size_t dstOffset) {
+
+		VkDeviceSize bufferSize = sizeof(T) * content.size();
+		auto stagingBuffer = std::make_unique<Buffer>(1, logicalDevice, physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		stagingBuffer->BufferMemory->MapMemory();
+		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content.data(), bufferSize);
+		stagingBuffer->BufferMemory->UnmapMemory();
+		buffer.CopyFrom(stagingBuffer->GetBuffer(0), bufferSize, commandPool.GetHandle(), srcOffset, dstOffset);
+		stagingBuffer.reset();
+	}
+
 	template <class T>
 	static void BufferHelper::CreateBuffer(
 		const int bufferQuantity, 

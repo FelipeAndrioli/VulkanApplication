@@ -14,7 +14,6 @@ namespace Engine {
 
 namespace Assets {
 	struct Mesh;
-	struct Texture;
 
 	struct Transform {
 		glm::vec3 translation;
@@ -50,7 +49,7 @@ namespace Assets {
 		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
 		 
 		Transform Transformations = {};
-	
+
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
 		std::unique_ptr<class Engine::Buffer> GPUDataBuffer;
 	};

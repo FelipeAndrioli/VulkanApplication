@@ -6,6 +6,7 @@
 #include "Pipeline.h"
 
 #include "../src/Buffer.h"
+#include "../src/BufferHelper.h"
 #include "../src/DescriptorSets.h"
 #include "../src/LogicalDevice.h"
 #include "../src/PhysicalDevice.h"
@@ -80,5 +81,64 @@ namespace Assets {
 		m_Height = height;
 
 		MainCamera->Resize(m_Width, m_Height);
+	}
+
+	void Scene::SetupSceneGeometryBuffer(
+		Engine::LogicalDevice& logicalDevice, 
+		Engine::PhysicalDevice& physicalDevice, 
+		Engine::CommandPool& commandPool) {
+
+		std::vector<Assets::Vertex> vertices;
+		std::vector<uint32_t> indices;
+
+		for (auto& renderableObject : RenderableObjects) {
+			for (auto& mesh : renderableObject->Meshes) {
+				mesh->IndexOffset = indices.size();
+				mesh->VertexOffset = vertices.size();
+
+				indices.insert(indices.end(), mesh->Indices.begin(), mesh->Indices.end());
+				vertices.insert(vertices.end(), mesh->Vertices.begin(), mesh->Vertices.end());
+			}
+		}
+
+		VkDeviceSize bufferSize = sizeof(Assets::Vertex) * vertices.size();
+
+		SceneVertexBuffer.reset(new class Engine::Buffer(
+			Engine::MAX_FRAMES_IN_FLIGHT,
+			logicalDevice,
+			physicalDevice,
+			bufferSize,
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT
+		));
+		SceneVertexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	
+		Engine::BufferHelper::CopyFromStaging(
+			logicalDevice, 
+			physicalDevice, 
+			commandPool.GetHandle(),
+			vertices, 
+			SceneVertexBuffer.get());
+
+		bufferSize = sizeof(uint32_t) * indices.size();
+
+		SceneIndexBuffer.reset(new class Engine::Buffer(
+			1,
+			logicalDevice,
+			physicalDevice,
+			bufferSize,
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT
+		));
+		SceneIndexBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		Engine::BufferHelper::CopyFromStaging(
+			logicalDevice, 
+			physicalDevice, 
+			commandPool.GetHandle(),
+			indices, 
+			SceneIndexBuffer.get());
 	}
 }

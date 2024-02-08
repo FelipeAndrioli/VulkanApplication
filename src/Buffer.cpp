@@ -34,13 +34,13 @@ namespace Engine {
 		BufferMemory->AllocateMemory(m_Buffer, properties);
 	}
 
-	void Buffer::CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, VkCommandPool& commandPool) {
+	void Buffer::CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, VkCommandPool& commandPool, size_t srcOffset, size_t dstOffset) {
 
 		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(p_LogicalDevice->GetHandle(), commandPool);
 
 		VkBufferCopy copyRegion{};
-		copyRegion.srcOffset = 0;
-		copyRegion.dstOffset = 0;
+		copyRegion.srcOffset = srcOffset;
+		copyRegion.dstOffset = dstOffset;
 		copyRegion.size = bufferSize;
 
 		for (size_t i = 0; i < m_Buffer.size(); i++) {

@@ -353,15 +353,35 @@ int main() {
 	Assets::GraphicsPipeline wireFramePipeline = Assets::GraphicsPipeline("wireframePipeline", wireframeVertexShader, wireframeFragShader);
 	myScene->AddGraphicsPipeline(wireFramePipeline);
 
+	CustomObject model = CustomObject();
+	model.ID = "Sponza";
+	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
+	model.PipelineName = texturedGraphicsPipeline.Name;
+	model.Transformations.scaleHandler = 0.008f;
+	myScene->AddRenderableObject(&model);
+
 	CustomObject testObject = CustomObject();
+	testObject.ID = "Backpack";
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	testObject.FlipTexturesVertically = true;
 	testObject.PipelineName = texturedGraphicsPipeline.Name;
-
-	testObject.Transformations.translation.z = -2.0f;
-
+	testObject.Transformations.translation.y = 5.714f;
+	testObject.Transformations.translation.z = -0.095f;
+	testObject.Transformations.rotation.y = 87.6f;
+	testObject.Transformations.scaleHandler = 0.219f;
 	myScene->AddRenderableObject(&testObject);
+	
+	/*
+	CustomObject model = CustomObject();
+	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace/palace.obj";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace";
+	model.PipelineName = texturedGraphicsPipeline.Name;
+	model.Transformations.rotation.x = -90.0f;
+	model.Transformations.translation.y = -6.0f;
+	model.Transformations.translation.z = -42.0f;
+	myScene->AddRenderableObject(&model);
 
 	CustomObject testObject2 = CustomObject();
 	testObject2.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
@@ -370,25 +390,9 @@ int main() {
 	testObject2.PipelineName = wireFramePipeline.Name;
 	testObject2.Transformations.translation.x = 5.0f;
 	testObject2.Transformations.translation.z = -2.0f;
-	
 	myScene->AddRenderableObject(&testObject2);
-
-
-	/*
-	CustomObject model = CustomObject();
-	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
-	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
-	model.PipelineName = texturedGraphicsPipeline.Name;
-	model.Transformations.scaleHandler = 0.008f;
-	myScene->AddRenderableObject(&model);
-
-	CustomObject model = CustomObject();
-	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace/palace.obj";
-	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace";
-	model.PipelineName = texturedGraphicsPipeline.Name;
-	model.Transformations.translation.z = -2.0f;
-	myScene->AddRenderableObject(&model);
-		
+	
+	
 	CustomObject model = CustomObject();
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/model.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/";

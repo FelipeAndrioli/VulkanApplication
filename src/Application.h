@@ -133,9 +133,6 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_ComputeUniformBuffers;
 		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
 
-		std::unique_ptr<class Buffer> m_VertexBuffers;
-		std::unique_ptr<class Buffer> m_IndexBuffer;
-
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 
 		Assets::Scene* p_ActiveScene = nullptr;

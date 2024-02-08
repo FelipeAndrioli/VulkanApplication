@@ -16,7 +16,7 @@ namespace Engine {
 		~Buffer();
 
 		void AllocateMemory(VkMemoryPropertyFlags properties);
-		void CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, VkCommandPool& commandPool);
+		void CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, VkCommandPool& commandPool, size_t srcOffset = 0, size_t dstOffset = 0);
 		static void CopyToImage(
 			VkDevice& logicalDevice,
 			VkCommandPool& commandPool,

@@ -265,6 +265,7 @@ namespace Engine {
 			);
 		}
 
+		p_ActiveScene->SetupSceneGeometryBuffer(*m_LogicalDevice.get(), *m_PhysicalDevice.get(), *m_CommandPool.get());
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 	}
 
@@ -294,9 +295,7 @@ namespace Engine {
 
 		m_DefaultRenderPass.reset();
 		m_CommandBuffers.reset();
-		m_IndexBuffer.reset();
 		m_ShaderStorageBuffers.reset();
-		m_VertexBuffers.reset();
 		m_DebugMessenger.reset();
 		m_InFlightFences.reset();
 		m_ComputeInFlightFences.reset();
@@ -389,6 +388,23 @@ namespace Engine {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+		VkDeviceSize offsets[] = { 0 };
+
+		vkCmdBindVertexBuffers(
+			commandBuffer, 
+			0,
+			1,
+			&p_ActiveScene->SceneVertexBuffer->GetBuffer(m_CurrentFrame),
+			offsets
+		);
+
+		vkCmdBindIndexBuffer(
+			commandBuffer, 
+			p_ActiveScene->SceneIndexBuffer->GetBuffer(0),
+			0,
+			VK_INDEX_TYPE_UINT32
+		);
+
 		std::map<std::string, std::unique_ptr<class GraphicsPipeline>>::iterator it;
 
 		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
@@ -410,9 +426,9 @@ namespace Engine {
 
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-			SceneGPUData* sceneGPUData = new SceneGPUData();
-			sceneGPUData->view = p_ActiveScene->MainCamera->ViewMatrix;
-			sceneGPUData->proj = p_ActiveScene->MainCamera->ProjectionMatrix;
+			SceneGPUData sceneGPUData = SceneGPUData();
+			sceneGPUData.view = p_ActiveScene->MainCamera->ViewMatrix;
+			sceneGPUData.proj = p_ActiveScene->MainCamera->ProjectionMatrix;
 
 			vkCmdBindDescriptorSets(
 				commandBuffer,
@@ -425,14 +441,14 @@ namespace Engine {
 				nullptr
 			);
 
-			memcpy(m_SceneGPUDataBuffer->GetBufferMemoryMapped(m_CurrentFrame), sceneGPUData, sizeof(SceneGPUData));
+			memcpy(m_SceneGPUDataBuffer->GetBufferMemoryMapped(m_CurrentFrame), &sceneGPUData, sizeof(SceneGPUData));
 
 			for (Assets::Object* object : p_ActiveScene->RenderableObjects) {
 				if (object->SelectedGraphicsPipeline != it->second.get())
 					continue;
 
-				ObjectGPUData* objectGPUData = new ObjectGPUData();
-				objectGPUData->model = object->GetModelMatrix();
+				ObjectGPUData objectGPUData = ObjectGPUData();
+				objectGPUData.model = object->GetModelMatrix();
 
 				vkCmdBindDescriptorSets(
 					commandBuffer, 
@@ -445,7 +461,7 @@ namespace Engine {
 					nullptr
 				);
 
-				memcpy(object->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], objectGPUData, sizeof(ObjectGPUData));
+				memcpy(object->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &objectGPUData, sizeof(ObjectGPUData));
 
 				Assets::Material* material = nullptr;
 
@@ -454,8 +470,8 @@ namespace Engine {
 						if (m_Materials->find(mesh->MaterialName) != m_Materials->end()) {
 							material = m_Materials->find(mesh->MaterialName)->second.get();
 
-							Assets::Material::MaterialProperties* materialGPUData = new Assets::Material::MaterialProperties();
-							materialGPUData = &material->Properties;
+							Assets::Material::MaterialProperties materialGPUData = Assets::Material::MaterialProperties();
+							materialGPUData = material->Properties;
 
 							vkCmdBindDescriptorSets(
 								commandBuffer, 
@@ -468,33 +484,16 @@ namespace Engine {
 								nullptr
 							);
 
-							memcpy(material->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], materialGPUData, sizeof(Assets::Material::MaterialProperties));
+							memcpy(material->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &materialGPUData, sizeof(Assets::Material::MaterialProperties));
 						}
 					}
-
-					VkDeviceSize offsets[] = { 0 };
-					
-					vkCmdBindVertexBuffers(
-						commandBuffer, 
-						0, 
-						1,
-						&mesh->VertexBuffer->GetBuffer(m_CurrentFrame), 
-						offsets
-					);
-			
-					vkCmdBindIndexBuffer(
-						commandBuffer, 
-						mesh->IndexBuffer->GetBuffer(), 
-						0, 
-						VK_INDEX_TYPE_UINT32
-					);
 
 					vkCmdDrawIndexed(
 						commandBuffer,
 						static_cast<uint32_t>(mesh->Indices.size()),
 						1,
-						0,
-						0,
+						static_cast<uint32_t>(mesh->IndexOffset),
+						static_cast<int32_t>(mesh->VertexOffset),
 						0
 					);
 				}
@@ -526,7 +525,9 @@ namespace Engine {
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = m_RenderFinishedSemaphores->GetHandle(m_CurrentFrame);
 
-		if (vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, *m_InFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
+		VkResult result = vkQueueSubmit(m_LogicalDevice->GetGraphicsQueue(), 1, &submitInfo, *m_InFlightFences->GetHandle(m_CurrentFrame));
+		
+		if (result != VK_SUCCESS) {
 			throw std::runtime_error("Failed to submit draw command buffer!");
 		}
 	}
