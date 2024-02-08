@@ -58,14 +58,14 @@ namespace Assets {
 	};
 
 	struct Mesh {
+		std::string MaterialName;
+		std::unique_ptr<class Assets::Material> Material;
+
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;
-		std::string MaterialName;
 
-		std::unique_ptr<class Engine::Buffer> VertexBuffer;
-		std::unique_ptr<class Engine::Buffer> IndexBuffer;
-
-		std::unique_ptr<class Assets::Material> Material;
+		size_t IndexOffset = 0;
+		size_t VertexOffset = 0;
 	};	
 }
 

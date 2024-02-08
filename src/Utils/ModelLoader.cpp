@@ -289,7 +289,6 @@ namespace Engine {
 
 					if (uniqueVertices.count(vertex) == 0) {
 						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh->Vertices.size());
-
 						newMesh->Vertices.push_back(vertex);
 					}
 
@@ -298,14 +297,6 @@ namespace Engine {
 
 				newMesh->MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
 				newMesh->Material.reset(sceneMaterials.find(newMesh->MaterialName) == sceneMaterials.end() ? nullptr : sceneMaterials.find(newMesh->MaterialName)->second.get());
-
-				BufferHelper::CreateBuffer(MAX_FRAMES_IN_FLIGHT, logicalDevice, physicalDevice, commandPool, 
-					VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh->Vertices, newMesh->VertexBuffer);
-
-				BufferHelper::CreateBuffer(1, logicalDevice, physicalDevice, commandPool, 
-					VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newMesh->Indices, newMesh->IndexBuffer);
 
 				object.Meshes.push_back(newMesh);
 			}

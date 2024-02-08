@@ -342,5 +342,8 @@
     <Image Include="Assets\Textures\viking_room.png">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="Assets\Textures\error_texture.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

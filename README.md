@@ -14,8 +14,10 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Turn Movement
 	- [x] Based on Input
 - [x] Custom Model loading
-- [IN PROGRESS] Proper Model/Material/Shader/Texture Set
-- [IN PROGRESS] Refactor (Builder)
+- [x] Proper Model/Material/Shader/Texture Set
+- [x] Single Buffer for Vertices and Indices 
+- [IN PROGRESS] Single Buffer for uniforms
+- [IN PROGRESS] Refactor
 - [ ] Default models
 	- [ ] Plane
 	- [ ] Cube
@@ -29,6 +31,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [ ] Objects per pipeline
 	- [ ] Meshes per material
 - [ ] Add material instance per object and bind if from there to have customized properties of the same material
+- [ ] How to handle empty scene? (Empty buffers) 
 	
 ## Future Work (not in order)
 

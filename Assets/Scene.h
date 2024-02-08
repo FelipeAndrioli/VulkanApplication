@@ -6,6 +6,7 @@
 #include <map>
 #include <unordered_map>
 #include <string>
+#include <memory>
 
 #include "../src/Vulkan.h"
 
@@ -16,6 +17,7 @@ namespace Engine {
 	class SwapChain;
 	class DepthBuffer;
 	class GraphicsPipeline;
+	class Buffer;
 
 	namespace InputSystem {
 		class Input;
@@ -38,6 +40,11 @@ namespace Assets {
 
 		void AddRenderableObject(Object* object);
 		void AddGraphicsPipeline(Assets::GraphicsPipeline newPipeline);
+		void SetupSceneGeometryBuffer(
+			Engine::LogicalDevice& logicalDevice, 
+			Engine::PhysicalDevice& physicalDevice, 
+			Engine::CommandPool& commandPool
+		);
 
 		void OnCreate();
 		void OnUIRender();
@@ -48,6 +55,9 @@ namespace Assets {
 		std::vector<Assets::GraphicsPipeline> SceneGraphicsPipelines;
 	
 		Camera* MainCamera = nullptr;
+
+		std::unique_ptr<class Engine::Buffer> SceneGeometryBuffer;
+		size_t VertexOffset = 0;
 	private:
 		uint32_t m_Width = 800;
 		uint32_t m_Height = 600;

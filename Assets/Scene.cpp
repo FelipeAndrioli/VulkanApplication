@@ -6,6 +6,7 @@
 #include "Pipeline.h"
 
 #include "../src/Buffer.h"
+#include "../src/BufferHelper.h"
 #include "../src/DescriptorSets.h"
 #include "../src/LogicalDevice.h"
 #include "../src/PhysicalDevice.h"
@@ -80,5 +81,66 @@ namespace Assets {
 		m_Height = height;
 
 		MainCamera->Resize(m_Width, m_Height);
+	}
+
+	void Scene::SetupSceneGeometryBuffer(
+		Engine::LogicalDevice& logicalDevice, 
+		Engine::PhysicalDevice& physicalDevice, 
+		Engine::CommandPool& commandPool) {
+
+		std::vector<Assets::Vertex> vertices;
+		std::vector<uint32_t> indices;
+
+		for (auto& renderableObject : RenderableObjects) {
+			for (auto& mesh : renderableObject->Meshes) {
+				mesh->IndexOffset = indices.size();
+				mesh->VertexOffset = vertices.size();
+
+				indices.insert(indices.end(), mesh->Indices.begin(), mesh->Indices.end());
+				vertices.insert(vertices.end(), mesh->Vertices.begin(), mesh->Vertices.end());
+			}
+		}
+
+		VertexOffset = sizeof(uint32_t) * indices.size();
+
+		/*	Scene Geometry Buffer Layout
+			[index obj1 | index obj2 | index obj3 | vertex obj1 | vertex obj2 | vertex obj3]
+		*/
+
+		// TODO: remove buffer initialization from scene
+		VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size() + sizeof(Assets::Vertex) * vertices.size();
+		
+		SceneGeometryBuffer.reset(new class Engine::Buffer(
+			Engine::MAX_FRAMES_IN_FLIGHT,
+			logicalDevice,
+			physicalDevice,
+			bufferSize,
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT
+		));
+
+		SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		Engine::BufferHelper::AppendData(
+			logicalDevice,
+			physicalDevice,
+			commandPool,
+			indices,
+			*SceneGeometryBuffer.get(),
+			0,
+			0
+		);
+
+		Engine::BufferHelper::AppendData(
+			logicalDevice,
+			physicalDevice,
+			commandPool,
+			vertices,
+			*SceneGeometryBuffer.get(),
+			0,
+			sizeof(uint32_t) * indices.size()
+		);
 	}
 }

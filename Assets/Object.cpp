@@ -1,7 +1,6 @@
 #include "Object.h"
 
 #include "Mesh.h"
-#include "Texture.h"
 
 #include "../src/Buffer.h"
 #include "../src/DescriptorSets.h"
@@ -31,11 +30,6 @@ namespace Assets {
 	}
 
 	void Object::ResetResources() {
-		for (auto mesh : Meshes) {
-			mesh->VertexBuffer.reset();
-			mesh->IndexBuffer.reset();
-		}
-
 		Meshes.clear();
 
 		GPUDataBuffer.reset();
