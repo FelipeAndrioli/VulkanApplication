@@ -1,13 +1,13 @@
 #include "DeviceMemory.h"
 
 namespace Engine {
-	DeviceMemory::DeviceMemory(VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, int bufferSize) 
+	DeviceMemory::DeviceMemory(VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, int bufferSize)
 		: p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice) {
 
 		Memory.resize(bufferSize);
 		MemoryMapped.resize(bufferSize);
 	}
-	
+
 	DeviceMemory::~DeviceMemory() {
 		for (size_t i = 0; i < Memory.size(); i++) {
 			vkFreeMemory(*p_LogicalDevice, Memory[i], nullptr);
@@ -29,10 +29,18 @@ namespace Engine {
 		}
 	}
 
+	void DeviceMemory::MapMemory(uint32_t index, const VkDeviceSize& offset) {
+		vkMapMemory(*p_LogicalDevice, Memory[index], offset, Memory.size(), 0, &MemoryMapped[index]);
+	}
+
 	void DeviceMemory::UnmapMemory() {
 		for (size_t i = 0; i < Memory.size(); i++) {
 			vkUnmapMemory(*p_LogicalDevice, Memory[i]);
 		}
+	}
+
+	void DeviceMemory::UnmapMemory(uint32_t index) {
+		vkUnmapMemory(*p_LogicalDevice, Memory[index]);
 	}
 
 	void DeviceMemory::AllocateMemory(std::vector<VkBuffer>& buffer, VkMemoryPropertyFlags properties) {
