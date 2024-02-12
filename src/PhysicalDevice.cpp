@@ -54,6 +54,10 @@ namespace Engine {
 
 	}
 
+	VkPhysicalDeviceLimits PhysicalDevice::GetLimits() {
+		return m_PhysicalDeviceProperties.limits;
+	}
+
 	SwapChainSupportDetails PhysicalDevice::QuerySwapChainSupportDetails(VkPhysicalDevice device) {
 		SwapChainSupportDetails details;
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, p_Surface, &details.capabilities);
