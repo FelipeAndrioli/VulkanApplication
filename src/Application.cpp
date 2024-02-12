@@ -180,32 +180,6 @@ namespace Engine {
 			);
 
 			renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName)->second.get();
-
-			/*
-			VkDeviceSize bufferSize = sizeof(ObjectGPUData);
-
-			renderableObject->GPUDataBuffer.reset(new class Engine::Buffer(
-				Engine::MAX_FRAMES_IN_FLIGHT, 
-				*m_LogicalDevice.get(), 
-				*m_PhysicalDevice.get(),
-				bufferSize, 
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-			));
-
-			renderableObject->GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			renderableObject->GPUDataBuffer->BufferMemory->MapMemory();
-
-			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
-				bufferSize,
-				m_LogicalDevice->GetHandle(),
-				m_DescriptorPool->GetHandle(),
-				m_ObjectGPUDataDescriptorSetLayout->GetHandle(),
-				renderableObject->GPUDataBuffer.get(),
-				nullptr,
-				false,
-				nullptr
-			));
-			*/
 		}
 
 		// Initialize Scene GPU Buffer and Descriptor Sets
@@ -338,14 +312,6 @@ namespace Engine {
 		m_UI->Resize(m_SwapChain.get());
 	}
 
-	// temporary
-	void Application::updateComputeUniformBuffer(uint32_t currentImage) {
-		ComputeUniformBufferObject cubo{};
-		cubo.deltaTime = m_Window->GetLastFrameTime() * 0.1f;
-
-		//memcpy(m_ComputeUniformBuffers->GetBufferMemoryMapped(currentImage), &cubo, sizeof(cubo));
-	}
-
 	void Application::Draw() {
 		VkCommandBuffer* commandBuffer = BeginFrame();
 
@@ -449,7 +415,6 @@ namespace Engine {
 			memcpy(m_SceneGPUDataBuffer->GetBufferMemoryMapped(m_CurrentFrame), &sceneGPUData, sizeof(SceneGPUData));
 
 			for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
-			//for (Assets::Object* object : p_ActiveScene->RenderableObjects) {
 				Assets::Object* object = p_ActiveScene->RenderableObjects[i];
 
 				if (object->SelectedGraphicsPipeline != it->second.get())
@@ -562,7 +527,6 @@ namespace Engine {
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_FramebufferResized) {
 			m_FramebufferResized = false;
 			recreateSwapChain();
-			//return;
 		}
 		else if (result != VK_SUCCESS) {
 			throw std::runtime_error("Failed to present swap chain image!");
@@ -571,66 +535,7 @@ namespace Engine {
 		// using modulo operator to ensure that the frame index loops around after every MAX_FRAMES_IN_FLIGHT enqueued frames
 		m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
-
-	/* Disabled due to the new architecture, will think in a way to make it work later*/
-	void Application::drawRayTraced(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		
-		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
-		updateComputeUniformBuffer(m_CurrentFrame);
-		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
-
-		auto computeCommandBuffer = m_ComputeCommandBuffers->Begin(m_CurrentFrame);
-		//recordComputeCommandBuffer(computeCommandBuffer);
-		m_ComputeCommandBuffers->End(m_CurrentFrame);
-
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &m_ComputeCommandBuffers->GetCommandBuffer(m_CurrentFrame);
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame);
-
-		if (vkQueueSubmit(m_LogicalDevice->GetComputeQueue(), 1, &submitInfo, *m_ComputeInFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to submit compute command buffer!");
-		}
-
-		VkRenderPassBeginInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		//renderPassInfo.renderPass = m_TempRayTracerPipeline->GetRenderPass().GetHandle();
-		//renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
-
-		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-		renderPassInfo.clearValueCount = 1;
-		renderPassInfo.pClearValues = &clearColor;
-
-		vkCmdBeginRenderPass(p_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TempRayTracerPipeline->GetHandle());
-
-		VkViewport viewport = {};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
-		viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		vkCmdSetViewport(p_CommandBuffer, 0, 1, &viewport);
-
-		VkRect2D scissor = {};
-		scissor.offset = { 0, 0 };
-		scissor.extent = m_SwapChain->GetSwapChainExtent();
-
-		vkCmdSetScissor(p_CommandBuffer, 0, 1, &scissor);
-
-		VkDeviceSize offsets[] = { 0 };
-
-		vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, &m_ShaderStorageBuffers->GetBuffer(m_CurrentFrame), offsets);
-		vkCmdDraw(p_CommandBuffer, PARTICLE_COUNT, 1, 0, 0);
-		vkCmdEndRenderPass(p_CommandBuffer);
-	}
-
+	
 	void Application::ProcessResize(int width, int height) {
 		m_FramebufferResized = true;
 		std::cout << "width - " << width << " height - " << height << '\n';
@@ -681,9 +586,7 @@ namespace Engine {
 			bufferSize,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
 		));
-
 		ObjectsGPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		//ObjectsGPUDataBuffer->BufferMemory->MapMemory();
 
 		/*	Scene Geometry Buffer Layout
 			[index obj1 | index obj2 | index obj3 | vertex obj1 | vertex obj2 | vertex obj3]
@@ -750,12 +653,78 @@ namespace Engine {
 	}
 
 	/* TODO: not ready AON
+	
+	void Application::updateComputeUniformBuffer(uint32_t currentImage) {
+		ComputeUniformBufferObject cubo{};
+		cubo.deltaTime = m_Window->GetLastFrameTime() * 0.1f;
+
+		//memcpy(m_ComputeUniformBuffers->GetBufferMemoryMapped(currentImage), &cubo, sizeof(cubo));
+	}
+
 	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetHandle());
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetPipelineLayout().GetHandle(), 
 			0, 1,&m_ComputePipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 
 			0, nullptr);
 		vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
+	}
+
+	void Application::drawRayTraced(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		
+		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
+		updateComputeUniformBuffer(m_CurrentFrame);
+		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
+
+		auto computeCommandBuffer = m_ComputeCommandBuffers->Begin(m_CurrentFrame);
+		//recordComputeCommandBuffer(computeCommandBuffer);
+		m_ComputeCommandBuffers->End(m_CurrentFrame);
+
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_ComputeCommandBuffers->GetCommandBuffer(m_CurrentFrame);
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame);
+
+		if (vkQueueSubmit(m_LogicalDevice->GetComputeQueue(), 1, &submitInfo, *m_ComputeInFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to submit compute command buffer!");
+		}
+
+		VkRenderPassBeginInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		//renderPassInfo.renderPass = m_TempRayTracerPipeline->GetRenderPass().GetHandle();
+		//renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
+
+		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+		renderPassInfo.clearValueCount = 1;
+		renderPassInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(p_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TempRayTracerPipeline->GetHandle());
+
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
+		viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		vkCmdSetViewport(p_CommandBuffer, 0, 1, &viewport);
+
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = m_SwapChain->GetSwapChainExtent();
+
+		vkCmdSetScissor(p_CommandBuffer, 0, 1, &scissor);
+
+		VkDeviceSize offsets[] = { 0 };
+
+		vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, &m_ShaderStorageBuffers->GetBuffer(m_CurrentFrame), offsets);
+		vkCmdDraw(p_CommandBuffer, PARTICLE_COUNT, 1, 0, 0);
+		vkCmdEndRenderPass(p_CommandBuffer);
 	}
 	*/
 }

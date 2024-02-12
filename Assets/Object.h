@@ -37,20 +37,13 @@ namespace Assets {
 	public:
 		std::string ID = "";
 		std::string PipelineName = "";
-
 		const char* ModelPath = nullptr;
 		const char* MaterialPath = nullptr;
-
 		bool Textured = false;
 		bool FlipTexturesVertically = false;
-
 		std::vector<Mesh*> Meshes;
-
 		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
-		 
 		Transform Transformations = {};
-
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
-		std::unique_ptr<class Engine::Buffer> GPUDataBuffer;
 	};
 }

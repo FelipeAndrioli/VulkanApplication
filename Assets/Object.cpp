@@ -32,7 +32,6 @@ namespace Assets {
 	void Object::ResetResources() {
 		Meshes.clear();
 
-		GPUDataBuffer.reset();
 		DescriptorSets.reset();
 	}
 }
