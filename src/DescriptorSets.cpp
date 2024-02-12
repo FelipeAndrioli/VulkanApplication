@@ -9,7 +9,8 @@ namespace Engine {
 		Buffer* uniformBuffers, 
 		Buffer* shaderStorageBuffers,
 		bool accessLastFrame,
-		Image* textureImage
+		Image* textureImage,
+		VkDeviceSize offset
 	) {
 		// create descriptor pool inside graphics pipeline
 		// receive descriptor set layout from graphics pipeline
@@ -35,7 +36,7 @@ namespace Engine {
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers->GetBuffer(static_cast<uint32_t>(i));
-			bufferInfo.offset = 0;
+			bufferInfo.offset = offset;
 			bufferInfo.range = bufferSize;
 
 			if (!accessLastFrame) {
