@@ -132,6 +132,6 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_SceneGPUDataBuffer;
 		std::unique_ptr<class DescriptorSets> m_SceneGPUDataDescriptorSets;
 		std::unique_ptr<class Engine::Buffer> SceneGeometryBuffer;
-		std::unique_ptr<class Engine::Buffer> ObjectsGPUDataBuffer;
+		std::unique_ptr<class Engine::Buffer> GPUDataBuffer;
 	};
 }
