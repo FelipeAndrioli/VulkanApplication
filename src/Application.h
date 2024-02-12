@@ -95,6 +95,8 @@ namespace Engine {
 
 		void CreateFramebuffers(const VkRenderPass& renderPass);
 		void ClearFramebuffers();
+
+		void InitializeSceneResources();
 		
 	private:
 		std::unique_ptr<class Window> m_Window;
@@ -151,5 +153,8 @@ namespace Engine {
 
 		std::unique_ptr<class Buffer> m_SceneGPUDataBuffer;
 		std::unique_ptr<class DescriptorSets> m_SceneGPUDataDescriptorSets;
+
+		std::unique_ptr<class Engine::Buffer> SceneGeometryBuffer;
+		std::unique_ptr<class Engine::Buffer> ObjectsGPUDataBuffer;
 	};
 }

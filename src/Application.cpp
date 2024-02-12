@@ -181,6 +181,7 @@ namespace Engine {
 
 			renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName)->second.get();
 
+			/*
 			VkDeviceSize bufferSize = sizeof(ObjectGPUData);
 
 			renderableObject->GPUDataBuffer.reset(new class Engine::Buffer(
@@ -204,6 +205,7 @@ namespace Engine {
 				false,
 				nullptr
 			));
+			*/
 		}
 
 		// Initialize Scene GPU Buffer and Descriptor Sets
@@ -266,6 +268,7 @@ namespace Engine {
 		}
 
 		p_ActiveScene->SetupSceneGeometryBuffer(*m_LogicalDevice.get(), *m_PhysicalDevice.get(), *m_CommandPool.get());
+		InitializeSceneResources();
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 	}
 
@@ -277,6 +280,8 @@ namespace Engine {
 
 		m_SceneGPUDataDescriptorSets.reset();
 		m_SceneGPUDataBuffer.reset();
+		ObjectsGPUDataBuffer.reset();
+		SceneGeometryBuffer.reset();
 
 		std::map<std::string, std::unique_ptr<Engine::GraphicsPipeline>>::iterator it;
 		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
@@ -394,13 +399,13 @@ namespace Engine {
 			commandBuffer,
 			0,
 			1,
-			&p_ActiveScene->SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
+			&SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
 			offsets
 		);
 
 		vkCmdBindIndexBuffer(
 			commandBuffer,
-			p_ActiveScene->SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
+			SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
 			0,
 			VK_INDEX_TYPE_UINT32
 		);
@@ -443,7 +448,10 @@ namespace Engine {
 
 			memcpy(m_SceneGPUDataBuffer->GetBufferMemoryMapped(m_CurrentFrame), &sceneGPUData, sizeof(SceneGPUData));
 
-			for (Assets::Object* object : p_ActiveScene->RenderableObjects) {
+			for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
+			//for (Assets::Object* object : p_ActiveScene->RenderableObjects) {
+				Assets::Object* object = p_ActiveScene->RenderableObjects[i];
+
 				if (object->SelectedGraphicsPipeline != it->second.get())
 					continue;
 
@@ -461,7 +469,10 @@ namespace Engine {
 					nullptr
 				);
 
-				memcpy(object->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &objectGPUData, sizeof(ObjectGPUData));
+				VkDeviceSize objectBufferOffset = i * sizeof(ObjectGPUData) * m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment;
+				ObjectsGPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, objectBufferOffset);
+				memcpy(ObjectsGPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &objectGPUData, sizeof(ObjectGPUData));
+				ObjectsGPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
 
 				Assets::Material* material = nullptr;
 
@@ -657,6 +668,85 @@ namespace Engine {
 		}
 
 		m_Framebuffers.clear();
+	}
+
+	void Application::InitializeSceneResources() {
+
+		VkDeviceSize bufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * sizeof(ObjectGPUData) * p_ActiveScene->RenderableObjects.size();
+
+		ObjectsGPUDataBuffer.reset(new class Engine::Buffer(
+			Engine::MAX_FRAMES_IN_FLIGHT,
+			*m_LogicalDevice.get(),
+			*m_PhysicalDevice.get(),
+			bufferSize,
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+		));
+
+		ObjectsGPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		//ObjectsGPUDataBuffer->BufferMemory->MapMemory();
+
+		/*	Scene Geometry Buffer Layout
+			[index obj1 | index obj2 | index obj3 | vertex obj1 | vertex obj2 | vertex obj3]
+		*/
+
+		bufferSize = sizeof(uint32_t) * p_ActiveScene->Indices.size() 
+			+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
+		
+		SceneGeometryBuffer.reset(new class Engine::Buffer(
+			Engine::MAX_FRAMES_IN_FLIGHT,
+			*m_LogicalDevice.get(),
+			*m_PhysicalDevice.get(),
+			bufferSize,
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT
+		));
+
+		SceneGeometryBuffer->AllocateMemory(
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT //| 
+			//VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			//VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+		);
+
+		Engine::BufferHelper::AppendData(
+			*m_LogicalDevice.get(),
+			*m_PhysicalDevice.get(),
+			*m_CommandPool.get(),
+			p_ActiveScene->Indices,
+			*SceneGeometryBuffer.get(),
+			0,
+			0
+		);
+
+		Engine::BufferHelper::AppendData(
+			*m_LogicalDevice.get(),
+			*m_PhysicalDevice.get(),
+			*m_CommandPool.get(),
+			p_ActiveScene->Vertices,
+			*SceneGeometryBuffer.get(),
+			0,
+			sizeof(uint32_t) * p_ActiveScene->Indices.size()
+		);
+
+		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
+			Assets::Object* renderableObject = p_ActiveScene->RenderableObjects[i];
+			
+			VkDeviceSize objectBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * sizeof(ObjectGPUData);
+			VkDeviceSize objectBufferOffset = i * sizeof(ObjectGPUData) * m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment;
+
+			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
+				objectBufferSize,
+				m_LogicalDevice->GetHandle(),
+				m_DescriptorPool->GetHandle(),
+				m_ObjectGPUDataDescriptorSetLayout->GetHandle(),
+				ObjectsGPUDataBuffer.get(),
+				nullptr,
+				false,
+				nullptr,
+				objectBufferOffset
+			));
+		}
 	}
 
 	/* TODO: not ready AON

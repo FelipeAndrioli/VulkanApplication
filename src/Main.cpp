@@ -394,12 +394,7 @@ int main() {
 	myScene->AddRenderableObject(&testObject2);
 	
 	
-	CustomObject model = CustomObject();
-	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/model.obj";
-	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/square/";
-	//model.PipelineName = defaultGraphicsPipeline.Name;
-	model.PipelineName = texturedGraphicsPipeline.Name;
-	myScene->AddRenderableObject(&model);
+
 	*/
 
 	Engine::Settings settings;
