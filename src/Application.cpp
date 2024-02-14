@@ -205,41 +205,6 @@ namespace Engine {
 			nullptr
 		));
 
-		/*
-		// Initialize material GPU Data and Descriptor Sets
-		bufferSize = sizeof(Assets::Material::Properties);
-		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
-		for (it = m_Materials->begin(); it != m_Materials->end(); it++) {
-			it->second->GPUDataBuffer.reset(
-				new class Buffer(
-					MAX_FRAMES_IN_FLIGHT,
-					*m_LogicalDevice.get(),
-					*m_PhysicalDevice.get(),
-					bufferSize,
-					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-				)
-			);
-
-			it->second->GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			it->second->GPUDataBuffer->BufferMemory->MapMemory();
-
-			// what if we don't find the texture or the material doesn't have any texture?
-			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE) == it->second->Textures.end() ? nullptr : it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
-			it->second->DescriptorSets.reset(
-				new class DescriptorSets(
-					bufferSize,
-					m_LogicalDevice->GetHandle(),
-					m_DescriptorPool->GetHandle(),
-					m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
-					it->second->GPUDataBuffer.get(),
-					nullptr,
-					false,
-					textureImage
-				)
-			);
-		}
-		*/
-
 		p_ActiveScene->SetupSceneGeometryBuffer(*m_LogicalDevice.get(), *m_PhysicalDevice.get(), *m_CommandPool.get());
 		InitializeSceneResources();
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
@@ -469,7 +434,6 @@ namespace Engine {
 							GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, materialBufferOffset);
 							memcpy(GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &materialGPUData, sizeof(Assets::Material::Properties));
 							GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
-							//memcpy(material->GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &materialGPUData, sizeof(Assets::Material::MaterialProperties));
 						}
 					}
 
