@@ -47,7 +47,7 @@ namespace Assets {
 		};
 
 	public:
-		MaterialProperties Properties;
+		MaterialProperties Properties = {};
 
 		size_t Index = 0;
 
