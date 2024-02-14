@@ -38,7 +38,7 @@ namespace Engine {
 			VkDeviceSize imageSize = texWidth * texHeight * 4;
 
 			if (!pixels) {
-				throw std::runtime_error("Failed to load texture iamge!");
+				throw std::runtime_error("Failed to load texture image!");
 			}
 
 			Buffer transferBuffer = Buffer(

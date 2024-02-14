@@ -410,7 +410,7 @@ namespace Engine {
 						if (m_Materials->find(mesh->MaterialName) != m_Materials->end()) {
 							material = m_Materials->find(mesh->MaterialName)->second.get();
 
-							Assets::Material::MaterialProperties materialGPUData = Assets::Material::MaterialProperties();
+							Assets::Material::MaterialProperties materialGPUData = {};
 							materialGPUData = material->Properties;
 
 							vkCmdBindDescriptorSets(
@@ -550,9 +550,6 @@ namespace Engine {
 
 	void Application::InitializeSceneResources() {
 		std::cout << "Loading Scene Resources..." << '\n';
-		/* GPUDataBuffer Layout
-		   [object data 1 | object data 2 | materials 1 | materials 2]	
-		*/
 
 		VkDeviceSize objectBufferSize = sizeof(ObjectGPUData) * m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * p_ActiveScene->RenderableObjects.size();
 		VkDeviceSize materialsBufferSize = sizeof(Assets::Material::Properties) * m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * m_Materials->size();
@@ -611,10 +608,6 @@ namespace Engine {
 			it->second->Index = material_index++;
 		}
 
-		/*	Scene Buffer Layout
-			[index obj1 | index obj2 | index obj3 | vertex obj1 | vertex obj2 | vertex obj3]
-		*/
-
 		VkDeviceSize bufferSize = sizeof(uint32_t) * p_ActiveScene->Indices.size() 
 			+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
 		
@@ -626,15 +619,9 @@ namespace Engine {
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-			//VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | 
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT
 		));
-
-		SceneGeometryBuffer->AllocateMemory(
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT //| 
-			//VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-			//VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-		);
+		SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		Engine::BufferHelper::AppendData(
 			*m_LogicalDevice.get(),
