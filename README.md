@@ -16,7 +16,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [x] Custom Model loading
 - [x] Proper Model/Material/Shader/Texture Set
 - [x] Single Buffer for Vertices and Indices 
-- [IN PROGRESS] Single Buffer for uniforms
+- [x] Single Buffer for uniforms
 - [IN PROGRESS] Refactor
 - [ ] Default models
 	- [ ] Plane
