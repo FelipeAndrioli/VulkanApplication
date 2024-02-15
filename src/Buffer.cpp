@@ -1,13 +1,13 @@
 #include "Buffer.h"
 
 namespace Engine {
-	Buffer::Buffer(const int bufferQuantity, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, const size_t bufferSize, 
-		const VkBufferUsageFlags usage) : p_LogicalDevice(&logicalDevice), m_BufferSize(bufferQuantity) {
+	Buffer::Buffer(const int numBuffers, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, const size_t bufferSize, 
+		const VkBufferUsageFlags usage) : p_LogicalDevice(&logicalDevice), m_NumBuffers(numBuffers), BufferSize(bufferSize) {
 
-		m_Buffer.resize(m_BufferSize);
-		BufferMemory.reset(new class DeviceMemory(&p_LogicalDevice->GetHandle(), &physicalDevice.GetHandle(), m_BufferSize));
+		m_Buffer.resize(m_NumBuffers);
+		BufferMemory.reset(new class DeviceMemory(&p_LogicalDevice->GetHandle(), &physicalDevice.GetHandle(), m_NumBuffers));
 
-		for (size_t i = 0; i < m_BufferSize; i++) {
+		for (size_t i = 0; i < m_NumBuffers; i++) {
 			VkBufferCreateInfo bufferInfo{};
 			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 			bufferInfo.size = bufferSize;

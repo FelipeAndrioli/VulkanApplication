@@ -11,8 +11,8 @@
 namespace Engine {
 	class Buffer {
 	public:
-		Buffer(const int bufferQuantity, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, 
-			const size_t size, const VkBufferUsageFlags usage);
+		Buffer(const int numBuffers, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, 
+			const size_t bufferSize, const VkBufferUsageFlags usage);
 		~Buffer();
 
 		void AllocateMemory(VkMemoryPropertyFlags properties);
@@ -27,19 +27,20 @@ namespace Engine {
 			VkImageLayout imageLayout,
 			VkBuffer& buffer
 		);
+		void AppendData();
 
 		VkBuffer& GetBuffer(uint32_t index);
 		void* GetBufferMemoryMapped(uint32_t index);
-
 		inline VkBuffer& GetBuffer() { return m_Buffer[0]; };
-
 	public:
+		std::vector<size_t> DataSizes;
+		std::vector<size_t> ChunkSizes;
+		size_t BufferSize;
 		std::unique_ptr<class DeviceMemory> BufferMemory;
 	private:
+		int m_NumBuffers;
 		std::vector<VkBuffer> m_Buffer;
 
 		LogicalDevice* p_LogicalDevice;
-
-		int m_BufferSize;
 	};
 }

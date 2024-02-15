@@ -640,7 +640,7 @@ namespace Engine {
 			p_ActiveScene->Vertices,
 			*SceneGeometryBuffer.get(),
 			0,
-			sizeof(uint32_t) * p_ActiveScene->Indices.size()
+			SceneGeometryBuffer->ChunkSizes[SceneGeometryBuffer->ChunkSizes.size() - 1]
 		);
 		
 		std::cout << "Scene Resources Loaded!" << '\n';
