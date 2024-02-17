@@ -40,11 +40,7 @@ namespace Assets {
 
 		void AddRenderableObject(Object* object);
 		void AddGraphicsPipeline(Assets::GraphicsPipeline newPipeline);
-		void SetupSceneGeometryBuffer(
-			Engine::LogicalDevice& logicalDevice, 
-			Engine::PhysicalDevice& physicalDevice, 
-			Engine::CommandPool& commandPool
-		);
+		void Setup();
 
 		void OnCreate();
 		void OnUIRender();

@@ -83,11 +83,7 @@ namespace Assets {
 		MainCamera->Resize(m_Width, m_Height);
 	}
 
-	void Scene::SetupSceneGeometryBuffer(
-		Engine::LogicalDevice& logicalDevice, 
-		Engine::PhysicalDevice& physicalDevice, 
-		Engine::CommandPool& commandPool) {
-
+	void Scene::Setup() {
 		for (auto& renderableObject : RenderableObjects) {
 			for (auto& mesh : renderableObject->Meshes) {
 				mesh->IndexOffset = Indices.size();
