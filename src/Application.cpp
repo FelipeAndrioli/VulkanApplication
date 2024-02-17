@@ -181,31 +181,7 @@ namespace Engine {
 			renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName)->second.get();
 		}
 
-		// Initialize Scene GPU Buffer and Descriptor Sets
-		VkDeviceSize bufferSize = sizeof(SceneGPUData);
-
-		m_SceneGPUDataBuffer.reset(new class Buffer(
-			MAX_FRAMES_IN_FLIGHT,
-			*m_LogicalDevice.get(),
-			*m_PhysicalDevice.get(),
-			bufferSize,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-		));
-		m_SceneGPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		m_SceneGPUDataBuffer->BufferMemory->MapMemory();
-
-		m_SceneGPUDataDescriptorSets.reset(new class DescriptorSets(
-			bufferSize,
-			m_LogicalDevice->GetHandle(),
-			m_DescriptorPool->GetHandle(),
-			m_SceneGPUDataDescriptorSetLayout->GetHandle(),
-			m_SceneGPUDataBuffer.get(),
-			nullptr,
-			false,
-			nullptr
-		));
-
-		p_ActiveScene->SetupSceneGeometryBuffer(*m_LogicalDevice.get(), *m_PhysicalDevice.get(), *m_CommandPool.get());
+		p_ActiveScene->Setup();
 		InitializeSceneResources();
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 	}
@@ -217,9 +193,8 @@ namespace Engine {
 		m_MaterialGPUDataDescriptorSetLayout.reset();
 
 		m_SceneGPUDataDescriptorSets.reset();
-		m_SceneGPUDataBuffer.reset();
-		GPUDataBuffer.reset();
-		SceneGeometryBuffer.reset();
+		m_GPUDataBuffer.reset();
+		m_SceneGeometryBuffer.reset();
 
 		std::map<std::string, std::unique_ptr<Engine::GraphicsPipeline>>::iterator it;
 		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
@@ -329,13 +304,13 @@ namespace Engine {
 			commandBuffer,
 			0,
 			1,
-			&SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
+			&m_SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
 			offsets
 		);
 
 		vkCmdBindIndexBuffer(
 			commandBuffer,
-			SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
+			m_SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
 			0,
 			VK_INDEX_TYPE_UINT32
 		);
@@ -376,7 +351,10 @@ namespace Engine {
 				nullptr
 			);
 
-			memcpy(m_SceneGPUDataBuffer->GetBufferMemoryMapped(m_CurrentFrame), &sceneGPUData, sizeof(SceneGPUData));
+			VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX] + m_GPUDataBuffer->ChunkSizes[MATERIAL_BUFFER_INDEX];
+			m_GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, sceneBufferOffset);
+			memcpy(m_GPUDataBuffer->GetBufferMemoryMapped(m_CurrentFrame), &sceneGPUData, sizeof(SceneGPUData));
+			m_GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
 
 			for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 				Assets::Object* object = p_ActiveScene->RenderableObjects[i];
@@ -398,10 +376,10 @@ namespace Engine {
 					nullptr
 				);
 
-				VkDeviceSize objectBufferOffset = i * sizeof(ObjectGPUData) * m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment;
-				GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, objectBufferOffset);
-				memcpy(GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &objectGPUData, sizeof(ObjectGPUData));
-				GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
+				VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->DataSizes[OBJECT_BUFFER_INDEX];
+				m_GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, objectBufferOffset);
+				memcpy(m_GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &objectGPUData, sizeof(ObjectGPUData));
+				m_GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
 
 				Assets::Material* material = nullptr;
 
@@ -424,16 +402,12 @@ namespace Engine {
 								nullptr
 							);
 
-							VkDeviceSize objectBufferSize = sizeof(ObjectGPUData) 
-								* m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment 
-								* p_ActiveScene->RenderableObjects.size();
+							VkDeviceSize objectBufferSize = m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX];
+							VkDeviceSize materialBufferOffset = objectBufferSize + material->Index * m_GPUDataBuffer->DataSizes[MATERIAL_BUFFER_INDEX];
 
-							VkDeviceSize materialBufferOffset = objectBufferSize + material->Index 
-								* sizeof(Assets::Material::Properties)
-								* m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment;
-							GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, materialBufferOffset);
-							memcpy(GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &materialGPUData, sizeof(Assets::Material::Properties));
-							GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
+							m_GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, materialBufferOffset);
+							memcpy(m_GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &materialGPUData, sizeof(Assets::Material::Properties));
+							m_GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
 						}
 					}
 
@@ -549,21 +523,30 @@ namespace Engine {
 	}
 
 	void Application::InitializeSceneResources() {
+		// TODO: refactor this monster
 		std::cout << "Loading Scene Resources..." << '\n';
 
-		VkDeviceSize objectBufferSize = sizeof(ObjectGPUData) * m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * p_ActiveScene->RenderableObjects.size();
-		VkDeviceSize materialsBufferSize = sizeof(Assets::Material::Properties) * m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * m_Materials->size();
-
-		GPUDataBuffer.reset(new class Engine::Buffer(
+		VkDeviceSize objectBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * p_ActiveScene->RenderableObjects.size();
+		VkDeviceSize materialsBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * m_Materials->size();
+		VkDeviceSize sceneBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment;
+		
+		m_GPUDataBuffer.reset(new class Engine::Buffer(
 			Engine::MAX_FRAMES_IN_FLIGHT,
 			*m_LogicalDevice.get(),
 			*m_PhysicalDevice.get(),
-			objectBufferSize + materialsBufferSize,
+			objectBufferSize + materialsBufferSize + sceneBufferSize,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
 		));
-		GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		m_GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		VkDeviceSize chunkObjectBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * sizeof(ObjectGPUData);
+		m_GPUDataBuffer->DataSizes.push_back(m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment);
+		m_GPUDataBuffer->DataSizes.push_back(m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment);
+		m_GPUDataBuffer->DataSizes.push_back(m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment);
+		m_GPUDataBuffer->ChunkSizes.push_back(objectBufferSize);
+		m_GPUDataBuffer->ChunkSizes.push_back(materialsBufferSize);
+		m_GPUDataBuffer->ChunkSizes.push_back(sceneBufferSize);
+
+		VkDeviceSize chunkObjectBufferSize = m_GPUDataBuffer->DataSizes[0];
 
 		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 			Assets::Object* renderableObject = p_ActiveScene->RenderableObjects[i];
@@ -575,7 +558,7 @@ namespace Engine {
 				m_LogicalDevice->GetHandle(),
 				m_DescriptorPool->GetHandle(),
 				m_ObjectGPUDataDescriptorSetLayout->GetHandle(),
-				GPUDataBuffer.get(),
+				m_GPUDataBuffer.get(),
 				nullptr,
 				false,
 				nullptr,
@@ -583,21 +566,21 @@ namespace Engine {
 			));
 		}
 
-		size_t material_index = 0;
-		VkDeviceSize chunkMaterialBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * sizeof(Assets::Material::Properties);
+		size_t materialIndex = 0;
+		VkDeviceSize chunkMaterialBufferSize = m_GPUDataBuffer->DataSizes[1];
 
 		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
 		for (it = m_Materials->begin(); it != m_Materials->end(); it++) {
-			VkDeviceSize materialBufferOffset = objectBufferSize + material_index * chunkMaterialBufferSize;
+			VkDeviceSize materialBufferOffset = objectBufferSize + materialIndex * chunkMaterialBufferSize;
 
-			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE) == it->second->Textures.end() ? nullptr : it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
+			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
 			it->second->DescriptorSets.reset(
 				new class DescriptorSets(
 					chunkMaterialBufferSize,
 					m_LogicalDevice->GetHandle(),
 					m_DescriptorPool->GetHandle(),
 					m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
-					GPUDataBuffer.get(),
+					m_GPUDataBuffer.get(),
 					nullptr,
 					false,
 					textureImage,
@@ -605,13 +588,25 @@ namespace Engine {
 				)
 			);
 
-			it->second->Index = material_index++;
+			it->second->Index = materialIndex++;
 		}
+
+		m_SceneGPUDataDescriptorSets.reset(new class DescriptorSets(
+			sceneBufferSize,
+			m_LogicalDevice->GetHandle(),
+			m_DescriptorPool->GetHandle(),
+			m_SceneGPUDataDescriptorSetLayout->GetHandle(),
+			m_GPUDataBuffer.get(),
+			nullptr,
+			false,
+			nullptr,
+			m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX] + m_GPUDataBuffer->ChunkSizes[MATERIAL_BUFFER_INDEX]
+		));
 
 		VkDeviceSize bufferSize = sizeof(uint32_t) * p_ActiveScene->Indices.size() 
 			+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
 		
-		SceneGeometryBuffer.reset(new class Engine::Buffer(
+		m_SceneGeometryBuffer.reset(new class Engine::Buffer(
 			Engine::MAX_FRAMES_IN_FLIGHT,
 			*m_LogicalDevice.get(),
 			*m_PhysicalDevice.get(),
@@ -621,14 +616,14 @@ namespace Engine {
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT
 		));
-		SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		m_SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		Engine::BufferHelper::AppendData(
 			*m_LogicalDevice.get(),
 			*m_PhysicalDevice.get(),
 			*m_CommandPool.get(),
 			p_ActiveScene->Indices,
-			*SceneGeometryBuffer.get(),
+			*m_SceneGeometryBuffer.get(),
 			0,
 			0
 		);
@@ -638,9 +633,9 @@ namespace Engine {
 			*m_PhysicalDevice.get(),
 			*m_CommandPool.get(),
 			p_ActiveScene->Vertices,
-			*SceneGeometryBuffer.get(),
+			*m_SceneGeometryBuffer.get(),
 			0,
-			SceneGeometryBuffer->ChunkSizes[SceneGeometryBuffer->ChunkSizes.size() - 1]
+			m_SceneGeometryBuffer->ChunkSizes[INDEX_BUFFER_INDEX]
 		);
 		
 		std::cout << "Scene Resources Loaded!" << '\n';

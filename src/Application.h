@@ -129,17 +129,21 @@ namespace Engine {
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_MaterialGPUDataDescriptorSetLayout;
-		std::unique_ptr<class Buffer> m_SceneGPUDataBuffer;
 		std::unique_ptr<class DescriptorSets> m_SceneGPUDataDescriptorSets;
 
 		/*	Scene Buffer Layout
 			[index obj1 | index obj2 | index obj3 | vertex obj1 | vertex obj2 | vertex obj3]
 		*/
-		std::unique_ptr<class Engine::Buffer> SceneGeometryBuffer;
+		std::unique_ptr<class Engine::Buffer> m_SceneGeometryBuffer;
 
 		/* GPUDataBuffer Layout
 		   [object data 1 | object data 2 | materials 1 | materials 2]	
 		*/
-		std::unique_ptr<class Engine::Buffer> GPUDataBuffer;
+		std::unique_ptr<class Engine::Buffer> m_GPUDataBuffer;
+
+		int OBJECT_BUFFER_INDEX = 0;
+		int MATERIAL_BUFFER_INDEX = 1;
+		int INDEX_BUFFER_INDEX = 0;			// :) 
+		int VERTEX_BUFFER_INDEX = 1;
 	};
 }
