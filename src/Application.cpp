@@ -182,7 +182,9 @@ namespace Engine {
 		}
 
 		p_ActiveScene->Setup();
-		InitializeSceneResources();
+		//InitializeSceneResources();
+		InitializeBuffers();
+		InitializeDescriptorSets();
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 	}
 
@@ -351,7 +353,8 @@ namespace Engine {
 				nullptr
 			);
 
-			VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX] + m_GPUDataBuffer->ChunkSizes[MATERIAL_BUFFER_INDEX];
+			//VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX] + m_GPUDataBuffer->ChunkSizes[MATERIAL_BUFFER_INDEX];
+			VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
 			m_GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, sceneBufferOffset);
 			memcpy(m_GPUDataBuffer->GetBufferMemoryMapped(m_CurrentFrame), &sceneGPUData, sizeof(SceneGPUData));
 			m_GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
@@ -376,7 +379,8 @@ namespace Engine {
 					nullptr
 				);
 
-				VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->DataSizes[OBJECT_BUFFER_INDEX];
+				//VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->DataSizes[OBJECT_BUFFER_INDEX];
+				VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 				m_GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, objectBufferOffset);
 				memcpy(m_GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &objectGPUData, sizeof(ObjectGPUData));
 				m_GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
@@ -402,8 +406,10 @@ namespace Engine {
 								nullptr
 							);
 
-							VkDeviceSize objectBufferSize = m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX];
-							VkDeviceSize materialBufferOffset = objectBufferSize + material->Index * m_GPUDataBuffer->DataSizes[MATERIAL_BUFFER_INDEX];
+							//VkDeviceSize objectBufferSize = m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX];
+							VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
+							//VkDeviceSize materialBufferOffset = objectBufferSize + material->Index * m_GPUDataBuffer->DataSizes[MATERIAL_BUFFER_INDEX];
+							VkDeviceSize materialBufferOffset = objectBufferSize + material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
 
 							m_GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, materialBufferOffset);
 							memcpy(m_GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &materialGPUData, sizeof(Assets::Material::Properties));
@@ -522,10 +528,8 @@ namespace Engine {
 		m_Framebuffers.clear();
 	}
 
-	void Application::InitializeSceneResources() {
-		// TODO: refactor this monster
-		std::cout << "Loading Scene Resources..." << '\n';
-
+	void Application::InitializeBuffers() {
+		// GPU Data Buffer Begin
 		VkDeviceSize objectBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * p_ActiveScene->RenderableObjects.size();
 		VkDeviceSize materialsBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * m_Materials->size();
 		VkDeviceSize sceneBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment;
@@ -539,70 +543,12 @@ namespace Engine {
 		));
 		m_GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		m_GPUDataBuffer->DataSizes.push_back(m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment);
-		m_GPUDataBuffer->DataSizes.push_back(m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment);
-		m_GPUDataBuffer->DataSizes.push_back(m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment);
-		m_GPUDataBuffer->ChunkSizes.push_back(objectBufferSize);
-		m_GPUDataBuffer->ChunkSizes.push_back(materialsBufferSize);
-		m_GPUDataBuffer->ChunkSizes.push_back(sceneBufferSize);
+		m_GPUDataBuffer->NewChunk({ m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment, objectBufferSize });
+		m_GPUDataBuffer->NewChunk({ m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment, materialsBufferSize});
+		m_GPUDataBuffer->NewChunk({ m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment, sceneBufferSize});
+		// GPU Data Buffer End
 
-		VkDeviceSize chunkObjectBufferSize = m_GPUDataBuffer->DataSizes[0];
-
-		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
-			Assets::Object* renderableObject = p_ActiveScene->RenderableObjects[i];
-			
-			VkDeviceSize objectBufferOffset = i * chunkObjectBufferSize;
-
-			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
-				chunkObjectBufferSize,
-				m_LogicalDevice->GetHandle(),
-				m_DescriptorPool->GetHandle(),
-				m_ObjectGPUDataDescriptorSetLayout->GetHandle(),
-				m_GPUDataBuffer.get(),
-				nullptr,
-				false,
-				nullptr,
-				objectBufferOffset
-			));
-		}
-
-		size_t materialIndex = 0;
-		VkDeviceSize chunkMaterialBufferSize = m_GPUDataBuffer->DataSizes[1];
-
-		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
-		for (it = m_Materials->begin(); it != m_Materials->end(); it++) {
-			VkDeviceSize materialBufferOffset = objectBufferSize + materialIndex * chunkMaterialBufferSize;
-
-			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
-			it->second->DescriptorSets.reset(
-				new class DescriptorSets(
-					chunkMaterialBufferSize,
-					m_LogicalDevice->GetHandle(),
-					m_DescriptorPool->GetHandle(),
-					m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
-					m_GPUDataBuffer.get(),
-					nullptr,
-					false,
-					textureImage,
-					materialBufferOffset
-				)
-			);
-
-			it->second->Index = materialIndex++;
-		}
-
-		m_SceneGPUDataDescriptorSets.reset(new class DescriptorSets(
-			sceneBufferSize,
-			m_LogicalDevice->GetHandle(),
-			m_DescriptorPool->GetHandle(),
-			m_SceneGPUDataDescriptorSetLayout->GetHandle(),
-			m_GPUDataBuffer.get(),
-			nullptr,
-			false,
-			nullptr,
-			m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX] + m_GPUDataBuffer->ChunkSizes[MATERIAL_BUFFER_INDEX]
-		));
-
+		// Scene Geometry Buffer Begin
 		VkDeviceSize bufferSize = sizeof(uint32_t) * p_ActiveScene->Indices.size() 
 			+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
 		
@@ -635,85 +581,70 @@ namespace Engine {
 			p_ActiveScene->Vertices,
 			*m_SceneGeometryBuffer.get(),
 			0,
-			m_SceneGeometryBuffer->ChunkSizes[INDEX_BUFFER_INDEX]
+			m_SceneGeometryBuffer->Chunks[INDEX_BUFFER_INDEX].ChunkSize
 		);
-		
-		std::cout << "Scene Resources Loaded!" << '\n';
+		// Scene Geometry Buffer End
 	}
 
-	/* TODO: not ready AON
-	
-	void Application::updateComputeUniformBuffer(uint32_t currentImage) {
-		ComputeUniformBufferObject cubo{};
-		cubo.deltaTime = m_Window->GetLastFrameTime() * 0.1f;
+	void Application::InitializeDescriptorSets() {
+		// Renderable Objects Descriptor Sets Begin
+		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
+			Assets::Object* renderableObject = p_ActiveScene->RenderableObjects[i];
+			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 
-		//memcpy(m_ComputeUniformBuffers->GetBufferMemoryMapped(currentImage), &cubo, sizeof(cubo));
-	}
-
-	void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetHandle());
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetPipelineLayout().GetHandle(), 
-			0, 1,&m_ComputePipeline->GetDescriptorSets().GetDescriptorSet(m_CurrentFrame), 
-			0, nullptr);
-		vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
-	}
-
-	void Application::drawRayTraced(VkCommandBuffer& p_CommandBuffer, uint32_t imageIndex) {
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		
-		vkWaitForFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame), VK_TRUE, UINT64_MAX);
-		updateComputeUniformBuffer(m_CurrentFrame);
-		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_ComputeInFlightFences->GetHandle(m_CurrentFrame));
-
-		auto computeCommandBuffer = m_ComputeCommandBuffers->Begin(m_CurrentFrame);
-		//recordComputeCommandBuffer(computeCommandBuffer);
-		m_ComputeCommandBuffers->End(m_CurrentFrame);
-
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &m_ComputeCommandBuffers->GetCommandBuffer(m_CurrentFrame);
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = m_ComputeFinishedSemaphores->GetHandle(m_CurrentFrame);
-
-		if (vkQueueSubmit(m_LogicalDevice->GetComputeQueue(), 1, &submitInfo, *m_ComputeInFlightFences->GetHandle(m_CurrentFrame)) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to submit compute command buffer!");
+			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
+				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize,
+				m_LogicalDevice->GetHandle(),
+				m_DescriptorPool->GetHandle(),
+				m_ObjectGPUDataDescriptorSetLayout->GetHandle(),
+				m_GPUDataBuffer.get(),
+				nullptr,
+				false,
+				nullptr,
+				objectBufferOffset
+			));
 		}
+		// Renderable Objects Descriptor Sets End 
 
-		VkRenderPassBeginInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		//renderPassInfo.renderPass = m_TempRayTracerPipeline->GetRenderPass().GetHandle();
-		//renderPassInfo.framebuffer = m_SwapChain->GetSwapChainFramebuffer(imageIndex);
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = m_SwapChain->GetSwapChainExtent();
+		// Material Descriptor Sets Begin
+		size_t materialIndex = 0;
 
-		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-		renderPassInfo.clearValueCount = 1;
-		renderPassInfo.pClearValues = &clearColor;
+		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
+		for (it = m_Materials->begin(); it != m_Materials->end(); it++) {
+			VkDeviceSize materialBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize 
+				+ materialIndex * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
 
-		vkCmdBeginRenderPass(p_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(p_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TempRayTracerPipeline->GetHandle());
+			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
+			it->second->DescriptorSets.reset(
+				new class DescriptorSets(
+					m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize,
+					m_LogicalDevice->GetHandle(),
+					m_DescriptorPool->GetHandle(),
+					m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
+					m_GPUDataBuffer.get(),
+					nullptr,
+					false,
+					textureImage,
+					materialBufferOffset
+				)
+			);
 
-		VkViewport viewport = {};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
-		viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
+			it->second->Index = materialIndex++;
+		}
+		// Material Descriptor Sets End 
 
-		vkCmdSetViewport(p_CommandBuffer, 0, 1, &viewport);
-
-		VkRect2D scissor = {};
-		scissor.offset = { 0, 0 };
-		scissor.extent = m_SwapChain->GetSwapChainExtent();
-
-		vkCmdSetScissor(p_CommandBuffer, 0, 1, &scissor);
-
-		VkDeviceSize offsets[] = { 0 };
-
-		vkCmdBindVertexBuffers(p_CommandBuffer, 0, 1, &m_ShaderStorageBuffers->GetBuffer(m_CurrentFrame), offsets);
-		vkCmdDraw(p_CommandBuffer, PARTICLE_COUNT, 1, 0, 0);
-		vkCmdEndRenderPass(p_CommandBuffer);
+		// Scene Data Descriptor Sets Begin
+		m_SceneGPUDataDescriptorSets.reset(new class DescriptorSets(
+			m_GPUDataBuffer->Chunks[SCENE_BUFFER_INDEX].ChunkSize,
+			m_LogicalDevice->GetHandle(),
+			m_DescriptorPool->GetHandle(),
+			m_SceneGPUDataDescriptorSetLayout->GetHandle(),
+			m_GPUDataBuffer.get(),
+			nullptr,
+			false,
+			nullptr,
+			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
+		));
+		// Scene Data Descriptor Sets End 
 	}
-	*/
 }

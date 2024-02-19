@@ -92,20 +92,8 @@ namespace Engine {
 	void BufferHelper::AppendData(LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, CommandPool& commandPool,
 		const std::vector<T>& content, Buffer& buffer, size_t srcOffset, size_t dstOffset) {
 
-		buffer.DataSizes.push_back(sizeof(T));
-		buffer.ChunkSizes.push_back(sizeof(T) * content.size());
+		buffer.NewChunk({ sizeof(T), sizeof(T) * content.size() });
 		CopyFromStaging(logicalDevice, physicalDevice, commandPool, content, buffer, srcOffset, dstOffset);
-
-		/*
-		VkDeviceSize bufferSize = sizeof(T) * content.size();
-		auto stagingBuffer = std::make_unique<Buffer>(1, logicalDevice, physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		stagingBuffer->BufferMemory->MapMemory();
-		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content.data(), bufferSize);
-		stagingBuffer->BufferMemory->UnmapMemory();
-		buffer.CopyFrom(stagingBuffer->GetBuffer(0), bufferSize, commandPool.GetHandle(), srcOffset, dstOffset);
-		stagingBuffer.reset();
-		*/
 	}
 
 	template <class T>

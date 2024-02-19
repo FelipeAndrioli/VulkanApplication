@@ -86,7 +86,8 @@ namespace Engine {
 		void ProcessResize(int width, int height);
 		void CreateFramebuffers(const VkRenderPass& renderPass);
 		void ClearFramebuffers();
-		void InitializeSceneResources();
+		void InitializeBuffers();
+		void InitializeDescriptorSets();
 		
 		//void updateComputeUniformBuffer(uint32_t currentImage);
 		//void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
@@ -143,6 +144,7 @@ namespace Engine {
 
 		int OBJECT_BUFFER_INDEX = 0;
 		int MATERIAL_BUFFER_INDEX = 1;
+		int SCENE_BUFFER_INDEX = 2;
 		int INDEX_BUFFER_INDEX = 0;			// :) 
 		int VERTEX_BUFFER_INDEX = 1;
 	};
