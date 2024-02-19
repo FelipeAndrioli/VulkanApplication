@@ -32,5 +32,7 @@ namespace Engine {
 		VkInstance& p_Instance;
 		VkSurfaceKHR& p_Surface;
 		QueueFamilyIndices m_QueueFamilyIndices;
+
+		const int DEDICATED_GPU = 2;
 	};
 }
