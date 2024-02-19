@@ -9,6 +9,11 @@
 #include "CommandBUffer.h"
 
 namespace Engine {
+	struct BufferChunk {
+		size_t DataSize;
+		size_t ChunkSize;
+	};
+
 	class Buffer {
 	public:
 		Buffer(const int numBuffers, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, 
@@ -27,14 +32,13 @@ namespace Engine {
 			VkImageLayout imageLayout,
 			VkBuffer& buffer
 		);
-		void AppendData();
+		void NewChunk(BufferChunk newChunk);
 
 		VkBuffer& GetBuffer(uint32_t index);
 		void* GetBufferMemoryMapped(uint32_t index);
 		inline VkBuffer& GetBuffer() { return m_Buffer[0]; };
 	public:
-		std::vector<size_t> DataSizes;
-		std::vector<size_t> ChunkSizes;
+		std::vector<BufferChunk> Chunks;
 		size_t BufferSize;
 		std::unique_ptr<class DeviceMemory> BufferMemory;
 	private:

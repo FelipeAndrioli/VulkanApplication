@@ -86,6 +86,10 @@ namespace Engine {
 		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, queue, sCommandBuffer, commandPool);
 	}
 
+	void Buffer::NewChunk(BufferChunk newChunk) {
+		Chunks.push_back(newChunk);
+	}
+
 	VkBuffer& Buffer::GetBuffer(uint32_t index) {
 		if (index > m_Buffer.size() || index < 0) {
 			throw std::runtime_error("Index to retrieve buffer out of bounds!");
