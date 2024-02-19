@@ -56,9 +56,6 @@ namespace Engine {
 				throw std::runtime_error("Failed to allocate buffer memory!");
 			}
 
-			static uint32_t bufferAllocationCounter = 0;
-			std::cout << "Buffer allocation count: " << bufferAllocationCounter++ << '\n';
-
 			vkBindBufferMemory(*p_LogicalDevice, buffer[i], Memory[i], 0);
 		}
 	}
@@ -76,9 +73,6 @@ namespace Engine {
 			if (vkAllocateMemory(*p_LogicalDevice, &allocInfo, nullptr, &Memory[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to allocate image memory!");
 			}
-
-			static uint32_t imageAllocationCounter = 0;
-			std::cout << "Image allocation count: " << imageAllocationCounter++ << '\n';
 
 			vkBindImageMemory(*p_LogicalDevice, images[i], Memory[i], 0);
 		}
