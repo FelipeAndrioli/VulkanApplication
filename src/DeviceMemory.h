@@ -18,7 +18,9 @@ namespace Engine {
 
 		void MapMemory();
 		void MapMemory(void* data);
+		void MapMemory(uint32_t index, const VkDeviceSize& offset);
 		void UnmapMemory();
+		void UnmapMemory(uint32_t index);
 	public:
 		std::vector<VkDeviceMemory> Memory;
 		std::vector<void*> MemoryMapped;

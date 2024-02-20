@@ -1,13 +1,13 @@
 #include "DeviceMemory.h"
 
 namespace Engine {
-	DeviceMemory::DeviceMemory(VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, int bufferSize) 
+	DeviceMemory::DeviceMemory(VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, int bufferSize)
 		: p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice) {
 
 		Memory.resize(bufferSize);
 		MemoryMapped.resize(bufferSize);
 	}
-	
+
 	DeviceMemory::~DeviceMemory() {
 		for (size_t i = 0; i < Memory.size(); i++) {
 			vkFreeMemory(*p_LogicalDevice, Memory[i], nullptr);
@@ -29,10 +29,18 @@ namespace Engine {
 		}
 	}
 
+	void DeviceMemory::MapMemory(uint32_t index, const VkDeviceSize& offset) {
+		vkMapMemory(*p_LogicalDevice, Memory[index], offset, Memory.size(), 0, &MemoryMapped[index]);
+	}
+
 	void DeviceMemory::UnmapMemory() {
 		for (size_t i = 0; i < Memory.size(); i++) {
 			vkUnmapMemory(*p_LogicalDevice, Memory[i]);
 		}
+	}
+
+	void DeviceMemory::UnmapMemory(uint32_t index) {
+		vkUnmapMemory(*p_LogicalDevice, Memory[index]);
 	}
 
 	void DeviceMemory::AllocateMemory(std::vector<VkBuffer>& buffer, VkMemoryPropertyFlags properties) {
@@ -47,9 +55,6 @@ namespace Engine {
 			if (vkAllocateMemory(*p_LogicalDevice, &allocInfo, nullptr, &Memory[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to allocate buffer memory!");
 			}
-
-			static uint32_t bufferAllocationCounter = 0;
-			std::cout << "Buffer allocation count: " << bufferAllocationCounter++ << '\n';
 
 			vkBindBufferMemory(*p_LogicalDevice, buffer[i], Memory[i], 0);
 		}
@@ -68,9 +73,6 @@ namespace Engine {
 			if (vkAllocateMemory(*p_LogicalDevice, &allocInfo, nullptr, &Memory[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to allocate image memory!");
 			}
-
-			static uint32_t imageAllocationCounter = 0;
-			std::cout << "Image allocation count: " << imageAllocationCounter++ << '\n';
 
 			vkBindImageMemory(*p_LogicalDevice, images[i], Memory[i], 0);
 		}

@@ -40,11 +40,7 @@ namespace Assets {
 
 		void AddRenderableObject(Object* object);
 		void AddGraphicsPipeline(Assets::GraphicsPipeline newPipeline);
-		void SetupSceneGeometryBuffer(
-			Engine::LogicalDevice& logicalDevice, 
-			Engine::PhysicalDevice& physicalDevice, 
-			Engine::CommandPool& commandPool
-		);
+		void Setup();
 
 		void OnCreate();
 		void OnUIRender();
@@ -56,8 +52,11 @@ namespace Assets {
 	
 		Camera* MainCamera = nullptr;
 
-		std::unique_ptr<class Engine::Buffer> SceneGeometryBuffer;
 		size_t VertexOffset = 0;
+
+
+		std::vector<Assets::Vertex> Vertices;
+		std::vector<uint32_t> Indices;
 	private:
 		uint32_t m_Width = 800;
 		uint32_t m_Height = 600;

@@ -23,7 +23,8 @@ namespace Engine {
 			Buffer* uniformBuffers,
 			Buffer* shaderStorageBuffers = nullptr,
 			bool accessLastFrame = false,
-			Image* textureImage = nullptr
+			Image* textureImage = nullptr,
+			VkDeviceSize offset = 0
 		);
 
 		~DescriptorSets();

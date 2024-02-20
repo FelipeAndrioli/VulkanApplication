@@ -17,6 +17,7 @@ namespace Engine {
 		inline std::vector<VkPhysicalDevice> GetAvailablePhysicalDevices() { return m_AvailablePhysicalDevices; };
 		inline SwapChainSupportDetails GetSwapChainSupportDetails() { return QuerySwapChainSupportDetails(m_PhysicalDevice); }
 		inline QueueFamilyIndices& GetQueueFamilyIndices() { return m_QueueFamilyIndices; }
+		VkPhysicalDeviceLimits GetLimits();
 	private:
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 		bool isDeviceSuitable(VkPhysicalDevice device);
@@ -31,5 +32,7 @@ namespace Engine {
 		VkInstance& p_Instance;
 		VkSurfaceKHR& p_Surface;
 		QueueFamilyIndices m_QueueFamilyIndices;
+
+		const int DEDICATED_GPU = 2;
 	};
 }

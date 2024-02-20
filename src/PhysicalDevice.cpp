@@ -23,7 +23,6 @@ namespace Engine {
 			vkGetPhysicalDeviceProperties(device, &device_properties);
 
 			std::cout << '\t' << device_properties.deviceName << '\n';
-			std::cout << '\t' << device_properties.deviceType << '\n';
 		}
 		
 		for (const auto& device : m_AvailablePhysicalDevices) {
@@ -33,7 +32,7 @@ namespace Engine {
 				vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
 				// pick any GPU at first, then priorize a dedicated GPU (device type = 2)
-				if (m_PhysicalDevice == VK_NULL_HANDLE || deviceProperties.deviceType == 2) {
+				if (m_PhysicalDevice == VK_NULL_HANDLE || deviceProperties.deviceType == DEDICATED_GPU) {
 					m_PhysicalDevice = device;
 					m_PhysicalDeviceProperties = deviceProperties;
 				}
@@ -52,6 +51,10 @@ namespace Engine {
 
 	PhysicalDevice::~PhysicalDevice() {
 
+	}
+
+	VkPhysicalDeviceLimits PhysicalDevice::GetLimits() {
+		return m_PhysicalDeviceProperties.limits;
 	}
 
 	SwapChainSupportDetails PhysicalDevice::QuerySwapChainSupportDetails(VkPhysicalDevice device) {

@@ -47,7 +47,9 @@ namespace Assets {
 		};
 
 	public:
-		MaterialProperties Properties;
+		MaterialProperties Properties = {};
+
+		size_t Index = 0;
 
 		std::map<Assets::TextureType, Assets::Texture*> Textures;
 		std::unique_ptr<class Engine::Buffer> GPUDataBuffer;
