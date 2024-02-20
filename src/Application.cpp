@@ -353,11 +353,8 @@ namespace Engine {
 				nullptr
 			);
 
-			//VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX] + m_GPUDataBuffer->ChunkSizes[MATERIAL_BUFFER_INDEX];
 			VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
-			m_GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, sceneBufferOffset);
-			memcpy(m_GPUDataBuffer->GetBufferMemoryMapped(m_CurrentFrame), &sceneGPUData, sizeof(SceneGPUData));
-			m_GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
+			m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
 
 			for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 				Assets::Object* object = p_ActiveScene->RenderableObjects[i];
@@ -379,11 +376,8 @@ namespace Engine {
 					nullptr
 				);
 
-				//VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->DataSizes[OBJECT_BUFFER_INDEX];
 				VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-				m_GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, objectBufferOffset);
-				memcpy(m_GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &objectGPUData, sizeof(ObjectGPUData));
-				m_GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
+				m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
 
 				Assets::Material* material = nullptr;
 
@@ -406,14 +400,10 @@ namespace Engine {
 								nullptr
 							);
 
-							//VkDeviceSize objectBufferSize = m_GPUDataBuffer->ChunkSizes[OBJECT_BUFFER_INDEX];
 							VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
-							//VkDeviceSize materialBufferOffset = objectBufferSize + material->Index * m_GPUDataBuffer->DataSizes[MATERIAL_BUFFER_INDEX];
 							VkDeviceSize materialBufferOffset = objectBufferSize + material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
 
-							m_GPUDataBuffer->BufferMemory->MapMemory(m_CurrentFrame, materialBufferOffset);
-							memcpy(m_GPUDataBuffer->BufferMemory->MemoryMapped[m_CurrentFrame], &materialGPUData, sizeof(Assets::Material::Properties));
-							m_GPUDataBuffer->BufferMemory->UnmapMemory(m_CurrentFrame);
+							m_GPUDataBuffer->Update(m_CurrentFrame, materialBufferOffset, &materialGPUData, sizeof(Assets::Material::Properties));
 						}
 					}
 

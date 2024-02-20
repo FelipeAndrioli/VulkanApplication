@@ -33,6 +33,7 @@ namespace Engine {
 			VkBuffer& buffer
 		);
 		void NewChunk(BufferChunk newChunk);
+		void Update(uint32_t bufferIndex, VkDeviceSize offset, void* data, size_t dataSize);
 
 		VkBuffer& GetBuffer(uint32_t index);
 		void* GetBufferMemoryMapped(uint32_t index);

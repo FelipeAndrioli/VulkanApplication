@@ -90,6 +90,12 @@ namespace Engine {
 		Chunks.push_back(newChunk);
 	}
 
+	void Buffer::Update(uint32_t bufferIndex, VkDeviceSize offset, void* data, size_t dataSize) {
+		BufferMemory->MapMemory(bufferIndex, offset);
+		memcpy(BufferMemory->MemoryMapped[bufferIndex], data, dataSize);
+		BufferMemory->UnmapMemory(bufferIndex);
+	}
+
 	VkBuffer& Buffer::GetBuffer(uint32_t index) {
 		if (index > m_Buffer.size() || index < 0) {
 			throw std::runtime_error("Index to retrieve buffer out of bounds!");
