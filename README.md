@@ -17,11 +17,12 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [x] Proper Model/Material/Shader/Texture Set
 - [x] Single Buffer for Vertices and Indices 
 - [x] Single Buffer for uniforms
-- [IN PROGRESS] Refactor
 - [ ] Default models
 	- [ ] Plane
 	- [ ] Cube
 	- [ ] Sphere
+- [ ] Lighting
+- [ ] Empty Scene
 - [ ] Scene selection
 - [ ] Compute Shaders
 
@@ -35,6 +36,6 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	
 ## Future Work (not in order)
 
-- [ ] Render Graph
 - [ ] glTF
+- [ ] Render Graph
 - [ ] Ray Tracer
