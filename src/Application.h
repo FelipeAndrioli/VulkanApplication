@@ -142,10 +142,11 @@ namespace Engine {
 		*/
 		std::unique_ptr<class Engine::Buffer> m_GPUDataBuffer;
 
-		int OBJECT_BUFFER_INDEX = 0;
-		int MATERIAL_BUFFER_INDEX = 1;
-		int SCENE_BUFFER_INDEX = 2;
-		int INDEX_BUFFER_INDEX = 0;			// :) 
-		int VERTEX_BUFFER_INDEX = 1;
+		const int OBJECT_BUFFER_INDEX = 0;
+		const int MATERIAL_BUFFER_INDEX = 1;
+		const int SCENE_BUFFER_INDEX = 2;
+		const int INDEX_BUFFER_INDEX = 0;			// :) 
+		const int VERTEX_BUFFER_INDEX = 1;
+		const std::string DEFAULT_GRAPHICS_PIPELINE = "defaultPipeline";
 	};
 }
