@@ -17,13 +17,14 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [x] Proper Model/Material/Shader/Texture Set
 - [x] Single Buffer for Vertices and Indices 
 - [x] Single Buffer for uniforms
-- [IN PROGRESS] Refactor
+- [ ] Empty Scene
+- [ ] Send Array of Materials to Shader
+	- [ ] Send Array of Textures to Shader
 - [ ] Default models
 	- [ ] Plane
 	- [ ] Cube
 	- [ ] Sphere
-- [ ] Scene selection
-- [ ] Compute Shaders
+- [ ] Lighting
 
 ## Small problems to remember to solve
 
@@ -35,6 +36,8 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	
 ## Future Work (not in order)
 
-- [ ] Render Graph
 - [ ] glTF
+- [ ] Render Graph
 - [ ] Ray Tracer
+	- [ ] Compute Shaders
+- [ ] Scene selection

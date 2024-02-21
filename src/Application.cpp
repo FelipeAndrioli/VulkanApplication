@@ -178,11 +178,16 @@ namespace Engine {
 				*m_CommandPool.get()
 			);
 
-			renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName)->second.get();
+			auto selectedPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName);
+			if (renderableObject->PipelineName == "" || selectedPipeline == m_GraphicsPipelines.end()) {
+				renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(DEFAULT_GRAPHICS_PIPELINE)->second.get();
+			}
+			else {
+				renderableObject->SelectedGraphicsPipeline = selectedPipeline->second.get();
+			}
 		}
 
 		p_ActiveScene->Setup();
-		//InitializeSceneResources();
 		InitializeBuffers();
 		InitializeDescriptorSets();
 		p_ActiveScene->OnResize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
@@ -402,7 +407,6 @@ namespace Engine {
 
 							VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
 							VkDeviceSize materialBufferOffset = objectBufferSize + material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
-
 							m_GPUDataBuffer->Update(m_CurrentFrame, materialBufferOffset, &materialGPUData, sizeof(Assets::Material::Properties));
 						}
 					}

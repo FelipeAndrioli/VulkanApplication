@@ -23,6 +23,11 @@ namespace Assets {
 		std::cout << "Starting scene" << std::endl;
 
 		MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), 45.0f, m_Width, m_Height);
+
+		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/vert.spv");
+		Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/frag.spv"); 
+		Assets::GraphicsPipeline defaultGraphicsPipeline = Assets::GraphicsPipeline("defaultPipeline", defaultVertexShader, defaultFragmentShader);
+		AddGraphicsPipeline(defaultGraphicsPipeline);
 	}
 
 	Scene::~Scene() {

@@ -49,7 +49,7 @@ namespace Engine {
 
 			VkMemoryAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
+			allocInfo.allocationSize = memRequirements.size == 0 ? 256 : memRequirements.size;
 			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 		
 			if (vkAllocateMemory(*p_LogicalDevice, &allocInfo, nullptr, &Memory[i]) != VK_SUCCESS) {

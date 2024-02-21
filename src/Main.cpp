@@ -337,11 +337,6 @@ int main() {
 
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 
-	Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/vert.spv");
-	Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/frag.spv"); 
-	Assets::GraphicsPipeline defaultGraphicsPipeline = Assets::GraphicsPipeline("defaultPipeline", defaultVertexShader, defaultFragmentShader);
-	myScene->AddGraphicsPipeline(defaultGraphicsPipeline);
-
 	Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "./Assets/Shaders/textured_vert.spv");
 	Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "./Assets/Shaders/textured_frag.spv");
 	Assets::GraphicsPipeline texturedGraphicsPipeline = Assets::GraphicsPipeline("texturedPipeline", texturedVertexShader, texturedFragmentShader);
@@ -374,7 +369,6 @@ int main() {
 	myScene->AddRenderableObject(&testObject);
 
 	/*
-
 	CustomObject model = CustomObject();
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace/palace.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace";
@@ -392,9 +386,6 @@ int main() {
 	testObject2.Transformations.translation.x = 5.0f;
 	testObject2.Transformations.translation.z = -2.0f;
 	myScene->AddRenderableObject(&testObject2);
-	
-	
-
 	*/
 
 	Engine::Settings settings;
