@@ -10,7 +10,7 @@ namespace Engine {
 		for (size_t i = 0; i < m_NumBuffers; i++) {
 			VkBufferCreateInfo bufferInfo{};
 			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			bufferInfo.size = bufferSize;
+			bufferInfo.size = bufferSize == 0 ? 256 : bufferSize;
 			bufferInfo.usage = usage;
 			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
