@@ -108,6 +108,7 @@ namespace Engine {
 					object.FlipTexturesVertically
 				);
 
+				/*
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
 					loadedTextures, 
@@ -120,6 +121,7 @@ namespace Engine {
 					commandPool, 
 					object.FlipTexturesVertically
 				);
+				*/
 
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
@@ -134,6 +136,7 @@ namespace Engine {
 					object.FlipTexturesVertically
 				);
 
+				/*
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
 					loadedTextures, 
@@ -146,7 +149,9 @@ namespace Engine {
 					commandPool, 
 					object.FlipTexturesVertically
 				);
+				*/
 
+				/*
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
 					loadedTextures, 
@@ -159,7 +164,9 @@ namespace Engine {
 					commandPool, 
 					object.FlipTexturesVertically
 				);
+				*/
 
+				/*
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
 					loadedTextures, 
@@ -172,6 +179,9 @@ namespace Engine {
 					commandPool, 
 					object.FlipTexturesVertically
 				);
+				*/
+
+				/*
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
 					loadedTextures, 
@@ -184,7 +194,9 @@ namespace Engine {
 					commandPool, 
 					object.FlipTexturesVertically
 				);
+				*/
 
+				/*
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
 					loadedTextures, 
@@ -197,6 +209,7 @@ namespace Engine {
 					commandPool, 
 					object.FlipTexturesVertically
 				);
+				*/
 
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
@@ -224,6 +237,7 @@ namespace Engine {
 					object.FlipTexturesVertically
 				);
 
+				/*
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
 					loadedTextures, 
@@ -236,7 +250,9 @@ namespace Engine {
 					commandPool, 
 					object.FlipTexturesVertically
 				);
+				*/
 
+				/*
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
 					loadedTextures, 
@@ -249,6 +265,7 @@ namespace Engine {
 					commandPool, 
 					object.FlipTexturesVertically
 				);
+				*/
 
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
@@ -314,8 +331,16 @@ namespace Engine {
 			Engine::CommandPool& commandPool,
 			bool flipTexturesVertically
 		) {
-			ValidateAndInsertTexture(loadedTextures, textureType, textureName, basePath, logicalDevice, physicalDevice, commandPool, flipTexturesVertically);
-			LoadTextureToMaterial(sceneMaterials, loadedTextures, textureType, textureName, materialName);
+			std::string texName = textureName;
+			std::string path = basePath;
+
+			if (textureName == "" || !fileExists(basePath + textureName)) {
+				texName = "error_texture.jpg";
+				path = "./Assets/Textures/";
+			}
+
+			ValidateAndInsertTexture(loadedTextures, textureType, texName, path, logicalDevice, physicalDevice, commandPool, flipTexturesVertically);
+			LoadTextureToMaterial(sceneMaterials, loadedTextures, textureType, texName, materialName);
 		}
 
 		void ModelLoader::ValidateAndInsertTexture(
@@ -332,18 +357,16 @@ namespace Engine {
 			if (loadedTextures.find(textureName) != loadedTextures.end())
 				return;
 
-			if (textureName != "" && fileExists(basePath + textureName)) {
-				loadedTextures[textureName].reset(new struct Assets::Texture(
-					TextureLoader::CreateTexture(
-						textureType,
-						(basePath + textureName).c_str(),
-						logicalDevice,
-						physicalDevice,
-						commandPool,
-						flipTexturesVertically
-					)
-				));
-			}
+			loadedTextures[textureName].reset(new struct Assets::Texture(
+				TextureLoader::CreateTexture(
+					textureType,
+					(basePath + textureName).c_str(),
+					logicalDevice,
+					physicalDevice,
+					commandPool,
+					flipTexturesVertically
+				)
+			));
 		}
 
 		void ModelLoader::LoadTextureToMaterial(
@@ -353,13 +376,11 @@ namespace Engine {
 			std::string textureName,
 			std::string materialName
 		) {
-			if (loadedTextures.find(textureName) != loadedTextures.end()) {
-				sceneMaterials[materialName]->Textures.insert({
-						textureType,
-						loadedTextures.find(textureName)->second.get()
-					}
-				);
-			}
+			sceneMaterials[materialName]->Textures.insert({
+					textureType,
+					loadedTextures.find(textureName)->second.get()
+				}
+			);
 		}
 	}
 }
