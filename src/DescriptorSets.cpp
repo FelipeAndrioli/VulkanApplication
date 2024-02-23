@@ -58,7 +58,7 @@ namespace Engine {
 
 				index++;
 
-				if (textures) {
+				if (textures && textures->size() > 0) {
 					VkDescriptorImageInfo imageInfo[TEXTURE_PER_MATERIAL];
 
 					std::map<Assets::TextureType, Assets::Texture*>::iterator it;
