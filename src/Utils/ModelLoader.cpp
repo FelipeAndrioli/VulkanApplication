@@ -151,7 +151,6 @@ namespace Engine {
 				);
 				*/
 
-				/*
 				ModelLoader::ProcessTexture(
 					sceneMaterials, 
 					loadedTextures, 
@@ -164,7 +163,6 @@ namespace Engine {
 					commandPool, 
 					object.FlipTexturesVertically
 				);
-				*/
 
 				/*
 				ModelLoader::ProcessTexture(
