@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdexcept>
-#include <vector>
+#include <map>
 #include <memory>
 
 #include "Vulkan.h"
@@ -12,6 +12,11 @@
 #include "Buffer.h"
 #include "Image.h"
 
+namespace Assets {
+	enum TextureType;
+	struct Texture;
+};
+
 namespace Engine {
 	class DescriptorSets {
 	public:
@@ -21,9 +26,9 @@ namespace Engine {
 			const VkDescriptorPool& descriptorPool, 
 			const VkDescriptorSetLayout& descriptorSetLayout, 
 			Buffer* uniformBuffers,
+			std::map<Assets::TextureType, Assets::Texture*>* textures,
 			Buffer* shaderStorageBuffers = nullptr,
 			bool accessLastFrame = false,
-			Image* textureImage = nullptr,
 			VkDeviceSize offset = 0
 		);
 

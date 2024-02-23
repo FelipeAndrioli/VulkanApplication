@@ -29,7 +29,6 @@ namespace Assets {
 
 	struct Texture {
 		std::string Path = "";
-		TextureType Type;
 		std::unique_ptr<class Engine::Image> TextureImage;
 	};
 }

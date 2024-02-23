@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <vector>
 
 #include <glm/glm.hpp>
 
@@ -52,7 +53,6 @@ namespace Assets {
 		size_t Index = 0;
 
 		std::map<Assets::TextureType, Assets::Texture*> Textures;
-		std::unique_ptr<class Engine::Buffer> GPUDataBuffer;
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
 	};
 }
