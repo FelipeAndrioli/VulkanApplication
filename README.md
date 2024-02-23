@@ -17,9 +17,9 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [x] Proper Model/Material/Shader/Texture Set
 - [x] Single Buffer for Vertices and Indices 
 - [x] Single Buffer for uniforms
-- [ ] Empty Scene
+- [x] Empty Scene
 - [ ] Send Array of Materials to Shader
-	- [ ] Send Array of Textures to Shader
+	- [x] Send Array of Textures to Shader
 - [ ] Default models
 	- [ ] Plane
 	- [ ] Cube
