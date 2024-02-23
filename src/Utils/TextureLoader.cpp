@@ -108,7 +108,6 @@ namespace Engine {
 			bool flipTextureVertically) {
 		
 			Assets::Texture texture;
-			texture.Type = textureType;
 			texture.Path = texturePath;
 
 			TextureLoader::LoadTexture(

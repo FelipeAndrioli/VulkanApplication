@@ -14,6 +14,7 @@
 
 namespace Engine {
 	const int MAX_FRAMES_IN_FLIGHT = 2;
+	const int TEXTURE_PER_MATERIAL = 7;
 	const uint32_t PARTICLE_COUNT = 8192;
 
 	const std::vector<const char*> c_DeviceExtensions = {

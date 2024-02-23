@@ -21,6 +21,9 @@
 
 #include "./TextureLoader.h"
 
+#include <algorithm>
+#include <execution>
+
 namespace Engine {
 	namespace Utils {
 		ModelLoader::ModelLoader() {
@@ -57,7 +60,7 @@ namespace Engine {
 
 			for (size_t i = 0; i < materials.size(); i++) {
 				const auto& material = materials[i];
-
+	
 				if (sceneMaterials.find(material.name) != sceneMaterials.end())
 					continue;
 
@@ -82,203 +85,37 @@ namespace Engine {
 				sceneMaterials[material.name]->Properties.Pad2 = material.pad2;
 				sceneMaterials[material.name]->Properties.Illum = material.illum;
 
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::AMBIENT, 
-					material.ambient_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
+				std::map<Assets::TextureType, std::string> textureMap{
+					{ Assets::TextureType::AMBIENT, material.ambient_texname },								// 0
+					{ Assets::TextureType::DIFFUSE, material.diffuse_texname },								// 1
+					{ Assets::TextureType::SPECULAR, material.specular_texname },							// 2
+					{ Assets::TextureType::BUMP, material.bump_texname },									// 3
+					{ Assets::TextureType::ROUGHNESS, material.roughness_texname },							// 4
+					{ Assets::TextureType::METALLIC, material.metallic_texname },							// 5
+					{ Assets::TextureType::NORMAL, material.normal_texname }								// 6
+					//{ Assets::TextureType::SPECULAR_HIGHTLIGHT, material.specular_highlight_texname },	// 7
+					//{ Assets::TextureType::DISPLACEMENT, material.displacement_texname },					// 8
+					//{ Assets::TextureType::ALPHA, material.alpha_texname },								// 9
+					//{ Assets::TextureType::REFLECTION, material.reflection_texname },						// 10
+					//{ Assets::TextureType::SHEEN, material.sheen_texname },								// 11
+					//{ Assets::TextureType::EMISSIVE, material.emissive_texname },							// 12
+				};
 
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::DIFFUSE, 
-					material.diffuse_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-
-				/*
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::DIFFUSE, 
-					"error_texture.jpg",
-					"./Assets/Textures/",
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-				*/
-
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::SPECULAR, 
-					material.specular_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-
-				/*
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::SPECULAR_HIGHTLIGHT, 
-					material.specular_highlight_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-				*/
-
-				/*
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::BUMP, 
-					material.bump_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-				*/
-
-				/*
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::DISPLACEMENT, 
-					material.displacement_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-				*/
-
-				/*
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::ALPHA, 
-					material.alpha_texname,
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-				*/
-
-				/*
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::REFLECTION, 
-					material.reflection_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-				*/
-
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::ROUGHNESS, 
-					material.roughness_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::METALLIC, 
-					material.metallic_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-
-				/*
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::SHEEN, 
-					material.sheen_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-				*/
-
-				/*
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::EMISSIVE, 
-					material.emissive_texname, 
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
-				*/
-
-				ModelLoader::ProcessTexture(
-					sceneMaterials, 
-					loadedTextures, 
-					Assets::TextureType::NORMAL, 
-					material.normal_texname,
-					modelBasePath, 
-					material.name, 
-					logicalDevice, 
-					physicalDevice, 
-					commandPool, 
-					object.FlipTexturesVertically
-				);
+				std::map<Assets::TextureType, std::string>::iterator it;
+				for (it = textureMap.begin(); it != textureMap.end(); it++) {
+					ModelLoader::ProcessTexture(
+						sceneMaterials,
+						loadedTextures,
+						it->first,
+						it->second,
+						modelBasePath,
+						material.name,
+						logicalDevice,
+						physicalDevice,
+						commandPool,
+						object.FlipTexturesVertically
+					);
+				}
 			}
 
 			std::cout << "Loading model meshes..." << '\n';

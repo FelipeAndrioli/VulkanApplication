@@ -149,7 +149,7 @@ namespace Engine {
 
 		std::vector<DescriptorBinding> materialDescriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
-			{ 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
+			{ 1, TEXTURE_PER_MATERIAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
 		};
 
 		m_MaterialGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(materialDescriptorBindings, m_LogicalDevice->GetHandle()));
@@ -593,8 +593,8 @@ namespace Engine {
 				m_ObjectGPUDataDescriptorSetLayout->GetHandle(),
 				m_GPUDataBuffer.get(),
 				nullptr,
-				false,
 				nullptr,
+				false,
 				objectBufferOffset
 			));
 		}
@@ -608,7 +608,7 @@ namespace Engine {
 			VkDeviceSize materialBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize 
 				+ materialIndex * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
 
-			Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
+			//Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
 			it->second->DescriptorSets.reset(
 				new class DescriptorSets(
 					m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize,
@@ -616,9 +616,10 @@ namespace Engine {
 					m_DescriptorPool->GetHandle(),
 					m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
 					m_GPUDataBuffer.get(),
+					//textureImage,
+					&it->second->Textures,
 					nullptr,
 					false,
-					textureImage,
 					materialBufferOffset
 				)
 			);
@@ -635,8 +636,8 @@ namespace Engine {
 			m_SceneGPUDataDescriptorSetLayout->GetHandle(),
 			m_GPUDataBuffer.get(),
 			nullptr,
-			false,
 			nullptr,
+			false,
 			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
 		));
 		// Scene Data Descriptor Sets End 

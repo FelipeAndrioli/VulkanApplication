@@ -1,5 +1,7 @@
 #include "DescriptorSets.h"
 
+#include "../Assets/Texture.h"
+
 namespace Engine {
 	DescriptorSets::DescriptorSets(
 		const VkDeviceSize& bufferSize, 
@@ -7,9 +9,9 @@ namespace Engine {
 		const VkDescriptorPool& descriptorPool, 
 		const VkDescriptorSetLayout& descriptorSetLayout, 
 		Buffer* uniformBuffers, 
+		std::map<Assets::TextureType, Assets::Texture*>* textures,
 		Buffer* shaderStorageBuffers,
 		bool accessLastFrame,
-		Image* textureImage,
 		VkDeviceSize offset
 	) {
 		// create descriptor pool inside graphics pipeline
@@ -56,19 +58,27 @@ namespace Engine {
 
 				index++;
 
-				if (textureImage != nullptr) {
-					VkDescriptorImageInfo imageInfo{};
-					imageInfo.imageLayout = textureImage->ImageLayout;
-					imageInfo.imageView = textureImage->ImageView[0];
-					imageInfo.sampler = textureImage->ImageSampler;
+				if (textures && textures->size() > 0) {
+					VkDescriptorImageInfo imageInfo[TEXTURE_PER_MATERIAL];
+
+					std::map<Assets::TextureType, Assets::Texture*>::iterator it;
+					int t = 0;
+
+					for (it = textures->begin(); it != textures->end(); it++) {
+						imageInfo[t].imageLayout = it->second->TextureImage->ImageLayout;
+						imageInfo[t].imageView = it->second->TextureImage->ImageView[0];
+						imageInfo[t].sampler = it->second->TextureImage->ImageSampler;
+
+						t++;
+					}
 
 					descriptorWrites[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 					descriptorWrites[index].dstSet = m_DescriptorSets[i];
 					descriptorWrites[index].dstBinding = 1;
 					descriptorWrites[index].dstArrayElement = 0;
 					descriptorWrites[index].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-					descriptorWrites[index].descriptorCount = 1;
-					descriptorWrites[index].pImageInfo = &imageInfo;
+					descriptorWrites[index].descriptorCount = TEXTURE_PER_MATERIAL;
+					descriptorWrites[index].pImageInfo = imageInfo;
 
 					index++;
 				}
