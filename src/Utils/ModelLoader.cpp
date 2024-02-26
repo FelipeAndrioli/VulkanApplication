@@ -37,7 +37,7 @@ namespace Engine {
 		void ModelLoader::LoadModelAndMaterials(
 			Assets::Object& object, 
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-			std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+			std::map<std::string, Assets::Texture>& loadedTextures,
 			Engine::LogicalDevice& logicalDevice,
 			Engine::PhysicalDevice& physicalDevice,
 			Engine::CommandPool& commandPool) {
@@ -158,7 +158,7 @@ namespace Engine {
 
 		void ModelLoader::ProcessTexture(
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-			std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+			std::map<std::string, Assets::Texture>& loadedTextures,
 			Assets::TextureType textureType,
 			std::string textureName,
 			std::string basePath,
@@ -181,7 +181,7 @@ namespace Engine {
 		}
 
 		void ModelLoader::ValidateAndInsertTexture(
-				std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+				std::map<std::string, Assets::Texture>& loadedTextures,
 				Assets::TextureType textureType,
 				std::string textureName,
 				std::string basePath,
@@ -194,28 +194,26 @@ namespace Engine {
 			if (loadedTextures.find(textureName) != loadedTextures.end())
 				return;
 
-			loadedTextures[textureName].reset(new struct Assets::Texture(
-				TextureLoader::CreateTexture(
-					textureType,
-					(basePath + textureName).c_str(),
-					logicalDevice,
-					physicalDevice,
-					commandPool,
-					flipTexturesVertically
-				)
-			));
+			loadedTextures[textureName] = TextureLoader::CreateTexture(
+				textureType,
+				(basePath + textureName).c_str(),
+				logicalDevice,
+				physicalDevice,
+				commandPool,
+				flipTexturesVertically
+			);
 		}
 
 		void ModelLoader::LoadTextureToMaterial(
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-			std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+			std::map<std::string, Assets::Texture>& loadedTextures,
 			Assets::TextureType textureType,
 			std::string textureName,
 			std::string materialName
 		) {
 			sceneMaterials[materialName]->Textures.insert({
 					textureType,
-					loadedTextures.find(textureName)->second.get()
+					&loadedTextures.find(textureName)->second
 				}
 			);
 		}

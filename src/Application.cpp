@@ -133,7 +133,7 @@ namespace Engine {
 
 		// Init Scene
 		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Assets::Material>>);
-		m_LoadedTextures.reset(new class std::map<std::string, std::unique_ptr<Assets::Texture>>);
+		//m_LoadedTextures.reset(new class std::map<std::string, std::unique_ptr<Assets::Texture>>);
 
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
@@ -147,9 +147,22 @@ namespace Engine {
 
 		m_SceneGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(sceneDescriptorBindings, m_LogicalDevice->GetHandle()));
 
+		// Load models/materials/textures
+		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
+			Utils::ModelLoader::LoadModelAndMaterials(
+				*renderableObject,
+				*m_Materials,
+				m_LoadedTextures,
+				*m_LogicalDevice.get(),
+				*m_PhysicalDevice.get(),
+				*m_CommandPool.get()
+			);
+		}
+
 		std::vector<DescriptorBinding> materialDescriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
-			{ 1, TEXTURE_PER_MATERIAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
+			//{ 1, static_cast<uint32_t>(m_LoadedTextures.size()), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+			{ 1, TEXTURE_PER_MATERIAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 
 		m_MaterialGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(materialDescriptorBindings, m_LogicalDevice->GetHandle()));
@@ -166,18 +179,8 @@ namespace Engine {
 			)));
 		}
 
-		// Load OBJ Model and its materials
-		// Initialize object GPU Buffer and Descriptor Sets
+		// Pick graphics pipeline
 		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
-			Utils::ModelLoader::LoadModelAndMaterials(
-				*renderableObject,
-				*m_Materials,
-				*m_LoadedTextures,
-				*m_LogicalDevice.get(),
-				*m_PhysicalDevice.get(),
-				*m_CommandPool.get()
-			);
-
 			auto selectedPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName);
 			if (renderableObject->PipelineName == "" || selectedPipeline == m_GraphicsPipelines.end()) {
 				renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(DEFAULT_GRAPHICS_PIPELINE)->second.get();
@@ -210,7 +213,8 @@ namespace Engine {
 
 		m_GraphicsPipelines.clear();
 		m_Materials.reset();
-		m_LoadedTextures.reset();
+		//m_LoadedTextures.reset();
+		m_LoadedTextures.clear();
 		m_DescriptorPool.reset();
 		m_UI.reset();
 		m_SwapChain.reset();

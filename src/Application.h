@@ -126,7 +126,9 @@ namespace Engine {
 		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
 		std::map<std::string, std::unique_ptr<class GraphicsPipeline>> m_GraphicsPipelines;
 		std::unique_ptr<std::map<std::string, std::unique_ptr<class Assets::Material>>> m_Materials;
-		std::unique_ptr<std::map<std::string, std::unique_ptr<struct Assets::Texture>>> m_LoadedTextures;
+		
+		std::map<std::string, Assets::Texture> m_LoadedTextures;
+
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_MaterialGPUDataDescriptorSetLayout;
