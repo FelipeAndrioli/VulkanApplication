@@ -161,8 +161,8 @@ namespace Engine {
 
 		std::vector<DescriptorBinding> materialDescriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
-			//{ 1, static_cast<uint32_t>(m_LoadedTextures.size()), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
-			{ 1, TEXTURE_PER_MATERIAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+			{ 1, static_cast<uint32_t>(m_LoadedTextures.size()), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+			//{ 1, TEXTURE_PER_MATERIAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 
 		m_MaterialGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(materialDescriptorBindings, m_LogicalDevice->GetHandle()));
@@ -213,7 +213,6 @@ namespace Engine {
 
 		m_GraphicsPipelines.clear();
 		m_Materials.reset();
-		//m_LoadedTextures.reset();
 		m_LoadedTextures.clear();
 		m_DescriptorPool.reset();
 		m_UI.reset();
@@ -362,6 +361,17 @@ namespace Engine {
 				nullptr
 			);
 
+			vkCmdBindDescriptorSets(
+				commandBuffer, 
+				VK_PIPELINE_BIND_POINT_GRAPHICS, 
+				it->second->GetPipelineLayout().GetHandle(),
+				2, 
+				1,
+				&m_MaterialDescriptorSets->GetDescriptorSet(m_CurrentFrame),
+				0, 
+				nullptr
+			);
+
 			VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
 			m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
 
@@ -398,6 +408,7 @@ namespace Engine {
 							Assets::Material::MaterialProperties materialGPUData = {};
 							materialGPUData = material->Properties;
 
+							/*
 							vkCmdBindDescriptorSets(
 								commandBuffer, 
 								VK_PIPELINE_BIND_POINT_GRAPHICS, 
@@ -407,6 +418,15 @@ namespace Engine {
 								&material->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
 								0, 
 								nullptr
+							);
+							*/
+							vkCmdPushConstants(
+								commandBuffer,
+								it->second->GetPipelineLayout().GetHandle(),
+								VK_SHADER_STAGE_FRAGMENT_BIT,
+								0, 
+								sizeof(Assets::TextureIndices), 
+								&material->MaterialTextureIndices	
 							);
 
 							VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
@@ -605,6 +625,19 @@ namespace Engine {
 		// Renderable Objects Descriptor Sets End 
 
 		// Material Descriptor Sets Begin
+		m_MaterialDescriptorSets.reset(new class DescriptorSets(
+			m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
+			m_LogicalDevice->GetHandle(),
+			m_DescriptorPool->GetHandle(),
+			m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
+			m_GPUDataBuffer.get(),
+			&m_LoadedTextures,
+			nullptr,
+			false,
+			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
+		));
+
+		/*
 		size_t materialIndex = 0;
 
 		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
@@ -630,6 +663,7 @@ namespace Engine {
 
 			it->second->Index = materialIndex++;
 		}
+		*/
 		// Material Descriptor Sets End 
 
 		// Scene Data Descriptor Sets Begin

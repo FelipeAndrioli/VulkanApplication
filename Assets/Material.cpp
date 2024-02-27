@@ -12,7 +12,7 @@ namespace Assets {
 	}
 
 	Material::~Material() {
-		Textures.clear();
+		//Textures.clear();
 		DescriptorSets.reset();
 	}
 }

@@ -6,6 +6,8 @@
 
 #include <glm/glm.hpp>
 
+#include "./Texture.h"
+
 namespace Engine {
 	class Buffer;
 	class DescriptorSets;
@@ -13,6 +15,7 @@ namespace Engine {
 
 namespace Assets {
 	struct Texture;
+	struct TextureIndices;
 	enum TextureType;
 
 	class Material {
@@ -51,7 +54,9 @@ namespace Assets {
 
 		size_t Index = 0;
 
-		std::map<Assets::TextureType, Assets::Texture*> Textures;
+		Assets::TextureIndices MaterialTextureIndices;
+		//std::map<Assets::TextureType, Assets::Texture*> Textures;
+		//std::vector<uint32_t> Textures;
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
 	};
 }

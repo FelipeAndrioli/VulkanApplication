@@ -27,8 +27,20 @@ namespace Assets {
 		NORMAL				= 12
 	};
 
+	struct TextureIndices {
+		alignas(16) int Ambient = 0;
+		alignas(16) int Diffuse = 0;
+		alignas(16)	int Specular = 0;
+		alignas(16) int Bump = 0;
+		alignas(16) int Roughness = 0;
+		alignas(16) int Metallic = 0;
+		alignas(16) int Normal = 0;
+	};
+
 	struct Texture {
-		std::string Path = "";
+		std::string Name = "";
+		TextureType Type;
+		size_t Index = 0;
 		std::unique_ptr<class Engine::Image> TextureImage;
 	};
 }

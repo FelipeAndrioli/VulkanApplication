@@ -9,7 +9,7 @@ namespace Engine {
 		const VkDescriptorPool& descriptorPool, 
 		const VkDescriptorSetLayout& descriptorSetLayout, 
 		Buffer* uniformBuffers, 
-		std::map<Assets::TextureType, Assets::Texture*>* textures,
+		std::unordered_map<std::string, Assets::Texture>* textures,
 		Buffer* shaderStorageBuffers,
 		bool accessLastFrame,
 		VkDeviceSize offset
@@ -61,13 +61,13 @@ namespace Engine {
 				index++;
 
 				if (textures && textures->size() > 0) {
-					std::map<Assets::TextureType, Assets::Texture*>::iterator it;
+					std::unordered_map<std::string, Assets::Texture>::iterator it;
 
 					for (it = textures->begin(); it != textures->end(); it++) {
 						VkDescriptorImageInfo newImageInfo = {};
-						newImageInfo.imageLayout = it->second->TextureImage->ImageLayout;
-						newImageInfo.imageView = it->second->TextureImage->ImageView[0];
-						newImageInfo.sampler = it->second->TextureImage->ImageSampler;
+						newImageInfo.imageLayout = it->second.TextureImage->ImageLayout;
+						newImageInfo.imageView = it->second.TextureImage->ImageView[0];
+						newImageInfo.sampler = it->second.TextureImage->ImageSampler;
 
 						imageInfo.push_back(newImageInfo);
 					}
@@ -77,7 +77,7 @@ namespace Engine {
 					descriptorWrites[index].dstBinding = 1;
 					descriptorWrites[index].dstArrayElement = 0;
 					descriptorWrites[index].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-					descriptorWrites[index].descriptorCount = imageInfo.size();
+					descriptorWrites[index].descriptorCount = static_cast<uint32_t>(imageInfo.size());
 					descriptorWrites[index].pImageInfo = imageInfo.data();
 
 					index++;

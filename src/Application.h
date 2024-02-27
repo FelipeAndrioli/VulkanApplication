@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 #include <glm/glm.hpp>
 
@@ -127,12 +128,15 @@ namespace Engine {
 		std::map<std::string, std::unique_ptr<class GraphicsPipeline>> m_GraphicsPipelines;
 		std::unique_ptr<std::map<std::string, std::unique_ptr<class Assets::Material>>> m_Materials;
 		
-		std::map<std::string, Assets::Texture> m_LoadedTextures;
+		std::unordered_map<std::string, Assets::Texture> m_LoadedTextures;
+		//std::vector<Assets::Texture> m_LoadedTextures;
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_MaterialGPUDataDescriptorSetLayout;
+
 		std::unique_ptr<class DescriptorSets> m_SceneGPUDataDescriptorSets;
+		std::unique_ptr<class DescriptorSets> m_MaterialDescriptorSets;
 
 		/*	Scene Buffer Layout
 			[index obj1 | index obj2 | index obj3 | vertex obj1 | vertex obj2 | vertex obj3]

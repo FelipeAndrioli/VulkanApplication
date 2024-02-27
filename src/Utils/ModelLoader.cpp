@@ -4,7 +4,7 @@
 #include <tiny_obj_loader.h>
 
 #include <unordered_map>
-#include <map>
+#include <unordered_map>
 #include <stdexcept>
 
 #include "../LogicalDevice.h"
@@ -37,7 +37,7 @@ namespace Engine {
 		void ModelLoader::LoadModelAndMaterials(
 			Assets::Object& object, 
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-			std::map<std::string, Assets::Texture>& loadedTextures,
+			std::unordered_map<std::string, Assets::Texture>& loadedTextures,
 			Engine::LogicalDevice& logicalDevice,
 			Engine::PhysicalDevice& physicalDevice,
 			Engine::CommandPool& commandPool) {
@@ -158,7 +158,7 @@ namespace Engine {
 
 		void ModelLoader::ProcessTexture(
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-			std::map<std::string, Assets::Texture>& loadedTextures,
+			std::unordered_map<std::string, Assets::Texture>& loadedTextures,
 			Assets::TextureType textureType,
 			std::string textureName,
 			std::string basePath,
@@ -181,7 +181,7 @@ namespace Engine {
 		}
 
 		void ModelLoader::ValidateAndInsertTexture(
-				std::map<std::string, Assets::Texture>& loadedTextures,
+				std::unordered_map<std::string, Assets::Texture>& loadedTextures,
 				Assets::TextureType textureType,
 				std::string textureName,
 				std::string basePath,
@@ -202,20 +202,53 @@ namespace Engine {
 				commandPool,
 				flipTexturesVertically
 			);
+
+			loadedTextures.at(textureName).Index = loadedTextures.size() - 1;
+			loadedTextures.at(textureName).Type = textureType;
+			loadedTextures.at(textureName).Name = textureName;
 		}
 
 		void ModelLoader::LoadTextureToMaterial(
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-			std::map<std::string, Assets::Texture>& loadedTextures,
+			std::unordered_map<std::string, Assets::Texture>& loadedTextures,
 			Assets::TextureType textureType,
 			std::string textureName,
 			std::string materialName
 		) {
+			switch (textureType) {
+			case Assets::TextureType::AMBIENT:
+				sceneMaterials[materialName]->MaterialTextureIndices.Ambient = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				break;
+			case Assets::TextureType::DIFFUSE:
+				sceneMaterials[materialName]->MaterialTextureIndices.Diffuse = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				break;
+			case Assets::TextureType::SPECULAR:
+				sceneMaterials[materialName]->MaterialTextureIndices.Specular = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				break;
+			case Assets::TextureType::BUMP:
+				sceneMaterials[materialName]->MaterialTextureIndices.Bump = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				break;
+			case Assets::TextureType::ROUGHNESS:
+				sceneMaterials[materialName]->MaterialTextureIndices.Roughness = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				break;
+			case Assets::TextureType::METALLIC:
+				sceneMaterials[materialName]->MaterialTextureIndices.Metallic = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				break;
+			case Assets::TextureType::NORMAL:
+				sceneMaterials[materialName]->MaterialTextureIndices.Normal = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				break;
+			default:
+				break;
+			};
+
+			/*
+			//sceneMaterials[materialName]->Textures.push_back(loadedTextures.find(textureName)->second.Index);
 			sceneMaterials[materialName]->Textures.insert({
 					textureType,
 					&loadedTextures.find(textureName)->second
 				}
 			);
+			*/
 		}
 	}
 }
