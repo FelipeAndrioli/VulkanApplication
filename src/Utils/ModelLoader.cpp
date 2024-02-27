@@ -37,7 +37,7 @@ namespace Engine {
 		void ModelLoader::LoadModelAndMaterials(
 			Assets::Object& object, 
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-			std::unordered_map<std::string, Assets::Texture>& loadedTextures,
+			std::vector<Assets::Texture>& loadedTextures,
 			Engine::LogicalDevice& logicalDevice,
 			Engine::PhysicalDevice& physicalDevice,
 			Engine::CommandPool& commandPool) {
@@ -158,7 +158,7 @@ namespace Engine {
 
 		void ModelLoader::ProcessTexture(
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-			std::unordered_map<std::string, Assets::Texture>& loadedTextures,
+			std::vector<Assets::Texture>& loadedTextures,
 			Assets::TextureType textureType,
 			std::string textureName,
 			std::string basePath,
@@ -181,7 +181,7 @@ namespace Engine {
 		}
 
 		void ModelLoader::ValidateAndInsertTexture(
-				std::unordered_map<std::string, Assets::Texture>& loadedTextures,
+				std::vector<Assets::Texture>& loadedTextures,
 				Assets::TextureType textureType,
 				std::string textureName,
 				std::string basePath,
@@ -191,64 +191,72 @@ namespace Engine {
 				bool flipTexturesVertically
 			) {
 
-			if (loadedTextures.find(textureName) != loadedTextures.end())
+			int textureIndex = GetTextureIndex(loadedTextures, textureName);
+
+			if (textureIndex != -1)
 				return;
 
-			loadedTextures[textureName] = TextureLoader::CreateTexture(
-				textureType,
-				(basePath + textureName).c_str(),
-				logicalDevice,
-				physicalDevice,
-				commandPool,
-				flipTexturesVertically
+
+			loadedTextures.push_back(
+				TextureLoader::CreateTexture(
+					textureType,
+					(basePath + textureName).c_str(),
+					logicalDevice,
+					physicalDevice,
+					commandPool,
+					flipTexturesVertically
+				)
 			);
 
-			loadedTextures.at(textureName).Index = loadedTextures.size() - 1;
-			loadedTextures.at(textureName).Type = textureType;
-			loadedTextures.at(textureName).Name = textureName;
+			loadedTextures[loadedTextures.size() - 1].Type = textureType;
+			loadedTextures[loadedTextures.size() - 1].Name = textureName;
 		}
 
 		void ModelLoader::LoadTextureToMaterial(
 			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-			std::unordered_map<std::string, Assets::Texture>& loadedTextures,
+			std::vector<Assets::Texture>& loadedTextures,
 			Assets::TextureType textureType,
 			std::string textureName,
 			std::string materialName
 		) {
 			switch (textureType) {
 			case Assets::TextureType::AMBIENT:
-				sceneMaterials[materialName]->MaterialTextureIndices.Ambient = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				sceneMaterials[materialName]->MaterialTextureIndices.Ambient = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::DIFFUSE:
-				sceneMaterials[materialName]->MaterialTextureIndices.Diffuse = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				sceneMaterials[materialName]->MaterialTextureIndices.Diffuse = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::SPECULAR:
-				sceneMaterials[materialName]->MaterialTextureIndices.Specular = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				sceneMaterials[materialName]->MaterialTextureIndices.Specular = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::BUMP:
-				sceneMaterials[materialName]->MaterialTextureIndices.Bump = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				sceneMaterials[materialName]->MaterialTextureIndices.Bump = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::ROUGHNESS:
-				sceneMaterials[materialName]->MaterialTextureIndices.Roughness = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				sceneMaterials[materialName]->MaterialTextureIndices.Roughness = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::METALLIC:
-				sceneMaterials[materialName]->MaterialTextureIndices.Metallic = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				sceneMaterials[materialName]->MaterialTextureIndices.Metallic = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::NORMAL:
-				sceneMaterials[materialName]->MaterialTextureIndices.Normal = static_cast<uint32_t>(loadedTextures.find(textureName)->second.Index);
+				sceneMaterials[materialName]->MaterialTextureIndices.Normal = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			default:
 				break;
 			};
+		}
 
-			/*
-			//sceneMaterials[materialName]->Textures.push_back(loadedTextures.find(textureName)->second.Index);
-			sceneMaterials[materialName]->Textures.insert({
-					textureType,
-					&loadedTextures.find(textureName)->second
+		int ModelLoader::GetTextureIndex(std::vector<Assets::Texture>& loadedTextures, std::string textureName) {
+			if (loadedTextures.size() == 0) 
+				return -1;
+
+			for (int i = 0; i < loadedTextures.size(); i++) {
+				if (loadedTextures[i].Name == textureName) {
+					return i;
 				}
-			);
-			*/
+			}
+
+			return -1;
 		}
 	}
 }

@@ -118,7 +118,6 @@ namespace Engine {
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
-			//poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
 
 			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
 			// because our sets reference the SSBOs of the last and current frame (for now).
@@ -133,7 +132,6 @@ namespace Engine {
 
 		// Init Scene
 		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Assets::Material>>);
-		//m_LoadedTextures.reset(new class std::map<std::string, std::unique_ptr<Assets::Texture>>);
 
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
@@ -162,7 +160,6 @@ namespace Engine {
 		std::vector<DescriptorBinding> materialDescriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
 			{ 1, static_cast<uint32_t>(m_LoadedTextures.size()), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
-			//{ 1, TEXTURE_PER_MATERIAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 
 		m_MaterialGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(materialDescriptorBindings, m_LogicalDevice->GetHandle()));
@@ -405,21 +402,9 @@ namespace Engine {
 						if (m_Materials->find(mesh->MaterialName) != m_Materials->end()) {
 							material = m_Materials->find(mesh->MaterialName)->second.get();
 
-							Assets::Material::MaterialProperties materialGPUData = {};
+							Assets::MaterialProperties materialGPUData = {};
 							materialGPUData = material->Properties;
 
-							/*
-							vkCmdBindDescriptorSets(
-								commandBuffer, 
-								VK_PIPELINE_BIND_POINT_GRAPHICS, 
-								it->second->GetPipelineLayout().GetHandle(),
-								2, 
-								1,
-								&material->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
-								0, 
-								nullptr
-							);
-							*/
 							vkCmdPushConstants(
 								commandBuffer,
 								it->second->GetPipelineLayout().GetHandle(),
@@ -636,34 +621,6 @@ namespace Engine {
 			false,
 			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
 		));
-
-		/*
-		size_t materialIndex = 0;
-
-		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
-		for (it = m_Materials->begin(); it != m_Materials->end(); it++) {
-			VkDeviceSize materialBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize 
-				+ materialIndex * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
-
-			//Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
-			it->second->DescriptorSets.reset(
-				new class DescriptorSets(
-					m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize,
-					m_LogicalDevice->GetHandle(),
-					m_DescriptorPool->GetHandle(),
-					m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
-					m_GPUDataBuffer.get(),
-					//textureImage,
-					&it->second->Textures,
-					nullptr,
-					false,
-					materialBufferOffset
-				)
-			);
-
-			it->second->Index = materialIndex++;
-		}
-		*/
 		// Material Descriptor Sets End 
 
 		// Scene Data Descriptor Sets Begin

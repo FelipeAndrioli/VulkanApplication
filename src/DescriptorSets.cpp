@@ -9,7 +9,8 @@ namespace Engine {
 		const VkDescriptorPool& descriptorPool, 
 		const VkDescriptorSetLayout& descriptorSetLayout, 
 		Buffer* uniformBuffers, 
-		std::unordered_map<std::string, Assets::Texture>* textures,
+		//std::unordered_map<std::string, Assets::Texture>* textures,
+		std::vector<Assets::Texture>* textures,
 		Buffer* shaderStorageBuffers,
 		bool accessLastFrame,
 		VkDeviceSize offset
@@ -61,13 +62,17 @@ namespace Engine {
 				index++;
 
 				if (textures && textures->size() > 0) {
-					std::unordered_map<std::string, Assets::Texture>::iterator it;
-
-					for (it = textures->begin(); it != textures->end(); it++) {
+					for (auto& texture : *textures) {
 						VkDescriptorImageInfo newImageInfo = {};
+						/*
 						newImageInfo.imageLayout = it->second.TextureImage->ImageLayout;
 						newImageInfo.imageView = it->second.TextureImage->ImageView[0];
 						newImageInfo.sampler = it->second.TextureImage->ImageSampler;
+						*/
+						
+						newImageInfo.imageLayout = texture.TextureImage->ImageLayout;
+						newImageInfo.imageView = texture.TextureImage->ImageView[0];
+						newImageInfo.sampler = texture.TextureImage->ImageSampler;
 
 						imageInfo.push_back(newImageInfo);
 					}

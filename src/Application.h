@@ -22,7 +22,7 @@ const std::vector<const char*> c_ValidationLayers = {
 
 namespace Assets {
 	class Scene;
-	class Material;
+	struct Material;
 
 	struct Texture;
 }
@@ -128,8 +128,8 @@ namespace Engine {
 		std::map<std::string, std::unique_ptr<class GraphicsPipeline>> m_GraphicsPipelines;
 		std::unique_ptr<std::map<std::string, std::unique_ptr<class Assets::Material>>> m_Materials;
 		
-		std::unordered_map<std::string, Assets::Texture> m_LoadedTextures;
-		//std::vector<Assets::Texture> m_LoadedTextures;
+		//std::unordered_map<std::string, Assets::Texture> m_LoadedTextures;
+		std::vector<Assets::Texture> m_LoadedTextures;
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;

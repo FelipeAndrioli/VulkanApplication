@@ -40,7 +40,6 @@ namespace Assets {
 	struct Texture {
 		std::string Name = "";
 		TextureType Type;
-		size_t Index = 0;
 		std::unique_ptr<class Engine::Image> TextureImage;
 	};
 }

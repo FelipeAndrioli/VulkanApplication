@@ -18,17 +18,17 @@ layout (push_constant) uniform constant {
 	int normal;
 } TextureIndices;
 
-// ambient -> diffuse
-// diffuse -> diffuse
-// specular -> diffuse
-// bump -> diffuse
-// roughness -> error texture
-// metallic -> diffuse
-// normal -> diffuse
+// ambient -> error  
+// diffuse -> error  
+// specular -> error  
+// bump -> error  
+// roughness -> diffuse  
+// metallic -> error 
+// normal -> error 
 
-// 0 -> diffuse
-// 1 -> error
-// 2 -> specular 
+// 0 -> error
+// 1 -> diffuse
+// 2 -> specular
 // 3 -> bump (normal)
 
 // from code
@@ -40,12 +40,6 @@ layout (push_constant) uniform constant {
 // metallic - 0
 // normal - 0
 
-// loaded textures
-// 0 - diffuse - Index = 1
-// 1 - error - Index = 0
-// 2 - specular - Index = 2
-// 3 - bump - Index = 3
-
 void main() {
-	outColor = texture(texSampler[TextureIndices.bump], fragTexCoord);
+	outColor = texture(texSampler[1], fragTexCoord);
 }

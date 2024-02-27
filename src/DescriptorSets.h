@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdexcept>
-#include <unordered_map>
+#include <vector>
 #include <memory>
 
 #include "Vulkan.h"
@@ -26,7 +26,8 @@ namespace Engine {
 			const VkDescriptorPool& descriptorPool, 
 			const VkDescriptorSetLayout& descriptorSetLayout, 
 			Buffer* uniformBuffers,
-			std::unordered_map<std::string, Assets::Texture>* textures,
+			//std::unordered_map<std::string, Assets::Texture>* textures,
+			std::vector<Assets::Texture>* textures,
 			Buffer* shaderStorageBuffers = nullptr,
 			bool accessLastFrame = false,
 			VkDeviceSize offset = 0
