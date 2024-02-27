@@ -15,7 +15,7 @@ namespace Engine {
 }
 
 namespace Assets {
-	class Material;
+	struct Material;
 
 	struct Vertex {
 
