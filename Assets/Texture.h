@@ -28,13 +28,13 @@ namespace Assets {
 	};
 
 	struct TextureIndices {
-		alignas(16) int Ambient = 0;
-		alignas(16) int Diffuse = 0;
-		alignas(16)	int Specular = 0;
-		alignas(16) int Bump = 0;
-		alignas(16) int Roughness = 0;
-		alignas(16) int Metallic = 0;
-		alignas(16) int Normal = 0;
+		alignas(4) int Ambient = 0;
+		alignas(4) int Diffuse = 0;
+		alignas(4) int Specular = 0;
+		alignas(4) int Bump = 0;
+		alignas(4) int Roughness = 0;
+		alignas(4) int Metallic = 0;
+		alignas(4) int Normal = 0;
 	};
 
 	struct Texture {
