@@ -18,7 +18,8 @@ namespace Engine {
 	const uint32_t PARTICLE_COUNT = 8192;
 
 	const std::vector<const char*> c_DeviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
 	};
 
 	struct QueueFamilyIndices {
