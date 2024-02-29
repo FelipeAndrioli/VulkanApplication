@@ -322,6 +322,13 @@ namespace Engine {
 			VK_INDEX_TYPE_UINT32
 		);
 
+		SceneGPUData sceneGPUData = SceneGPUData();
+		sceneGPUData.view = p_ActiveScene->MainCamera->ViewMatrix;
+		sceneGPUData.proj = p_ActiveScene->MainCamera->ProjectionMatrix;
+
+		VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
+		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
+
 		std::map<std::string, std::unique_ptr<class GraphicsPipeline>>::iterator it;
 
 		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
@@ -342,10 +349,6 @@ namespace Engine {
 			scissor.extent = m_SwapChain->GetSwapChainExtent();
 
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			SceneGPUData sceneGPUData = SceneGPUData();
-			sceneGPUData.view = p_ActiveScene->MainCamera->ViewMatrix;
-			sceneGPUData.proj = p_ActiveScene->MainCamera->ProjectionMatrix;
 
 			vkCmdBindDescriptorSets(
 				commandBuffer,
@@ -368,9 +371,6 @@ namespace Engine {
 				0, 
 				nullptr
 			);
-
-			VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
-			m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
 
 			for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 				Assets::Object* object = p_ActiveScene->RenderableObjects[i];
@@ -398,8 +398,8 @@ namespace Engine {
 				Assets::Material* material = nullptr;
 
 				for (const Assets::Mesh* mesh : object->Meshes) {
-					if (material == nullptr || material != mesh->Material.get()) {
-						material = mesh->Material.get();
+					if (material == nullptr || material != mesh->Material) {
+						material = mesh->Material;
 
 						vkCmdPushConstants(
 							commandBuffer,
@@ -417,7 +417,8 @@ namespace Engine {
 
 					vkCmdDrawIndexed(
 						commandBuffer,
-						static_cast<uint32_t>(mesh->Indices.size()),
+						//static_cast<uint32_t>(mesh->Indices.size()),
+						static_cast<uint32_t>(mesh->IndicesSize),
 						1,
 						static_cast<uint32_t>(mesh->IndexOffset),
 						static_cast<int32_t>(mesh->VertexOffset),
