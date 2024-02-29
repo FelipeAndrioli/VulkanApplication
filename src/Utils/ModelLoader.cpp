@@ -64,7 +64,7 @@ namespace Engine {
 				if (sceneMaterials.find(material.name) != sceneMaterials.end())
 					continue;
 
-				sceneMaterials[material.name].reset(new class Assets::Material());
+				sceneMaterials[material.name].reset(new struct Assets::Material());
 
 				sceneMaterials[material.name]->Properties.Name = material.name;
 				sceneMaterials[material.name]->Properties.Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2] };
@@ -195,7 +195,6 @@ namespace Engine {
 
 			if (textureIndex != -1)
 				return;
-
 
 			loadedTextures.push_back(
 				TextureLoader::CreateTexture(

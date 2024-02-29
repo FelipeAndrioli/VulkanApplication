@@ -398,26 +398,21 @@ namespace Engine {
 				Assets::Material* material = nullptr;
 
 				for (const Assets::Mesh* mesh : object->Meshes) {
-					if (material == nullptr || mesh->Material.get() != material) {
-						if (m_Materials->find(mesh->MaterialName) != m_Materials->end()) {
-							material = m_Materials->find(mesh->MaterialName)->second.get();
+					if (material == nullptr || material != mesh->Material.get()) {
+						material = mesh->Material.get();
 
-							Assets::MaterialProperties materialGPUData = {};
-							materialGPUData = material->Properties;
+						vkCmdPushConstants(
+							commandBuffer,
+							it->second->GetPipelineLayout().GetHandle(),
+							VK_SHADER_STAGE_FRAGMENT_BIT,
+							0, 
+							sizeof(Assets::TextureIndices), 
+							&material->MaterialTextureIndices	
+						);
 
-							vkCmdPushConstants(
-								commandBuffer,
-								it->second->GetPipelineLayout().GetHandle(),
-								VK_SHADER_STAGE_FRAGMENT_BIT,
-								0, 
-								sizeof(Assets::TextureIndices), 
-								&material->MaterialTextureIndices	
-							);
-
-							VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
-							VkDeviceSize materialBufferOffset = objectBufferSize + material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
-							m_GPUDataBuffer->Update(m_CurrentFrame, materialBufferOffset, &materialGPUData, sizeof(Assets::Material::Properties));
-						}
+						VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
+						VkDeviceSize materialBufferOffset = objectBufferSize + mesh->Material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
+						m_GPUDataBuffer->Update(m_CurrentFrame, materialBufferOffset, &material->Properties, sizeof(Assets::Material::Properties));
 					}
 
 					vkCmdDrawIndexed(

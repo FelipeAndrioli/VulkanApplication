@@ -59,7 +59,7 @@ namespace Assets {
 
 	struct Mesh {
 		std::string MaterialName;
-		std::unique_ptr<class Assets::Material> Material;
+		std::unique_ptr<struct Assets::Material> Material;
 
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;
