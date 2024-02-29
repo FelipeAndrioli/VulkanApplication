@@ -417,8 +417,7 @@ namespace Engine {
 
 					vkCmdDrawIndexed(
 						commandBuffer,
-						//static_cast<uint32_t>(mesh->Indices.size()),
-						static_cast<uint32_t>(mesh->IndicesSize),
+						static_cast<uint32_t>(mesh->Indices.size()),
 						1,
 						static_cast<uint32_t>(mesh->IndexOffset),
 						static_cast<int32_t>(mesh->VertexOffset),

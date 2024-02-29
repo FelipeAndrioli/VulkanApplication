@@ -151,7 +151,6 @@ namespace Engine {
 
 				newMesh->MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
 				newMesh->Material = sceneMaterials.find(newMesh->MaterialName) == sceneMaterials.end() ? nullptr : sceneMaterials.find(newMesh->MaterialName)->second.get();
-				newMesh->IndicesSize = newMesh->Indices.size();
 
 				object.Meshes.push_back(newMesh);
 			}
