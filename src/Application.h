@@ -89,6 +89,8 @@ namespace Engine {
 		void ClearFramebuffers();
 		void InitializeBuffers();
 		void InitializeDescriptorSets();
+		void CreatePipelineLayouts();
+		void CreateGraphicsPipelines();
 		
 		//void updateComputeUniformBuffer(uint32_t currentImage);
 		//void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);
@@ -125,10 +127,11 @@ namespace Engine {
 		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
-		std::map<std::string, std::unique_ptr<class GraphicsPipeline>> m_GraphicsPipelines;
+
+		std::unique_ptr<class PipelineLayout> m_MainGraphicsPipelineLayout;
+		std::unique_ptr<class GraphicsPipeline> m_TexturedPipeline;
+
 		std::unique_ptr<std::map<std::string, std::unique_ptr<struct Assets::Material>>> m_Materials;
-		
-		//std::unordered_map<std::string, Assets::Texture> m_LoadedTextures;
 		std::vector<Assets::Texture> m_LoadedTextures;
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;

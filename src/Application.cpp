@@ -158,34 +158,14 @@ namespace Engine {
 		}
 
 		std::vector<DescriptorBinding> materialDescriptorBindings = {
-			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
-			{ 1, static_cast<uint32_t>(m_LoadedTextures.size()), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 1, static_cast<uint32_t>(m_LoadedTextures.size()), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
 		};
 
 		m_MaterialGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(materialDescriptorBindings, m_LogicalDevice->GetHandle()));
 
-		for (const Assets::GraphicsPipeline& sceneGraphicsPipeline : p_ActiveScene->SceneGraphicsPipelines) {
-			m_GraphicsPipelines.insert(std::make_pair(sceneGraphicsPipeline.Name, new class GraphicsPipeline(
-				sceneGraphicsPipeline.m_VertexShader,
-				sceneGraphicsPipeline.m_FragmentShader,
-				*m_LogicalDevice,
-				*m_SwapChain,
-				*m_DepthBuffer,
-				m_DefaultRenderPass->GetHandle(),
-				std::vector<DescriptorSetLayout*> { m_SceneGPUDataDescriptorSetLayout.get(), m_ObjectGPUDataDescriptorSetLayout.get(), m_MaterialGPUDataDescriptorSetLayout.get() }
-			)));
-		}
-
-		// Pick graphics pipeline
-		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
-			auto selectedPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName);
-			if (renderableObject->PipelineName == "" || selectedPipeline == m_GraphicsPipelines.end()) {
-				renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(DEFAULT_GRAPHICS_PIPELINE)->second.get();
-			}
-			else {
-				renderableObject->SelectedGraphicsPipeline = selectedPipeline->second.get();
-			}
-		}
+		CreatePipelineLayouts();
+		CreateGraphicsPipelines();
 
 		p_ActiveScene->Setup();
 		InitializeBuffers();
@@ -203,12 +183,9 @@ namespace Engine {
 		m_GPUDataBuffer.reset();
 		m_SceneGeometryBuffer.reset();
 
-		std::map<std::string, std::unique_ptr<Engine::GraphicsPipeline>>::iterator it;
-		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
-			it->second.reset();
-		}
+		m_MainGraphicsPipelineLayout.reset();
+		m_TexturedPipeline.reset();
 
-		m_GraphicsPipelines.clear();
 		m_Materials.reset();
 		m_LoadedTextures.clear();
 		m_DescriptorPool.reset();
@@ -314,7 +291,7 @@ namespace Engine {
 			&m_SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
 			offsets
 		);
-
+		
 		vkCmdBindIndexBuffer(
 			commandBuffer,
 			m_SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
@@ -329,104 +306,97 @@ namespace Engine {
 		VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
 		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
 
-		std::map<std::string, std::unique_ptr<class GraphicsPipeline>>::iterator it;
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TexturedPipeline->GetHandle());
 
-		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, it->second->GetHandle());
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
+		viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
 
-			VkViewport viewport = {};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
-			viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = m_SwapChain->GetSwapChainExtent();
 
-			VkRect2D scissor = {};
-			scissor.offset = { 0, 0 };
-			scissor.extent = m_SwapChain->GetSwapChainExtent();
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+		vkCmdBindDescriptorSets(
+			commandBuffer, 
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			m_MainGraphicsPipelineLayout->GetHandle(),
+			0,
+			1,
+			&m_SceneGPUDataDescriptorSets->GetDescriptorSet(m_CurrentFrame),
+			0,
+			0
+		);
 
-			vkCmdBindDescriptorSets(
-				commandBuffer,
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				it->second->GetPipelineLayout().GetHandle(),
-				0,
-				1,
-				&m_SceneGPUDataDescriptorSets->GetDescriptorSet(m_CurrentFrame),
-				0,
-				nullptr
-			);
+		vkCmdBindDescriptorSets(
+			commandBuffer, 
+			VK_PIPELINE_BIND_POINT_GRAPHICS, 
+			m_MainGraphicsPipelineLayout->GetHandle(),
+			2, 
+			1,
+			&m_MaterialDescriptorSets->GetDescriptorSet(m_CurrentFrame),
+			0, 
+			nullptr
+		);
+
+		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
+			Assets::Object* object = p_ActiveScene->RenderableObjects[i];
 
 			vkCmdBindDescriptorSets(
 				commandBuffer, 
 				VK_PIPELINE_BIND_POINT_GRAPHICS, 
-				it->second->GetPipelineLayout().GetHandle(),
-				2, 
+				m_MainGraphicsPipelineLayout->GetHandle(),
+				1, 
 				1,
-				&m_MaterialDescriptorSets->GetDescriptorSet(m_CurrentFrame),
+				&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
 				0, 
 				nullptr
 			);
 
-			for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
-				Assets::Object* object = p_ActiveScene->RenderableObjects[i];
+			ObjectGPUData objectGPUData = ObjectGPUData();
+			objectGPUData.model = object->GetModelMatrix();
 
-				if (object->SelectedGraphicsPipeline != it->second.get())
-					continue;
+			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
+			m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
 
-				ObjectGPUData objectGPUData = ObjectGPUData();
-				objectGPUData.model = object->GetModelMatrix();
+			Assets::Material* material = nullptr;
 
-				vkCmdBindDescriptorSets(
-					commandBuffer, 
-					VK_PIPELINE_BIND_POINT_GRAPHICS, 
-					it->second->GetPipelineLayout().GetHandle(),
-					1, 
-					1,
-					&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
-					0, 
-					nullptr
-				);
+			for (const Assets::Mesh* mesh : object->Meshes) {
+				if (material == nullptr || material != mesh->Material) {
+					material = mesh->Material;
 
-				VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-				m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
-
-				Assets::Material* material = nullptr;
-
-				for (const Assets::Mesh* mesh : object->Meshes) {
-					if (material == nullptr || material != mesh->Material) {
-						material = mesh->Material;
-
-						vkCmdPushConstants(
-							commandBuffer,
-							it->second->GetPipelineLayout().GetHandle(),
-							VK_SHADER_STAGE_FRAGMENT_BIT,
-							0, 
-							sizeof(Assets::TextureIndices), 
-							&material->MaterialTextureIndices	
-						);
-
-						VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
-						VkDeviceSize materialBufferOffset = objectBufferSize + mesh->Material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
-						m_GPUDataBuffer->Update(m_CurrentFrame, materialBufferOffset, &material->Properties, sizeof(Assets::Material::Properties));
-					}
-
-					vkCmdDrawIndexed(
+					vkCmdPushConstants(
 						commandBuffer,
-						static_cast<uint32_t>(mesh->Indices.size()),
-						1,
-						static_cast<uint32_t>(mesh->IndexOffset),
-						static_cast<int32_t>(mesh->VertexOffset),
-						0
+						m_MainGraphicsPipelineLayout->GetHandle(),
+						VK_SHADER_STAGE_FRAGMENT_BIT,
+						0, 
+						sizeof(Assets::TextureIndices), 
+						&material->MaterialTextureIndices	
 					);
+
+					VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
+					VkDeviceSize materialBufferOffset = objectBufferSize + mesh->Material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
+					m_GPUDataBuffer->Update(m_CurrentFrame, materialBufferOffset, &material->Properties, sizeof(Assets::Material::Properties));
 				}
+
+				vkCmdDrawIndexed(
+					commandBuffer,
+					static_cast<uint32_t>(mesh->Indices.size()),
+					1,
+					static_cast<uint32_t>(mesh->IndexOffset),
+					static_cast<int32_t>(mesh->VertexOffset),
+					0
+				);
 			}
 		}
-		
+
 		vkCmdEndRenderPass(commandBuffer);
 	}
 
@@ -631,5 +601,39 @@ namespace Engine {
 			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
 		));
 		// Scene Data Descriptor Sets End 
+	}
+
+	void Application::CreatePipelineLayouts() {
+
+		m_MainGraphicsPipelineLayout.reset(new class PipelineLayout(
+			m_LogicalDevice->GetHandle(), 
+			{ 
+				m_SceneGPUDataDescriptorSetLayout.get(), 
+				m_ObjectGPUDataDescriptorSetLayout.get(), 
+				m_MaterialGPUDataDescriptorSetLayout.get() 
+			}
+		));
+	}
+
+	void Application::CreateGraphicsPipelines() {
+
+		/*
+		Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
+		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
+		*/
+
+		Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_vert.spv");
+		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_frag.spv");
+
+		m_TexturedPipeline.reset(new class GraphicsPipeline(
+			texturedVertexShader,
+			texturedFragmentShader,
+			*m_LogicalDevice,
+			*m_SwapChain,
+			*m_DepthBuffer,
+			m_DefaultRenderPass->GetHandle(),
+			*m_MainGraphicsPipelineLayout
+		));
 	}
 }
