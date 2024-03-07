@@ -92,8 +92,6 @@ namespace Engine {
 	void BufferHelper::AppendData(LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, CommandPool& commandPool,
 		const std::vector<T>& content, Buffer& buffer, size_t srcOffset, size_t dstOffset) {
 
-		buffer.NewChunk({ sizeof(T), sizeof(T) * content.size() });
-
 		if (content.size() == 0) return;
 
 		CopyFromStaging(logicalDevice, physicalDevice, commandPool, content, buffer, srcOffset, dstOffset);

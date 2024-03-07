@@ -131,7 +131,7 @@ namespace Engine {
 			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
 
 		// Init Scene
-		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Assets::Material>>);
+		//m_Materials.reset(new class std::map<std::string, std::unique_ptr<Assets::Material>>);
 
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
@@ -149,7 +149,7 @@ namespace Engine {
 		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
 			Utils::ModelLoader::LoadModelAndMaterials(
 				*renderableObject,
-				*m_Materials,
+				m_Materials,
 				m_LoadedTextures,
 				*m_LogicalDevice.get(),
 				*m_PhysicalDevice.get(),
@@ -186,7 +186,7 @@ namespace Engine {
 		m_MainGraphicsPipelineLayout.reset();
 		m_TexturedPipeline.reset();
 
-		m_Materials.reset();
+		m_Materials.clear();
 		m_LoadedTextures.clear();
 		m_DescriptorPool.reset();
 		m_UI.reset();
@@ -369,6 +369,16 @@ namespace Engine {
 			Assets::Material* material = nullptr;
 
 			for (const Assets::Mesh* mesh : object->Meshes) {
+				vkCmdPushConstants(
+					commandBuffer,
+					m_MainGraphicsPipelineLayout->GetHandle(),
+					VK_SHADER_STAGE_FRAGMENT_BIT,
+					0,
+					sizeof(int),
+					&mesh->MaterialIndex
+				);
+
+				/*
 				if (material == nullptr || material != mesh->Material) {
 					material = mesh->Material;
 
@@ -385,6 +395,7 @@ namespace Engine {
 					VkDeviceSize materialBufferOffset = objectBufferSize + mesh->Material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
 					m_GPUDataBuffer->Update(m_CurrentFrame, materialBufferOffset, &material->Properties, sizeof(Assets::Material::Properties));
 				}
+				*/
 
 				vkCmdDrawIndexed(
 					commandBuffer,
@@ -499,7 +510,7 @@ namespace Engine {
 	void Application::InitializeBuffers() {
 		// GPU Data Buffer Begin
 		VkDeviceSize objectBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * p_ActiveScene->RenderableObjects.size();
-		VkDeviceSize materialsBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * m_Materials->size();
+		VkDeviceSize materialsBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * m_Materials.size();
 		VkDeviceSize sceneBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment;
 		
 		m_GPUDataBuffer.reset(new class Engine::Buffer(
@@ -507,13 +518,29 @@ namespace Engine {
 			*m_LogicalDevice.get(),
 			*m_PhysicalDevice.get(),
 			objectBufferSize + materialsBufferSize + sceneBufferSize,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
 		));
 		m_GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		m_GPUDataBuffer->NewChunk({ m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment, objectBufferSize });
 		m_GPUDataBuffer->NewChunk({ m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment, materialsBufferSize});
 		m_GPUDataBuffer->NewChunk({ m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment, sceneBufferSize});
+
+		std::vector<Assets::MeshMaterialData> meshMaterialData;
+
+		for (const auto& material : m_Materials) {
+			meshMaterialData.push_back(material.MaterialData);
+		}
+
+		Engine::BufferHelper::AppendData(
+			*m_LogicalDevice.get(),
+			*m_PhysicalDevice.get(),
+			*m_CommandPool.get(),
+			meshMaterialData,
+			*m_GPUDataBuffer.get(),
+			0,
+			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
+		);
 		// GPU Data Buffer End
 
 		// Scene Geometry Buffer Begin
@@ -531,6 +558,8 @@ namespace Engine {
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT
 		));
 		m_SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * p_ActiveScene->Indices.size() });
+		m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size() });
 
 		Engine::BufferHelper::AppendData(
 			*m_LogicalDevice.get(),

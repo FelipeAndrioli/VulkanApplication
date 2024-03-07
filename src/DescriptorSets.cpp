@@ -37,13 +37,14 @@ namespace Engine {
 
 		// TODO: refactor descriptor set creation
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			VkDescriptorBufferInfo bufferInfo{};
+
+			std::vector<VkDescriptorImageInfo> imageInfo;
+
+			VkDescriptorBufferInfo bufferInfo = {};
 			bufferInfo.buffer = uniformBuffers->GetBuffer(static_cast<uint32_t>(i));
 			bufferInfo.offset = offset;
 			bufferInfo.range = bufferSize;
 		
-			std::vector<VkDescriptorImageInfo> imageInfo;
-
 			if (!accessLastFrame) {
 				std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
 
@@ -64,12 +65,6 @@ namespace Engine {
 				if (textures && textures->size() > 0) {
 					for (auto& texture : *textures) {
 						VkDescriptorImageInfo newImageInfo = {};
-						/*
-						newImageInfo.imageLayout = it->second.TextureImage->ImageLayout;
-						newImageInfo.imageView = it->second.TextureImage->ImageView[0];
-						newImageInfo.sampler = it->second.TextureImage->ImageSampler;
-						*/
-						
 						newImageInfo.imageLayout = texture.TextureImage->ImageLayout;
 						newImageInfo.imageView = texture.TextureImage->ImageView[0];
 						newImageInfo.sampler = texture.TextureImage->ImageSampler;

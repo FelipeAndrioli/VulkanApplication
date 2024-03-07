@@ -64,6 +64,7 @@ namespace Assets {
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;
 
+		size_t MaterialIndex = 0;
 		size_t IndexOffset = 0;
 		size_t VertexOffset = 0;
 	};	

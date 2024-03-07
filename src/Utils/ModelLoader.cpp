@@ -24,6 +24,8 @@
 #include <algorithm>
 #include <execution>
 
+constexpr auto UNEXISTENT = -1;
+
 namespace Engine {
 	namespace Utils {
 		ModelLoader::ModelLoader() {
@@ -36,7 +38,7 @@ namespace Engine {
 
 		void ModelLoader::LoadModelAndMaterials(
 			Assets::Object& object, 
-			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
+			std::vector<Assets::Material>& sceneMaterials,
 			std::vector<Assets::Texture>& loadedTextures,
 			Engine::LogicalDevice& logicalDevice,
 			Engine::PhysicalDevice& physicalDevice,
@@ -60,30 +62,33 @@ namespace Engine {
 
 			for (size_t i = 0; i < materials.size(); i++) {
 				const auto& material = materials[i];
-	
-				if (sceneMaterials.find(material.name) != sceneMaterials.end())
+
+				if (GetMaterialIndex(sceneMaterials, material.name) >= 0)
 					continue;
 
-				sceneMaterials[material.name].reset(new struct Assets::Material());
+				Assets::Material newMaterial = struct Assets::Material();
+				newMaterial.Name = material.name;
+				/*
+				newMaterial.MaterialData.Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2] };
+				newMaterial.MaterialData.Specular = { material.specular[0], material.specular[1], material.specular[2] };
+				newMaterial.MaterialData.Transmittance = { material.transmittance[0], material.transmittance[1], material.transmittance[2] };
+				newMaterial.MaterialData.Emission = { material.emission[0], material.emission[1], material.emission[2] };
+				newMaterial.MaterialData.Shininess = material.shininess;
+				newMaterial.MaterialData.Ior = material.ior;
+				newMaterial.MaterialData.Dissolve = material.dissolve;
+				newMaterial.MaterialData.Roughness = material.roughness;
+				newMaterial.MaterialData.Metallic = material.metallic;
+				newMaterial.MaterialData.Sheen = material.sheen;
+				newMaterial.MaterialData.ClearcoatThickness = material.clearcoat_thickness;
+				newMaterial.MaterialData.ClearcoatRoughness = material.clearcoat_roughness;
+				newMaterial.MaterialData.Anisotropy = material.anisotropy;
+				newMaterial.MaterialData.AnisotropyRotation = material.anisotropy_rotation;
+				//sceneMaterials[material.name]->MaterialData.Pad0 = material.pad0;
+				newMaterial.MaterialData.Pad2 = material.pad2;
+				newMaterial.MaterialData.Illum = material.illum;
+				*/
 
-				sceneMaterials[material.name]->Properties.Name = material.name;
-				sceneMaterials[material.name]->Properties.Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2] };
-				sceneMaterials[material.name]->Properties.Specular = { material.specular[0], material.specular[1], material.specular[2] };
-				sceneMaterials[material.name]->Properties.Transmittance = { material.transmittance[0], material.transmittance[1], material.transmittance[2] };
-				sceneMaterials[material.name]->Properties.Emission = { material.emission[0], material.emission[1], material.emission[2] };
-				sceneMaterials[material.name]->Properties.Shininess = material.shininess;
-				sceneMaterials[material.name]->Properties.Ior = material.ior;
-				sceneMaterials[material.name]->Properties.Dissolve = material.dissolve;
-				sceneMaterials[material.name]->Properties.Roughness = material.roughness;
-				sceneMaterials[material.name]->Properties.Metallic = material.metallic;
-				sceneMaterials[material.name]->Properties.Sheen = material.sheen;
-				sceneMaterials[material.name]->Properties.ClearcoatThickness = material.clearcoat_thickness;
-				sceneMaterials[material.name]->Properties.ClearcoatRoughness = material.clearcoat_roughness;
-				sceneMaterials[material.name]->Properties.Anisotropy = material.anisotropy;
-				sceneMaterials[material.name]->Properties.AnisotropyRotation = material.anisotropy_rotation;
-				//sceneMaterials[material.name]->Properties.Pad0 = material.pad0;
-				sceneMaterials[material.name]->Properties.Pad2 = material.pad2;
-				sceneMaterials[material.name]->Properties.Illum = material.illum;
+				sceneMaterials.push_back(newMaterial);
 
 				std::map<Assets::TextureType, std::string> textureMap{
 					{ Assets::TextureType::AMBIENT, material.ambient_texname },								// 0
@@ -150,14 +155,14 @@ namespace Engine {
 				}
 
 				newMesh->MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
-				newMesh->Material = sceneMaterials.find(newMesh->MaterialName) == sceneMaterials.end() ? nullptr : sceneMaterials.find(newMesh->MaterialName)->second.get();
+				newMesh->MaterialIndex = static_cast<size_t>(GetMaterialIndex(sceneMaterials, newMesh->MaterialName));
 
 				object.Meshes.push_back(newMesh);
 			}
 		}
 
 		void ModelLoader::ProcessTexture(
-			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
+			std::vector<Assets::Material>& sceneMaterials,
 			std::vector<Assets::Texture>& loadedTextures,
 			Assets::TextureType textureType,
 			std::string textureName,
@@ -212,33 +217,34 @@ namespace Engine {
 		}
 
 		void ModelLoader::LoadTextureToMaterial(
-			std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
+			std::vector<Assets::Material>& sceneMaterials,
 			std::vector<Assets::Texture>& loadedTextures,
 			Assets::TextureType textureType,
 			std::string textureName,
 			std::string materialName
 		) {
+			int materialIndex = GetMaterialIndex(sceneMaterials, materialName);
 			switch (textureType) {
 			case Assets::TextureType::AMBIENT:
-				sceneMaterials[materialName]->MaterialTextureIndices.Ambient = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
+				sceneMaterials[materialIndex].MaterialData.AmbientTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::DIFFUSE:
-				sceneMaterials[materialName]->MaterialTextureIndices.Diffuse = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
+				sceneMaterials[materialIndex].MaterialData.DiffuseTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::SPECULAR:
-				sceneMaterials[materialName]->MaterialTextureIndices.Specular = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
+				sceneMaterials[materialIndex].MaterialData.SpecularTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::BUMP:
-				sceneMaterials[materialName]->MaterialTextureIndices.Bump = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
+				sceneMaterials[materialIndex].MaterialData.BumpTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::ROUGHNESS:
-				sceneMaterials[materialName]->MaterialTextureIndices.Roughness = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
+				sceneMaterials[materialIndex].MaterialData.RoughnessTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::METALLIC:
-				sceneMaterials[materialName]->MaterialTextureIndices.Metallic = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
+				sceneMaterials[materialIndex].MaterialData.MetallicTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			case Assets::TextureType::NORMAL:
-				sceneMaterials[materialName]->MaterialTextureIndices.Normal = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
+				sceneMaterials[materialIndex].MaterialData.NormalTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
 				break;
 			default:
 				break;
@@ -247,7 +253,7 @@ namespace Engine {
 
 		int ModelLoader::GetTextureIndex(std::vector<Assets::Texture>& loadedTextures, std::string textureName) {
 			if (loadedTextures.size() == 0) 
-				return -1;
+				return UNEXISTENT;
 
 			for (int i = 0; i < loadedTextures.size(); i++) {
 				if (loadedTextures[i].Name == textureName) {
@@ -255,7 +261,19 @@ namespace Engine {
 				}
 			}
 
-			return -1;
+			return UNEXISTENT;
+		}
+
+		int ModelLoader::GetMaterialIndex(std::vector<Assets::Material>& sceneMaterials, std::string materialName) {
+			if (sceneMaterials.size() == 0)
+				return UNEXISTENT;
+
+			for (int i = 0; i < sceneMaterials.size(); i++) {
+				if (sceneMaterials[i].Name == materialName)
+					return i;
+			}
+
+			return UNEXISTENT;
 		}
 	}
 }

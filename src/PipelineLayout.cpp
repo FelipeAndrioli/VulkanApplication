@@ -13,7 +13,7 @@ namespace Engine {
 
 		VkPushConstantRange pushConstant = {};
 		pushConstant.offset = 0;
-		pushConstant.size = sizeof(Assets::TextureIndices);
+		pushConstant.size = sizeof(int);
 		pushConstant.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};

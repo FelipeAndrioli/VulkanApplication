@@ -1,46 +1,46 @@
 #pragma once
 
 #include <string>
-#include <memory>
-#include <map>
-
 #include <glm/glm.hpp>
 
-#include "./Texture.h"
-
 namespace Assets {
-	struct Texture;
-	struct TextureIndices;
-	enum TextureType;
+	struct MeshMaterialData {
+		/*
+		alignas(4) glm::vec3 Ambient = glm::vec3(1.0f);
+		alignas(4) glm::vec3 Diffuse = glm::vec3(1.0f);
+		alignas(4) glm::vec3 Specular = glm::vec3(1.0f);
+		alignas(4) glm::vec3 Transmittance = glm::vec3(1.0f);
+		alignas(4) glm::vec3 Emission = glm::vec3(1.0f);
 
-	struct MaterialProperties {
-		std::string Name = "";
-
-		glm::vec3 Ambient = glm::vec3(1.0f);
-		glm::vec3 Diffuse = glm::vec3(1.0f);
-		glm::vec3 Specular = glm::vec3(1.0f);
-		glm::vec3 Transmittance = glm::vec3(1.0f);
-		glm::vec3 Emission = glm::vec3(1.0f);
-
-		float Shininess = 0.0f;
-		float Ior = 0.0f;
-		float Dissolve = 0.0f;
-		float Roughness = 0.0f;
-		float Metallic = 0.0f;
-		float Sheen = 0.0f;
-		float ClearcoatThickness = 0.0f;
-		float ClearcoatRoughness = 0.0f;
-		float Anisotropy = 0.0f;
-		float AnisotropyRotation = 0.0f;
+		alignas(4) float Shininess = 0.0f;
+		alignas(4) float Ior = 0.0f;
+		alignas(4) float Dissolve = 0.0f;
+		alignas(4) float Roughness = 0.0f;
+		alignas(4) float Metallic = 0.0f;
+		alignas(4) float Sheen = 0.0f;
+		alignas(4) float ClearcoatThickness = 0.0f;
+		alignas(4) float ClearcoatRoughness = 0.0f;
+		alignas(4) float Anisotropy = 0.0f;
+		alignas(4) float AnisotropyRotation = 0.0f;
 		//float Pad0 = 0.0f;
 		
-		int Pad2 = 0;
-		int Illum = 0;
+		alignas(4) int Pad2 = 0;
+		alignas(4) int Illum = 0;
+		*/
+
+		alignas(4) int AmbientTextureIndex = 0;
+		alignas(4) int DiffuseTextureIndex = 0;
+		alignas(4) int SpecularTextureIndex = 0;
+		alignas(4) int BumpTextureIndex = 0;
+		alignas(4) int RoughnessTextureIndex = 0;
+		alignas(4) int MetallicTextureIndex = 0;
+		alignas(4) int NormalTextureIndex = 0;
 	};
 
 	struct Material {
-		MaterialProperties Properties = {};
+		std::string Name = "";
 		size_t Index = 0;
-		Assets::TextureIndices MaterialTextureIndices;
+
+		MeshMaterialData MaterialData = {};
 	};
 }

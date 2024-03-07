@@ -131,7 +131,8 @@ namespace Engine {
 		std::unique_ptr<class PipelineLayout> m_MainGraphicsPipelineLayout;
 		std::unique_ptr<class GraphicsPipeline> m_TexturedPipeline;
 
-		std::unique_ptr<std::map<std::string, std::unique_ptr<struct Assets::Material>>> m_Materials;
+		//std::unique_ptr<std::map<std::string, std::unique_ptr<struct Assets::Material>>> m_Materials;
+		std::vector<Assets::Material> m_Materials;
 		std::vector<Assets::Texture> m_LoadedTextures;
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;

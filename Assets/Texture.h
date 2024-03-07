@@ -4,9 +4,6 @@
 #include <string>
 
 namespace Engine {
-	class LogicalDevice;
-	class PhysicalDevice;
-	class CommandPool;
 	class Image;
 }
 
@@ -25,16 +22,6 @@ namespace Assets {
 		SHEEN				= 10,
 		EMISSIVE			= 11,
 		NORMAL				= 12
-	};
-
-	struct TextureIndices {
-		alignas(4) int Ambient = 0;
-		alignas(4) int Diffuse = 0;
-		alignas(4) int Specular = 0;
-		alignas(4) int Bump = 0;
-		alignas(4) int Roughness = 0;
-		alignas(4) int Metallic = 0;
-		alignas(4) int Normal = 0;
 	};
 
 	struct Texture {

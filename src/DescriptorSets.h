@@ -21,10 +21,10 @@ namespace Engine {
 	class DescriptorSets {
 	public:
 		DescriptorSets(
-			const VkDeviceSize& bufferSize, 
-			const VkDevice& logicalDevice, 
-			const VkDescriptorPool& descriptorPool, 
-			const VkDescriptorSetLayout& descriptorSetLayout, 
+			const VkDeviceSize& bufferSize,
+			const VkDevice& logicalDevice,
+			const VkDescriptorPool& descriptorPool,
+			const VkDescriptorSetLayout& descriptorSetLayout,
 			Buffer* uniformBuffers,
 			//std::unordered_map<std::string, Assets::Texture>* textures,
 			std::vector<Assets::Texture>* textures,

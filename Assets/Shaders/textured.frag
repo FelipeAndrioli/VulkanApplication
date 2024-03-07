@@ -7,9 +7,45 @@ layout (location = 1) in vec2 fragTexCoord;
 
 layout (location = 0) out vec4 outColor;
 
-// how to fix this hardcoded amount of textures without errors?
+struct material_t {
+	/*
+	vec3 ambient;
+	vec3 diffuse;
+	vec3 specular;
+	vec3 transmittance;
+	vec3 emission;
+
+	float shininess;
+	float ior;
+	float dissolve;
+	float roughness;
+	float metallic;
+	float sheen;
+	float clearcoat_thickness;
+	float clearcoat_roughness;
+	float anisotropy;
+	float anisotropy_rotation;
+
+	int pad2;
+	int illum;
+	*/
+
+	int ambient_texture_index;
+	int diffuse_texture_index;
+	int specular_texture_index;
+	int bump_texture_index;
+	int roughness_texture_index;
+	int metallic_texture_index;
+	int normal_texture_index;
+};
+
+layout (set = 2, binding = 0) uniform material_uniform {
+	material_t materials[100];
+};
+
 layout (set = 2, binding = 1) uniform sampler2D texSampler[];
 
+/*
 layout (push_constant) uniform constant {
 	int ambient;
 	int diffuse;
@@ -19,7 +55,16 @@ layout (push_constant) uniform constant {
 	int metallic;
 	int normal;
 } TextureIndices;
+*/
+
+layout (push_constant) uniform constant {
+	int material_index;
+} MeshConstant;
 
 void main() {
-	outColor = texture(texSampler[TextureIndices.diffuse], fragTexCoord);
+	material_t current_material = materials[MeshConstant.material_index];
+	outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+
+	//outColor = texture(texSampler[TextureIndices.diffuse], fragTexCoord);
+	//outColor = texture(texSampler[materials[MeshConstant.material_index].diffuse_texture_index], fragTexCoord);
 }
