@@ -230,8 +230,7 @@ namespace Engine {
 		ClearFramebuffers();
 		CreateFramebuffers(m_DefaultRenderPass->GetHandle());
 
-		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
-			m_LogicalDevice->GetHandle()));
+		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), m_LogicalDevice->GetHandle()));
 		m_UI->Resize(m_SwapChain.get());
 	}
 
@@ -378,25 +377,6 @@ namespace Engine {
 					&mesh->MaterialIndex
 				);
 
-				/*
-				if (material == nullptr || material != mesh->Material) {
-					material = mesh->Material;
-
-					vkCmdPushConstants(
-						commandBuffer,
-						m_MainGraphicsPipelineLayout->GetHandle(),
-						VK_SHADER_STAGE_FRAGMENT_BIT,
-						0, 
-						sizeof(Assets::TextureIndices), 
-						&material->MaterialTextureIndices	
-					);
-
-					VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
-					VkDeviceSize materialBufferOffset = objectBufferSize + mesh->Material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
-					m_GPUDataBuffer->Update(m_CurrentFrame, materialBufferOffset, &material->Properties, sizeof(Assets::Material::Properties));
-				}
-				*/
-
 				vkCmdDrawIndexed(
 					commandBuffer,
 					static_cast<uint32_t>(mesh->Indices.size()),
@@ -510,7 +490,7 @@ namespace Engine {
 	void Application::InitializeBuffers() {
 		// GPU Data Buffer Begin
 		VkDeviceSize objectBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * p_ActiveScene->RenderableObjects.size();
-		VkDeviceSize materialsBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * m_Materials.size();
+		VkDeviceSize materialsBufferSize = sizeof(Assets::MeshMaterialData) * m_Materials.size();
 		VkDeviceSize sceneBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment;
 		
 		m_GPUDataBuffer.reset(new class Engine::Buffer(

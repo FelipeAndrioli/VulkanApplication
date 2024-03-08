@@ -37,6 +37,8 @@ struct material_t {
 	int roughness_texture_index;
 	int metallic_texture_index;
 	int normal_texture_index;
+	int extra_scalar;
+	vec4 extra[14];
 };
 
 layout (set = 2, binding = 0) uniform material_uniform {
@@ -45,18 +47,6 @@ layout (set = 2, binding = 0) uniform material_uniform {
 
 layout (set = 2, binding = 1) uniform sampler2D texSampler[];
 
-/*
-layout (push_constant) uniform constant {
-	int ambient;
-	int diffuse;
-	int specular;
-	int bump;
-	int roughness;
-	int metallic;
-	int normal;
-} TextureIndices;
-*/
-
 layout (push_constant) uniform constant {
 	int material_index;
 } MeshConstant;
@@ -64,7 +54,4 @@ layout (push_constant) uniform constant {
 void main() {
 	material_t current_material = materials[MeshConstant.material_index];
 	outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
-
-	//outColor = texture(texSampler[TextureIndices.diffuse], fragTexCoord);
-	//outColor = texture(texSampler[materials[MeshConstant.material_index].diffuse_texture_index], fragTexCoord);
 }
