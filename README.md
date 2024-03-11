@@ -18,8 +18,13 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [x] Single Buffer for Vertices and Indices 
 - [x] Single Buffer for uniforms
 - [x] Empty Scene
-- [ ] Send Array of Materials to Shader
+- [ ] Send Array of Materials to Shader 
 	- [x] Send Array of Textures to Shader
+	- [ ] Send one array of textures/material and the index to be used per material
+- [ ] Sort
+	- [ ] Objects per pipeline
+	- [ ] Meshes per material
+- [ ] Add normal to the vertices
 - [ ] Default models
 	- [ ] Plane
 	- [ ] Cube
@@ -28,11 +33,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 
 ## Small problems to remember to solve
 
-- [ ] Sort
-	- [ ] Objects per pipeline
-	- [ ] Meshes per material
 - [ ] Add material instance per object and bind if from there to have customized properties of the same material
-- [ ] How to handle empty scene? (Empty buffers) 
 	
 ## Future Work (not in order)
 

@@ -118,7 +118,6 @@ namespace Engine {
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
 			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
-			//poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT * 2 });
 
 			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
 			// because our sets reference the SSBOs of the last and current frame (for now).
@@ -132,8 +131,7 @@ namespace Engine {
 			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
 
 		// Init Scene
-		m_Materials.reset(new class std::map<std::string, std::unique_ptr<Assets::Material>>);
-		m_LoadedTextures.reset(new class std::map<std::string, std::unique_ptr<Assets::Texture>>);
+		//m_Materials.reset(new class std::map<std::string, std::unique_ptr<Assets::Material>>);
 
 		std::vector<DescriptorBinding> descriptorBindings = {
 			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
@@ -147,45 +145,27 @@ namespace Engine {
 
 		m_SceneGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(sceneDescriptorBindings, m_LogicalDevice->GetHandle()));
 
-		std::vector<DescriptorBinding> materialDescriptorBindings = {
-			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT },
-			{ 1, TEXTURE_PER_MATERIAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
-		};
-
-		m_MaterialGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(materialDescriptorBindings, m_LogicalDevice->GetHandle()));
-
-		for (const Assets::GraphicsPipeline& sceneGraphicsPipeline : p_ActiveScene->SceneGraphicsPipelines) {
-			m_GraphicsPipelines.insert(std::make_pair(sceneGraphicsPipeline.Name, new class GraphicsPipeline(
-				sceneGraphicsPipeline.m_VertexShader,
-				sceneGraphicsPipeline.m_FragmentShader,
-				*m_LogicalDevice,
-				*m_SwapChain,
-				*m_DepthBuffer,
-				m_DefaultRenderPass->GetHandle(),
-				std::vector<DescriptorSetLayout*> { m_SceneGPUDataDescriptorSetLayout.get(), m_ObjectGPUDataDescriptorSetLayout.get(), m_MaterialGPUDataDescriptorSetLayout.get() }
-			)));
-		}
-
-		// Load OBJ Model and its materials
-		// Initialize object GPU Buffer and Descriptor Sets
+		// Load models/materials/textures
 		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
 			Utils::ModelLoader::LoadModelAndMaterials(
 				*renderableObject,
-				*m_Materials,
-				*m_LoadedTextures,
+				m_Materials,
+				m_LoadedTextures,
 				*m_LogicalDevice.get(),
 				*m_PhysicalDevice.get(),
 				*m_CommandPool.get()
 			);
-
-			auto selectedPipeline = m_GraphicsPipelines.find(renderableObject->PipelineName);
-			if (renderableObject->PipelineName == "" || selectedPipeline == m_GraphicsPipelines.end()) {
-				renderableObject->SelectedGraphicsPipeline = m_GraphicsPipelines.find(DEFAULT_GRAPHICS_PIPELINE)->second.get();
-			}
-			else {
-				renderableObject->SelectedGraphicsPipeline = selectedPipeline->second.get();
-			}
 		}
+
+		std::vector<DescriptorBinding> materialDescriptorBindings = {
+			{ 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 1, static_cast<uint32_t>(m_LoadedTextures.size()), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT }
+		};
+
+		m_MaterialGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(materialDescriptorBindings, m_LogicalDevice->GetHandle()));
+
+		CreatePipelineLayouts();
+		CreateGraphicsPipelines();
 
 		p_ActiveScene->Setup();
 		InitializeBuffers();
@@ -203,14 +183,11 @@ namespace Engine {
 		m_GPUDataBuffer.reset();
 		m_SceneGeometryBuffer.reset();
 
-		std::map<std::string, std::unique_ptr<Engine::GraphicsPipeline>>::iterator it;
-		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
-			it->second.reset();
-		}
+		m_MainGraphicsPipelineLayout.reset();
+		m_TexturedPipeline.reset();
 
-		m_GraphicsPipelines.clear();
-		m_Materials.reset();
-		m_LoadedTextures.reset();
+		m_Materials.clear();
+		m_LoadedTextures.clear();
 		m_DescriptorPool.reset();
 		m_UI.reset();
 		m_SwapChain.reset();
@@ -253,8 +230,7 @@ namespace Engine {
 		ClearFramebuffers();
 		CreateFramebuffers(m_DefaultRenderPass->GetHandle());
 
-		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(),
-			m_LogicalDevice->GetHandle()));
+		m_CommandBuffers.reset(new class CommandBuffer(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), m_LogicalDevice->GetHandle()));
 		m_UI->Resize(m_SwapChain.get());
 	}
 
@@ -314,7 +290,7 @@ namespace Engine {
 			&m_SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
 			offsets
 		);
-
+		
 		vkCmdBindIndexBuffer(
 			commandBuffer,
 			m_SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
@@ -322,107 +298,96 @@ namespace Engine {
 			VK_INDEX_TYPE_UINT32
 		);
 
-		std::map<std::string, std::unique_ptr<class GraphicsPipeline>>::iterator it;
+		SceneGPUData sceneGPUData = SceneGPUData();
+		sceneGPUData.view = p_ActiveScene->MainCamera->ViewMatrix;
+		sceneGPUData.proj = p_ActiveScene->MainCamera->ProjectionMatrix;
 
-		for (it = m_GraphicsPipelines.begin(); it != m_GraphicsPipelines.end(); it++) {
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, it->second->GetHandle());
+		VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
+		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
 
-			VkViewport viewport = {};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
-			viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TexturedPipeline->GetHandle());
 
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)m_SwapChain->GetSwapChainExtent().width;
+		viewport.height = (float)m_SwapChain->GetSwapChainExtent().height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
 
-			VkRect2D scissor = {};
-			scissor.offset = { 0, 0 };
-			scissor.extent = m_SwapChain->GetSwapChainExtent();
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = m_SwapChain->GetSwapChainExtent();
 
-			SceneGPUData sceneGPUData = SceneGPUData();
-			sceneGPUData.view = p_ActiveScene->MainCamera->ViewMatrix;
-			sceneGPUData.proj = p_ActiveScene->MainCamera->ProjectionMatrix;
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+		vkCmdBindDescriptorSets(
+			commandBuffer, 
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			m_MainGraphicsPipelineLayout->GetHandle(),
+			0,
+			1,
+			&m_SceneGPUDataDescriptorSets->GetDescriptorSet(m_CurrentFrame),
+			0,
+			0
+		);
+
+		vkCmdBindDescriptorSets(
+			commandBuffer, 
+			VK_PIPELINE_BIND_POINT_GRAPHICS, 
+			m_MainGraphicsPipelineLayout->GetHandle(),
+			2, 
+			1,
+			&m_MaterialDescriptorSets->GetDescriptorSet(m_CurrentFrame),
+			0, 
+			nullptr
+		);
+
+		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
+			Assets::Object* object = p_ActiveScene->RenderableObjects[i];
 
 			vkCmdBindDescriptorSets(
-				commandBuffer,
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				it->second->GetPipelineLayout().GetHandle(),
-				0,
+				commandBuffer, 
+				VK_PIPELINE_BIND_POINT_GRAPHICS, 
+				m_MainGraphicsPipelineLayout->GetHandle(),
+				1, 
 				1,
-				&m_SceneGPUDataDescriptorSets->GetDescriptorSet(m_CurrentFrame),
-				0,
+				&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
+				0, 
 				nullptr
 			);
 
-			VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
-			m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
+			ObjectGPUData objectGPUData = ObjectGPUData();
+			objectGPUData.model = object->GetModelMatrix();
 
-			for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
-				Assets::Object* object = p_ActiveScene->RenderableObjects[i];
+			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
+			m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
 
-				if (object->SelectedGraphicsPipeline != it->second.get())
-					continue;
+			Assets::Material* material = nullptr;
 
-				ObjectGPUData objectGPUData = ObjectGPUData();
-				objectGPUData.model = object->GetModelMatrix();
-
-				vkCmdBindDescriptorSets(
-					commandBuffer, 
-					VK_PIPELINE_BIND_POINT_GRAPHICS, 
-					it->second->GetPipelineLayout().GetHandle(),
-					1, 
-					1,
-					&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
-					0, 
-					nullptr
+			for (const Assets::Mesh* mesh : object->Meshes) {
+				vkCmdPushConstants(
+					commandBuffer,
+					m_MainGraphicsPipelineLayout->GetHandle(),
+					VK_SHADER_STAGE_FRAGMENT_BIT,
+					0,
+					sizeof(int),
+					&mesh->MaterialIndex
 				);
 
-				VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-				m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
-
-				Assets::Material* material = nullptr;
-
-				for (const Assets::Mesh* mesh : object->Meshes) {
-					if (material == nullptr || mesh->Material.get() != material) {
-						if (m_Materials->find(mesh->MaterialName) != m_Materials->end()) {
-							material = m_Materials->find(mesh->MaterialName)->second.get();
-
-							Assets::Material::MaterialProperties materialGPUData = {};
-							materialGPUData = material->Properties;
-
-							vkCmdBindDescriptorSets(
-								commandBuffer, 
-								VK_PIPELINE_BIND_POINT_GRAPHICS, 
-								it->second->GetPipelineLayout().GetHandle(),
-								2, 
-								1,
-								&material->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
-								0, 
-								nullptr
-							);
-
-							VkDeviceSize objectBufferSize = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize;
-							VkDeviceSize materialBufferOffset = objectBufferSize + material->Index * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
-							m_GPUDataBuffer->Update(m_CurrentFrame, materialBufferOffset, &materialGPUData, sizeof(Assets::Material::Properties));
-						}
-					}
-
-					vkCmdDrawIndexed(
-						commandBuffer,
-						static_cast<uint32_t>(mesh->Indices.size()),
-						1,
-						static_cast<uint32_t>(mesh->IndexOffset),
-						static_cast<int32_t>(mesh->VertexOffset),
-						0
-					);
-				}
+				vkCmdDrawIndexed(
+					commandBuffer,
+					static_cast<uint32_t>(mesh->Indices.size()),
+					1,
+					static_cast<uint32_t>(mesh->IndexOffset),
+					static_cast<int32_t>(mesh->VertexOffset),
+					0
+				);
 			}
 		}
-		
+
 		vkCmdEndRenderPass(commandBuffer);
 	}
 
@@ -525,7 +490,7 @@ namespace Engine {
 	void Application::InitializeBuffers() {
 		// GPU Data Buffer Begin
 		VkDeviceSize objectBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * p_ActiveScene->RenderableObjects.size();
-		VkDeviceSize materialsBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment * m_Materials->size();
+		VkDeviceSize materialsBufferSize = sizeof(Assets::MeshMaterialData) * m_Materials.size();
 		VkDeviceSize sceneBufferSize = m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment;
 		
 		m_GPUDataBuffer.reset(new class Engine::Buffer(
@@ -533,13 +498,29 @@ namespace Engine {
 			*m_LogicalDevice.get(),
 			*m_PhysicalDevice.get(),
 			objectBufferSize + materialsBufferSize + sceneBufferSize,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
 		));
 		m_GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		m_GPUDataBuffer->NewChunk({ m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment, objectBufferSize });
 		m_GPUDataBuffer->NewChunk({ m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment, materialsBufferSize});
 		m_GPUDataBuffer->NewChunk({ m_PhysicalDevice->GetLimits().minUniformBufferOffsetAlignment, sceneBufferSize});
+
+		std::vector<Assets::MeshMaterialData> meshMaterialData;
+
+		for (const auto& material : m_Materials) {
+			meshMaterialData.push_back(material.MaterialData);
+		}
+
+		Engine::BufferHelper::AppendData(
+			*m_LogicalDevice.get(),
+			*m_PhysicalDevice.get(),
+			*m_CommandPool.get(),
+			meshMaterialData,
+			*m_GPUDataBuffer.get(),
+			0,
+			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
+		);
 		// GPU Data Buffer End
 
 		// Scene Geometry Buffer Begin
@@ -557,6 +538,8 @@ namespace Engine {
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT
 		));
 		m_SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * p_ActiveScene->Indices.size() });
+		m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size() });
 
 		Engine::BufferHelper::AppendData(
 			*m_LogicalDevice.get(),
@@ -601,31 +584,17 @@ namespace Engine {
 		// Renderable Objects Descriptor Sets End 
 
 		// Material Descriptor Sets Begin
-		size_t materialIndex = 0;
-
-		std::map<std::string, std::unique_ptr<Assets::Material>>::iterator it;
-		for (it = m_Materials->begin(); it != m_Materials->end(); it++) {
-			VkDeviceSize materialBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize 
-				+ materialIndex * m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize;
-
-			//Engine::Image* textureImage = it->second->Textures.find(Assets::TextureType::DIFFUSE)->second->TextureImage.get();
-			it->second->DescriptorSets.reset(
-				new class DescriptorSets(
-					m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].DataSize,
-					m_LogicalDevice->GetHandle(),
-					m_DescriptorPool->GetHandle(),
-					m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
-					m_GPUDataBuffer.get(),
-					//textureImage,
-					&it->second->Textures,
-					nullptr,
-					false,
-					materialBufferOffset
-				)
-			);
-
-			it->second->Index = materialIndex++;
-		}
+		m_MaterialDescriptorSets.reset(new class DescriptorSets(
+			m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
+			m_LogicalDevice->GetHandle(),
+			m_DescriptorPool->GetHandle(),
+			m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
+			m_GPUDataBuffer.get(),
+			&m_LoadedTextures,
+			nullptr,
+			false,
+			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
+		));
 		// Material Descriptor Sets End 
 
 		// Scene Data Descriptor Sets Begin
@@ -641,5 +610,39 @@ namespace Engine {
 			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
 		));
 		// Scene Data Descriptor Sets End 
+	}
+
+	void Application::CreatePipelineLayouts() {
+
+		m_MainGraphicsPipelineLayout.reset(new class PipelineLayout(
+			m_LogicalDevice->GetHandle(), 
+			{ 
+				m_SceneGPUDataDescriptorSetLayout.get(), 
+				m_ObjectGPUDataDescriptorSetLayout.get(), 
+				m_MaterialGPUDataDescriptorSetLayout.get() 
+			}
+		));
+	}
+
+	void Application::CreateGraphicsPipelines() {
+
+		/*
+		Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
+		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
+		*/
+
+		Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_vert.spv");
+		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_frag.spv");
+
+		m_TexturedPipeline.reset(new class GraphicsPipeline(
+			texturedVertexShader,
+			texturedFragmentShader,
+			*m_LogicalDevice,
+			*m_SwapChain,
+			*m_DepthBuffer,
+			m_DefaultRenderPass->GetHandle(),
+			*m_MainGraphicsPipelineLayout
+		));
 	}
 }

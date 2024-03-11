@@ -23,14 +23,24 @@ namespace Engine {
 
 		VkDeviceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
 		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 		createInfo.pQueueCreateInfos = queueCreateInfos.data();
 
-		createInfo.pEnabledFeatures = &deviceFeatures;
+		//createInfo.pEnabledFeatures = &deviceFeatures;
 
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(c_DeviceExtensions.size());
 		createInfo.ppEnabledExtensionNames = c_DeviceExtensions.data();
+
+		VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingCreateInfo = {};
+		descriptorIndexingCreateInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+		descriptorIndexingCreateInfo.runtimeDescriptorArray = VK_TRUE;
+
+		VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
+		deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		deviceFeatures2.features = deviceFeatures;
+		deviceFeatures2.pNext = &descriptorIndexingCreateInfo;
+
+		createInfo.pNext = &deviceFeatures2;
 
 		if (p_Instance->GetIsEnabledValidationLayers()) {
 			createInfo.enabledLayerCount = static_cast<uint32_t>(p_Instance->GetValidationLayers().size());

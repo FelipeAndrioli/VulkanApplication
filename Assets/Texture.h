@@ -4,9 +4,6 @@
 #include <string>
 
 namespace Engine {
-	class LogicalDevice;
-	class PhysicalDevice;
-	class CommandPool;
 	class Image;
 }
 
@@ -28,7 +25,8 @@ namespace Assets {
 	};
 
 	struct Texture {
-		std::string Path = "";
+		std::string Name = "";
+		TextureType Type;
 		std::unique_ptr<class Engine::Image> TextureImage;
 	};
 }

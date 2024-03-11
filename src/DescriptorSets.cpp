@@ -9,7 +9,8 @@ namespace Engine {
 		const VkDescriptorPool& descriptorPool, 
 		const VkDescriptorSetLayout& descriptorSetLayout, 
 		Buffer* uniformBuffers, 
-		std::map<Assets::TextureType, Assets::Texture*>* textures,
+		//std::unordered_map<std::string, Assets::Texture>* textures,
+		std::vector<Assets::Texture>* textures,
 		Buffer* shaderStorageBuffers,
 		bool accessLastFrame,
 		VkDeviceSize offset
@@ -36,11 +37,14 @@ namespace Engine {
 
 		// TODO: refactor descriptor set creation
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			VkDescriptorBufferInfo bufferInfo{};
+
+			std::vector<VkDescriptorImageInfo> imageInfo;
+
+			VkDescriptorBufferInfo bufferInfo = {};
 			bufferInfo.buffer = uniformBuffers->GetBuffer(static_cast<uint32_t>(i));
 			bufferInfo.offset = offset;
 			bufferInfo.range = bufferSize;
-
+		
 			if (!accessLastFrame) {
 				std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
 
@@ -59,17 +63,13 @@ namespace Engine {
 				index++;
 
 				if (textures && textures->size() > 0) {
-					VkDescriptorImageInfo imageInfo[TEXTURE_PER_MATERIAL];
+					for (auto& texture : *textures) {
+						VkDescriptorImageInfo newImageInfo = {};
+						newImageInfo.imageLayout = texture.TextureImage->ImageLayout;
+						newImageInfo.imageView = texture.TextureImage->ImageView[0];
+						newImageInfo.sampler = texture.TextureImage->ImageSampler;
 
-					std::map<Assets::TextureType, Assets::Texture*>::iterator it;
-					int t = 0;
-
-					for (it = textures->begin(); it != textures->end(); it++) {
-						imageInfo[t].imageLayout = it->second->TextureImage->ImageLayout;
-						imageInfo[t].imageView = it->second->TextureImage->ImageView[0];
-						imageInfo[t].sampler = it->second->TextureImage->ImageSampler;
-
-						t++;
+						imageInfo.push_back(newImageInfo);
 					}
 
 					descriptorWrites[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -77,8 +77,8 @@ namespace Engine {
 					descriptorWrites[index].dstBinding = 1;
 					descriptorWrites[index].dstArrayElement = 0;
 					descriptorWrites[index].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-					descriptorWrites[index].descriptorCount = TEXTURE_PER_MATERIAL;
-					descriptorWrites[index].pImageInfo = imageInfo;
+					descriptorWrites[index].descriptorCount = static_cast<uint32_t>(imageInfo.size());
+					descriptorWrites[index].pImageInfo = imageInfo.data();
 
 					index++;
 				}

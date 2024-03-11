@@ -10,8 +10,8 @@ namespace Engine {
 		const SwapChain& swapChain, 
 		const DepthBuffer& depthBuffer, 
 		const VkRenderPass& renderPass,
-		std::vector<DescriptorSetLayout*> descriptorSetLayouts)
-		: p_LogicalDevice(&logicalDevice) {
+		PipelineLayout& pipelineLayout)
+		: p_LogicalDevice(&logicalDevice), m_GraphicsPipelineLayout(pipelineLayout) {
 
 		auto bindingDescription = vertexShader.BindingDescription;
 		auto attributeDescriptions = vertexShader.AttributeDescriptions;
@@ -97,8 +97,6 @@ namespace Engine {
 
 		std::vector<BufferDescriptor> bufferDescriptor = {};
 
-		m_GraphicsPipelineLayout.reset(new class PipelineLayout(p_LogicalDevice->GetHandle(), descriptorSetLayouts));
-
 		ShaderModule vertShaderModule(vertexShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
 		ShaderModule fragShaderModule(fragmentShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
 
@@ -128,7 +126,7 @@ namespace Engine {
 		pipelineInfo.pDepthStencilState = &depthStencilCreateInfo;
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDynamicState = &dynamicState;
-		pipelineInfo.layout = m_GraphicsPipelineLayout->GetHandle();
+		pipelineInfo.layout = m_GraphicsPipelineLayout.GetHandle();
 		pipelineInfo.renderPass = renderPass;
 		pipelineInfo.subpass = 0;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -142,9 +140,6 @@ namespace Engine {
 
 	GraphicsPipeline::~GraphicsPipeline() {
 		vkDestroyPipeline(p_LogicalDevice->GetHandle(), m_GraphicsPipeline, nullptr);
-
-		m_GraphicsPipelineLayout.reset();
-		//m_DescriptorSetLayout.reset();
 
 		p_LogicalDevice = nullptr;
 	}

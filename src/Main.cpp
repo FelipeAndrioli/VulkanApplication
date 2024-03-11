@@ -282,77 +282,11 @@ public:
 };
 
 int main() {
-
-	/*
-	std::unique_ptr<Engine::Material> rainbowMaterial = std::make_unique<Engine::Material>();
-	rainbowMaterial->Layout.ID = "RainbowMaterial";
-	rainbowMaterial->Layout.VertexShaderPath = "./Assets/Shaders/vert.spv";
-	rainbowMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/frag.spv";
-
-	std::unique_ptr<Engine::Material> colorMaterial = std::make_unique<Engine::Material>();
-	colorMaterial->Layout.ID = "ColorMaterial";
-	colorMaterial->Layout.VertexShaderPath = "./Assets/Shaders/shader_test_vert.spv";
-	colorMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/shader_test_frag.spv";
-
-	std::unique_ptr<Engine::Material> texturedMaterial = std::make_unique<Engine::Material>();
-	texturedMaterial->Layout.ID = "TexturedMaterial";
-	texturedMaterial->Layout.VertexShaderPath = "./Assets/Shaders/textured_vert.spv";
-	texturedMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/textured_frag.spv";
-	texturedMaterial->Layout.TexturePath = "./Assets/Textures/statue_test.jpg";
-
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
-
-	myScene->AddMaterial(rainbowMaterial.get());
-	myScene->AddMaterial(colorMaterial.get());
-	myScene->AddMaterial(texturedMaterial.get());
-
-	auto q1 = MyCubeOne();
-	q1.Rotate = true;
-	q1.Material = rainbowMaterial.get();
-	q1.SceneCamera = myScene->MainCamera;
-	auto q2 = MyCubeTwo();
-	q2.SceneCamera = myScene->MainCamera;
-	q2.Material = colorMaterial.get();
-	auto q3 = MyCubeThree();
-	q3.SceneCamera = myScene->MainCamera;
-	auto q4 = MyCubeOne();
-	q4.Transformations.translation.y = 2.0f;
-	q4.Transformations.rotation.x = 200.0f;
-	q4.Material = texturedMaterial.get();
-	q4.SceneCamera = myScene->MainCamera;
-
-	myScene->AddObject(&q1);
-	myScene->AddObject(&q2);
-	myScene->AddObject(&q3);
-	myScene->AddObject(&q4);
-	*/
-
-	/*
-	std::unique_ptr<Engine::Material> texturedMaterial = std::make_unique<Engine::Material>();
-	texturedMaterial->Layout.ID = "TexturedMaterial";
-	texturedMaterial->Layout.VertexShaderPath = "./Assets/Shaders/textured_vert.spv";
-	texturedMaterial->Layout.FragmentShaderPath = "./Assets/Shaders/textured_frag.spv";
-	texturedMaterial->Layout.TexturePath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/diffuse.jpg";
-	*/
-
-	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
-
-	Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "./Assets/Shaders/textured_vert.spv");
-	Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "./Assets/Shaders/textured_frag.spv");
-	Assets::GraphicsPipeline texturedGraphicsPipeline = Assets::GraphicsPipeline("texturedPipeline", texturedVertexShader, texturedFragmentShader);
-	myScene->AddGraphicsPipeline(texturedGraphicsPipeline);
-
-	Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
-	Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
-	wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
-	Assets::GraphicsPipeline wireFramePipeline = Assets::GraphicsPipeline("wireframePipeline", wireframeVertexShader, wireframeFragShader);
-	myScene->AddGraphicsPipeline(wireFramePipeline);
-
 	CustomObject model = CustomObject();
 	model.ID = "Sponza";
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
-	model.PipelineName = texturedGraphicsPipeline.Name;
 	model.Transformations.scaleHandler = 0.008f;
 	myScene->AddRenderableObject(&model);
 
@@ -361,7 +295,6 @@ int main() {
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	testObject.FlipTexturesVertically = true;
-	testObject.PipelineName = texturedGraphicsPipeline.Name;
 	testObject.Transformations.translation.y = 5.714f;
 	testObject.Transformations.translation.z = -0.095f;
 	testObject.Transformations.rotation.y = 87.6f;

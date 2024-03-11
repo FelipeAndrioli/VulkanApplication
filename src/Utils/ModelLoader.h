@@ -3,11 +3,12 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <memory>
 
 namespace Assets {
 	class Object;
-	class Material;
+	struct Material;
 	struct Texture;
 
 	enum TextureType;
@@ -26,8 +27,8 @@ namespace Engine {
 
 			static void LoadModelAndMaterials(
 				Assets::Object& object, 
-				std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-				std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+				std::vector<Assets::Material>& sceneMaterials,
+				std::vector<Assets::Texture>& loadedTextures,
 				Engine::LogicalDevice& logicalDevice,
 				Engine::PhysicalDevice& physicalDevice,
 				Engine::CommandPool& commandPool
@@ -40,8 +41,8 @@ namespace Engine {
 
 		private:
 			static void ProcessTexture(
-				std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-				std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+				std::vector<Assets::Material>& sceneMaterials,
+				std::vector<Assets::Texture>& loadedTextures,
 				Assets::TextureType textureType,
 				std::string textureName,
 				std::string basePath,
@@ -53,7 +54,7 @@ namespace Engine {
 			);
 
 			static void ValidateAndInsertTexture(
-				std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+				std::vector<Assets::Texture>& loadedTextures,
 				Assets::TextureType textureType,
 				std::string textureName,
 				std::string basePath,
@@ -64,12 +65,15 @@ namespace Engine {
 			);
 
 			static void LoadTextureToMaterial(
-				std::map<std::string, std::unique_ptr<Assets::Material>>& sceneMaterials,
-				std::map<std::string, std::unique_ptr<Assets::Texture>>& loadedTextures,
+				std::vector<Assets::Material>& sceneMaterials,
+				std::vector<Assets::Texture>& loadedTextures,
 				Assets::TextureType textureType,
 				std::string textureName,
 				std::string materialName
 			);
+
+			static int GetTextureIndex(std::vector<Assets::Texture>& loadedTextures, std::string textureName);
+			static int GetMaterialIndex(std::vector<Assets::Material>& sceneMaterials, std::string materialName);
 		};
 	}
 }

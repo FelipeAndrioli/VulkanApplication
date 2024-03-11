@@ -15,7 +15,7 @@ namespace Engine {
 }
 
 namespace Assets {
-	class Material;
+	struct Material;
 
 	struct Vertex {
 
@@ -59,11 +59,12 @@ namespace Assets {
 
 	struct Mesh {
 		std::string MaterialName;
-		std::unique_ptr<class Assets::Material> Material;
+		Assets::Material* Material = nullptr;
 
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;
 
+		size_t MaterialIndex = 0;
 		size_t IndexOffset = 0;
 		size_t VertexOffset = 0;
 	};	

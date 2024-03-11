@@ -31,15 +31,14 @@ namespace Engine {
 			const SwapChain& swapChain,
 			const DepthBuffer& depthBuffer,
 			const VkRenderPass& renderPass,
-			std::vector<DescriptorSetLayout*> descriptorSetLayouts);
+			PipelineLayout& pipelineLayout);
 		~GraphicsPipeline();
 
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };
-		inline PipelineLayout& GetPipelineLayout() { return *m_GraphicsPipelineLayout; };
 	private:
 		VkPipeline m_GraphicsPipeline = VK_NULL_HANDLE;
 		LogicalDevice* p_LogicalDevice = nullptr;
 
-		std::unique_ptr<class PipelineLayout> m_GraphicsPipelineLayout;
+		PipelineLayout& m_GraphicsPipelineLayout;
 	};
 }
