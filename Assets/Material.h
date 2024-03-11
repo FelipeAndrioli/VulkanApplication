@@ -5,12 +5,11 @@
 
 namespace Assets {
 	struct MeshMaterialData {
-		/*
-		glm::vec3 Ambient = glm::vec3(1.0f);
-		glm::vec3 Diffuse = glm::vec3(1.0f);
-		glm::vec3 Specular = glm::vec3(1.0f);
-		glm::vec3 Transmittance = glm::vec3(1.0f);
-		glm::vec3 Emission = glm::vec3(1.0f);
+		glm::vec4 Ambient = glm::vec4(1.0f);		// ignore w
+		glm::vec4 Diffuse = glm::vec4(1.0f);		// ignore w
+		glm::vec4 Specular = glm::vec4(1.0f);		// ignore w
+		glm::vec4 Transmittance = glm::vec4(1.0f);	// ignore w
+		glm::vec4 Emission = glm::vec4(1.0f);		// ignore w
 
 		alignas(4) float Shininess = 0.0f;
 		alignas(4) float Ior = 0.0f;
@@ -26,7 +25,6 @@ namespace Assets {
 		
 		alignas(4) int Pad2 = 0;
 		alignas(4) int Illum = 0;
-		*/
 
 		alignas(4) int AmbientTextureIndex = 0;
 		alignas(4) int DiffuseTextureIndex = 0;
@@ -37,7 +35,7 @@ namespace Assets {
 		alignas(4) int NormalTextureIndex = 0;
 
 		alignas(4) int ExtraScalar = 0;
-		glm::vec4 extra[14];
+		glm::vec4 extra[6];
 	};
 
 	struct Material {

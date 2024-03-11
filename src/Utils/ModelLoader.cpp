@@ -68,11 +68,10 @@ namespace Engine {
 
 				Assets::Material newMaterial = struct Assets::Material();
 				newMaterial.Name = material.name;
-				/*
-				newMaterial.MaterialData.Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2] };
-				newMaterial.MaterialData.Specular = { material.specular[0], material.specular[1], material.specular[2] };
-				newMaterial.MaterialData.Transmittance = { material.transmittance[0], material.transmittance[1], material.transmittance[2] };
-				newMaterial.MaterialData.Emission = { material.emission[0], material.emission[1], material.emission[2] };
+				newMaterial.MaterialData.Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2], 1.0f };
+				newMaterial.MaterialData.Specular = { material.specular[0], material.specular[1], material.specular[2], 1.0f };
+				newMaterial.MaterialData.Transmittance = { material.transmittance[0], material.transmittance[1], material.transmittance[2], 1.0f };
+				newMaterial.MaterialData.Emission = { material.emission[0], material.emission[1], material.emission[2], 1.0f };
 				newMaterial.MaterialData.Shininess = material.shininess;
 				newMaterial.MaterialData.Ior = material.ior;
 				newMaterial.MaterialData.Dissolve = material.dissolve;
@@ -86,7 +85,6 @@ namespace Engine {
 				//sceneMaterials[material.name]->MaterialData.Pad0 = material.pad0;
 				newMaterial.MaterialData.Pad2 = material.pad2;
 				newMaterial.MaterialData.Illum = material.illum;
-				*/
 
 				sceneMaterials.push_back(newMaterial);
 

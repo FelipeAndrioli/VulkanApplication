@@ -8,12 +8,11 @@ layout (location = 1) in vec2 fragTexCoord;
 layout (location = 0) out vec4 outColor;
 
 struct material_t {
-	/*
-	vec3 ambient;
-	vec3 diffuse;
-	vec3 specular;
-	vec3 transmittance;
-	vec3 emission;
+	vec4 ambient;		// ignore w
+	vec4 diffuse;		// ignore w
+	vec4 specular;		// ignore w
+	vec4 transmittance;	// ignore w
+	vec4 emission;		// ignore w
 
 	float shininess;
 	float ior;
@@ -28,7 +27,6 @@ struct material_t {
 
 	int pad2;
 	int illum;
-	*/
 
 	int ambient_texture_index;
 	int diffuse_texture_index;
@@ -37,8 +35,9 @@ struct material_t {
 	int roughness_texture_index;
 	int metallic_texture_index;
 	int normal_texture_index;
+	
 	int extra_scalar;
-	vec4 extra[14];
+	vec4 extra[6];
 };
 
 layout (set = 2, binding = 0) uniform material_uniform {
