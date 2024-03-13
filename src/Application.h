@@ -42,15 +42,10 @@ namespace Engine {
 	class CommandPool;
 	class DebugUtilsMessenger;
 	class Semaphore;
-	class Semaphore;
-	class Semaphore;
-	class Fence;
 	class Fence;
 	class DepthBuffer;
 	class RenderPass;
 	class UI;
-	class CommandBuffer;
-	class Buffer;
 	class CommandBuffer;
 	class Buffer;
 
@@ -58,11 +53,13 @@ namespace Engine {
 
 	struct ObjectGPUData {
 		glm::mat4 model = glm::mat4(1.0f);
+		glm::vec4 extra[12];
 	};
 
 	struct SceneGPUData {
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
+		glm::vec4 extra[8];
 	};
 
 	class Application {
@@ -88,7 +85,7 @@ namespace Engine {
 		void CreateFramebuffers(const VkRenderPass& renderPass);
 		void ClearFramebuffers();
 		void InitializeBuffers();
-		void InitializeDescriptorSets();
+		void InitializeDescriptors();
 		void CreatePipelineLayouts();
 		void CreateGraphicsPipelines();
 		
@@ -137,10 +134,12 @@ namespace Engine {
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;
-		std::unique_ptr<class DescriptorSetLayout> m_MaterialGPUDataDescriptorSetLayout;
+		//std::unique_ptr<class DescriptorSetLayout> m_MaterialGPUDataDescriptorSetLayout;
+		std::unique_ptr<class DescriptorSetLayout> m_GlobalDescriptorSetLayout;
 
 		std::unique_ptr<class DescriptorSets> m_SceneGPUDataDescriptorSets;
-		std::unique_ptr<class DescriptorSets> m_MaterialDescriptorSets;
+		//std::unique_ptr<class DescriptorSets> m_MaterialDescriptorSets;
+		std::unique_ptr<class DescriptorSets> m_GlobalDescriptorSets;
 
 		/*	Scene Buffer Layout
 			[index obj1 | index obj2 | index obj3 | vertex obj1 | vertex obj2 | vertex obj3]
@@ -148,15 +147,15 @@ namespace Engine {
 		std::unique_ptr<class Engine::Buffer> m_SceneGeometryBuffer;
 
 		/* GPUDataBuffer Layout
-		   [object data 1 | object data 2 | materials 1 | materials 2]	
+		   [object data 1 | object data 2 | materials 1 | materials 2 | scene data]	
 		*/
 		std::unique_ptr<class Engine::Buffer> m_GPUDataBuffer;
 
-		const int OBJECT_BUFFER_INDEX = 0;
-		const int MATERIAL_BUFFER_INDEX = 1;
-		const int SCENE_BUFFER_INDEX = 2;
-		const int INDEX_BUFFER_INDEX = 0;			// :) 
-		const int VERTEX_BUFFER_INDEX = 1;
+		static const int OBJECT_BUFFER_INDEX = 0;
+		static const int MATERIAL_BUFFER_INDEX = 1;
+		static const int SCENE_BUFFER_INDEX = 2;
+		static const int INDEX_BUFFER_INDEX = 0;			// :) 
+		static const int VERTEX_BUFFER_INDEX = 1;
 		const std::string DEFAULT_GRAPHICS_PIPELINE = "defaultPipeline";
 	};
 }

@@ -41,7 +41,7 @@ struct material_t {
 };
 
 layout (set = 2, binding = 0) uniform material_uniform {
-	material_t materials[100];
+	material_t materials[26];
 };
 
 layout (set = 2, binding = 1) uniform sampler2D texSampler[];

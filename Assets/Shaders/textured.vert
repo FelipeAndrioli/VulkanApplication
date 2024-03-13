@@ -1,13 +1,15 @@
 #version 450
 
-layout (set = 0, binding = 0) uniform SceneGPUData {
+layout (set = 0, binding = 0) uniform ObjectGPUData {
+	mat4 model;
+	vec4 extra[12];
+} objectGPUData;
+
+layout (set = 1, binding = 0) uniform SceneGPUData {
 	mat4 view;
 	mat4 proj;
+	vec4 extra[8];
 } sceneGPUData;
-
-layout (set = 1, binding = 0) uniform ObjectGPUData {
-	mat4 model;
-} objectGPUData;
 
 layout (location = 0) in vec3 inPosition;
 layout (location = 1) in vec3 inColor;

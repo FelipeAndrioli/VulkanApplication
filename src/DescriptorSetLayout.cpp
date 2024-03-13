@@ -1,8 +1,11 @@
 #include "DescriptorSetLayout.h"
 
+#include "Buffer.h"
+#include "../Assets/Texture.h"
+
 namespace Engine {
-	DescriptorSetLayout::DescriptorSetLayout(std::vector<DescriptorBinding> descriptorBindings, VkDevice& logicalDevice) 
-	: p_LogicalDevice(logicalDevice){
+	DescriptorSetLayout::DescriptorSetLayout(std::vector<DescriptorBinding>& descriptorBindings, VkDevice& logicalDevice) 
+	: p_LogicalDevice(logicalDevice), m_DescriptorBindings(descriptorBindings) {
 
 		std::vector<VkDescriptorSetLayoutBinding> bindings = {};
 
@@ -29,5 +32,18 @@ namespace Engine {
 
 	DescriptorSetLayout::~DescriptorSetLayout() {
 		vkDestroyDescriptorSetLayout(p_LogicalDevice, m_DescriptorSetLayout, nullptr);
+	}
+
+	void DescriptorSetLayout::Update(
+		const size_t index, 
+		Buffer* buffer, 
+		std::vector<Assets::Texture>* textures, 
+		size_t bufferSize, 
+		size_t bufferOffset
+	) {
+		m_DescriptorBindings[index].buffer = buffer;
+		m_DescriptorBindings[index].textures = textures;
+		m_DescriptorBindings[index].bufferSize = bufferSize;
+		m_DescriptorBindings[index].bufferOffset = bufferOffset;
 	}
 }
