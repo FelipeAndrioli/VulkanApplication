@@ -30,6 +30,8 @@ namespace Engine {
 
 		~DescriptorSets();
 		VkDescriptorSet& GetDescriptorSet(uint32_t index);
+		void WriteDescriptorUniformBuffer(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding, const size_t bufferIndex);
+		void WriteDescriptorImage(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding);
 	private:
 		std::vector<VkDescriptorSet> m_DescriptorSets;
 	};

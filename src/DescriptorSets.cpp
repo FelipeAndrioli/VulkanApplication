@@ -24,62 +24,15 @@ namespace Engine {
 		}
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			std::vector<VkWriteDescriptorSet> descriptorWrites;
-			std::vector<VkDescriptorImageInfo> imageInfo;
-
 			for (const auto& descriptorBinding : descriptorSetLayout.GetDescriptorBindings()) {
-
 				if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER && descriptorBinding.buffer) {
-					VkDescriptorBufferInfo bufferInfo = {};
-					bufferInfo.buffer = descriptorBinding.buffer->GetBuffer(static_cast<uint32_t>(i));
-					bufferInfo.offset = descriptorBinding.bufferOffset;
-					bufferInfo.range = descriptorBinding.bufferSize;
-
-					VkWriteDescriptorSet descriptorWrite = {};
-					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-					descriptorWrite.dstSet = m_DescriptorSets[i];
-					descriptorWrite.dstBinding = descriptorBinding.binding;
-					descriptorWrite.dstArrayElement = 0;
-					descriptorWrite.descriptorType = descriptorBinding.type;
-					descriptorWrite.descriptorCount = descriptorBinding.descriptorCount;
-					descriptorWrite.pBufferInfo = &bufferInfo;
-					descriptorWrite.pImageInfo = nullptr;
-					descriptorWrite.pTexelBufferView = nullptr;
-
-					descriptorWrites.push_back(descriptorWrite);
+					WriteDescriptorUniformBuffer(logicalDevice, m_DescriptorSets[i], descriptorBinding, i);
 				}
 
 				if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorBinding.textures) {
-					VkWriteDescriptorSet descriptorWrite = {};
-
-					for (auto& texture : *descriptorBinding.textures) {
-						VkDescriptorImageInfo newImageInfo = {};
-						newImageInfo.imageLayout = texture.TextureImage->ImageLayout;
-						newImageInfo.imageView = texture.TextureImage->ImageView[0];
-						newImageInfo.sampler = texture.TextureImage->ImageSampler;
-
-						imageInfo.push_back(newImageInfo);
-					}
-
-					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-					descriptorWrite.dstSet = m_DescriptorSets[i];
-					descriptorWrite.dstBinding = descriptorBinding.binding;
-					descriptorWrite.dstArrayElement = 0;
-					descriptorWrite.descriptorType = descriptorBinding.type;
-					descriptorWrite.descriptorCount = static_cast<uint32_t>(imageInfo.size());
-					descriptorWrite.pImageInfo = imageInfo.data();
-					
-					descriptorWrites.push_back(descriptorWrite);
+					WriteDescriptorImage(logicalDevice, m_DescriptorSets[i], descriptorBinding);
 				}
 			}
-
-			vkUpdateDescriptorSets(
-				logicalDevice,
-				static_cast<uint32_t>(descriptorWrites.size()),
-				descriptorWrites.data(),
-				0,
-				nullptr
-			);
 		}
 	}
 	
@@ -93,5 +46,66 @@ namespace Engine {
 		}
 
 		return m_DescriptorSets[index];
+	}
+
+	void DescriptorSets::WriteDescriptorUniformBuffer(
+		const VkDevice& logicalDevice, 
+		const VkDescriptorSet& descriptorSet, 
+		const DescriptorBinding& descriptorBinding, 
+		const size_t bufferIndex
+	) {
+		VkDescriptorBufferInfo bufferInfo = {};
+		bufferInfo.buffer = descriptorBinding.buffer->GetBuffer(static_cast<uint32_t>(bufferIndex));
+		bufferInfo.offset = descriptorBinding.bufferOffset;
+		bufferInfo.range = descriptorBinding.bufferSize;
+
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = descriptorBinding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = descriptorBinding.type;
+		descriptorWrite.descriptorCount = descriptorBinding.descriptorCount;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		descriptorWrite.pImageInfo = nullptr;
+		descriptorWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(
+			logicalDevice,
+			1,
+			&descriptorWrite,
+			0,
+			nullptr
+		);
+	}
+
+	void DescriptorSets::WriteDescriptorImage(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding) {
+		std::vector<VkDescriptorImageInfo> imageInfo;
+		VkWriteDescriptorSet descriptorWrite = {};
+
+		for (auto& texture : *descriptorBinding.textures) {
+			VkDescriptorImageInfo newImageInfo = {};
+			newImageInfo.imageLayout = texture.TextureImage->ImageLayout;
+			newImageInfo.imageView = texture.TextureImage->ImageView[0];
+			newImageInfo.sampler = texture.TextureImage->ImageSampler;
+
+			imageInfo.push_back(newImageInfo);
+		}
+
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = descriptorBinding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = descriptorBinding.type;
+		descriptorWrite.descriptorCount = static_cast<uint32_t>(imageInfo.size());
+		descriptorWrite.pImageInfo = imageInfo.data();
+		
+		vkUpdateDescriptorSets(
+			logicalDevice,
+			1,
+			&descriptorWrite,
+			0,
+			nullptr
+		); 
 	}
 }
