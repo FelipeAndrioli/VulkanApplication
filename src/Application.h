@@ -52,14 +52,14 @@ namespace Engine {
 	struct Settings;
 
 	struct ObjectGPUData {
-		glm::mat4 model = glm::mat4(1.0f);
 		glm::vec4 extra[12];
+		glm::mat4 model = glm::mat4(1.0f);
 	};
 
 	struct SceneGPUData {
+		glm::vec4 extra[8];
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
-		glm::vec4 extra[8];
 	};
 
 	class Application {
@@ -133,12 +133,8 @@ namespace Engine {
 		std::vector<Assets::Texture> m_LoadedTextures;
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
-		std::unique_ptr<class DescriptorSetLayout> m_SceneGPUDataDescriptorSetLayout;
-		//std::unique_ptr<class DescriptorSetLayout> m_MaterialGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_GlobalDescriptorSetLayout;
 
-		std::unique_ptr<class DescriptorSets> m_SceneGPUDataDescriptorSets;
-		//std::unique_ptr<class DescriptorSets> m_MaterialDescriptorSets;
 		std::unique_ptr<class DescriptorSets> m_GlobalDescriptorSets;
 
 		/*	Scene Buffer Layout

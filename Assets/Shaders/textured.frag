@@ -1,6 +1,7 @@
 #version 450
 
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_ARB_shading_language_420pack : enable
 
 layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec2 fragTexCoord;
@@ -13,6 +14,20 @@ struct material_t {
 	vec4 specular;		// ignore w
 	vec4 transmittance;	// ignore w
 	vec4 emission;		// ignore w
+	vec4 extra[6];
+
+	//int pad2;
+	int illum;
+
+	int ambient_texture_index;
+	int diffuse_texture_index;
+	int specular_texture_index;
+	int bump_texture_index;
+	int roughness_texture_index;
+	int metallic_texture_index;
+	int normal_texture_index;
+	
+	int extra_scalar;
 
 	float shininess;
 	float ior;
@@ -25,26 +40,13 @@ struct material_t {
 	float anisotropy;
 	float anisotropy_rotation;
 
-	int pad2;
-	int illum;
-
-	int ambient_texture_index;
-	int diffuse_texture_index;
-	int specular_texture_index;
-	int bump_texture_index;
-	int roughness_texture_index;
-	int metallic_texture_index;
-	int normal_texture_index;
-	
-	int extra_scalar;
-	vec4 extra[6];
 };
 
-layout (set = 2, binding = 0) uniform material_uniform {
+layout (std140, set = 1, binding = 1) uniform material_uniform {
 	material_t materials[26];
 };
 
-layout (set = 2, binding = 1) uniform sampler2D texSampler[];
+layout (set = 1, binding = 2) uniform sampler2D texSampler[];
 
 layout (push_constant) uniform constant {
 	int material_index;

@@ -133,7 +133,6 @@ namespace Engine {
 
 	void Application::Shutdown() {
 
-		m_SceneGPUDataDescriptorSetLayout.reset();
 		m_ObjectGPUDataDescriptorSetLayout.reset();
 		m_GlobalDescriptorSetLayout.reset();
 
@@ -285,36 +284,12 @@ namespace Engine {
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			m_MainGraphicsPipelineLayout->GetHandle(),
-			2,
+			1,
 			1,
 			&m_GlobalDescriptorSets->GetDescriptorSet(m_CurrentFrame),
 			0,
 			nullptr
 		);
-
-		vkCmdBindDescriptorSets(
-			commandBuffer, 
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			m_MainGraphicsPipelineLayout->GetHandle(),
-			1,
-			1,
-			&m_SceneGPUDataDescriptorSets->GetDescriptorSet(m_CurrentFrame),
-			0,
-			0
-		);
-
-		/*
-		vkCmdBindDescriptorSets(
-			commandBuffer, 
-			VK_PIPELINE_BIND_POINT_GRAPHICS, 
-			m_MainGraphicsPipelineLayout->GetHandle(),
-			2, 
-			1,
-			&m_MaterialDescriptorSets->GetDescriptorSet(m_CurrentFrame),
-			0, 
-			nullptr
-		);
-		*/
 
 		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 			Assets::Object* object = p_ActiveScene->RenderableObjects[i];
@@ -572,7 +547,6 @@ namespace Engine {
 		m_ObjectGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(objectDescriptorBindings, m_LogicalDevice->GetHandle()));
 
 		std::vector<DescriptorBinding> globalDescriptorSetBindings = {
-			/*
 			{ 
 				0, 
 				1, 
@@ -583,9 +557,8 @@ namespace Engine {
 				m_GPUDataBuffer->Chunks[SCENE_BUFFER_INDEX].ChunkSize,
 				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
 			},
-			*/
 			{ 
-				0, 
+				1, 
 				1, 
 				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
 				VK_SHADER_STAGE_FRAGMENT_BIT, 
@@ -595,7 +568,7 @@ namespace Engine {
 				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
 			},
 			{ 
-				1, 
+				2, 
 				static_cast<uint32_t>(m_LoadedTextures.size()), 
 				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
 				VK_SHADER_STAGE_FRAGMENT_BIT, 
@@ -607,21 +580,6 @@ namespace Engine {
 		};
 
 		m_GlobalDescriptorSetLayout.reset(new class DescriptorSetLayout(globalDescriptorSetBindings, m_LogicalDevice->GetHandle()));
-
-		std::vector<DescriptorBinding> sceneDescriptorBindings = {
-			{
-				0,
-				1,
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				VK_SHADER_STAGE_VERTEX_BIT,
-				m_GPUDataBuffer.get(),
-				nullptr,
-				m_GPUDataBuffer->Chunks[SCENE_BUFFER_INDEX].ChunkSize,
-				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
-			}
-		};
-
-		m_SceneGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(sceneDescriptorBindings, m_LogicalDevice->GetHandle()));
 		
 		// Renderable Objects Descriptor Sets Begin
 		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
@@ -651,41 +609,6 @@ namespace Engine {
 			*m_GlobalDescriptorSetLayout.get()
 		));
 		// Global Descriptor Sets End
-
-		m_SceneGPUDataDescriptorSets.reset(new class DescriptorSets(
-			m_LogicalDevice->GetHandle(),
-			m_DescriptorPool->GetHandle(),
-			*m_SceneGPUDataDescriptorSetLayout.get()
-		));
-		/*
-		// Material Descriptor Sets Begin
-		m_MaterialDescriptorSets.reset(new class DescriptorSets(
-			m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
-			m_LogicalDevice->GetHandle(),
-			m_DescriptorPool->GetHandle(),
-			m_MaterialGPUDataDescriptorSetLayout->GetHandle(),
-			m_GPUDataBuffer.get(),
-			&m_LoadedTextures,
-			nullptr,
-			false,
-			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
-		));
-		// Material Descriptor Sets End 
-
-		// Scene Data Descriptor Sets Begin
-		m_SceneGPUDataDescriptorSets.reset(new class DescriptorSets(
-			m_GPUDataBuffer->Chunks[SCENE_BUFFER_INDEX].ChunkSize,
-			m_LogicalDevice->GetHandle(),
-			m_DescriptorPool->GetHandle(),
-			m_SceneGPUDataDescriptorSetLayout->GetHandle(),
-			m_GPUDataBuffer.get(),
-			nullptr,
-			nullptr,
-			false,
-			m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
-		));
-		// Scene Data Descriptor Sets End 
-		*/
 	}
 
 	void Application::CreatePipelineLayouts() {
@@ -694,8 +617,6 @@ namespace Engine {
 			m_LogicalDevice->GetHandle(), 
 			{ 
 				m_ObjectGPUDataDescriptorSetLayout.get(), 
-				m_SceneGPUDataDescriptorSetLayout.get(), 
-				//m_MaterialGPUDataDescriptorSetLayout.get() 
 				m_GlobalDescriptorSetLayout.get()
 			}
 		));
