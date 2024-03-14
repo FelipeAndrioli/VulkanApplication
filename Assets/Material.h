@@ -35,7 +35,7 @@ namespace Assets {
 		alignas(4) float ClearcoatRoughness = 0.0f;
 		alignas(4) float Anisotropy = 0.0f;
 		alignas(4) float AnisotropyRotation = 0.0f;
-		//float Pad0 = 0.0f;
+		//alignas(4) float Pad0 = 0.0f;
 	};
 
 	struct Material {

@@ -16,7 +16,7 @@ struct material_t {
 	vec4 emission;		// ignore w
 	vec4 extra[6];
 
-	//int pad2;
+	int pad2;
 	int illum;
 
 	int ambient_texture_index;
@@ -39,7 +39,7 @@ struct material_t {
 	float clearcoat_roughness;
 	float anisotropy;
 	float anisotropy_rotation;
-
+	//float pad0;
 };
 
 layout (std140, set = 1, binding = 1) uniform material_uniform {
@@ -50,9 +50,9 @@ layout (set = 1, binding = 2) uniform sampler2D texSampler[];
 
 layout (push_constant) uniform constant {
 	int material_index;
-} MeshConstant;
+} mesh_constant;
 
 void main() {
-	material_t current_material = materials[MeshConstant.material_index];
+	material_t current_material = materials[mesh_constant.material_index];
 	outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
 }
