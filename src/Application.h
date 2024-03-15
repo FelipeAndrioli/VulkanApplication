@@ -128,7 +128,6 @@ namespace Engine {
 		std::unique_ptr<class PipelineLayout> m_MainGraphicsPipelineLayout;
 		std::unique_ptr<class GraphicsPipeline> m_TexturedPipeline;
 
-		//std::unique_ptr<std::map<std::string, std::unique_ptr<struct Assets::Material>>> m_Materials;
 		std::vector<Assets::Material> m_Materials;
 		std::vector<Assets::Texture> m_LoadedTextures;
 
@@ -143,7 +142,7 @@ namespace Engine {
 		std::unique_ptr<class Engine::Buffer> m_SceneGeometryBuffer;
 
 		/* GPUDataBuffer Layout
-		   [object data 1 | object data 2 | materials 1 | materials 2 | scene data]	
+		   [object 1 | object 2 | materials 1 | materials 2 | scene data]	
 		*/
 		std::unique_ptr<class Engine::Buffer> m_GPUDataBuffer;
 
