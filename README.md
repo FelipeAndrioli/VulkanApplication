@@ -30,6 +30,8 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [ ] Cube
 	- [ ] Sphere
 - [ ] Lighting
+- [ ] Mipmaps
+- [ ] Multisampling
 
 ## Small problems to remember to solve
 
@@ -40,5 +42,5 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [ ] glTF
 - [ ] Render Graph
 - [ ] Ray Tracer
-	- [ ] Compute Shaders
+- [ ] Compute Shaders
 - [ ] Scene selection

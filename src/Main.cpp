@@ -283,6 +283,7 @@ public:
 
 int main() {
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
+
 	CustomObject model = CustomObject();
 	model.ID = "Sponza";
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
@@ -305,7 +306,6 @@ int main() {
 	CustomObject model = CustomObject();
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace/palace.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace";
-	model.PipelineName = texturedGraphicsPipeline.Name;
 	model.Transformations.rotation.x = -90.0f;
 	model.Transformations.translation.y = -6.0f;
 	model.Transformations.translation.z = -42.0f;

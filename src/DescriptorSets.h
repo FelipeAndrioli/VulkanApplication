@@ -8,7 +8,6 @@
 //temporary
 #include "Common.h"
 #include "DescriptorPool.h"
-#include "DescriptorBinding.h"
 #include "Buffer.h"
 #include "Image.h"
 
@@ -18,23 +17,21 @@ namespace Assets {
 };
 
 namespace Engine {
+	class DescriptorSetLayout;
+
 	class DescriptorSets {
 	public:
+		DescriptorSets() {};
 		DescriptorSets(
-			const VkDeviceSize& bufferSize,
 			const VkDevice& logicalDevice,
 			const VkDescriptorPool& descriptorPool,
-			const VkDescriptorSetLayout& descriptorSetLayout,
-			Buffer* uniformBuffers,
-			//std::unordered_map<std::string, Assets::Texture>* textures,
-			std::vector<Assets::Texture>* textures,
-			Buffer* shaderStorageBuffers = nullptr,
-			bool accessLastFrame = false,
-			VkDeviceSize offset = 0
+			DescriptorSetLayout& descriptorSetLayout
 		);
 
 		~DescriptorSets();
 		VkDescriptorSet& GetDescriptorSet(uint32_t index);
+		void WriteDescriptorUniformBuffer(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding, const size_t bufferIndex);
+		void WriteDescriptorImage(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding);
 	private:
 		std::vector<VkDescriptorSet> m_DescriptorSets;
 	};

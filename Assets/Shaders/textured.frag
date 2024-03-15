@@ -1,6 +1,7 @@
 #version 450
 
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_ARB_shading_language_420pack : enable
 
 layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec2 fragTexCoord;
@@ -13,17 +14,7 @@ struct material_t {
 	vec4 specular;		// ignore w
 	vec4 transmittance;	// ignore w
 	vec4 emission;		// ignore w
-
-	float shininess;
-	float ior;
-	float dissolve;
-	float roughness;
-	float metallic;
-	float sheen;
-	float clearcoat_thickness;
-	float clearcoat_roughness;
-	float anisotropy;
-	float anisotropy_rotation;
+	vec4 extra[6];
 
 	int pad2;
 	int illum;
@@ -37,20 +28,31 @@ struct material_t {
 	int normal_texture_index;
 	
 	int extra_scalar;
-	vec4 extra[6];
+
+	float shininess;
+	float ior;
+	float dissolve;
+	float roughness;
+	float metallic;
+	float sheen;
+	float clearcoat_thickness;
+	float clearcoat_roughness;
+	float anisotropy;
+	float anisotropy_rotation;
+	//float pad0;
 };
 
-layout (set = 2, binding = 0) uniform material_uniform {
-	material_t materials[100];
+layout (std140, set = 1, binding = 1) uniform material_uniform {
+	material_t materials[26];
 };
 
-layout (set = 2, binding = 1) uniform sampler2D texSampler[];
+layout (set = 1, binding = 2) uniform sampler2D texSampler[];
 
 layout (push_constant) uniform constant {
 	int material_index;
-} MeshConstant;
+} mesh_constant;
 
 void main() {
-	material_t current_material = materials[MeshConstant.material_index];
+	material_t current_material = materials[mesh_constant.material_index];
 	outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
 }
