@@ -280,29 +280,21 @@ namespace Engine {
 
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-		vkCmdBindDescriptorSets(
+		m_GlobalDescriptorSets->Bind(
+			m_CurrentFrame,
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			m_MainGraphicsPipelineLayout->GetHandle(),
-			1,
-			1,
-			&m_GlobalDescriptorSets->GetDescriptorSet(m_CurrentFrame),
-			0,
-			nullptr
+			m_MainGraphicsPipelineLayout->GetHandle()
 		);
 
 		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 			Assets::Object* object = p_ActiveScene->RenderableObjects[i];
 
-			vkCmdBindDescriptorSets(
+			object->DescriptorSets->Bind(
+				m_CurrentFrame, 
 				commandBuffer, 
 				VK_PIPELINE_BIND_POINT_GRAPHICS, 
-				m_MainGraphicsPipelineLayout->GetHandle(),
-				0, 
-				1,
-				&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
-				0, 
-				nullptr
+				m_MainGraphicsPipelineLayout->GetHandle()
 			);
 
 			ObjectGPUData objectGPUData = ObjectGPUData();
@@ -567,7 +559,9 @@ namespace Engine {
 			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
 				m_LogicalDevice->GetHandle(),
 				m_DescriptorPool->GetHandle(),
-				*m_ObjectGPUDataDescriptorSetLayout.get()
+				*m_ObjectGPUDataDescriptorSetLayout.get(),
+				0,
+				1
 			));
 		}
 		// Renderable Objects Descriptor Sets End 
@@ -576,7 +570,9 @@ namespace Engine {
 		m_GlobalDescriptorSets.reset(new class DescriptorSets(
 			m_LogicalDevice->GetHandle(),
 			m_DescriptorPool->GetHandle(),
-			*m_GlobalDescriptorSetLayout.get()
+			*m_GlobalDescriptorSetLayout.get(),
+			1,
+			1
 		));
 		// Global Descriptor Sets End
 	}
