@@ -531,68 +531,49 @@ namespace Engine {
 			poolDescriptorBindings, 
 			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
 
-		std::vector<DescriptorBinding> objectDescriptorBindings = {
-			{ 
-				0, 
-				1, 
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-				VK_SHADER_STAGE_VERTEX_BIT, 
-				m_GPUDataBuffer.get(), 
-				nullptr, 
-				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize,
-				0	
-			}
-		};
+		DescriptorSetLayoutBuild descriptorLayoutBuild = {};
+		m_ObjectGPUDataDescriptorSetLayout = descriptorLayoutBuild.NewBinding(0)
+			.SetDescriptorCount(1)
+			.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
+			.SetResource(*m_GPUDataBuffer.get())
+			.SetBufferSize(m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize)
+			.SetBufferOffset(0)
+			.Add()
+			.Build(m_LogicalDevice->GetHandle());
 
-		m_ObjectGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(objectDescriptorBindings, m_LogicalDevice->GetHandle()));
+		m_GlobalDescriptorSetLayout = descriptorLayoutBuild.NewBinding(0)
+			.SetDescriptorCount(1)
+			.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
+			.SetResource(*m_GPUDataBuffer.get())
+			.SetBufferSize(m_GPUDataBuffer->Chunks[SCENE_BUFFER_INDEX].ChunkSize)
+			.SetBufferOffset(m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize)
+			.Add()
+			.NewBinding(1)
+			.SetDescriptorCount(1)
+			.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
+			.SetResource(*m_GPUDataBuffer.get())
+			.SetBufferSize(m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize)
+			.SetBufferOffset(m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize)
+			.Add()
+			.NewBinding(2)
+			.SetDescriptorCount(static_cast<uint32_t>(m_LoadedTextures.size()))
+			.SetType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+			.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
+			.SetResource(m_LoadedTextures)
+			.SetBufferSize(0)
+			.SetBufferOffset(0)
+			.Add()
+			.Build(m_LogicalDevice->GetHandle());
 
-		std::vector<DescriptorBinding> globalDescriptorSetBindings = {
-			{ 
-				0, 
-				1, 
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-				VK_SHADER_STAGE_VERTEX_BIT, 
-				m_GPUDataBuffer.get(), 
-				nullptr, 
-				m_GPUDataBuffer->Chunks[SCENE_BUFFER_INDEX].ChunkSize,
-				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
-			},
-			{ 
-				1, 
-				1, 
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-				VK_SHADER_STAGE_FRAGMENT_BIT, 
-				m_GPUDataBuffer.get(), 
-				nullptr, 
-				m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
-				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
-			},
-			{ 
-				2, 
-				static_cast<uint32_t>(m_LoadedTextures.size()), 
-				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
-				VK_SHADER_STAGE_FRAGMENT_BIT, 
-				nullptr, 
-				&m_LoadedTextures, 
-				0, 
-				0 
-			}
-		};
-
-		m_GlobalDescriptorSetLayout.reset(new class DescriptorSetLayout(globalDescriptorSetBindings, m_LogicalDevice->GetHandle()));
-		
 		// Renderable Objects Descriptor Sets Begin
 		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 			Assets::Object* renderableObject = p_ActiveScene->RenderableObjects[i];
 			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 
-			m_ObjectGPUDataDescriptorSetLayout->Update(
-				0,
-				m_GPUDataBuffer.get(),
-				nullptr,
-				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize,
-				objectBufferOffset	
-			);
+			m_ObjectGPUDataDescriptorSetLayout->UpdateOffset(0, objectBufferOffset);
 
 			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
 				m_LogicalDevice->GetHandle(),
