@@ -18,9 +18,11 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [x] Single Buffer for Vertices and Indices 
 - [x] Single Buffer for uniforms
 - [x] Empty Scene
-- [ ] Send Array of Materials to Shader 
+- [x] Send Array of Materials to Shader 
 	- [x] Send Array of Textures to Shader
-	- [ ] Send one array of textures/material and the index to be used per material
+	- [x] Send one array of textures/material and the index to be used per material
+- [ ] Mipmaps
+- [ ] Multisampling
 - [ ] Sort
 	- [ ] Objects per pipeline
 	- [ ] Meshes per material
@@ -30,8 +32,6 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [ ] Cube
 	- [ ] Sphere
 - [ ] Lighting
-- [ ] Mipmaps
-- [ ] Multisampling
 
 ## Small problems to remember to solve
 
@@ -39,8 +39,9 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	
 ## Future Work (not in order)
 
-- [ ] glTF
-- [ ] Render Graph
-- [ ] Ray Tracer
 - [ ] Compute Shaders
+- [ ] GPU Driven Rendering
+- [ ] glTF
+- [ ] Ray Tracer
+- [ ] Render Graph
 - [ ] Scene selection
