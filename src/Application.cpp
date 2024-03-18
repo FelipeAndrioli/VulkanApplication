@@ -510,26 +510,15 @@ namespace Engine {
 	}
 
 	void Application::InitializeDescriptors() {
-		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
-
-		size_t maxDescriptorSets = 50;
-		uint32_t buffers = 10;
-
-		for (size_t i = 0; i < maxDescriptorSets; i++) {
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
-
-			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
-			// because our sets reference the SSBOs of the last and current frame (for now).
-
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, buffers });
-		}
-
-		m_DescriptorPool.reset(new class DescriptorPool(
-			m_LogicalDevice->GetHandle(), 
-			poolDescriptorBindings, 
-			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
+		DescriptorPoolBuilder descriptorPoolBuilder = {};
+		m_DescriptorPool = descriptorPoolBuilder.AddDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			.AddDescriptorCount(10)
+			.AddBinding()
+			.AddDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+			.AddDescriptorCount(10)
+			.AddBinding()
+			.SetMaxSets(50)
+			.Build(m_LogicalDevice->GetHandle());
 
 		DescriptorSetLayoutBuild descriptorLayoutBuild = {};
 		m_ObjectGPUDataDescriptorSetLayout = descriptorLayoutBuild.NewBinding(0)
