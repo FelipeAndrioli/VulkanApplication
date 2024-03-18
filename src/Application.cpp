@@ -280,29 +280,21 @@ namespace Engine {
 
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-		vkCmdBindDescriptorSets(
+		m_GlobalDescriptorSets->Bind(
+			m_CurrentFrame,
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			m_MainGraphicsPipelineLayout->GetHandle(),
-			1,
-			1,
-			&m_GlobalDescriptorSets->GetDescriptorSet(m_CurrentFrame),
-			0,
-			nullptr
+			m_MainGraphicsPipelineLayout->GetHandle()
 		);
 
 		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 			Assets::Object* object = p_ActiveScene->RenderableObjects[i];
 
-			vkCmdBindDescriptorSets(
+			object->DescriptorSets->Bind(
+				m_CurrentFrame, 
 				commandBuffer, 
 				VK_PIPELINE_BIND_POINT_GRAPHICS, 
-				m_MainGraphicsPipelineLayout->GetHandle(),
-				0, 
-				1,
-				&object->DescriptorSets->GetDescriptorSet(m_CurrentFrame),
-				0, 
-				nullptr
+				m_MainGraphicsPipelineLayout->GetHandle()
 			);
 
 			ObjectGPUData objectGPUData = ObjectGPUData();
@@ -510,94 +502,66 @@ namespace Engine {
 	}
 
 	void Application::InitializeDescriptors() {
-		std::vector<PoolDescriptorBinding> poolDescriptorBindings = {};
+		DescriptorPoolBuilder descriptorPoolBuilder = {};
+		m_DescriptorPool = descriptorPoolBuilder.AddDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			.AddDescriptorCount(10)
+			.AddBinding()
+			.AddDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+			.AddDescriptorCount(10)
+			.AddBinding()
+			.SetMaxSets(50)
+			.Build(m_LogicalDevice->GetHandle());
 
-		size_t maxDescriptorSets = 50;
-		uint32_t buffers = 10;
+		DescriptorSetLayoutBuild descriptorLayoutBuild = {};
+		m_ObjectGPUDataDescriptorSetLayout = descriptorLayoutBuild.NewBinding(0)
+			.SetDescriptorCount(1)
+			.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
+			.SetResource(*m_GPUDataBuffer.get())
+			.SetBufferSize(m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize)
+			.SetBufferOffset(0)
+			.Add()
+			.Build(m_LogicalDevice->GetHandle());
 
-		for (size_t i = 0; i < maxDescriptorSets; i++) {
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffers });
+		m_GlobalDescriptorSetLayout = descriptorLayoutBuild.NewBinding(0)
+			.SetDescriptorCount(1)
+			.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
+			.SetResource(*m_GPUDataBuffer.get())
+			.SetBufferSize(m_GPUDataBuffer->Chunks[SCENE_BUFFER_INDEX].ChunkSize)
+			.SetBufferOffset(m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize)
+			.Add()
+			.NewBinding(1)
+			.SetDescriptorCount(1)
+			.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
+			.SetResource(*m_GPUDataBuffer.get())
+			.SetBufferSize(m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize)
+			.SetBufferOffset(m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize)
+			.Add()
+			.NewBinding(2)
+			.SetDescriptorCount(static_cast<uint32_t>(m_LoadedTextures.size()))
+			.SetType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+			.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
+			.SetResource(m_LoadedTextures)
+			.SetBufferSize(0)
+			.SetBufferOffset(0)
+			.Add()
+			.Build(m_LogicalDevice->GetHandle());
 
-			// We need to double the number of VK_DESCRIPTOR_TYPE_STORAGE_BUFFER types requested from the pool
-			// because our sets reference the SSBOs of the last and current frame (for now).
-
-			poolDescriptorBindings.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, buffers });
-		}
-
-		m_DescriptorPool.reset(new class DescriptorPool(
-			m_LogicalDevice->GetHandle(), 
-			poolDescriptorBindings, 
-			static_cast<uint32_t>(maxDescriptorSets * MAX_FRAMES_IN_FLIGHT)));
-
-		std::vector<DescriptorBinding> objectDescriptorBindings = {
-			{ 
-				0, 
-				1, 
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-				VK_SHADER_STAGE_VERTEX_BIT, 
-				m_GPUDataBuffer.get(), 
-				nullptr, 
-				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize,
-				0	
-			}
-		};
-
-		m_ObjectGPUDataDescriptorSetLayout.reset(new class DescriptorSetLayout(objectDescriptorBindings, m_LogicalDevice->GetHandle()));
-
-		std::vector<DescriptorBinding> globalDescriptorSetBindings = {
-			{ 
-				0, 
-				1, 
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-				VK_SHADER_STAGE_VERTEX_BIT, 
-				m_GPUDataBuffer.get(), 
-				nullptr, 
-				m_GPUDataBuffer->Chunks[SCENE_BUFFER_INDEX].ChunkSize,
-				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
-			},
-			{ 
-				1, 
-				1, 
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-				VK_SHADER_STAGE_FRAGMENT_BIT, 
-				m_GPUDataBuffer.get(), 
-				nullptr, 
-				m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
-				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
-			},
-			{ 
-				2, 
-				static_cast<uint32_t>(m_LoadedTextures.size()), 
-				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
-				VK_SHADER_STAGE_FRAGMENT_BIT, 
-				nullptr, 
-				&m_LoadedTextures, 
-				0, 
-				0 
-			}
-		};
-
-		m_GlobalDescriptorSetLayout.reset(new class DescriptorSetLayout(globalDescriptorSetBindings, m_LogicalDevice->GetHandle()));
-		
 		// Renderable Objects Descriptor Sets Begin
 		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 			Assets::Object* renderableObject = p_ActiveScene->RenderableObjects[i];
 			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 
-			m_ObjectGPUDataDescriptorSetLayout->Update(
-				0,
-				m_GPUDataBuffer.get(),
-				nullptr,
-				m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize,
-				objectBufferOffset	
-			);
+			m_ObjectGPUDataDescriptorSetLayout->UpdateOffset(0, objectBufferOffset);
 
 			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
 				m_LogicalDevice->GetHandle(),
 				m_DescriptorPool->GetHandle(),
-				*m_ObjectGPUDataDescriptorSetLayout.get()
+				*m_ObjectGPUDataDescriptorSetLayout.get(),
+				0,
+				1
 			));
 		}
 		// Renderable Objects Descriptor Sets End 
@@ -606,7 +570,9 @@ namespace Engine {
 		m_GlobalDescriptorSets.reset(new class DescriptorSets(
 			m_LogicalDevice->GetHandle(),
 			m_DescriptorPool->GetHandle(),
-			*m_GlobalDescriptorSetLayout.get()
+			*m_GlobalDescriptorSetLayout.get(),
+			1,
+			1
 		));
 		// Global Descriptor Sets End
 	}

@@ -7,8 +7,10 @@ namespace Engine {
 	DescriptorSets::DescriptorSets(
 		const VkDevice& logicalDevice, 
 		const VkDescriptorPool& descriptorPool, 
-		DescriptorSetLayout& descriptorSetLayout
-	) {
+		DescriptorSetLayout& descriptorSetLayout,
+		const uint32_t set,
+		const uint32_t setCount
+	) : m_Set(set), m_SetCount(setCount) {
 		std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout.GetHandle());
 
 		VkDescriptorSetAllocateInfo allocInfo{};
@@ -107,5 +109,23 @@ namespace Engine {
 			0,
 			nullptr
 		); 
+	}
+
+	void DescriptorSets::Bind(
+		const uint32_t setIndex,
+		const VkCommandBuffer& commandBuffer, 
+		const VkPipelineBindPoint& bindPoint,
+		const VkPipelineLayout& pipelineLayout
+	) {
+		vkCmdBindDescriptorSets(
+			commandBuffer, 
+			VK_PIPELINE_BIND_POINT_GRAPHICS, 
+			pipelineLayout,
+			m_Set, 
+			m_SetCount,
+			&m_DescriptorSets[setIndex],
+			0, 
+			nullptr
+		);
 	}
 }
