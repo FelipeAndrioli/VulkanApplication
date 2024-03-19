@@ -21,7 +21,7 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [x] Send Array of Materials to Shader 
 	- [x] Send Array of Textures to Shader
 	- [x] Send one array of textures/material and the index to be used per material
-- [ ] Mipmaps
+- [x] Mipmaps
 - [ ] Multisampling
 - [ ] Sort
 	- [ ] Objects per pipeline
