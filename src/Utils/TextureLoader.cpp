@@ -37,10 +37,6 @@ namespace Engine {
 
 			VkDeviceSize imageSize = texWidth * texHeight * 4;
 
-			// TODO: Add option to enable/disable mipmaps creation 
-			// Calculate the number of levels in the mip chain. The 'max' function selects the largest dimension. The log2 function
-			// calculates how many times that dimensions can be divided by 2. The 'floor' function handles cases where the largest
-			// dimension is not a power of 2. 1 is added so that the original image has a mip level.
 			uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
 			if (!pixels) {
@@ -96,15 +92,6 @@ namespace Engine {
 			);
 
 			texture->GenerateMipMaps(commandPool.GetHandle(), logicalDevice.GetGraphicsQueue());
-			/*
-			texture->TransitionImageLayoutTo(
-				commandPool.GetHandle(),
-				logicalDevice.GetGraphicsQueue(),
-				VK_FORMAT_R8G8B8A8_SRGB,
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-			);
-			*/
-
 			texture->CreateImageSampler();
 		}
 

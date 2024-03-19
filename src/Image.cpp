@@ -49,7 +49,6 @@ namespace Engine {
 			viewCreateInfo.format = m_Format;
 			viewCreateInfo.subresourceRange.aspectMask = m_AspectFlags;
 			viewCreateInfo.subresourceRange.baseMipLevel = 0;
-			//viewCreateInfo.subresourceRange.levelCount = 1;
 			viewCreateInfo.subresourceRange.levelCount = MipLevels;
 			viewCreateInfo.subresourceRange.baseArrayLayer = 0;
 			viewCreateInfo.subresourceRange.layerCount = 1;
@@ -91,7 +90,6 @@ namespace Engine {
 			barrier.image = image;
 			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			barrier.subresourceRange.baseMipLevel = 0;
-			//barrier.subresourceRange.levelCount = 1;
 			barrier.subresourceRange.levelCount = MipLevels;
 			barrier.subresourceRange.baseArrayLayer = 0;
 			barrier.subresourceRange.layerCount = 1;
@@ -289,7 +287,6 @@ namespace Engine {
 			imageCreateInfo.extent.width = Width;
 			imageCreateInfo.extent.height = Height;
 			imageCreateInfo.extent.depth = 1;
-			//imageCreateInfo.mipLevels = 1;
 			imageCreateInfo.mipLevels = MipLevels;
 			imageCreateInfo.arrayLayers = 1;
 			imageCreateInfo.format = m_Format;
