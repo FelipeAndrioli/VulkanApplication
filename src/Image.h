@@ -12,6 +12,7 @@ namespace Engine {
 			VkPhysicalDevice& physicalDevice, 
 			const uint32_t imageWidth, 
 			const uint32_t imageHeight, 
+			const uint32_t mipLevels,
 			const VkFormat format, 
 			const VkImageTiling tiling, 
 			const VkImageUsageFlagBits usage, 
@@ -32,6 +33,7 @@ namespace Engine {
 			VkImageLayout newLayout
 		);
 		void CreateImageSampler();
+		void GenerateMipMaps(VkCommandPool& commandPool, VkQueue& queue);
 	public:
 		std::vector<VkImageView> ImageView;
 		VkSampler ImageSampler;
@@ -39,6 +41,7 @@ namespace Engine {
 
 		uint32_t Width;
 		uint32_t Height;
+		uint32_t MipLevels;
 	private:
 		void CreateImage();
 		void CleanUp();
