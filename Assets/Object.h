@@ -41,6 +41,7 @@ namespace Assets {
 		const char* MaterialPath = nullptr;
 		bool Textured = false;
 		bool FlipTexturesVertically = false;
+		bool GenerateMipMaps = true;
 		std::vector<Mesh*> Meshes;
 		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
 		Transform Transformations = {};

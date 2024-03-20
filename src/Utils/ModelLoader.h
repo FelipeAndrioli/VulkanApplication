@@ -50,7 +50,8 @@ namespace Engine {
 				Engine::LogicalDevice& logicalDevice,
 				Engine::PhysicalDevice& physicalDevice,
 				Engine::CommandPool& commandPool,
-				bool flipTexturesVertically
+				bool flipTexturesVertically,
+				bool generateMipMaps
 			);
 
 			static void ValidateAndInsertTexture(
@@ -61,7 +62,8 @@ namespace Engine {
 				Engine::LogicalDevice& logicalDevice,
 				Engine::PhysicalDevice& physicalDevice,
 				Engine::CommandPool& commandPool,
-				bool flipTexturesVertically
+				bool flipTexturesVertically,
+				bool generateMipMaps
 			);
 
 			static void LoadTextureToMaterial(

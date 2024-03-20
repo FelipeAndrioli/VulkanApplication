@@ -116,7 +116,8 @@ namespace Engine {
 						logicalDevice,
 						physicalDevice,
 						commandPool,
-						object.FlipTexturesVertically
+						object.FlipTexturesVertically,
+						object.GenerateMipMaps
 					);
 				}
 			}
@@ -169,7 +170,8 @@ namespace Engine {
 			Engine::LogicalDevice& logicalDevice,
 			Engine::PhysicalDevice& physicalDevice,
 			Engine::CommandPool& commandPool,
-			bool flipTexturesVertically
+			bool flipTexturesVertically,
+			bool generateMipMaps
 		) {
 			std::string texName = textureName;
 			std::string path = basePath;
@@ -179,7 +181,17 @@ namespace Engine {
 				path = "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Textures/";
 			}
 
-			ValidateAndInsertTexture(loadedTextures, textureType, texName, path, logicalDevice, physicalDevice, commandPool, flipTexturesVertically);
+			ValidateAndInsertTexture(
+				loadedTextures, 
+				textureType, 
+				texName, 
+				path, 
+				logicalDevice, 
+				physicalDevice, 
+				commandPool, 
+				flipTexturesVertically,
+				generateMipMaps
+			);
 			LoadTextureToMaterial(sceneMaterials, loadedTextures, textureType, texName, materialName);
 		}
 
@@ -191,7 +203,8 @@ namespace Engine {
 				Engine::LogicalDevice& logicalDevice,
 				Engine::PhysicalDevice& physicalDevice,
 				Engine::CommandPool& commandPool,
-				bool flipTexturesVertically
+				bool flipTexturesVertically,
+				bool generateMipMaps
 			) {
 
 			int textureIndex = GetTextureIndex(loadedTextures, textureName);
@@ -200,13 +213,13 @@ namespace Engine {
 				return;
 
 			loadedTextures.push_back(
-				TextureLoader::CreateTexture(
-					textureType,
+				TextureLoader::LoadTexture(
 					(basePath + textureName).c_str(),
 					logicalDevice,
 					physicalDevice,
 					commandPool,
-					flipTexturesVertically
+					flipTexturesVertically,
+					generateMipMaps
 				)
 			);
 

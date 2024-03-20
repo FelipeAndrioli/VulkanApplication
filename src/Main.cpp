@@ -33,6 +33,11 @@
 		to execute the commands that have been recorded so far. It's best to do this after the texture mapping 
 		works to check if the texture resources are still set up correctly.
 
+	- MipMaps
+		It is uncommon in practice to generate the mipmap levels at runtime. Usually they are pregenerated and
+		stored in the texture file alongside the base level to improve loading speed. A better approach would be
+		to implement resizing in software and load multiple levels from a file.
+
 */
 
 #include <iostream>

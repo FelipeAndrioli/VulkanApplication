@@ -20,14 +20,16 @@ namespace Engine {
 
 		}
 
-		void TextureLoader::LoadTexture(
-			std::unique_ptr<Image>& texture, 
+		Assets::Texture TextureLoader::LoadTexture(
 			const char* texturePath, 
 			LogicalDevice& logicalDevice, 
 			PhysicalDevice& physicalDevice, 
 			CommandPool& commandPool,
-			bool flipTextureVertically
+			bool flipTextureVertically,
+			bool generateMipMaps
 		) {
+			Assets::Texture texture = {};
+
 			int texWidth = 0;
 			int texHeight = 0;
 			int texChannels = 0;
@@ -36,6 +38,11 @@ namespace Engine {
 			stbi_uc* pixels = stbi_load(texturePath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
 			VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+			uint32_t mipLevels = 1;
+
+			if (generateMipMaps)
+				mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
 			if (!pixels) {
 				throw std::runtime_error("Failed to load texture image!");
@@ -56,22 +63,22 @@ namespace Engine {
 
 			stbi_image_free(pixels);
 
-			texture = std::make_unique<class Image> (
+			texture.TextureImage = std::make_unique<class Image> (
 				1,
 				logicalDevice.GetHandle(),
 				physicalDevice.GetHandle(),
 				static_cast<uint32_t>(texWidth),
 				static_cast<uint32_t>(texHeight),
+				mipLevels,
 				VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_TILING_OPTIMAL,
-				static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT),
+				static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				VK_IMAGE_ASPECT_COLOR_BIT	
 			);
 
-			texture->CreateImageView();
-
-			texture->TransitionImageLayoutTo(
+			texture.TextureImage->CreateImageView();
+			texture.TextureImage->TransitionImageLayoutTo(
 				commandPool.GetHandle(),
 				logicalDevice.GetGraphicsQueue(),
 				VK_FORMAT_R8G8B8A8_SRGB,
@@ -82,42 +89,16 @@ namespace Engine {
 				logicalDevice.GetHandle(),
 				commandPool.GetHandle(),
 				logicalDevice.GetGraphicsQueue(),
-				texture->GetImage(0),
-				texture->Width,
-				texture->Height,
-				texture->ImageLayout,
+				texture.TextureImage->GetImage(0),
+				texture.TextureImage->Width,
+				texture.TextureImage->Height,
+				texture.TextureImage->ImageLayout,
 				transferBuffer.GetBuffer(0)
 			);
 
-			texture->TransitionImageLayoutTo(
-				commandPool.GetHandle(),
-				logicalDevice.GetGraphicsQueue(),
-				VK_FORMAT_R8G8B8A8_SRGB,
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-			);
-
-			texture->CreateImageSampler();
-		}
-
-		Assets::Texture TextureLoader::CreateTexture(
-			Assets::TextureType textureType, 
-			const char* texturePath, 
-			LogicalDevice& logicalDevice,
-			PhysicalDevice& physicalDevice, 
-			CommandPool& commandPool,
-			bool flipTextureVertically) {
-		
-			Assets::Texture texture;
-
-			TextureLoader::LoadTexture(
-				texture.TextureImage, 
-				texturePath, 
-				logicalDevice, 
-				physicalDevice, 
-				commandPool, 
-				flipTextureVertically
-			);
-
+			texture.TextureImage->GenerateMipMaps(commandPool.GetHandle(), logicalDevice.GetGraphicsQueue());
+			texture.TextureImage->CreateImageSampler();
+			
 			return texture;
 		}
 	}

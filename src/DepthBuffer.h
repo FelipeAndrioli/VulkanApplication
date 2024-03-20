@@ -25,5 +25,7 @@ namespace Engine {
 		std::unique_ptr<class Image> m_DepthBufferImage;
 
 		VkPhysicalDevice* p_PhysicalDevice = nullptr;
+
+		static const uint32_t MIPLEVELS = 1;
 	};
 }
