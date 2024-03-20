@@ -20,22 +20,13 @@ namespace Engine {
 			TextureLoader();
 			~TextureLoader();
 
-			static void LoadTexture(
-				std::unique_ptr<class Image>& texture,
+			static Assets::Texture LoadTexture(
 				const char* texturePath, 
 				LogicalDevice& logicalDevice, 
 				PhysicalDevice& physicalDevice,
 				CommandPool& commandPool,
-				bool flipTextureVertically
-			);
-
-			static Assets::Texture CreateTexture(
-				Assets::TextureType textureType,
-				const char* texturePath,
-				LogicalDevice& logicalDevice,
-				PhysicalDevice& physicalDevice,
-				CommandPool& commandPool,
-				bool flipTextureVertically
+				bool flipTextureVertically,
+				bool generateMipMaps
 			);
 		};
 	}
