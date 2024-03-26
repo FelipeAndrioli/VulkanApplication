@@ -1,10 +1,10 @@
 #include "ShaderModule.h"
 
 namespace Engine {
-	ShaderModule::ShaderModule(const char* shaderPath, LogicalDevice* logicalDevice, VkShaderStageFlagBits stage) : p_LogicalDevice(logicalDevice) {
+	ShaderModule::ShaderModule(const char* shaderPath, LogicalDevice& logicalDevice, VkShaderStageFlagBits stage) : m_LogicalDevice(logicalDevice) {
 		auto shaderCode = readFile(shaderPath);
 
-		m_ShaderModule = createShaderModule(shaderCode, p_LogicalDevice);
+		m_ShaderModule = createShaderModule(shaderCode, m_LogicalDevice);
 
 		m_ShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		m_ShaderStageInfo.stage = stage;
@@ -14,18 +14,18 @@ namespace Engine {
 
 	ShaderModule::~ShaderModule() {
 		if (m_ShaderModule) {
-			vkDestroyShaderModule(p_LogicalDevice->GetHandle(), m_ShaderModule, nullptr);
+			vkDestroyShaderModule(m_LogicalDevice.GetHandle(), m_ShaderModule, nullptr);
 		}
 	}
 
-	VkShaderModule ShaderModule::createShaderModule(const std::vector<char>& code, LogicalDevice* p_LogicalDevice) {
+	VkShaderModule ShaderModule::createShaderModule(const std::vector<char>& code, LogicalDevice& m_LogicalDevice) {
 		VkShaderModuleCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = code.size();
 		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
 		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(p_LogicalDevice->GetHandle(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+		if (vkCreateShaderModule(m_LogicalDevice.GetHandle(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create shader module!");
 		}
 

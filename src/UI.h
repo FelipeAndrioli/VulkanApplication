@@ -30,10 +30,11 @@ namespace Engine {
 		~UI();
 
 		void Init();
-		void RecordCommands(const uint32_t currentFrame, const uint32_t imageIndex);
 		void Resize(SwapChain* swapChain);
 		VkCommandBuffer& GetCommandBuffer(uint32_t currentFrame);
-		void Draw(Settings& settings, Assets::Scene* scene);
+		void BeginFrame(Settings& settings);
+		void EndFrame();
+		void RecordCommandBuffer(const uint32_t currentFrame, const uint32_t imageIndex);
 	private:
 		void createUIDescriptorPool(VkDevice& r_LogicalDevice);
 		void createUIRenderPass(VkDevice& r_LogicalDevice, const VkFormat& r_SwapChainImageFormat);

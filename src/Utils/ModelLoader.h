@@ -15,9 +15,13 @@ namespace Assets {
 }
 
 namespace Engine {
+	/*
 	class LogicalDevice;
 	class PhysicalDevice;
 	class CommandPool;
+	*/
+
+	class VulkanEngine;
 
 	namespace Utils {
 		class ModelLoader {
@@ -29,9 +33,12 @@ namespace Engine {
 				Assets::Object& object, 
 				std::vector<Assets::Material>& sceneMaterials,
 				std::vector<Assets::Texture>& loadedTextures,
+				VulkanEngine& vulkanEngine
+				/*
 				Engine::LogicalDevice& logicalDevice,
 				Engine::PhysicalDevice& physicalDevice,
 				Engine::CommandPool& commandPool
+				*/
 			);
 
 			static inline bool fileExists(const std::string& path) {
@@ -47,9 +54,12 @@ namespace Engine {
 				std::string textureName,
 				std::string basePath,
 				std::string materialName,
+				VulkanEngine& vulkanEngine,
+				/*
 				Engine::LogicalDevice& logicalDevice,
 				Engine::PhysicalDevice& physicalDevice,
 				Engine::CommandPool& commandPool,
+				*/
 				bool flipTexturesVertically,
 				bool generateMipMaps
 			);
@@ -59,9 +69,12 @@ namespace Engine {
 				Assets::TextureType textureType,
 				std::string textureName,
 				std::string basePath,
+				VulkanEngine& vulkanEngine,
+				/*
 				Engine::LogicalDevice& logicalDevice,
 				Engine::PhysicalDevice& physicalDevice,
 				Engine::CommandPool& commandPool,
+				*/
 				bool flipTexturesVertically,
 				bool generateMipMaps
 			);

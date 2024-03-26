@@ -1,8 +1,8 @@
 #include "DeviceMemory.h"
 
 namespace Engine {
-	DeviceMemory::DeviceMemory(VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, int bufferSize)
-		: p_LogicalDevice(logicalDevice), p_PhysicalDevice(physicalDevice) {
+	DeviceMemory::DeviceMemory(VkDevice& logicalDevice, VkPhysicalDevice& physicalDevice, int bufferSize)
+		: p_LogicalDevice(&logicalDevice), p_PhysicalDevice(&physicalDevice) {
 
 		Memory.resize(bufferSize);
 		MemoryMapped.resize(bufferSize);

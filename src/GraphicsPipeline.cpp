@@ -1,17 +1,19 @@
 #include "GraphicsPipeline.h"
+
 #include "LogicalDevice.h"
 #include "SwapChain.h"
+#include "ShaderModule.h"
+#include "DescriptorBinding.h"
+#include "PipelineLayout.h"
 
 namespace Engine {
 	GraphicsPipeline::GraphicsPipeline(
 		const Assets::VertexShader& vertexShader,
 		const Assets::FragmentShader& fragmentShader, 
-		LogicalDevice& logicalDevice, 
-		const SwapChain& swapChain, 
-		const DepthBuffer& depthBuffer, 
+		VulkanEngine& vulkanEngine,
 		const VkRenderPass& renderPass,
 		PipelineLayout& pipelineLayout)
-		: p_LogicalDevice(&logicalDevice), m_GraphicsPipelineLayout(pipelineLayout) {
+		: m_VulkanEngine(vulkanEngine), m_GraphicsPipelineLayout(pipelineLayout) {
 
 		auto bindingDescription = vertexShader.BindingDescription;
 		auto attributeDescriptions = vertexShader.AttributeDescriptions;
@@ -28,17 +30,18 @@ namespace Engine {
 		inputAssembly.topology = static_cast<VkPrimitiveTopology>(fragmentShader.TopologyMode);
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
+		VkExtent2D swapChainExtent = vulkanEngine.GetSwapChain().GetSwapChainExtent();
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)swapChain.GetSwapChainExtent().width;
-		viewport.height = (float)swapChain.GetSwapChainExtent().height;
+		viewport.width = (float)swapChainExtent.width;
+		viewport.height = (float)swapChainExtent.height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
-		scissor.extent = swapChain.GetSwapChainExtent();
+		scissor.extent = swapChainExtent;
 
 		VkPipelineViewportStateCreateInfo viewportState{};
 		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -97,8 +100,8 @@ namespace Engine {
 
 		std::vector<BufferDescriptor> bufferDescriptor = {};
 
-		ShaderModule vertShaderModule(vertexShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_VERTEX_BIT);
-		ShaderModule fragShaderModule(fragmentShader.Path.c_str(), p_LogicalDevice, VK_SHADER_STAGE_FRAGMENT_BIT);
+		ShaderModule vertShaderModule(vertexShader.Path.c_str(), vulkanEngine.GetLogicalDevice(), VK_SHADER_STAGE_VERTEX_BIT);
+		ShaderModule fragShaderModule(fragmentShader.Path.c_str(), vulkanEngine.GetLogicalDevice(), VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderModule.GetShaderStageInfo(), fragShaderModule.GetShaderStageInfo() };
 
@@ -132,15 +135,13 @@ namespace Engine {
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		//pipelineInfo.basePipelineIndex = -1;
 
-		if (vkCreateGraphicsPipelines(p_LogicalDevice->GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo,
+		if (vkCreateGraphicsPipelines(vulkanEngine.GetLogicalDevice().GetHandle(), VK_NULL_HANDLE, 1, &pipelineInfo,
 			nullptr, &m_GraphicsPipeline) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create graphics pipeline!");
 		}
 	}
 
 	GraphicsPipeline::~GraphicsPipeline() {
-		vkDestroyPipeline(p_LogicalDevice->GetHandle(), m_GraphicsPipeline, nullptr);
-
-		p_LogicalDevice = nullptr;
+		vkDestroyPipeline(m_VulkanEngine.GetLogicalDevice().GetHandle(), m_GraphicsPipeline, nullptr);
 	}
 }

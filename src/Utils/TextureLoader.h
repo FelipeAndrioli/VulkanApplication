@@ -9,9 +9,7 @@
 #include "../../Assets/Texture.h"
 
 namespace Engine {
-	class LogicalDevice;
-	class PhysicalDevice;
-	class CommandPool;
+	class VulkanEngine;
 	class Image;
 
 	namespace Utils {
@@ -22,9 +20,7 @@ namespace Engine {
 
 			static Assets::Texture LoadTexture(
 				const char* texturePath, 
-				LogicalDevice& logicalDevice, 
-				PhysicalDevice& physicalDevice,
-				CommandPool& commandPool,
+				VulkanEngine& vulkanEngine,
 				bool flipTextureVertically,
 				bool generateMipMaps
 			);

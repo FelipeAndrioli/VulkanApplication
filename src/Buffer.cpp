@@ -1,11 +1,17 @@
 #include "Buffer.h"
 
+#include "CommandPool.h"
+
 namespace Engine {
-	Buffer::Buffer(const int numBuffers, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, const size_t bufferSize, 
-		const VkBufferUsageFlags usage) : p_LogicalDevice(&logicalDevice), m_NumBuffers(numBuffers), BufferSize(bufferSize) {
+	Buffer::Buffer(const int numBuffers, VulkanEngine& vulkanEngine, const size_t bufferSize, 
+		const VkBufferUsageFlags usage) : m_VulkanEngine(&vulkanEngine), m_NumBuffers(numBuffers), BufferSize(bufferSize) {
 
 		m_Buffer.resize(m_NumBuffers);
-		BufferMemory.reset(new class DeviceMemory(&p_LogicalDevice->GetHandle(), &physicalDevice.GetHandle(), m_NumBuffers));
+		BufferMemory.reset(new class DeviceMemory(
+			vulkanEngine.GetLogicalDevice().GetHandle(), 
+			vulkanEngine.GetPhysicalDevice().GetHandle(), 
+			m_NumBuffers
+		));
 
 		for (size_t i = 0; i < m_NumBuffers; i++) {
 			VkBufferCreateInfo bufferInfo{};
@@ -14,7 +20,7 @@ namespace Engine {
 			bufferInfo.usage = usage;
 			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-			if (vkCreateBuffer(p_LogicalDevice->GetHandle(), &bufferInfo, nullptr, &m_Buffer[i]) != VK_SUCCESS) {
+			if (vkCreateBuffer(vulkanEngine.GetLogicalDevice().GetHandle(), &bufferInfo, nullptr, &m_Buffer[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to create buffer!");
 			}
 		}
@@ -23,7 +29,7 @@ namespace Engine {
 	Buffer::~Buffer() {
 		if (!m_Buffer.empty()) {
 			for (size_t i = 0; i < m_Buffer.size(); i++) {
-				vkDestroyBuffer(p_LogicalDevice->GetHandle(), m_Buffer[i], nullptr);
+				vkDestroyBuffer(m_VulkanEngine->GetLogicalDevice().GetHandle(), m_Buffer[i], nullptr);
 			}
 		}
 		
@@ -34,9 +40,12 @@ namespace Engine {
 		BufferMemory->AllocateMemory(m_Buffer, properties);
 	}
 
-	void Buffer::CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, VkCommandPool& commandPool, size_t srcOffset, size_t dstOffset) {
+	void Buffer::CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, size_t srcOffset, size_t dstOffset) {
 
-		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(p_LogicalDevice->GetHandle(), commandPool);
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(
+			m_VulkanEngine->GetLogicalDevice().GetHandle(), 
+			m_VulkanEngine->GetCommandPool().GetHandle()
+		);
 
 		VkBufferCopy copyRegion{};
 		copyRegion.srcOffset = srcOffset;
@@ -47,13 +56,16 @@ namespace Engine {
 			vkCmdCopyBuffer(commandBuffer, srcBuffer, m_Buffer[i], 1, &copyRegion);
 		}
 
-		CommandBuffer::EndSingleTimeCommandBuffer(p_LogicalDevice->GetHandle(), p_LogicalDevice->GetGraphicsQueue(), 
-			commandBuffer, commandPool);
+		CommandBuffer::EndSingleTimeCommandBuffer(
+			m_VulkanEngine->GetLogicalDevice().GetHandle(),
+			m_VulkanEngine->GetLogicalDevice().GetGraphicsQueue(),
+			commandBuffer, 
+			m_VulkanEngine->GetCommandPool().GetHandle()
+		);
 	}
 
 	void Buffer::CopyToImage(
-		VkDevice& logicalDevice, 
-		VkCommandPool& commandPool, 
+		VulkanEngine& vulkanEngine,
 		VkQueue& queue, 
 		VkImage& image, 
 		const uint32_t imageWidth,
@@ -61,7 +73,10 @@ namespace Engine {
 		VkImageLayout imageLayout,
 		VkBuffer& buffer
 	) {
-		VkCommandBuffer sCommandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(
+			vulkanEngine.GetLogicalDevice().GetHandle(), 
+			vulkanEngine.GetCommandPool().GetHandle()
+		);
 
 		VkBufferImageCopy region{};
 		region.bufferOffset = 0;
@@ -75,7 +90,7 @@ namespace Engine {
 		region.imageExtent = { imageWidth, imageHeight, 1 }; 
 
 		vkCmdCopyBufferToImage(
-			sCommandBuffer, 
+			commandBuffer, 
 			buffer, 
 			image, 
 			imageLayout, 
@@ -83,7 +98,12 @@ namespace Engine {
 			&region
 		);
 
-		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, queue, sCommandBuffer, commandPool);
+		CommandBuffer::EndSingleTimeCommandBuffer(
+			vulkanEngine.GetLogicalDevice().GetHandle(),
+			vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
+			commandBuffer, 
+			vulkanEngine.GetCommandPool().GetHandle()
+		);
 	}
 
 	void Buffer::NewChunk(BufferChunk newChunk) {

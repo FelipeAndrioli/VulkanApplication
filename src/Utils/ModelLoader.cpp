@@ -7,12 +7,15 @@
 #include <unordered_map>
 #include <stdexcept>
 
+#include "../Vulkan.h"
+/*
 #include "../LogicalDevice.h"
 #include "../PhysicalDevice.h"
 #include "../CommandPool.h"
 #include "../BufferHelper.h"
 #include "../Buffer.h"
 #include "../DescriptorSets.h"
+*/
 
 #include "../../Assets/Object.h"
 #include "../../Assets/Mesh.h"
@@ -40,9 +43,7 @@ namespace Engine {
 			Assets::Object& object, 
 			std::vector<Assets::Material>& sceneMaterials,
 			std::vector<Assets::Texture>& loadedTextures,
-			Engine::LogicalDevice& logicalDevice,
-			Engine::PhysicalDevice& physicalDevice,
-			Engine::CommandPool& commandPool) {
+			VulkanEngine& vulkanEngine) {
 
 			tinyobj::attrib_t attributes;
 			std::vector<tinyobj::shape_t> shapes;
@@ -113,9 +114,7 @@ namespace Engine {
 						it->second,
 						modelBasePath,
 						material.name,
-						logicalDevice,
-						physicalDevice,
-						commandPool,
+						vulkanEngine,
 						object.FlipTexturesVertically,
 						object.GenerateMipMaps
 					);
@@ -167,9 +166,7 @@ namespace Engine {
 			std::string textureName,
 			std::string basePath,
 			std::string materialName,
-			Engine::LogicalDevice& logicalDevice,
-			Engine::PhysicalDevice& physicalDevice,
-			Engine::CommandPool& commandPool,
+			VulkanEngine& vulkanEngine,
 			bool flipTexturesVertically,
 			bool generateMipMaps
 		) {
@@ -186,9 +183,7 @@ namespace Engine {
 				textureType, 
 				texName, 
 				path, 
-				logicalDevice, 
-				physicalDevice, 
-				commandPool, 
+				vulkanEngine,
 				flipTexturesVertically,
 				generateMipMaps
 			);
@@ -200,9 +195,7 @@ namespace Engine {
 				Assets::TextureType textureType,
 				std::string textureName,
 				std::string basePath,
-				Engine::LogicalDevice& logicalDevice,
-				Engine::PhysicalDevice& physicalDevice,
-				Engine::CommandPool& commandPool,
+				VulkanEngine& vulkanEngine,
 				bool flipTexturesVertically,
 				bool generateMipMaps
 			) {
@@ -215,9 +208,7 @@ namespace Engine {
 			loadedTextures.push_back(
 				TextureLoader::LoadTexture(
 					(basePath + textureName).c_str(),
-					logicalDevice,
-					physicalDevice,
-					commandPool,
+					vulkanEngine,
 					flipTexturesVertically,
 					generateMipMaps
 				)

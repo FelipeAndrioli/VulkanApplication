@@ -16,15 +16,19 @@ namespace Engine {
 
 	class Buffer {
 	public:
-		Buffer(const int numBuffers, LogicalDevice& logicalDevice, PhysicalDevice& physicalDevice, 
-			const size_t bufferSize, const VkBufferUsageFlags usage);
+		Buffer(const int numBuffers, VulkanEngine& vulkanEngine, const size_t bufferSize, const VkBufferUsageFlags usage);
 		~Buffer();
 
 		void AllocateMemory(VkMemoryPropertyFlags properties);
-		void CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, VkCommandPool& commandPool, size_t srcOffset = 0, size_t dstOffset = 0);
+		void CopyFrom(
+			VkBuffer srcBuffer, 
+			VkDeviceSize bufferSize, 
+			size_t srcOffset = 0, 
+			size_t dstOffset = 0
+		);
+
 		static void CopyToImage(
-			VkDevice& logicalDevice,
-			VkCommandPool& commandPool,
+			VulkanEngine& vulkanEngine,
 			VkQueue& queue,
 			VkImage& image,
 			const uint32_t imageWidth,
@@ -46,6 +50,6 @@ namespace Engine {
 		int m_NumBuffers;
 		std::vector<VkBuffer> m_Buffer;
 
-		LogicalDevice* p_LogicalDevice;
+		VulkanEngine* m_VulkanEngine;
 	};
 }

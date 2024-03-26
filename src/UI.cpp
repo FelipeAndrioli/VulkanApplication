@@ -85,23 +85,22 @@ namespace Engine {
 		return m_UICommandBuffers[index];
 	}
 
-	void UI::Draw(Settings& settings, Assets::Scene* scene) {
+	void UI::BeginFrame(Settings& settings) {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-	
 		ImGui::Begin("Settings");
 		ImGui::Text("Last Frame: %f ms", settings.ms);
 		ImGui::Text("Framerate: %.1f fps", settings.frames);
 		ImGui::Checkbox("Limit Framerate", &settings.limitFramerate);
-		scene->OnUIRender();
+	}
 
+	void UI::EndFrame() {
 		ImGui::End();
-		
 		ImGui::Render();
 	}
 
-	void UI::RecordCommands(const uint32_t currentFrame, const uint32_t imageIndex) {
+	void UI::RecordCommandBuffer(const uint32_t currentFrame, const uint32_t imageIndex) {
 		VkCommandBufferBeginInfo cmdBufferInfo = {};
 		cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		cmdBufferInfo.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
