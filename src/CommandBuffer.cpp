@@ -50,6 +50,12 @@ namespace Engine {
 		}
 	}
 
+	void CommandBuffer::End(const VkCommandBuffer& commandBuffer) {
+		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to end command buffer!");
+		}
+	}
+
 	VkCommandBuffer CommandBuffer::BeginSingleTimeCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool) {
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;

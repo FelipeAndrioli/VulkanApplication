@@ -28,7 +28,7 @@ namespace Engine {
 		Height(imageHeight),
 		MipLevels(mipLevels) {
 
-		m_ImageMemory.reset(new class DeviceMemory(p_LogicalDevice, p_PhysicalDevice, m_ImageSize));
+		m_ImageMemory = std::make_unique<class DeviceMemory>(*p_LogicalDevice, *p_PhysicalDevice, m_ImageSize);
 
 		CreateImage();
 	}
@@ -65,7 +65,8 @@ namespace Engine {
 		Width = imageWidth;
 		Height = imageHeight;
 
-		m_ImageMemory.reset(new class DeviceMemory(p_LogicalDevice, p_PhysicalDevice, m_ImageSize));
+		m_ImageMemory.reset();
+		m_ImageMemory = std::make_unique<class DeviceMemory>(*p_LogicalDevice, *p_PhysicalDevice, m_ImageSize);
 		
 		CreateImage();
 		CreateImageView();

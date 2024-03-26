@@ -14,6 +14,7 @@ namespace Engine {
 		VkCommandBuffer& GetCommandBuffer(uint32_t index);
 		VkCommandBuffer& Begin(uint32_t index);
 		void End(uint32_t index);
+		void End(const VkCommandBuffer& commandBuffer);
 
 		static VkCommandBuffer BeginSingleTimeCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool);
 		static void EndSingleTimeCommandBuffer(

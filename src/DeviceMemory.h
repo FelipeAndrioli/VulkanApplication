@@ -8,7 +8,7 @@
 namespace Engine {
 	class DeviceMemory {
 	public:
-		DeviceMemory(VkDevice* logicalDevice, VkPhysicalDevice* physicalDevice, int bufferSize);
+		DeviceMemory(VkDevice& logicalDevice, VkPhysicalDevice& physicalDevice, int bufferSize);
 		~DeviceMemory();
 
 		void AllocateMemory(std::vector<VkBuffer>& buffer, VkMemoryPropertyFlags properties);

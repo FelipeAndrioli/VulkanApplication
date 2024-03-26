@@ -6,30 +6,17 @@
 #include <stdexcept>
 
 #include "Vulkan.h"
-#include "RenderPass.h"
-#include "PipelineLayout.h"
-#include "DescriptorSetLayout.h"
-#include "ShaderModule.h"
-#include "DescriptorBinding.h"
-#include "DescriptorSets.h"
-#include "DescriptorPool.h"
-#include "Buffer.h"
-#include "DepthBuffer.h"
-
 #include "../Assets/Shader.h"
 
 namespace Engine {
-	class LogicalDevice;
-	class SwapChain;
+	class PipelineLayout;
 
 	class GraphicsPipeline {
 	public:
 		GraphicsPipeline(
 			const Assets::VertexShader& vertexShader,
 			const Assets::FragmentShader& fragmentShader,
-			LogicalDevice& logicalDevice,
-			const SwapChain& swapChain,
-			const DepthBuffer& depthBuffer,
+			VulkanEngine& vulkanEngine,
 			const VkRenderPass& renderPass,
 			PipelineLayout& pipelineLayout);
 		~GraphicsPipeline();
@@ -37,8 +24,7 @@ namespace Engine {
 		inline VkPipeline& GetHandle() { return m_GraphicsPipeline; };
 	private:
 		VkPipeline m_GraphicsPipeline = VK_NULL_HANDLE;
-		LogicalDevice* p_LogicalDevice = nullptr;
-
 		PipelineLayout& m_GraphicsPipelineLayout;
+		VulkanEngine& m_VulkanEngine;
 	};
 }

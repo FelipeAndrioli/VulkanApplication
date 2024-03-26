@@ -9,6 +9,7 @@
 #include "../PhysicalDevice.h"
 #include "../CommandPool.h"
 #include "../CommandBuffer.h"
+#include "../Vulkan.h"
 
 namespace Engine {
 	namespace Utils {
@@ -22,9 +23,7 @@ namespace Engine {
 
 		Assets::Texture TextureLoader::LoadTexture(
 			const char* texturePath, 
-			LogicalDevice& logicalDevice, 
-			PhysicalDevice& physicalDevice, 
-			CommandPool& commandPool,
+			VulkanEngine& vulkanEngine,
 			bool flipTextureVertically,
 			bool generateMipMaps
 		) {
@@ -50,8 +49,7 @@ namespace Engine {
 
 			Buffer transferBuffer = Buffer(
 				1, 
-				logicalDevice, 
-				physicalDevice, 
+				vulkanEngine,
 				imageSize, 
 				VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
 			);
@@ -59,14 +57,14 @@ namespace Engine {
 			transferBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 			BufferHelper bufferHelper;
-			bufferHelper.CopyFromStaging(logicalDevice, physicalDevice, commandPool.GetHandle(), pixels, imageSize, &transferBuffer);
+			bufferHelper.CopyFromStaging(vulkanEngine, pixels, imageSize, &transferBuffer);
 
 			stbi_image_free(pixels);
 
 			texture.TextureImage = std::make_unique<class Image> (
 				1,
-				logicalDevice.GetHandle(),
-				physicalDevice.GetHandle(),
+				vulkanEngine.GetLogicalDevice().GetHandle(),
+				vulkanEngine.GetPhysicalDevice().GetHandle(),
 				static_cast<uint32_t>(texWidth),
 				static_cast<uint32_t>(texHeight),
 				mipLevels,
@@ -79,16 +77,15 @@ namespace Engine {
 
 			texture.TextureImage->CreateImageView();
 			texture.TextureImage->TransitionImageLayoutTo(
-				commandPool.GetHandle(),
-				logicalDevice.GetGraphicsQueue(),
+				vulkanEngine.GetCommandPool().GetHandle(),
+				vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
 				VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 			);
 
 			Buffer::CopyToImage(
-				logicalDevice.GetHandle(),
-				commandPool.GetHandle(),
-				logicalDevice.GetGraphicsQueue(),
+				vulkanEngine,
+				vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
 				texture.TextureImage->GetImage(0),
 				texture.TextureImage->Width,
 				texture.TextureImage->Height,
@@ -96,7 +93,7 @@ namespace Engine {
 				transferBuffer.GetBuffer(0)
 			);
 
-			texture.TextureImage->GenerateMipMaps(commandPool.GetHandle(), logicalDevice.GetGraphicsQueue());
+			texture.TextureImage->GenerateMipMaps(vulkanEngine.GetCommandPool().GetHandle(), vulkanEngine.GetLogicalDevice().GetGraphicsQueue());
 			texture.TextureImage->CreateImageSampler();
 			
 			return texture;
