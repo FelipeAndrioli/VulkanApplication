@@ -29,16 +29,14 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [ ] Cube
 	- [ ] Sphere
 - [ ] Lighting
-
-## Small problems to remember to solve
-
-- [ ] Add material instance per object and bind if from there to have customized properties of the same material
-	
-## Future Work (not in order)
-
 - [ ] Compute Shaders
 - [ ] GPU Driven Rendering
 - [ ] glTF
 - [ ] Ray Tracer
 - [ ] Render Graph
 - [ ] Scene selection
+
+## Small problems to remember to solve
+
+- [ ] Add material instance per object and bind if from there to have customized properties of the same material
+
