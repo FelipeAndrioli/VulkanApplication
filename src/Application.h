@@ -74,6 +74,7 @@ namespace Engine {
 
 		std::unique_ptr<class PipelineLayout> m_MainGraphicsPipelineLayout;
 		std::unique_ptr<class GraphicsPipeline> m_TexturedPipeline;
+		std::unique_ptr<class GraphicsPipeline> m_WireframePipeline;
 
 		std::vector<Assets::Material> m_Materials;
 		std::vector<Assets::Texture> m_LoadedTextures;

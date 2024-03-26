@@ -121,6 +121,7 @@ namespace Engine {
 
 		m_MainGraphicsPipelineLayout.reset();
 		m_TexturedPipeline.reset();
+		m_WireframePipeline.reset();
 
 		m_Materials.clear();
 		m_LoadedTextures.clear();
@@ -194,6 +195,7 @@ namespace Engine {
 		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
 
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TexturedPipeline->GetHandle());
+		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePipeline->GetHandle());
 
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
@@ -422,18 +424,24 @@ namespace Engine {
 
 	void Application::CreateGraphicsPipelines() {
 
-		/*
-		Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
-		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
-		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
-		*/
-
 		Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_vert.spv");
 		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_frag.spv");
 
 		m_TexturedPipeline = std::make_unique<class GraphicsPipeline>(
 			texturedVertexShader,
 			texturedFragmentShader,
+			*m_VulkanEngine.get(),
+			m_VulkanEngine->GetDefaultRenderPass().GetHandle(),
+			*m_MainGraphicsPipelineLayout
+		);
+
+		Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
+		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
+
+		m_WireframePipeline = std::make_unique<class GraphicsPipeline>(
+			wireframeVertexShader,
+			wireframeFragShader,
 			*m_VulkanEngine.get(),
 			m_VulkanEngine->GetDefaultRenderPass().GetHandle(),
 			*m_MainGraphicsPipelineLayout
