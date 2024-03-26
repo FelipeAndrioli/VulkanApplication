@@ -11,7 +11,9 @@
 #include "LogicalDevice.h"
 #include "SwapChain.h"
 #include "RenderPass.h"
+#include "PipelineLayout.h"
 #include "GraphicsPipeline.h"
+#include "DescriptorSetLayout.h"
 #include "DescriptorSets.h"
 #include "ComputePipeline.h"
 #include "CommandPool.h"
@@ -270,12 +272,12 @@ namespace Engine {
 		VkDeviceSize materialsBufferSize = sizeof(Assets::MeshMaterialData) * m_Materials.size();
 		VkDeviceSize sceneBufferSize = sizeof(SceneGPUData);
 		
-		m_GPUDataBuffer.reset(new class Engine::Buffer(
+		m_GPUDataBuffer = std::make_unique<class Engine::Buffer>(
 			Engine::MAX_FRAMES_IN_FLIGHT,
 			*m_VulkanEngine.get(),
 			objectBufferSize + materialsBufferSize + sceneBufferSize,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-		));
+		);
 		m_GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		m_GPUDataBuffer->NewChunk({ sizeof(ObjectGPUData), objectBufferSize});
@@ -301,7 +303,7 @@ namespace Engine {
 		VkDeviceSize bufferSize = sizeof(uint32_t) * p_ActiveScene->Indices.size() 
 			+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
 		
-		m_SceneGeometryBuffer.reset(new class Engine::Buffer(
+		m_SceneGeometryBuffer = std::make_unique<class Engine::Buffer>(
 			Engine::MAX_FRAMES_IN_FLIGHT,
 			*m_VulkanEngine.get(),
 			bufferSize,
@@ -309,7 +311,8 @@ namespace Engine {
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT
-		));
+		);
+
 		m_SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * p_ActiveScene->Indices.size() });
 		m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size() });
@@ -387,36 +390,34 @@ namespace Engine {
 
 			m_ObjectGPUDataDescriptorSetLayout->UpdateOffset(0, objectBufferOffset);
 
-			renderableObject->DescriptorSets.reset(new class Engine::DescriptorSets(
+			renderableObject->DescriptorSets = std::make_unique<class Engine::DescriptorSets>(
 				m_VulkanEngine->GetLogicalDevice().GetHandle(),
 				m_DescriptorPool->GetHandle(),
 				*m_ObjectGPUDataDescriptorSetLayout.get(),
 				0,
 				1
-			));
+			);
 		}
 		// Renderable Objects Descriptor Sets End 
 
 		// Global Descriptor Sets Begin
-		m_GlobalDescriptorSets.reset(new class DescriptorSets(
+		m_GlobalDescriptorSets = std::make_unique<class DescriptorSets>(
 			m_VulkanEngine->GetLogicalDevice().GetHandle(),
 			m_DescriptorPool->GetHandle(),
 			*m_GlobalDescriptorSetLayout.get(),
 			1,
 			1
-		));
+		);
 		// Global Descriptor Sets End
 	}
 
 	void Application::CreatePipelineLayouts() {
+		std::vector<DescriptorSetLayout*> descriptorSetLayouts = { m_ObjectGPUDataDescriptorSetLayout.get(), m_GlobalDescriptorSetLayout.get() };
 
-		m_MainGraphicsPipelineLayout.reset(new class PipelineLayout(
+		m_MainGraphicsPipelineLayout = std::make_unique<class PipelineLayout>(
 			m_VulkanEngine->GetLogicalDevice().GetHandle(),
-			{ 
-				m_ObjectGPUDataDescriptorSetLayout.get(), 
-				m_GlobalDescriptorSetLayout.get()
-			}
-		));
+			descriptorSetLayouts	
+		);
 	}
 
 	void Application::CreateGraphicsPipelines() {
@@ -430,12 +431,12 @@ namespace Engine {
 		Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_vert.spv");
 		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_frag.spv");
 
-		m_TexturedPipeline.reset(new class GraphicsPipeline(
+		m_TexturedPipeline = std::make_unique<class GraphicsPipeline>(
 			texturedVertexShader,
 			texturedFragmentShader,
 			*m_VulkanEngine.get(),
 			m_VulkanEngine->GetDefaultRenderPass().GetHandle(),
 			*m_MainGraphicsPipelineLayout
-		));
+		);
 	}
 }
