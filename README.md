@@ -23,9 +23,6 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Send one array of textures/material and the index to be used per material
 - [x] Mipmaps
 - [ ] Multisampling
-- [ ] Sort
-	- [ ] Objects per pipeline
-	- [ ] Meshes per material
 - [ ] Add normal to the vertices
 - [ ] Default models
 	- [ ] Plane
