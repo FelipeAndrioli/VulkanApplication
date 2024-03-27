@@ -7,10 +7,11 @@
 
 namespace Engine {
 	class SwapChain;
+	class Image;
 
 	class RenderPass {
 	public:
-		RenderPass(SwapChain* swapChain, VkDevice& logicalDevice, DepthBuffer* depthBuffer);
+		RenderPass(SwapChain* swapChain, VkDevice& logicalDevice, DepthBuffer* depthBuffer, const VkSampleCountFlagBits msaaSamples);
 		~RenderPass();
 
 		inline VkRenderPass& GetHandle() { return m_RenderPass; };

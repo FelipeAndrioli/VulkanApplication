@@ -10,13 +10,18 @@
 namespace Engine {
 	class DepthBuffer {
 	public:
-		DepthBuffer(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, const SwapChain& swapChain);
+		DepthBuffer(
+			VkPhysicalDevice& physicalDevice, 
+			VkDevice& logicalDevice, 
+			const SwapChain& swapChain, 
+			const VkSampleCountFlagBits msaaSamples
+		);
 		~DepthBuffer();
 
 		void Resize(const uint32_t width, const uint32_t height);
 
 		VkFormat FindDepthFormat();
-		std::vector<VkImageView> GetDepthBufferImageView() { return m_DepthBufferImage->ImageView; }
+		VkImageView GetDepthBufferImageView() { return m_DepthBufferImage->ImageView; }
 	private:
 		VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, 
 			VkFormatFeatureFlags features);

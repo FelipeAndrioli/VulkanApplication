@@ -1,11 +1,11 @@
 #include "DeviceMemory.h"
 
 namespace Engine {
-	DeviceMemory::DeviceMemory(VkDevice& logicalDevice, VkPhysicalDevice& physicalDevice, int bufferSize)
+	DeviceMemory::DeviceMemory(VkDevice& logicalDevice, VkPhysicalDevice& physicalDevice, int numMemory)
 		: p_LogicalDevice(&logicalDevice), p_PhysicalDevice(&physicalDevice) {
 
-		Memory.resize(bufferSize);
-		MemoryMapped.resize(bufferSize);
+		Memory.resize(numMemory);
+		MemoryMapped.resize(numMemory);
 	}
 
 	DeviceMemory::~DeviceMemory() {
@@ -60,22 +60,20 @@ namespace Engine {
 		}
 	}
 
-	void DeviceMemory::AllocateMemory(std::vector<VkImage>& images, VkMemoryPropertyFlags properties) {
-		for (size_t i = 0; i < images.size(); i++) {
-			VkMemoryRequirements memRequirements;
-			vkGetImageMemoryRequirements(*p_LogicalDevice, images[i], &memRequirements);
-			
-			VkMemoryAllocateInfo allocInfo{};
-			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+	void DeviceMemory::AllocateMemory(VkImage& image, VkMemoryPropertyFlags properties) {
+		VkMemoryRequirements memRequirements;
+		vkGetImageMemoryRequirements(*p_LogicalDevice, image, &memRequirements);
+		
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-			if (vkAllocateMemory(*p_LogicalDevice, &allocInfo, nullptr, &Memory[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to allocate image memory!");
-			}
-
-			vkBindImageMemory(*p_LogicalDevice, images[i], Memory[i], 0);
+		if (vkAllocateMemory(*p_LogicalDevice, &allocInfo, nullptr, &Memory[0]) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to allocate image memory!");
 		}
+
+		vkBindImageMemory(*p_LogicalDevice, image, Memory[0], 0);
 	}
 
 	uint32_t DeviceMemory::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {

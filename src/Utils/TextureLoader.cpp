@@ -62,12 +62,12 @@ namespace Engine {
 			stbi_image_free(pixels);
 
 			texture.TextureImage = std::make_unique<class Image> (
-				1,
 				vulkanEngine.GetLogicalDevice().GetHandle(),
 				vulkanEngine.GetPhysicalDevice().GetHandle(),
 				static_cast<uint32_t>(texWidth),
 				static_cast<uint32_t>(texHeight),
 				mipLevels,
+				VK_SAMPLE_COUNT_1_BIT,
 				VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_TILING_OPTIMAL,
 				static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
@@ -86,7 +86,7 @@ namespace Engine {
 			Buffer::CopyToImage(
 				vulkanEngine,
 				vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
-				texture.TextureImage->GetImage(0),
+				texture.TextureImage->GetImage(),
 				texture.TextureImage->Width,
 				texture.TextureImage->Height,
 				texture.TextureImage->ImageLayout,

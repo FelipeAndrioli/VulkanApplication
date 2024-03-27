@@ -12,6 +12,36 @@
 #include "Window.h"
 #include "UI.h"
 
+/*
+namespace Engine {
+	RenderTarget::RenderTarget(
+		LogicalDevice& logicalDevice, 
+		PhysicalDevice& physicalDevice, 
+		SwapChain& swapChain, 
+		const VkSampleCountFlagBits msaaSamples
+	) {
+		m_RenderTarget = std::make_unique<class Image>(
+			logicalDevice.GetHandle(),
+			physicalDevice.GetHandle(),
+			swapChain.GetSwapChainExtent().width,
+			swapChain.GetSwapChainExtent().height,
+			1,
+			msaaSamples,
+			swapChain.GetSwapChainImageFormat(),
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			VK_IMAGE_ASPECT_COLOR_BIT
+		);
+		m_RenderTarget->CreateImageView();
+	}
+
+	RenderTarget::~RenderTarget() {
+
+	}
+}
+*/
+
 namespace Engine {
 	VulkanEngine::VulkanEngine(Window& window) {
 		m_Instance = std::make_unique<class Instance>(c_ValidationLayers, c_EnableValidationLayers);
@@ -23,8 +53,34 @@ namespace Engine {
 		m_PhysicalDevice = std::make_unique<class PhysicalDevice>(m_Instance->GetHandle(), m_Surface->GetHandle());
 		m_LogicalDevice = std::make_unique<class LogicalDevice>(m_Instance.get(), m_PhysicalDevice.get());
 		m_SwapChain = std::make_unique<class SwapChain>(m_PhysicalDevice.get(), &window, m_LogicalDevice.get(), m_Surface->GetHandle());
-		m_DepthBuffer = std::make_unique<class DepthBuffer>(m_PhysicalDevice->GetHandle(), m_LogicalDevice->GetHandle(), *m_SwapChain.get());
-		m_DefaultRenderPass = std::make_unique<class RenderPass>(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get());
+
+		m_RenderTarget = std::make_unique<class Image>(
+			m_LogicalDevice->GetHandle(),
+			m_PhysicalDevice->GetHandle(),
+			m_SwapChain->GetSwapChainExtent().width,
+			m_SwapChain->GetSwapChainExtent().height,
+			1,
+			m_PhysicalDevice->GetMsaaSamples(),
+			m_SwapChain->GetSwapChainImageFormat(),
+			VK_IMAGE_TILING_OPTIMAL,
+			static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			VK_IMAGE_ASPECT_COLOR_BIT
+		);
+		m_RenderTarget->CreateImageView();
+
+		m_DepthBuffer = std::make_unique<class DepthBuffer>(
+			m_PhysicalDevice->GetHandle(), 
+			m_LogicalDevice->GetHandle(), 
+			*m_SwapChain.get(),
+			m_PhysicalDevice->GetMsaaSamples()
+		);
+		m_DefaultRenderPass = std::make_unique<class RenderPass>(
+			m_SwapChain.get(), 
+			m_LogicalDevice->GetHandle(), 
+			m_DepthBuffer.get(),
+			m_PhysicalDevice->GetMsaaSamples()
+		);
 	
 		CreateSyncObjects();
 		CreateFramebuffers(m_DefaultRenderPass->GetHandle());
@@ -44,6 +100,7 @@ namespace Engine {
 
 	VulkanEngine::~VulkanEngine() {
 		m_SwapChain.reset();
+		m_RenderTarget.reset();
 		m_DepthBuffer.reset();
 
 		ClearFramebuffers();
@@ -67,9 +124,10 @@ namespace Engine {
 		m_Framebuffers.resize(m_SwapChain->GetSwapChainImageViews().size());
 
 		for (size_t i = 0; i < m_SwapChain->GetSwapChainImageViews().size(); i++) {
-			std::array<VkImageView, 2> attachments = { 
-				m_SwapChain->GetSwapChainImageViews()[i], 
-				m_DepthBuffer->GetDepthBufferImageView()[0] 
+			std::array<VkImageView, 3> attachments = { 
+				m_RenderTarget->ImageView,
+				m_DepthBuffer->GetDepthBufferImageView(), 
+				m_SwapChain->GetSwapChainImageViews()[i]
 			};
 
 			VkFramebufferCreateInfo framebufferInfo{};
@@ -106,10 +164,16 @@ namespace Engine {
 
 	void VulkanEngine::Resize() {
 		m_SwapChain->ReCreate();
+		m_RenderTarget->Resize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 		m_DepthBuffer->Resize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 
 		m_DefaultRenderPass.reset();
-		m_DefaultRenderPass = std::make_unique<class RenderPass>(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get());
+		m_DefaultRenderPass = std::make_unique<class RenderPass>(
+			m_SwapChain.get(), 
+			m_LogicalDevice->GetHandle(), 
+			m_DepthBuffer.get(), 
+			m_PhysicalDevice->GetMsaaSamples()
+		);
 
 		ClearFramebuffers();
 		CreateFramebuffers(m_DefaultRenderPass->GetHandle());
