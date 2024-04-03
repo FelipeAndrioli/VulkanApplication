@@ -1,10 +1,9 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
 #include <memory>
 #include <vector>
+
+#include "VulkanHeader.h"
 
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
@@ -17,6 +16,7 @@ const std::vector<const char*> c_ValidationLayers = {
 };
 
 namespace Engine {
+
 	class Window;
 	class LogicalDevice;
 	class PhysicalDevice;
@@ -31,7 +31,7 @@ namespace Engine {
 
 	class VulkanEngine {
 	public:
-		VulkanEngine(Window& window);
+		VulkanEngine(Window& window, Settings& settings);
 		~VulkanEngine();
 
 		void Resize();
@@ -52,8 +52,8 @@ namespace Engine {
 		void EndFrame(const VkCommandBuffer& commandBuffer, uint32_t currentFrame, uint32_t imageIndex);
 		void PresentFrame(uint32_t& currentFrame, uint32_t& imageIndex);
 	
-		void BeginUIFrame(Settings& settings);
-		void EndUIFrame();
+		void BeginUIFrame();
+		void EndUIFrame(const VkCommandBuffer& commandBuffer);
 	private:
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Instance> m_Instance;
@@ -61,6 +61,9 @@ namespace Engine {
 		std::unique_ptr<class PhysicalDevice> m_PhysicalDevice;
 		std::unique_ptr<class LogicalDevice> m_LogicalDevice;
 		std::unique_ptr<class SwapChain> m_SwapChain;
+
+		std::unique_ptr<class Image> m_RenderTarget;
+
 		std::unique_ptr<class DepthBuffer> m_DepthBuffer;
 		std::unique_ptr<class RenderPass> m_DefaultRenderPass;
 		std::vector<VkFramebuffer> m_Framebuffers;

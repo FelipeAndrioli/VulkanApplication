@@ -239,6 +239,7 @@
     <ClInclude Include="src\Utils\ModelLoader.h" />
     <ClInclude Include="src\Utils\TextureLoader.h" />
     <ClInclude Include="src\Vulkan.h" />
+    <ClInclude Include="src\VulkanHeader.h" />
     <ClInclude Include="src\Window.h" />
     <ClInclude Include="src\Settings.h" />
   </ItemGroup>

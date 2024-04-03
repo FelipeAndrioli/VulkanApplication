@@ -88,7 +88,7 @@ namespace Engine {
 		for (auto& texture : *descriptorBinding.textures) {
 			VkDescriptorImageInfo newImageInfo = {};
 			newImageInfo.imageLayout = texture.TextureImage->ImageLayout;
-			newImageInfo.imageView = texture.TextureImage->ImageView[0];
+			newImageInfo.imageView = texture.TextureImage->ImageView;
 			newImageInfo.sampler = texture.TextureImage->ImageSampler;
 
 			imageInfo.push_back(newImageInfo);

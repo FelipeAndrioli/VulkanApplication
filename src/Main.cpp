@@ -330,6 +330,7 @@ int main() {
 	settings.Title = "VulkanApplication.exe";
 	settings.Width = 1600;
 	settings.Height = 900;
+	settings.uiEnabled = true;
 
 	std::unique_ptr<Engine::Application> app = std::make_unique<Engine::Application>(settings);
 

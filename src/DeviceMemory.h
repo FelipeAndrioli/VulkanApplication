@@ -8,11 +8,11 @@
 namespace Engine {
 	class DeviceMemory {
 	public:
-		DeviceMemory(VkDevice& logicalDevice, VkPhysicalDevice& physicalDevice, int bufferSize);
+		DeviceMemory(VkDevice& logicalDevice, VkPhysicalDevice& physicalDevice, int numMemory);
 		~DeviceMemory();
 
 		void AllocateMemory(std::vector<VkBuffer>& buffer, VkMemoryPropertyFlags properties);
-		void AllocateMemory(std::vector<VkImage>& images, VkMemoryPropertyFlags properties);
+		void AllocateMemory(VkImage& image, VkMemoryPropertyFlags properties);
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 		VkMemoryRequirements GetMemoryRequirements(VkBuffer& buffer);
 

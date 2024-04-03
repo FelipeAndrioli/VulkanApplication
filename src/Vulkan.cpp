@@ -13,7 +13,7 @@
 #include "UI.h"
 
 namespace Engine {
-	VulkanEngine::VulkanEngine(Window& window) {
+	VulkanEngine::VulkanEngine(Window& window, Settings& settings) {
 		m_Instance = std::make_unique<class Instance>(c_ValidationLayers, c_EnableValidationLayers);
 
 		if (c_EnableValidationLayers)
@@ -23,8 +23,34 @@ namespace Engine {
 		m_PhysicalDevice = std::make_unique<class PhysicalDevice>(m_Instance->GetHandle(), m_Surface->GetHandle());
 		m_LogicalDevice = std::make_unique<class LogicalDevice>(m_Instance.get(), m_PhysicalDevice.get());
 		m_SwapChain = std::make_unique<class SwapChain>(m_PhysicalDevice.get(), &window, m_LogicalDevice.get(), m_Surface->GetHandle());
-		m_DepthBuffer = std::make_unique<class DepthBuffer>(m_PhysicalDevice->GetHandle(), m_LogicalDevice->GetHandle(), *m_SwapChain.get());
-		m_DefaultRenderPass = std::make_unique<class RenderPass>(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get());
+
+		m_RenderTarget = std::make_unique<class Image>(
+			m_LogicalDevice->GetHandle(),
+			m_PhysicalDevice->GetHandle(),
+			m_SwapChain->GetSwapChainExtent().width,
+			m_SwapChain->GetSwapChainExtent().height,
+			1,
+			m_PhysicalDevice->GetMsaaSamples(),
+			m_SwapChain->GetSwapChainImageFormat(),
+			VK_IMAGE_TILING_OPTIMAL,
+			static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			VK_IMAGE_ASPECT_COLOR_BIT
+		);
+		m_RenderTarget->CreateImageView();
+
+		m_DepthBuffer = std::make_unique<class DepthBuffer>(
+			m_PhysicalDevice->GetHandle(), 
+			m_LogicalDevice->GetHandle(), 
+			*m_SwapChain.get(),
+			m_PhysicalDevice->GetMsaaSamples()
+		);
+		m_DefaultRenderPass = std::make_unique<class RenderPass>(
+			m_SwapChain.get(), 
+			m_LogicalDevice->GetHandle(), 
+			m_DepthBuffer.get(),
+			m_PhysicalDevice->GetMsaaSamples()
+		);
 	
 		CreateSyncObjects();
 		CreateFramebuffers(m_DefaultRenderPass->GetHandle());
@@ -32,22 +58,25 @@ namespace Engine {
 		m_CommandPool = std::make_unique<class CommandPool>(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices());	
 		m_CommandBuffers = std::make_unique<class CommandBuffer>(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), m_LogicalDevice->GetHandle());
 
-		m_UI = std::make_unique<class UI>(
-			window.GetHandle(),
-			m_Instance.get(),
-			m_PhysicalDevice.get(),
-			m_LogicalDevice.get(),
-			m_SwapChain.get(),
-			MAX_FRAMES_IN_FLIGHT	
-		);
+		if (settings.uiEnabled)
+			m_UI = std::make_unique<class UI>(
+				*window.GetHandle(),
+				*m_Instance.get(),
+				*m_PhysicalDevice.get(),
+				*m_LogicalDevice.get(),
+				*m_DefaultRenderPass.get(),
+				MAX_FRAMES_IN_FLIGHT
+			);
 	}
 
 	VulkanEngine::~VulkanEngine() {
 		m_SwapChain.reset();
+		m_RenderTarget.reset();
 		m_DepthBuffer.reset();
 
 		ClearFramebuffers();
 
+		m_UI->Shutdown(*m_LogicalDevice.get());
 		m_UI.reset();
 		m_DefaultRenderPass.reset();
 		m_CommandBuffers.reset();
@@ -67,9 +96,10 @@ namespace Engine {
 		m_Framebuffers.resize(m_SwapChain->GetSwapChainImageViews().size());
 
 		for (size_t i = 0; i < m_SwapChain->GetSwapChainImageViews().size(); i++) {
-			std::array<VkImageView, 2> attachments = { 
-				m_SwapChain->GetSwapChainImageViews()[i], 
-				m_DepthBuffer->GetDepthBufferImageView()[0] 
+			std::array<VkImageView, 3> attachments = { 
+				m_RenderTarget->ImageView,
+				m_DepthBuffer->GetDepthBufferImageView(), 
+				m_SwapChain->GetSwapChainImageViews()[i]
 			};
 
 			VkFramebufferCreateInfo framebufferInfo{};
@@ -106,18 +136,22 @@ namespace Engine {
 
 	void VulkanEngine::Resize() {
 		m_SwapChain->ReCreate();
+		m_RenderTarget->Resize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 		m_DepthBuffer->Resize(m_SwapChain->GetSwapChainExtent().width, m_SwapChain->GetSwapChainExtent().height);
 
 		m_DefaultRenderPass.reset();
-		m_DefaultRenderPass = std::make_unique<class RenderPass>(m_SwapChain.get(), m_LogicalDevice->GetHandle(), m_DepthBuffer.get());
+		m_DefaultRenderPass = std::make_unique<class RenderPass>(
+			m_SwapChain.get(), 
+			m_LogicalDevice->GetHandle(), 
+			m_DepthBuffer.get(), 
+			m_PhysicalDevice->GetMsaaSamples()
+		);
 
 		ClearFramebuffers();
 		CreateFramebuffers(m_DefaultRenderPass->GetHandle());
 
 		m_CommandBuffers.reset();
 		m_CommandBuffers = std::make_unique<class CommandBuffer>(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), m_LogicalDevice->GetHandle());
-	
-		m_UI->Resize(m_SwapChain.get());
 	}
 
 	VkResult VulkanEngine::PrepareNextImage(uint32_t& currentFrame, uint32_t& imageIndex) {
@@ -159,16 +193,10 @@ namespace Engine {
 	}
 
 	void VulkanEngine::EndFrame(const VkCommandBuffer& commandBuffer, uint32_t currentFrame, uint32_t frameIndex) {
-		//m_CommandBuffers->End(m_CurrentFrame);
 		m_CommandBuffers->End(commandBuffer);
 
-		//m_UI->Draw(m_Settings, p_ActiveScene);
-		//m_UI->RecordCommands(m_CurrentFrame, m_ImageIndex);
-		m_UI->RecordCommandBuffer(currentFrame, frameIndex);
-
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-		
-		std::array<VkCommandBuffer, 2> cmdBuffers = { commandBuffer, m_UI->GetCommandBuffer(currentFrame) };
+		std::vector<VkCommandBuffer> cmdBuffers = { commandBuffer };
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -222,11 +250,17 @@ namespace Engine {
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
-	void VulkanEngine::BeginUIFrame(Settings& settings) {
-		m_UI->BeginFrame(settings);
+	void VulkanEngine::BeginUIFrame() {
+		if (!m_UI)
+			return;
+
+		m_UI->BeginFrame();
 	}
 
-	void VulkanEngine::EndUIFrame() {
-		m_UI->EndFrame();
+	void VulkanEngine::EndUIFrame(const VkCommandBuffer& commandBuffer) {
+		if (!m_UI)
+			return;
+
+		m_UI->EndFrame(commandBuffer);
 	}
 }

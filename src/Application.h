@@ -55,7 +55,8 @@ namespace Engine {
 		void InitializeDescriptors();
 		void CreatePipelineLayouts();
 		void CreateGraphicsPipelines();
-		
+		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer);
+		void EndRenderPass(VkCommandBuffer& commandBuffer);
 	private:
 		Settings m_Settings;
 		bool m_FramebufferResized = false;

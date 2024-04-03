@@ -10,5 +10,6 @@ namespace Engine {
 		float ms = 0.0f;
 		float frames = 0.0f;
 		bool limitFramerate = false;
+		bool uiEnabled = false;
 	};
 }

@@ -1,17 +1,21 @@
 #include "DepthBuffer.h"
 
 namespace Engine {
-	DepthBuffer::DepthBuffer(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, const SwapChain& swapChain) 
-	: p_PhysicalDevice(&physicalDevice) {
+	DepthBuffer::DepthBuffer(
+		VkPhysicalDevice& physicalDevice, 
+		VkDevice& logicalDevice, 
+		const SwapChain& swapChain, 
+		const VkSampleCountFlagBits msaaSamples
+	) : p_PhysicalDevice(&physicalDevice) {
 		VkFormat depthFormat = FindDepthFormat();
 
 		m_DepthBufferImage.reset(new class Image(
-			1, 
 			logicalDevice, 
 			*p_PhysicalDevice, 
 			swapChain.GetSwapChainExtent().width,
 			swapChain.GetSwapChainExtent().height, 
 			MIPLEVELS,
+			msaaSamples,
 			depthFormat,
 			VK_IMAGE_TILING_OPTIMAL, 
 			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 

@@ -26,16 +26,17 @@ namespace Engine {
 		}
 		
 		for (const auto& device : m_AvailablePhysicalDevices) {
-			if (isDeviceSuitable(device)) {
+			if (!isDeviceSuitable(device))
+				continue;
 				
-				VkPhysicalDeviceProperties deviceProperties;
-				vkGetPhysicalDeviceProperties(device, &deviceProperties);
+			VkPhysicalDeviceProperties deviceProperties;
+			vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-				// pick any GPU at first, then priorize a dedicated GPU (device type = 2)
-				if (m_PhysicalDevice == VK_NULL_HANDLE || deviceProperties.deviceType == DEDICATED_GPU) {
-					m_PhysicalDevice = device;
-					m_PhysicalDeviceProperties = deviceProperties;
-				}
+			// pick any GPU at first, then priorize a dedicated GPU (device type = 2)
+			if (m_PhysicalDevice == VK_NULL_HANDLE || deviceProperties.deviceType == DEDICATED_GPU) {
+				m_PhysicalDevice = device;
+				m_PhysicalDeviceProperties = deviceProperties;
+				m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
 			}
 		}
 
@@ -43,6 +44,7 @@ namespace Engine {
 			throw std::runtime_error("Failed to find a suitable GPU!");
 		} else {
 			std::cout << "Selected device: " << m_PhysicalDeviceProperties.deviceName << '\n';
+			std::cout << "MSAA Samples: " << m_MsaaSamples << '\n';
 		}
 
 		m_SwapChainSupportDetails = QuerySwapChainSupportDetails(m_PhysicalDevice);
@@ -144,5 +146,18 @@ namespace Engine {
 		}
 
 		return requiredExtensions.empty();
+	}
+
+	VkSampleCountFlagBits PhysicalDevice::GetMaxSampleCount(VkPhysicalDeviceProperties deviceProperties) {
+		VkSampleCountFlags counts = deviceProperties.limits.framebufferColorSampleCounts & deviceProperties.limits.framebufferDepthSampleCounts;
+
+		if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+		if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+		if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+		if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+		if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+		if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+		return VK_SAMPLE_COUNT_1_BIT;
 	}
 }
