@@ -1,10 +1,9 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
 #include <memory>
 #include <vector>
+
+#include "VulkanHeader.h"
 
 #ifndef NDEBUG
 const bool c_EnableValidationLayers = true;
@@ -15,28 +14,6 @@ const bool c_EnableValidationLayers = false;
 const std::vector<const char*> c_ValidationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
-
-/*
-namespace Engine {
-	class Image;
-	class LogicalDevice;
-	class PhysicalDevice;
-	class SwapChain;
-
-	class RenderTarget {
-	public:
-		RenderTarget(
-			LogicalDevice& logicalDevice, 
-			PhysicalDevice& physicalDevice, 
-			SwapChain& swapChain, 
-			const VkSampleCountFlagBits msaaSamples
-		);
-		~RenderTarget();
-
-		std::unique_ptr<class Image> m_RenderTarget;
-	};
-}
-*/
 
 namespace Engine {
 
@@ -85,7 +62,6 @@ namespace Engine {
 		std::unique_ptr<class LogicalDevice> m_LogicalDevice;
 		std::unique_ptr<class SwapChain> m_SwapChain;
 
-		//std::unique_ptr<class RenderTarget> m_RenderTarget;
 		std::unique_ptr<class Image> m_RenderTarget;
 
 		std::unique_ptr<class DepthBuffer> m_DepthBuffer;

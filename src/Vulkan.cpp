@@ -12,36 +12,6 @@
 #include "Window.h"
 #include "UI.h"
 
-/*
-namespace Engine {
-	RenderTarget::RenderTarget(
-		LogicalDevice& logicalDevice, 
-		PhysicalDevice& physicalDevice, 
-		SwapChain& swapChain, 
-		const VkSampleCountFlagBits msaaSamples
-	) {
-		m_RenderTarget = std::make_unique<class Image>(
-			logicalDevice.GetHandle(),
-			physicalDevice.GetHandle(),
-			swapChain.GetSwapChainExtent().width,
-			swapChain.GetSwapChainExtent().height,
-			1,
-			msaaSamples,
-			swapChain.GetSwapChainImageFormat(),
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			VK_IMAGE_ASPECT_COLOR_BIT
-		);
-		m_RenderTarget->CreateImageView();
-	}
-
-	RenderTarget::~RenderTarget() {
-
-	}
-}
-*/
-
 namespace Engine {
 	VulkanEngine::VulkanEngine(Window& window, Settings& settings) {
 		m_Instance = std::make_unique<class Instance>(c_ValidationLayers, c_EnableValidationLayers);
@@ -90,14 +60,12 @@ namespace Engine {
 
 		if (settings.uiEnabled)
 			m_UI = std::make_unique<class UI>(
-				window.GetHandle(),
-				m_Instance.get(),
-				m_PhysicalDevice.get(),
-				m_LogicalDevice.get(),
-				m_SwapChain.get(),
-				m_DefaultRenderPass.get(),
-				m_CommandBuffers.get(),
-				MAX_FRAMES_IN_FLIGHT	
+				*window.GetHandle(),
+				*m_Instance.get(),
+				*m_PhysicalDevice.get(),
+				*m_LogicalDevice.get(),
+				*m_DefaultRenderPass.get(),
+				MAX_FRAMES_IN_FLIGHT
 			);
 	}
 
@@ -108,6 +76,7 @@ namespace Engine {
 
 		ClearFramebuffers();
 
+		m_UI->Shutdown(*m_LogicalDevice.get());
 		m_UI.reset();
 		m_DefaultRenderPass.reset();
 		m_CommandBuffers.reset();
@@ -183,9 +152,6 @@ namespace Engine {
 
 		m_CommandBuffers.reset();
 		m_CommandBuffers = std::make_unique<class CommandBuffer>(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), m_LogicalDevice->GetHandle());
-
-		if (m_UI)
-			m_UI->Resize(m_SwapChain.get());
 	}
 
 	VkResult VulkanEngine::PrepareNextImage(uint32_t& currentFrame, uint32_t& imageIndex) {
@@ -223,22 +189,13 @@ namespace Engine {
 
 		vkResetFences(m_LogicalDevice->GetHandle(), 1, m_InFlightFences->GetHandle(currentFrame));
 
-		//BeginUIFrame();
-
 		return &m_CommandBuffers->Begin(currentFrame);
 	}
 
 	void VulkanEngine::EndFrame(const VkCommandBuffer& commandBuffer, uint32_t currentFrame, uint32_t frameIndex) {
-		//m_CommandBuffers->End(m_CurrentFrame);
-		//EndUIFrame(commandBuffer);
 		m_CommandBuffers->End(commandBuffer);
 
-		//m_UI->Draw(m_Settings, p_ActiveScene);
-		//m_UI->RecordCommands(m_CurrentFrame, m_ImageIndex);
-		//m_UI->RecordCommandBuffer(currentFrame, frameIndex);
-
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-		
 		std::vector<VkCommandBuffer> cmdBuffers = { commandBuffer };
 
 		VkSubmitInfo submitInfo{};

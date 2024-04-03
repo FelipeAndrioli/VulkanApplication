@@ -1,82 +1,60 @@
 #include "UI.h"
 
 #include "CommandBuffer.h"
-#include "Settings.h"
 #include "Instance.h"
 #include "PhysicalDevice.h"
 #include "LogicalDevice.h"
-#include "SwapChain.h"
 #include "RenderPass.h"
-#include "../Assets/Scene.h"
 
 namespace Engine {
 
-	UI::UI(GLFWwindow* window, Instance* instance, PhysicalDevice* physicalDevice, LogicalDevice* logicalDevice, SwapChain* swapChain,
-		RenderPass* renderPass, CommandBuffer* commandBuffer, const int minImageCount) : 
-		p_Window(window), 
-		p_Instance(instance), 
-		p_PhysicalDevice(physicalDevice), 
-		p_LogicalDevice(logicalDevice), 
-		p_SwapChain(swapChain), 
-		m_MinImageCount(minImageCount), 
-		p_RenderPass(renderPass),
-		p_CommandBuffer(commandBuffer) {
+	UI::UI(
+		GLFWwindow& window, 
+		Instance& instance, 
+		PhysicalDevice& physicalDevice, 
+		LogicalDevice& logicalDevice, 
+		RenderPass& renderPass, 
+		const int minImageCount) {
 
 		m_UIDescriptorPool = VK_NULL_HANDLE;
-		//m_UIRenderPass = VK_NULL_HANDLE;
 		m_UICommandPool = VK_NULL_HANDLE;
 
-		Init();
-	}
-
-	void UI::Init() {
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();
 
-		createUIDescriptorPool(p_LogicalDevice->GetHandle());
-		createUICommandPool(p_LogicalDevice->GetHandle(), 
-			p_PhysicalDevice->GetQueueFamilyIndices().graphicsFamily.value());
-		/*
-		createUIRenderPass(p_LogicalDevice->GetHandle(), p_SwapChain->GetSwapChainImageFormat());
-		createUICommandBuffers(p_LogicalDevice->GetHandle());
-		createUIFrameBuffers(p_LogicalDevice->GetHandle(), p_SwapChain->GetSwapChainExtent(), 
-			p_SwapChain->GetSwapChainImageViews());
-		*/
+		createUIDescriptorPool(logicalDevice.GetHandle());
+		createUICommandPool(logicalDevice.GetHandle(), physicalDevice.GetQueueFamilyIndices().graphicsFamily.value());
 
 		ImGuiIO& io = ImGui::GetIO();
 		(void)io;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
 
-		ImGui_ImplGlfw_InitForVulkan(p_Window, true);
+		ImGui_ImplGlfw_InitForVulkan(&window, true);
 		ImGui_ImplVulkan_InitInfo init_info = {};
-		init_info.Instance = p_Instance->GetHandle();
-		init_info.PhysicalDevice = p_PhysicalDevice->GetHandle();;
-		init_info.Device = p_LogicalDevice->GetHandle();
-		init_info.QueueFamily = p_PhysicalDevice->GetQueueFamilyIndices().graphicsFamily.value();
-		init_info.Queue = p_LogicalDevice->GetGraphicsQueue();
-		//init_info.PipelineCache = g_PipelineCache;
+		init_info.Instance = instance.GetHandle();
+		init_info.PhysicalDevice = physicalDevice.GetHandle();;
+		init_info.Device = logicalDevice.GetHandle();
+		init_info.QueueFamily = physicalDevice.GetQueueFamilyIndices().graphicsFamily.value();
+		init_info.Queue = logicalDevice.GetGraphicsQueue();
 		init_info.PipelineCache = VK_NULL_HANDLE;
 		init_info.DescriptorPool = m_UIDescriptorPool;
-		init_info.MinImageCount = m_MinImageCount;
-		init_info.ImageCount = m_MinImageCount;
-		//init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-		init_info.MSAASamples = p_PhysicalDevice->GetMsaaSamples();
+		init_info.MinImageCount = minImageCount;
+		init_info.ImageCount = minImageCount;
+		init_info.MSAASamples = physicalDevice.GetMsaaSamples();
 		init_info.Allocator = nullptr;
 		init_info.CheckVkResultFn = check_vk_result;
-		ImGui_ImplVulkan_Init(&init_info, p_RenderPass->GetHandle());
+		ImGui_ImplVulkan_Init(&init_info, renderPass.GetHandle());
 
-		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(p_LogicalDevice->GetHandle(), m_UICommandPool);
-		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-		CommandBuffer::EndSingleTimeCommandBuffer(p_LogicalDevice->GetHandle(), p_LogicalDevice->GetGraphicsQueue(), 
-			commandBuffer, m_UICommandPool);
+		VkCommandBuffer oneTimeCommandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(logicalDevice.GetHandle(), m_UICommandPool);
+		ImGui_ImplVulkan_CreateFontsTexture(oneTimeCommandBuffer);
+		CommandBuffer::EndSingleTimeCommandBuffer(
+			logicalDevice.GetHandle(), 
+			logicalDevice.GetGraphicsQueue(), 
+			oneTimeCommandBuffer, m_UICommandPool
+		);
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
-	}
-
-	void UI::Resize(SwapChain* swapChain) {
-		p_SwapChain = swapChain;
-		ImGui_ImplVulkan_SetMinImageCount(m_MinImageCount);
 	}
 
 	void UI::BeginFrame() {
@@ -91,15 +69,15 @@ namespace Engine {
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 	}
 
-	UI::~UI() {
+	void UI::Shutdown(LogicalDevice& logicalDevice) {
 		std::cout << "Destroying UI" << '\n';
 
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 
-		vkDestroyDescriptorPool(p_LogicalDevice->GetHandle(), m_UIDescriptorPool, nullptr);
-		vkDestroyCommandPool(p_LogicalDevice->GetHandle(), m_UICommandPool, nullptr);
+		vkDestroyDescriptorPool(logicalDevice.GetHandle(), m_UIDescriptorPool, nullptr);
+		vkDestroyCommandPool(logicalDevice.GetHandle(), m_UICommandPool, nullptr);
 	}
 
 	void UI::createUIDescriptorPool(VkDevice &r_LogicalDevice) {
