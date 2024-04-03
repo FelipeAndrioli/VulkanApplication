@@ -54,7 +54,7 @@ namespace Engine {
 
 	class VulkanEngine {
 	public:
-		VulkanEngine(Window& window);
+		VulkanEngine(Window& window, Settings& settings);
 		~VulkanEngine();
 
 		void Resize();
@@ -75,8 +75,8 @@ namespace Engine {
 		void EndFrame(const VkCommandBuffer& commandBuffer, uint32_t currentFrame, uint32_t imageIndex);
 		void PresentFrame(uint32_t& currentFrame, uint32_t& imageIndex);
 	
-		void BeginUIFrame(Settings& settings);
-		void EndUIFrame();
+		void BeginUIFrame();
+		void EndUIFrame(const VkCommandBuffer& commandBuffer);
 	private:
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Instance> m_Instance;
