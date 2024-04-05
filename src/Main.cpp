@@ -289,6 +289,7 @@ public:
 int main() {
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 
+	/*
 	CustomObject model = CustomObject();
 	model.ID = "Sponza";
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
@@ -307,7 +308,6 @@ int main() {
 	testObject.Transformations.scaleHandler = 0.219f;
 	myScene->AddRenderableObject(&testObject);
 
-	/*
 	CustomObject model = CustomObject();
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace/palace.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace";

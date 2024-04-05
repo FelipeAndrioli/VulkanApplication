@@ -252,8 +252,6 @@ namespace Engine {
 				);
 			}
 		}
-
-		//vkCmdEndRenderPass(commandBuffer);
 	}
 
 	void Application::ProcessResize(int width, int height) {
