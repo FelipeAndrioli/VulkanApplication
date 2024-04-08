@@ -12,7 +12,7 @@
 #include "../src/PhysicalDevice.h"
 #include "../src/DescriptorSetLayout.h"
 #include "../src/DescriptorPool.h"
-#include "../src/GraphicsPipeline.h"
+#include "../src/Pipeline.h"
 
 #include "../src/Input/Input.h"
 #include "../src/Utils/ModelLoader.h"

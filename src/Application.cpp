@@ -12,7 +12,7 @@
 #include "SwapChain.h"
 #include "RenderPass.h"
 #include "PipelineLayout.h"
-#include "GraphicsPipeline.h"
+#include "Pipeline.h"
 #include "DescriptorSetLayout.h"
 #include "DescriptorSets.h"
 #include "ComputePipeline.h"
@@ -419,25 +419,22 @@ namespace Engine {
 		Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_vert.spv");
 		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_frag.spv");
 
-		m_TexturedPipeline = std::make_unique<class GraphicsPipeline>(
-			texturedVertexShader,
-			texturedFragmentShader,
-			*m_VulkanEngine.get(),
-			m_VulkanEngine->GetDefaultRenderPass().GetHandle(),
-			*m_MainGraphicsPipelineLayout
-		);
+		PipelineBuilder pipelineBuilder = PipelineBuilder();
+		m_TexturedPipeline = pipelineBuilder.AddVertexShader(texturedVertexShader)
+			.AddFragmentShader(texturedFragmentShader)
+			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
+			.AddPipelineLayout(*m_MainGraphicsPipelineLayout)
+			.BuildGraphicsPipeline(*m_VulkanEngine.get());
 
 		Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
 		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
 		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
 
-		m_WireframePipeline = std::make_unique<class GraphicsPipeline>(
-			wireframeVertexShader,
-			wireframeFragShader,
-			*m_VulkanEngine.get(),
-			m_VulkanEngine->GetDefaultRenderPass().GetHandle(),
-			*m_MainGraphicsPipelineLayout
-		);
+		m_WireframePipeline = pipelineBuilder.AddVertexShader(wireframeVertexShader)
+			.AddFragmentShader(wireframeFragShader)
+			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
+			.AddPipelineLayout(*m_MainGraphicsPipelineLayout)
+			.BuildGraphicsPipeline(*m_VulkanEngine.get());
 	}
 
 	void Application::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer) {
