@@ -406,12 +406,21 @@ namespace Engine {
 	}
 
 	void Application::CreatePipelineLayouts() {
-		std::vector<DescriptorSetLayout*> descriptorSetLayouts = { m_ObjectGPUDataDescriptorSetLayout.get(), m_GlobalDescriptorSetLayout.get() };
+		PipelineLayoutBuilder pipelineLayoutBuilder = PipelineLayoutBuilder();
+		
+		VkPushConstantRange mainPipelinePushConstant = { VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) };
 
-		m_MainGraphicsPipelineLayout = std::make_unique<class PipelineLayout>(
+		m_MainGraphicsPipelineLayout = pipelineLayoutBuilder.AddDescriptorSetLayout(m_ObjectGPUDataDescriptorSetLayout->GetHandle())
+			.AddDescriptorSetLayout(m_GlobalDescriptorSetLayout->GetHandle())
+			.AddPushConstant(mainPipelinePushConstant)
+			.BuildPipelineLayout(m_VulkanEngine->GetLogicalDevice().GetHandle());
+
+		/*
+		std::unique_ptr<class PipelineLayout> colorPipelineLayout = std::make_unique<class PipelineLayout>(
 			m_VulkanEngine->GetLogicalDevice().GetHandle(),
-			descriptorSetLayouts	
+			descriptorSetLayouts
 		);
+		*/
 	}
 
 	void Application::CreateGraphicsPipelines() {
