@@ -12,6 +12,7 @@
 
 namespace Assets {
 	class Scene;
+	class Object;
 	struct Material;
 
 	struct Texture;
@@ -49,6 +50,7 @@ namespace Engine {
 		void Shutdown();
 		void Draw();
 		void DrawFrame(const VkCommandBuffer& commandBuffer);
+		void RenderScene(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline, const std::vector<Assets::Object*>& objects);
 		void DrawUI();
 		void ProcessResize(int width, int height);
 		void InitializeBuffers();

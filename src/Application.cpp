@@ -189,32 +189,20 @@ namespace Engine {
 		VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
 		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
 
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TexturedPipeline->GetHandle());
-		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColoredPipeline->GetHandle());
-		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePipeline->GetHandle());
-
-		VkViewport viewport = {};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)swapChainExtent.width;
-		viewport.height = (float)swapChainExtent.height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-		VkRect2D scissor = {};
-		scissor.offset = { 0, 0 };
-		scissor.extent = swapChainExtent;
-
-		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
 		m_GlobalDescriptorSets->Bind(
 			m_CurrentFrame,
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			m_MainPipelineLayout->GetHandle()
 		);
+
+		//RenderScene(commandBuffer, m_TexturedPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+		RenderScene(commandBuffer, m_ColoredPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+		RenderScene(commandBuffer, m_WireframePipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+		/*
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TexturedPipeline->GetHandle());
+		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColoredPipeline->GetHandle());
+		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePipeline->GetHandle());
 
 		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
 			Assets::Object* object = p_ActiveScene->RenderableObjects[i];
@@ -232,7 +220,47 @@ namespace Engine {
 			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 			m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
 
-			Assets::Material* material = nullptr;
+			for (const Assets::Mesh* mesh : object->Meshes) {
+				vkCmdPushConstants(
+					commandBuffer,
+					m_MainPipelineLayout->GetHandle(),
+					VK_SHADER_STAGE_FRAGMENT_BIT,
+					0,
+					sizeof(int),
+					&mesh->MaterialIndex
+				);
+
+				vkCmdDrawIndexed(
+					commandBuffer,
+					static_cast<uint32_t>(mesh->Indices.size()),
+					1,
+					static_cast<uint32_t>(mesh->IndexOffset),
+					static_cast<int32_t>(mesh->VertexOffset),
+					0
+				);
+			}
+		}
+		*/
+	}
+
+	void Application::RenderScene(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline, const std::vector<Assets::Object*>& objects) {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+		for (size_t i = 0; i < objects.size(); i++) {
+			Assets::Object* object = objects[i];
+
+			object->DescriptorSets->Bind(
+				m_CurrentFrame, 
+				commandBuffer, 
+				VK_PIPELINE_BIND_POINT_GRAPHICS, 
+				m_MainPipelineLayout->GetHandle()
+			);
+
+			ObjectGPUData objectGPUData = ObjectGPUData();
+			objectGPUData.model = object->GetModelMatrix();
+
+			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
+			m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
 
 			for (const Assets::Mesh* mesh : object->Meshes) {
 				vkCmdPushConstants(
@@ -420,30 +448,28 @@ namespace Engine {
 
 	void Application::CreateGraphicsPipelines() {
 
-		Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_vert.spv");
+		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/default_vert.spv");
 		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_frag.spv");
 
 		PipelineBuilder pipelineBuilder = PipelineBuilder();
-		m_TexturedPipeline = pipelineBuilder.AddVertexShader(texturedVertexShader)
+		m_TexturedPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(texturedFragmentShader)
 			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
 			.AddPipelineLayout(*m_MainPipelineLayout)
 			.BuildGraphicsPipeline(*m_VulkanEngine.get());
 
-		Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
-		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/wireframe_frag.spv");
 		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
 
-		m_WireframePipeline = pipelineBuilder.AddVertexShader(wireframeVertexShader)
+		m_WireframePipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(wireframeFragShader)
 			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
 			.AddPipelineLayout(*m_MainPipelineLayout)
 			.BuildGraphicsPipeline(*m_VulkanEngine.get());
 
-		Assets::VertexShader coloredVertShader = Assets::VertexShader("Colored Vertex Shader", "./Assets/Shaders/colored_vert.spv");
 		Assets::FragmentShader coloredFragShader = Assets::FragmentShader("Colored Fragment Shader", "./Assets/Shaders/colored_frag.spv");
 
-		m_ColoredPipeline = pipelineBuilder.AddVertexShader(coloredVertShader)
+		m_ColoredPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(coloredFragShader)
 			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
 			.AddPipelineLayout(*m_MainPipelineLayout)
@@ -467,6 +493,22 @@ namespace Engine {
 		renderPassBeginInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)swapChainExtent.width;
+		viewport.height = (float)swapChainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = swapChainExtent;
+
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 	}
 
 	void Application::EndRenderPass(VkCommandBuffer& commandBuffer) {
