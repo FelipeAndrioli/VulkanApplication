@@ -34,6 +34,9 @@ namespace Assets {
 		glm::mat4 GetModelMatrix();
 
 		void ResetResources();
+		void SetGraphicsPipeline(Engine::GraphicsPipeline* graphicsPipeline) { m_GraphicsPipeline = graphicsPipeline; }
+		Engine::GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline; }
+
 	public:
 		std::string ID = "";
 		std::string PipelineName = "";
@@ -43,8 +46,10 @@ namespace Assets {
 		bool FlipTexturesVertically = false;
 		bool GenerateMipMaps = true;
 		std::vector<Mesh*> Meshes;
-		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
 		Transform Transformations = {};
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
+
+	private:
+		Engine::GraphicsPipeline* m_GraphicsPipeline = nullptr;
 	};
 }

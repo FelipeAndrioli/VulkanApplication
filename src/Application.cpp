@@ -89,6 +89,9 @@ namespace Engine {
 
 		// Load models/materials/textures
 		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
+			if (renderableObject->ModelPath == nullptr)
+				continue;
+
 			Utils::ModelLoader::LoadModelAndMaterials(
 				*renderableObject,
 				m_Materials,
@@ -108,6 +111,13 @@ namespace Engine {
 		
 		CreatePipelineLayouts();
 		CreateGraphicsPipelines();
+
+		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
+			if (renderableObject->Textured)
+				renderableObject->SetGraphicsPipeline(m_TexturedPipeline.get());
+			else
+				renderableObject->SetGraphicsPipeline(m_ColoredPipeline.get());
+		}
 	}
 
 	void Application::Shutdown() {
@@ -197,7 +207,7 @@ namespace Engine {
 			m_MainPipelineLayout->GetHandle()
 		);
 
-		//RenderScene(commandBuffer, m_TexturedPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+		RenderScene(commandBuffer, m_TexturedPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
 		RenderScene(commandBuffer, m_ColoredPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
 
 		if (m_Settings.wireframeEnabled)
@@ -208,6 +218,9 @@ namespace Engine {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 		for (size_t i = 0; i < objects.size(); i++) {
+			if (objects[i]->GetGraphicsPipeline()->GetHandle() != graphicsPipeline && graphicsPipeline != m_WireframePipeline->GetHandle())
+				continue;
+
 			Assets::Object* object = objects[i];
 
 			object->DescriptorSets->Bind(

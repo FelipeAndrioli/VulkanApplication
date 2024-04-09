@@ -107,6 +107,9 @@ namespace Engine {
 
 				std::map<Assets::TextureType, std::string>::iterator it;
 				for (it = textureMap.begin(); it != textureMap.end(); it++) {
+					if (!object.Textured)
+						object.Textured = true;
+
 					ModelLoader::ProcessTexture(
 						sceneMaterials,
 						loadedTextures,
