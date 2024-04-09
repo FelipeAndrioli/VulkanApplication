@@ -246,6 +246,8 @@
   <ItemGroup>
     <None Include=".gitignore" />
     <None Include=".gitmodules" />
+    <None Include="Assets\Shaders\colored.frag" />
+    <None Include="Assets\Shaders\colored.vert" />
     <None Include="Assets\Shaders\comp.spv" />
     <None Include="Assets\Shaders\compile.bat" />
     <None Include="Assets\Shaders\default.frag" />

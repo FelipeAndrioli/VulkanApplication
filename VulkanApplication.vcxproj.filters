@@ -78,9 +78,6 @@
     <ClCompile Include="src\RenderPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\GraphicsPipeline.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\ShaderModule.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -145,6 +142,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Vulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -216,9 +216,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\RenderPass.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\GraphicsPipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ShaderModule.h">
@@ -308,6 +305,9 @@
     <ClInclude Include="src\VulkanHeader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Pipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\shader.vert" />
@@ -340,6 +340,8 @@
     <None Include="Assets\Shaders\textured.frag" />
     <None Include="Assets\Shaders\textured_vert.spv" />
     <None Include="Assets\Shaders\textured_frag.spv" />
+    <None Include="Assets\Shaders\colored.vert" />
+    <None Include="Assets\Shaders\colored.frag" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\Textures\statue_test.jpg">
