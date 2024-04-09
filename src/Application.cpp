@@ -119,9 +119,10 @@ namespace Engine {
 		m_GPUDataBuffer.reset();
 		m_SceneGeometryBuffer.reset();
 
-		m_MainGraphicsPipelineLayout.reset();
+		m_MainPipelineLayout.reset();
 		m_TexturedPipeline.reset();
 		m_WireframePipeline.reset();
+		m_ColoredPipeline.reset();
 
 		m_Materials.clear();
 		m_LoadedTextures.clear();
@@ -189,6 +190,7 @@ namespace Engine {
 		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
 
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TexturedPipeline->GetHandle());
+		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColoredPipeline->GetHandle());
 		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePipeline->GetHandle());
 
 		VkViewport viewport = {};
@@ -211,7 +213,7 @@ namespace Engine {
 			m_CurrentFrame,
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			m_MainGraphicsPipelineLayout->GetHandle()
+			m_MainPipelineLayout->GetHandle()
 		);
 
 		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
@@ -221,7 +223,7 @@ namespace Engine {
 				m_CurrentFrame, 
 				commandBuffer, 
 				VK_PIPELINE_BIND_POINT_GRAPHICS, 
-				m_MainGraphicsPipelineLayout->GetHandle()
+				m_MainPipelineLayout->GetHandle()
 			);
 
 			ObjectGPUData objectGPUData = ObjectGPUData();
@@ -235,7 +237,7 @@ namespace Engine {
 			for (const Assets::Mesh* mesh : object->Meshes) {
 				vkCmdPushConstants(
 					commandBuffer,
-					m_MainGraphicsPipelineLayout->GetHandle(),
+					m_MainPipelineLayout->GetHandle(),
 					VK_SHADER_STAGE_FRAGMENT_BIT,
 					0,
 					sizeof(int),
@@ -410,17 +412,10 @@ namespace Engine {
 		
 		VkPushConstantRange mainPipelinePushConstant = { VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) };
 
-		m_MainGraphicsPipelineLayout = pipelineLayoutBuilder.AddDescriptorSetLayout(m_ObjectGPUDataDescriptorSetLayout->GetHandle())
+		m_MainPipelineLayout = pipelineLayoutBuilder.AddDescriptorSetLayout(m_ObjectGPUDataDescriptorSetLayout->GetHandle())
 			.AddDescriptorSetLayout(m_GlobalDescriptorSetLayout->GetHandle())
 			.AddPushConstant(mainPipelinePushConstant)
 			.BuildPipelineLayout(m_VulkanEngine->GetLogicalDevice().GetHandle());
-
-		/*
-		std::unique_ptr<class PipelineLayout> colorPipelineLayout = std::make_unique<class PipelineLayout>(
-			m_VulkanEngine->GetLogicalDevice().GetHandle(),
-			descriptorSetLayouts
-		);
-		*/
 	}
 
 	void Application::CreateGraphicsPipelines() {
@@ -432,7 +427,7 @@ namespace Engine {
 		m_TexturedPipeline = pipelineBuilder.AddVertexShader(texturedVertexShader)
 			.AddFragmentShader(texturedFragmentShader)
 			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
-			.AddPipelineLayout(*m_MainGraphicsPipelineLayout)
+			.AddPipelineLayout(*m_MainPipelineLayout)
 			.BuildGraphicsPipeline(*m_VulkanEngine.get());
 
 		Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
@@ -442,7 +437,16 @@ namespace Engine {
 		m_WireframePipeline = pipelineBuilder.AddVertexShader(wireframeVertexShader)
 			.AddFragmentShader(wireframeFragShader)
 			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
-			.AddPipelineLayout(*m_MainGraphicsPipelineLayout)
+			.AddPipelineLayout(*m_MainPipelineLayout)
+			.BuildGraphicsPipeline(*m_VulkanEngine.get());
+
+		Assets::VertexShader coloredVertShader = Assets::VertexShader("Colored Vertex Shader", "./Assets/Shaders/colored_vert.spv");
+		Assets::FragmentShader coloredFragShader = Assets::FragmentShader("Colored Fragment Shader", "./Assets/Shaders/colored_frag.spv");
+
+		m_ColoredPipeline = pipelineBuilder.AddVertexShader(coloredVertShader)
+			.AddFragmentShader(coloredFragShader)
+			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
+			.AddPipelineLayout(*m_MainPipelineLayout)
 			.BuildGraphicsPipeline(*m_VulkanEngine.get());
 	}
 

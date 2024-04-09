@@ -73,9 +73,11 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
 
-		std::unique_ptr<class PipelineLayout> m_MainGraphicsPipelineLayout;
+		std::unique_ptr<class PipelineLayout> m_MainPipelineLayout;
+
 		std::unique_ptr<class GraphicsPipeline> m_TexturedPipeline;
 		std::unique_ptr<class GraphicsPipeline> m_WireframePipeline;
+		std::unique_ptr<class GraphicsPipeline> m_ColoredPipeline;
 
 		std::vector<Assets::Material> m_Materials;
 		std::vector<Assets::Texture> m_LoadedTextures;
