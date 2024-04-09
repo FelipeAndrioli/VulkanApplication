@@ -40,8 +40,6 @@ namespace Assets {
 
 	struct Material {
 		std::string Name = "";
-		size_t Index = 0;
-
 		MeshMaterialData MaterialData = {};
 	};
 }
