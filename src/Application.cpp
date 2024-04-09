@@ -159,6 +159,7 @@ namespace Engine {
 		ImGui::Text("Last Frame: %f ms", m_Settings.ms);
 		ImGui::Text("Framerate: %.1f fps", m_Settings.frames);
 		ImGui::Checkbox("Limit Framerate", &m_Settings.limitFramerate);
+		ImGui::Checkbox("Enable Wireframe", &m_Settings.wireframeEnabled);
 
 		p_ActiveScene->OnUIRender();
 	}
@@ -198,49 +199,9 @@ namespace Engine {
 
 		//RenderScene(commandBuffer, m_TexturedPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
 		RenderScene(commandBuffer, m_ColoredPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
-		RenderScene(commandBuffer, m_WireframePipeline->GetHandle(), p_ActiveScene->RenderableObjects);
-		/*
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TexturedPipeline->GetHandle());
-		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColoredPipeline->GetHandle());
-		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePipeline->GetHandle());
 
-		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
-			Assets::Object* object = p_ActiveScene->RenderableObjects[i];
-
-			object->DescriptorSets->Bind(
-				m_CurrentFrame, 
-				commandBuffer, 
-				VK_PIPELINE_BIND_POINT_GRAPHICS, 
-				m_MainPipelineLayout->GetHandle()
-			);
-
-			ObjectGPUData objectGPUData = ObjectGPUData();
-			objectGPUData.model = object->GetModelMatrix();
-
-			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-			m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
-
-			for (const Assets::Mesh* mesh : object->Meshes) {
-				vkCmdPushConstants(
-					commandBuffer,
-					m_MainPipelineLayout->GetHandle(),
-					VK_SHADER_STAGE_FRAGMENT_BIT,
-					0,
-					sizeof(int),
-					&mesh->MaterialIndex
-				);
-
-				vkCmdDrawIndexed(
-					commandBuffer,
-					static_cast<uint32_t>(mesh->Indices.size()),
-					1,
-					static_cast<uint32_t>(mesh->IndexOffset),
-					static_cast<int32_t>(mesh->VertexOffset),
-					0
-				);
-			}
-		}
-		*/
+		if (m_Settings.wireframeEnabled)
+			RenderScene(commandBuffer, m_WireframePipeline->GetHandle(), p_ActiveScene->RenderableObjects);
 	}
 
 	void Application::RenderScene(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline, const std::vector<Assets::Object*>& objects) {
