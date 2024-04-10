@@ -89,9 +89,6 @@ namespace Engine {
 
 		// Load models/materials/textures
 		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
-			if (renderableObject->ModelPath == nullptr)
-				continue;
-
 			Utils::ModelLoader::LoadModelAndMaterials(
 				*renderableObject,
 				m_Materials,
@@ -434,6 +431,7 @@ namespace Engine {
 
 		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/wireframe_frag.spv");
 		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
+		wireframeFragShader.LineWidth = 5.0f;
 
 		m_WireframePipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(wireframeFragShader)

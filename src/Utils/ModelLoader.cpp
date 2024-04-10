@@ -45,6 +45,11 @@ namespace Engine {
 			std::vector<Assets::Texture>& loadedTextures,
 			VulkanEngine& vulkanEngine) {
 
+			if (object.ModelPath == nullptr && object.MaterialPath == nullptr) { 
+				LoadCustomModel(object, sceneMaterials);
+				return;
+			}
+
 			tinyobj::attrib_t attributes;
 			std::vector<tinyobj::shape_t> shapes;
 			std::vector<tinyobj::material_t> materials;
@@ -279,6 +284,16 @@ namespace Engine {
 			}
 
 			return UNEXISTENT;
+		}
+
+		void ModelLoader::LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials) {
+			for (auto& mesh : object.Meshes) {
+				if (GetMaterialIndex(sceneMaterials, mesh->MaterialName) == UNEXISTENT) {
+					sceneMaterials.push_back(*mesh->CustomMeshMaterial);
+				}
+
+				mesh->MaterialIndex = GetMaterialIndex(sceneMaterials, mesh->MaterialName);
+			}
 		}
 	}
 }

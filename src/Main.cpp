@@ -53,6 +53,7 @@
 #include "../Assets/Object.h"
 #include "../Assets/Shader.h"
 #include "../Assets/Pipeline.h"
+#include "../Assets/Material.h"
 
 class CustomObject : public Assets::Object {
 public:
@@ -60,7 +61,33 @@ public:
 	bool rotate = false;
 
 	void OnCreate() {
+		Assets::Material* material =  new Assets::Material();
+		material->Name = "Custom Material";
+		material->MaterialData.Diffuse = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
+	
+		Assets::Mesh* mesh = new Assets::Mesh();
+		mesh->MaterialName = material->Name;
+		mesh->CustomMeshMaterial = material;
 
+		Assets::Vertex vertex[4];
+		vertex[0].pos = glm::vec3(-1.0f, 1.0f, 0.0f);
+		vertex[1].pos = glm::vec3(1.0f, 1.0f, 0.0f);
+		vertex[2].pos = glm::vec3(-1.0f, -1.0f, 0.0f);
+		vertex[3].pos = glm::vec3(1.0f, -1.0f, 0.0f);
+
+		mesh->Vertices.push_back(vertex[0]);
+		mesh->Vertices.push_back(vertex[1]);
+		mesh->Vertices.push_back(vertex[2]);
+		mesh->Vertices.push_back(vertex[3]);
+
+		mesh->Indices.push_back(2);
+		mesh->Indices.push_back(0);
+		mesh->Indices.push_back(1);
+		mesh->Indices.push_back(3);
+		mesh->Indices.push_back(2);
+		mesh->Indices.push_back(1);
+
+		Meshes.push_back(mesh);
 	}
 
 	void OnUIRender() {
@@ -106,6 +133,11 @@ int main() {
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 
 	CustomObject model = CustomObject();
+	model.ID = "Test";
+	myScene->AddRenderableObject(&model);
+
+	/*
+	CustomObject model = CustomObject();
 	model.ID = "Sponza";
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
@@ -122,6 +154,7 @@ int main() {
 	testObject.Transformations.rotation.y = 87.6f;
 	testObject.Transformations.scaleHandler = 0.219f;
 	myScene->AddRenderableObject(&testObject);
+	*/
 
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
