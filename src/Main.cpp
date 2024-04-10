@@ -70,10 +70,10 @@ public:
 		mesh->CustomMeshMaterial = material;
 
 		Assets::Vertex vertex[4];
-		vertex[0].pos = glm::vec3(-1.0f, 1.0f, 0.0f);
-		vertex[1].pos = glm::vec3(1.0f, 1.0f, 0.0f);
-		vertex[2].pos = glm::vec3(-1.0f, -1.0f, 0.0f);
-		vertex[3].pos = glm::vec3(1.0f, -1.0f, 0.0f);
+		vertex[0].pos = glm::vec3(-1.0f, 0.0f, 1.0f);
+		vertex[1].pos = glm::vec3(1.0f, 0.0f, 1.0f);
+		vertex[2].pos = glm::vec3(-1.0f, 0.0f, -1.0f);
+		vertex[3].pos = glm::vec3(1.0f, 0.0f, -1.0f);
 
 		mesh->Vertices.push_back(vertex[0]);
 		mesh->Vertices.push_back(vertex[1]);
@@ -131,6 +131,7 @@ public:
 
 int main() {
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
+	myScene->SetCameraPosition({ 10, 11, 13 }, -121, -31);
 
 	CustomObject model = CustomObject();
 	model.ID = "Test";
