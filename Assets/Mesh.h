@@ -59,8 +59,8 @@ namespace Assets {
 	};
 
 	struct Mesh {
-		std::string MaterialName;
-		Assets::Material* CustomMeshMaterial = nullptr;
+		std::string MaterialName = "Default";
+		Assets::Material CustomMeshMaterial = {};
 
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;

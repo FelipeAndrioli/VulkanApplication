@@ -289,7 +289,7 @@ namespace Engine {
 		void ModelLoader::LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials) {
 			for (auto& mesh : object.Meshes) {
 				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
-					sceneMaterials.push_back(*mesh.CustomMeshMaterial);
+					sceneMaterials.push_back(mesh.CustomMeshMaterial);
 				}
 
 				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);

@@ -39,7 +39,7 @@ namespace Assets {
 	};
 
 	struct Material {
-		std::string Name = "";
+		std::string Name = "Default";
 		MeshMaterialData MaterialData = {};
 	};
 }
