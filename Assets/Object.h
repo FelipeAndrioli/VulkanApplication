@@ -45,7 +45,7 @@ namespace Assets {
 		bool Textured = false;
 		bool FlipTexturesVertically = false;
 		bool GenerateMipMaps = true;
-		std::vector<Mesh*> Meshes;
+		std::vector<Mesh> Meshes;
 		Transform Transformations = {};
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
 

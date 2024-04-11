@@ -101,11 +101,11 @@ namespace Assets {
 	void Scene::Setup() {
 		for (auto& renderableObject : RenderableObjects) {
 			for (auto& mesh : renderableObject->Meshes) {
-				mesh->IndexOffset = Indices.size();
-				mesh->VertexOffset = Vertices.size();
+				mesh.IndexOffset = Indices.size();
+				mesh.VertexOffset = Vertices.size();
 
-				Indices.insert(Indices.end(), mesh->Indices.begin(), mesh->Indices.end());
-				Vertices.insert(Vertices.end(), mesh->Vertices.begin(), mesh->Vertices.end());
+				Indices.insert(Indices.end(), mesh.Indices.begin(), mesh.Indices.end());
+				Vertices.insert(Vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
 			}
 		}
 

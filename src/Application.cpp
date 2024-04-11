@@ -233,22 +233,22 @@ namespace Engine {
 			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 			m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
 
-			for (const Assets::Mesh* mesh : object->Meshes) {
+			for (const auto& mesh : object->Meshes) {
 				vkCmdPushConstants(
 					commandBuffer,
 					m_MainPipelineLayout->GetHandle(),
 					VK_SHADER_STAGE_FRAGMENT_BIT,
 					0,
 					sizeof(int),
-					&mesh->MaterialIndex
+					&mesh.MaterialIndex
 				);
 
 				vkCmdDrawIndexed(
 					commandBuffer,
-					static_cast<uint32_t>(mesh->Indices.size()),
+					static_cast<uint32_t>(mesh.Indices.size()),
 					1,
-					static_cast<uint32_t>(mesh->IndexOffset),
-					static_cast<int32_t>(mesh->VertexOffset),
+					static_cast<uint32_t>(mesh.IndexOffset),
+					static_cast<int32_t>(mesh.VertexOffset),
 					0
 				);
 			}

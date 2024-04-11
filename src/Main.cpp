@@ -65,9 +65,9 @@ public:
 		material->Name = "Custom Material";
 		material->MaterialData.Diffuse = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
 	
-		Assets::Mesh* mesh = new Assets::Mesh();
-		mesh->MaterialName = material->Name;
-		mesh->CustomMeshMaterial = material;
+		Assets::Mesh mesh = Assets::Mesh();
+		mesh.MaterialName = material->Name;
+		mesh.CustomMeshMaterial = material;
 
 		Assets::Vertex vertex[4];
 		vertex[0].pos = glm::vec3(-1.0f, 0.0f, 1.0f);
@@ -75,17 +75,17 @@ public:
 		vertex[2].pos = glm::vec3(-1.0f, 0.0f, -1.0f);
 		vertex[3].pos = glm::vec3(1.0f, 0.0f, -1.0f);
 
-		mesh->Vertices.push_back(vertex[0]);
-		mesh->Vertices.push_back(vertex[1]);
-		mesh->Vertices.push_back(vertex[2]);
-		mesh->Vertices.push_back(vertex[3]);
+		mesh.Vertices.push_back(vertex[0]);
+		mesh.Vertices.push_back(vertex[1]);
+		mesh.Vertices.push_back(vertex[2]);
+		mesh.Vertices.push_back(vertex[3]);
 
-		mesh->Indices.push_back(2);
-		mesh->Indices.push_back(0);
-		mesh->Indices.push_back(1);
-		mesh->Indices.push_back(3);
-		mesh->Indices.push_back(2);
-		mesh->Indices.push_back(1);
+		mesh.Indices.push_back(2);
+		mesh.Indices.push_back(0);
+		mesh.Indices.push_back(1);
+		mesh.Indices.push_back(3);
+		mesh.Indices.push_back(2);
+		mesh.Indices.push_back(1);
 
 		Meshes.push_back(mesh);
 	}

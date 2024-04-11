@@ -134,7 +134,7 @@ namespace Engine {
 			for (const auto& shape : shapes) {
 				std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices{};
 
-				Assets::Mesh* newMesh = new Assets::Mesh();
+				Assets::Mesh newMesh = Assets::Mesh();
 
 				for (const auto& index : shape.mesh.indices) {
 					Assets::Vertex vertex{};
@@ -153,15 +153,15 @@ namespace Engine {
 					vertex.color = { 1.0f, 1.0f, 1.0f };
 
 					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh->Vertices.size());
-						newMesh->Vertices.push_back(vertex);
+						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh.Vertices.size());
+						newMesh.Vertices.push_back(vertex);
 					}
 
-					newMesh->Indices.push_back(uniqueVertices[vertex]);
+					newMesh.Indices.push_back(uniqueVertices[vertex]);
 				}
 
-				newMesh->MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
-				newMesh->MaterialIndex = static_cast<size_t>(GetMaterialIndex(sceneMaterials, newMesh->MaterialName));
+				newMesh.MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
+				newMesh.MaterialIndex = static_cast<size_t>(GetMaterialIndex(sceneMaterials, newMesh.MaterialName));
 
 				object.Meshes.push_back(newMesh);
 			}
@@ -288,11 +288,11 @@ namespace Engine {
 
 		void ModelLoader::LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials) {
 			for (auto& mesh : object.Meshes) {
-				if (GetMaterialIndex(sceneMaterials, mesh->MaterialName) == UNEXISTENT) {
-					sceneMaterials.push_back(*mesh->CustomMeshMaterial);
+				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
+					sceneMaterials.push_back(*mesh.CustomMeshMaterial);
 				}
 
-				mesh->MaterialIndex = GetMaterialIndex(sceneMaterials, mesh->MaterialName);
+				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
 			}
 		}
 	}
