@@ -34,4 +34,8 @@ namespace Assets {
 
 		DescriptorSets.reset();
 	}
+
+	void Object::SetMesh(std::vector<Assets::Mesh>& mesh) {
+		Meshes = mesh;
+	}
 }

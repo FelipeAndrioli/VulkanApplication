@@ -34,6 +34,7 @@ namespace Assets {
 		glm::mat4 GetModelMatrix();
 
 		void ResetResources();
+		void SetMesh(std::vector<Assets::Mesh>& mesh);
 		void SetGraphicsPipeline(Engine::GraphicsPipeline* graphicsPipeline) { m_GraphicsPipeline = graphicsPipeline; }
 		Engine::GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline; }
 
