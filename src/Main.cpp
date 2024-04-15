@@ -109,12 +109,12 @@ int main() {
 	myScene->SetCameraPosition({ 12, 5, 13 }, -131, -28);
 
 
-	CustomObject model = CustomObject();
+	CustomObject plane = CustomObject();
 	//model.SetMesh(Assets::MeshGenerator::GenerateSinglePlaneMesh(glm::vec3(0, 0, 0), 1.0f));
 	//model.SetMesh(Assets::MeshGenerator::GenerateDisconnectedPlaneMesh(glm::vec3(0, 0, 0), 1.0f, 10));
-	model.SetMesh(Assets::MeshGenerator::GeneratePlaneMesh(glm::vec3(0, 0, 0), 0.5f, 100));
-	model.ID = "Custom Mesh";
-	myScene->AddRenderableObject(&model);
+	plane.SetMesh(Assets::MeshGenerator::GeneratePlaneMesh(glm::vec3(0, 0, 0), 0.5f, 100));
+	plane.ID = "Custom Mesh";
+	myScene->AddRenderableObject(&plane);
 
 	/*
 	CustomObject model = CustomObject();
@@ -123,7 +123,6 @@ int main() {
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
 	model.Transformations.scaleHandler = 0.008f;
 	myScene->AddRenderableObject(&model);
-
 	CustomObject testObject = CustomObject();
 	testObject.ID = "Backpack";
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
