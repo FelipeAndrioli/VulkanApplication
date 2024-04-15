@@ -31,7 +31,11 @@ namespace Engine {
 	};
 
 	struct SceneGPUData {
-		glm::vec4 extra[8];
+		float time = 0.0f;
+		float extra_s_1 = 0.0f;
+		float extra_s_2 = 0.0f;
+		float extra_s_3 = 0.0f;
+		glm::vec4 extra[7];
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
 	};
@@ -98,6 +102,8 @@ namespace Engine {
 		   [object 1 | object 2 | materials 1 | materials 2 | scene data]	
 		*/
 		std::unique_ptr<class Engine::Buffer> m_GPUDataBuffer;
+
+		SceneGPUData m_SceneGPUData;
 
 		static const int OBJECT_BUFFER_INDEX = 0;
 		static const int MATERIAL_BUFFER_INDEX = 1;

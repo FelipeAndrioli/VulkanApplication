@@ -50,6 +50,8 @@ namespace Engine {
 		m_Window->OnMouseClick = std::bind(&InputSystem::Input::ProcessMouseClick, m_Input.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 		m_Window->OnCursorMove = std::bind(&InputSystem::Input::ProcessCursorMove, m_Input.get(), std::placeholders::_1, std::placeholders::_2);
 		m_Window->OnCursorOnScreen = std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
+
+		m_SceneGPUData = {};
 	}
 
 	Application::~Application() {
@@ -76,6 +78,8 @@ namespace Engine {
 	}
 
 	void Application::Update(float t) {
+
+		m_SceneGPUData.time = m_Window->GetCurrentFrametime();
 
 		if (m_Input->Keys[GLFW_KEY_ESCAPE].IsPressed) m_Window->Close();
 
@@ -190,12 +194,11 @@ namespace Engine {
 			VK_INDEX_TYPE_UINT32
 		);
 
-		SceneGPUData sceneGPUData = SceneGPUData();
-		sceneGPUData.view = p_ActiveScene->MainCamera->ViewMatrix;
-		sceneGPUData.proj = p_ActiveScene->MainCamera->ProjectionMatrix;
+		m_SceneGPUData.view = p_ActiveScene->MainCamera->ViewMatrix;
+		m_SceneGPUData.proj = p_ActiveScene->MainCamera->ProjectionMatrix;
 
 		VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
-		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
+		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &m_SceneGPUData, sizeof(SceneGPUData));
 
 		m_GlobalDescriptorSets->Bind(
 			m_CurrentFrame,
