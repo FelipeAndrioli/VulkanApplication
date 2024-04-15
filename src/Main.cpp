@@ -134,12 +134,13 @@ public:
 
 int main() {
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
-	myScene->SetCameraPosition({ 10, 11, 13 }, -121, -31);
+	myScene->SetCameraPosition({ 12, 5, 13 }, -131, -28);
 
 
 	CustomObject model = CustomObject();
 	//model.SetMesh(Assets::MeshGenerator::GenerateSinglePlaneMesh(glm::vec3(0, 0, 0), 1.0f));
-	model.SetMesh(Assets::MeshGenerator::GenerateGridPlaneMesh(glm::vec3(0, 0, 0), 1.0f, 10, 10));
+	//model.SetMesh(Assets::MeshGenerator::GenerateDisconnectedPlaneMesh(glm::vec3(0, 0, 0), 1.0f, 10));
+	model.SetMesh(Assets::MeshGenerator::GeneratePlaneMesh(glm::vec3(0, 0, 0), 1.0f, 100));
 	model.ID = "Test";
 	myScene->AddRenderableObject(&model);
 
