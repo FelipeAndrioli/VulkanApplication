@@ -422,7 +422,7 @@ namespace Engine {
 
 	void Application::CreateGraphicsPipelines() {
 
-		//Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/default_vert.spv");
+		Assets::VertexShader defaultVertexShader_ = Assets::VertexShader("Default Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/default_vert.spv");
 		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/sinewave_vert.spv");
 		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_frag.spv");
 
@@ -435,7 +435,7 @@ namespace Engine {
 
 		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/wireframe_frag.spv");
 		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
-		wireframeFragShader.LineWidth = 5.0f;
+		wireframeFragShader.LineWidth = 3.0f;
 
 		m_WireframePipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(wireframeFragShader)
