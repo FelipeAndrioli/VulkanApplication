@@ -62,35 +62,7 @@ public:
 	bool rotate = false;
 
 	void OnCreate() {
-		/*
-		Assets::Material* material =  new Assets::Material();
-		material->Name = "Custom Material";
-		material->MaterialData.Diffuse = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
-	
-		Assets::Mesh mesh = Assets::Mesh();
-		mesh.MaterialName = material->Name;
-		mesh.CustomMeshMaterial = material;
 
-		Assets::Vertex vertex[4];
-		vertex[0].pos = glm::vec3(-1.0f, 0.0f, 1.0f);
-		vertex[1].pos = glm::vec3(1.0f, 0.0f, 1.0f);
-		vertex[2].pos = glm::vec3(-1.0f, 0.0f, -1.0f);
-		vertex[3].pos = glm::vec3(1.0f, 0.0f, -1.0f);
-
-		mesh.Vertices.push_back(vertex[0]);
-		mesh.Vertices.push_back(vertex[1]);
-		mesh.Vertices.push_back(vertex[2]);
-		mesh.Vertices.push_back(vertex[3]);
-
-		mesh.Indices.push_back(2);
-		mesh.Indices.push_back(0);
-		mesh.Indices.push_back(1);
-		mesh.Indices.push_back(3);
-		mesh.Indices.push_back(2);
-		mesh.Indices.push_back(1);
-
-		Meshes.push_back(mesh);
-		*/
 	}
 
 	void OnUIRender() {
@@ -140,8 +112,8 @@ int main() {
 	CustomObject model = CustomObject();
 	//model.SetMesh(Assets::MeshGenerator::GenerateSinglePlaneMesh(glm::vec3(0, 0, 0), 1.0f));
 	//model.SetMesh(Assets::MeshGenerator::GenerateDisconnectedPlaneMesh(glm::vec3(0, 0, 0), 1.0f, 10));
-	model.SetMesh(Assets::MeshGenerator::GeneratePlaneMesh(glm::vec3(0, 0, 0), 1.0f, 100));
-	model.ID = "Test";
+	model.SetMesh(Assets::MeshGenerator::GeneratePlaneMesh(glm::vec3(0, 0, 0), 0.5f, 100));
+	model.ID = "Custom Mesh";
 	myScene->AddRenderableObject(&model);
 
 	/*
