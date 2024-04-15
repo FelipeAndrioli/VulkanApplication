@@ -331,6 +331,7 @@
     <None Include="Assets\Shaders\default_vert.spv" />
     <None Include="Assets\Shaders\wireframe.frag" />
     <None Include="Assets\Shaders\wireframe_frag.spv" />
+    <None Include="Assets\Shaders\sinewave.vert" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\Textures\statue_test.jpg">
