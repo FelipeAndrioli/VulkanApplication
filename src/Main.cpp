@@ -112,9 +112,15 @@ int main() {
 	CustomObject plane = CustomObject();
 	//model.SetMesh(Assets::MeshGenerator::GenerateSinglePlaneMesh(glm::vec3(0, 0, 0), 1.0f));
 	//model.SetMesh(Assets::MeshGenerator::GenerateDisconnectedPlaneMesh(glm::vec3(0, 0, 0), 1.0f, 10));
-	plane.SetMesh(Assets::MeshGenerator::GeneratePlaneMesh(glm::vec3(0, 0, 0), 0.5f, 100));
+	//plane.SetMesh(Assets::MeshGenerator::GeneratePlaneMesh(glm::vec3(0, 0, 0), 0.5f, 100));
+	plane.SetMesh(Assets::MeshGenerator::GenerateCubeMesh(glm::vec3(0, 0, 0), 1.0f));
 	plane.ID = "Custom Mesh";
 	myScene->AddRenderableObject(&plane);
+
+	CustomObject cube = {};
+	cube.SetMesh(Assets::MeshGenerator::GenerateCubeMesh(glm::vec3(1.0f, 0.0f, 0.0f), 1.0f));
+	cube.ID = "Cube";
+	myScene->AddRenderableObject(&cube);
 
 	/*
 	CustomObject model = CustomObject();
