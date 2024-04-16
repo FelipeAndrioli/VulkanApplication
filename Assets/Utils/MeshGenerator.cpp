@@ -137,4 +137,80 @@ namespace Assets {
 
 		return customMesh;
 	}
+
+	std::vector<Mesh> MeshGenerator::GenerateCubeMesh(glm::vec3 pos, float size) {
+		Assets::Mesh mesh = {};
+
+		Assets::Vertex vertex[8];
+
+		vertex[0].pos = glm::vec3(pos.x, pos.y, pos.z);
+		vertex[1].pos = glm::vec3(pos.x, pos.y + size, pos.z);
+		vertex[2].pos = glm::vec3(pos.x + size, pos.y + size, pos.z);
+		vertex[3].pos = glm::vec3(pos.x + size, pos.y, pos.z);
+		vertex[4].pos = glm::vec3(pos.x, pos.y, pos.z + size);
+		vertex[5].pos = glm::vec3(pos.x, pos.y + size, pos.z + size);
+		vertex[6].pos = glm::vec3(pos.x + size, pos.y + size, pos.z + size);
+		vertex[7].pos = glm::vec3(pos.x + size, pos.y, pos.z + size);
+
+		mesh.Vertices.push_back(vertex[0]);
+		mesh.Vertices.push_back(vertex[1]);
+		mesh.Vertices.push_back(vertex[2]);
+		mesh.Vertices.push_back(vertex[3]);
+		mesh.Vertices.push_back(vertex[4]);
+		mesh.Vertices.push_back(vertex[5]);
+		mesh.Vertices.push_back(vertex[6]);
+		mesh.Vertices.push_back(vertex[7]);
+
+		// front face
+		mesh.Indices.push_back(0);
+		mesh.Indices.push_back(1);
+		mesh.Indices.push_back(2);
+		mesh.Indices.push_back(0);
+		mesh.Indices.push_back(2);
+		mesh.Indices.push_back(3);
+
+		// back face
+		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(5);
+		mesh.Indices.push_back(6);
+		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(6);
+		mesh.Indices.push_back(7);
+
+		// left face
+		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(5);
+		mesh.Indices.push_back(1);
+		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(1);
+		mesh.Indices.push_back(0);
+
+		// right face
+		mesh.Indices.push_back(3);
+		mesh.Indices.push_back(2);
+		mesh.Indices.push_back(6);
+		mesh.Indices.push_back(3);
+		mesh.Indices.push_back(6);
+		mesh.Indices.push_back(7);
+
+		// top face
+		mesh.Indices.push_back(1);
+		mesh.Indices.push_back(5);
+		mesh.Indices.push_back(6);
+		mesh.Indices.push_back(1);
+		mesh.Indices.push_back(6);
+		mesh.Indices.push_back(2);
+
+		// bottom face
+		mesh.Indices.push_back(3);
+		mesh.Indices.push_back(7);
+		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(3);
+		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(0);
+
+		std::vector<Assets::Mesh> customMesh = { mesh };
+
+		return customMesh;
+	}
 }

@@ -14,5 +14,6 @@ namespace Assets {
 		static std::vector<Mesh> GenerateSinglePlaneMesh(glm::vec3 pos, float cellSize);
 		static std::vector<Mesh> GenerateDisconnectedPlaneMesh(glm::vec3 pos, float cellSize, size_t planeSize);
 		static std::vector<Mesh> GeneratePlaneMesh(glm::vec3 pos, float cellSize, size_t planeSize);
+		static std::vector<Mesh> GenerateCubeMesh(glm::vec3 pos, float size);
 	};
 }
