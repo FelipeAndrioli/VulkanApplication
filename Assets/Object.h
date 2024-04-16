@@ -24,7 +24,7 @@ namespace Assets {
 
 	class Object {
 	public:
-		Object();
+		Object(glm::vec3 pos = glm::vec3(0.0f, 0.0f, 0.0f));
 		~Object();
 
 		virtual void OnCreate() = 0;
