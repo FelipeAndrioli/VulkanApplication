@@ -23,11 +23,11 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Send one array of textures/material and the index to be used per material
 - [x] Mipmaps
 - [x] Multisampling
-- [ ] Add normal to the vertices
-- [ ] Default models
-	- [ ] Plane
-	- [ ] Cube
+- [ ] Custom meshes I
+	- [x] Individual Cells Plane 
+	- [x] Unique Cells Plane 
 	- [ ] Sphere
+- [ ] Add normal to the vertices
 - [ ] Lighting
 - [ ] Compute Shaders
 - [ ] GPU Driven Rendering
@@ -35,6 +35,8 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [ ] Ray Tracer
 - [ ] Render Graph
 - [ ] Scene selection
+- [ ] Custom meshes II 
+	- [ ] Voxel
 
 ## Small problems to remember to solve
 
