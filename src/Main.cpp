@@ -59,6 +59,8 @@
 class CustomObject : public Assets::Object {
 public:
 
+	using Object::Object;
+
 	bool rotate = false;
 
 	void OnCreate() {
@@ -106,9 +108,9 @@ public:
 
 int main() {
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
-	myScene->SetCameraPosition({ 12, 5, 13 }, -131, -28);
+	myScene->SetCameraPosition({ 5, 2, 0 }, -181, -7);
 
-
+	/*
 	CustomObject plane = CustomObject();
 	//model.SetMesh(Assets::MeshGenerator::GenerateSinglePlaneMesh(glm::vec3(0, 0, 0), 1.0f));
 	//model.SetMesh(Assets::MeshGenerator::GenerateDisconnectedPlaneMesh(glm::vec3(0, 0, 0), 1.0f, 10));
@@ -121,25 +123,23 @@ int main() {
 	cube.SetMesh(Assets::MeshGenerator::GenerateCubeMesh(glm::vec3(1.0f, 0.0f, 0.0f), 1.0f));
 	cube.ID = "Cube";
 	myScene->AddRenderableObject(&cube);
+	*/
 
-	/*
 	CustomObject model = CustomObject();
 	model.ID = "Sponza";
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
 	model.Transformations.scaleHandler = 0.008f;
 	myScene->AddRenderableObject(&model);
-	CustomObject testObject = CustomObject();
+
+	CustomObject testObject = CustomObject(glm::vec3(0.0f, 5.7f, -0.09f));
 	testObject.ID = "Backpack";
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	testObject.FlipTexturesVertically = true;
-	testObject.Transformations.translation.y = 5.714f;
-	testObject.Transformations.translation.z = -0.095f;
 	testObject.Transformations.rotation.y = 87.6f;
 	testObject.Transformations.scaleHandler = 0.219f;
 	myScene->AddRenderableObject(&testObject);
-	*/
 
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
