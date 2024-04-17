@@ -114,12 +114,12 @@ namespace Assets {
 				// vertices are being ordered from left to right, therefore it's not possible just to add + 1 to achieve 
 				// an upper row, we need to add the row size + x (x being the column position in upper row).
 
-				i[0] = v + 0;
-				i[1] = v + planeSize + 1;
-				i[2] = v + planeSize + 2;
-				i[3] = v + 0;
-				i[4] = v + planeSize + 2;
-				i[5] = v + 1;
+				i[0] = static_cast<uint32_t>(v + 0);
+				i[1] = static_cast<uint32_t>(v + planeSize + 1);
+				i[2] = static_cast<uint32_t>(v + planeSize + 2);
+				i[3] = static_cast<uint32_t>(v + 0);
+				i[4] = static_cast<uint32_t>(v + planeSize + 2);
+				i[5] = static_cast<uint32_t>(v + 1);
 
 				mesh.Indices.push_back(i[0]);
 				mesh.Indices.push_back(i[1]);
