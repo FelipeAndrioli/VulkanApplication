@@ -28,7 +28,8 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Unique Cells Plane 
 	- [x] Cube
 - [ ] Lighting
-	- [ ] Normals 
+	- [ ] Load Normals 
+	- [ ] Generate Normals 
 - [ ] Compute Shaders
 - [ ] GPU Driven Rendering
 - [ ] glTF

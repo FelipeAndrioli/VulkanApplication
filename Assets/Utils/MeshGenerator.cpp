@@ -139,6 +139,8 @@ namespace Assets {
 	}
 
 	std::vector<Mesh> MeshGenerator::GenerateCubeMesh(glm::vec3 pos, float size) {
+		// TODO: rework when implementing voxels
+
 		Assets::Mesh mesh = {};
 
 		Assets::Vertex vertex[8];
