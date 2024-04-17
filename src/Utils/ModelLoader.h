@@ -41,6 +41,8 @@ namespace Engine {
 				*/
 			);
 
+			static void LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials);
+
 			static inline bool fileExists(const std::string& path) {
 				struct stat buffer;
 				return (stat(path.c_str(), &buffer) == 0);

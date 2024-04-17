@@ -147,6 +147,7 @@
     <ClCompile Include="Assets\Object.cpp" />
     <ClCompile Include="Assets\Scene.cpp" />
     <ClCompile Include="Assets\Shader.cpp" />
+    <ClCompile Include="Assets\Utils\MeshGenerator.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="libs\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="libs\imgui\imgui.cpp" />
@@ -167,7 +168,7 @@
     <ClCompile Include="src\DescriptorSets.cpp" />
     <ClCompile Include="src\DeviceMemory.cpp" />
     <ClCompile Include="src\Fence.cpp" />
-    <ClCompile Include="src\GraphicsPipeline.cpp" />
+    <ClCompile Include="src\Pipeline.cpp" />
     <ClCompile Include="src\Image.cpp" />
     <ClCompile Include="src\Input\Input.cpp" />
     <ClCompile Include="src\Instance.cpp" />
@@ -197,6 +198,7 @@
     <ClInclude Include="Assets\Scene.h" />
     <ClInclude Include="Assets\Shader.h" />
     <ClInclude Include="Assets\Texture.h" />
+    <ClInclude Include="Assets\Utils\MeshGenerator.h" />
     <ClInclude Include="libs\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="libs\imgui\backends\imgui_impl_vulkan.h" />
     <ClInclude Include="libs\imgui\imgui.h" />
@@ -220,7 +222,7 @@
     <ClInclude Include="src\DescriptorSets.h" />
     <ClInclude Include="src\DeviceMemory.h" />
     <ClInclude Include="src\Fence.h" />
-    <ClInclude Include="src\GraphicsPipeline.h" />
+    <ClInclude Include="src\Pipeline.h" />
     <ClInclude Include="src\Image.h" />
     <ClInclude Include="src\Input\Input.h" />
     <ClInclude Include="src\Instance.h" />
@@ -246,30 +248,16 @@
   <ItemGroup>
     <None Include=".gitignore" />
     <None Include=".gitmodules" />
-    <None Include="Assets\Shaders\comp.spv" />
+    <None Include="Assets\Shaders\colored.frag" />
+    <None Include="Assets\Shaders\colored_frag.spv" />
     <None Include="Assets\Shaders\compile.bat" />
-    <None Include="Assets\Shaders\default.frag" />
-    <None Include="Assets\Shaders\default.vert" />
-    <None Include="Assets\Shaders\default_frag.spv" />
     <None Include="Assets\Shaders\default_vert.spv" />
-    <None Include="Assets\Shaders\frag.spv" />
-    <None Include="Assets\Shaders\particle_shader.frag" />
-    <None Include="Assets\Shaders\particle_shader.vert" />
-    <None Include="Assets\Shaders\particle_shader.comp" />
-    <None Include="Assets\Shaders\particle_shader_comp.spv" />
-    <None Include="Assets\Shaders\particle_shader_frag.spv" />
-    <None Include="Assets\Shaders\particle_shader_vert.spv" />
-    <None Include="Assets\Shaders\shader.frag" />
-    <None Include="Assets\Shaders\shader.vert" />
-    <None Include="Assets\Shaders\shader_test.frag" />
-    <None Include="Assets\Shaders\shader_test.vert" />
-    <None Include="Assets\Shaders\shader_test_frag.spv" />
-    <None Include="Assets\Shaders\shader_test_vert.spv" />
+    <None Include="Assets\Shaders\sinewave.vert" />
     <None Include="Assets\Shaders\textured.frag" />
-    <None Include="Assets\Shaders\textured.vert" />
+    <None Include="Assets\Shaders\default.vert" />
     <None Include="Assets\Shaders\textured_frag.spv" />
-    <None Include="Assets\Shaders\textured_vert.spv" />
-    <None Include="Assets\Shaders\vert.spv" />
+    <None Include="Assets\Shaders\wireframe.frag" />
+    <None Include="Assets\Shaders\wireframe_frag.spv" />
     <None Include="imgui.ini" />
     <None Include="README.md" />
   </ItemGroup>

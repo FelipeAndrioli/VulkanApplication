@@ -24,7 +24,7 @@ namespace Assets {
 
 	class Object {
 	public:
-		Object();
+		Object(glm::vec3 pos = glm::vec3(0.0f, 0.0f, 0.0f));
 		~Object();
 
 		virtual void OnCreate() = 0;
@@ -34,6 +34,10 @@ namespace Assets {
 		glm::mat4 GetModelMatrix();
 
 		void ResetResources();
+		void SetMesh(std::vector<Assets::Mesh> mesh);
+		void SetGraphicsPipeline(Engine::GraphicsPipeline* graphicsPipeline) { m_GraphicsPipeline = graphicsPipeline; }
+		Engine::GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline; }
+
 	public:
 		std::string ID = "";
 		std::string PipelineName = "";
@@ -42,9 +46,11 @@ namespace Assets {
 		bool Textured = false;
 		bool FlipTexturesVertically = false;
 		bool GenerateMipMaps = true;
-		std::vector<Mesh*> Meshes;
-		Engine::GraphicsPipeline* SelectedGraphicsPipeline = nullptr;
+		std::vector<Mesh> Meshes;
 		Transform Transformations = {};
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
+
+	private:
+		Engine::GraphicsPipeline* m_GraphicsPipeline = nullptr;
 	};
 }

@@ -1,4 +1,4 @@
-#include "GraphicsPipeline.h"
+#include "Pipeline.h"
 
 #include "LogicalDevice.h"
 #include "SwapChain.h"
@@ -143,5 +143,42 @@ namespace Engine {
 
 	GraphicsPipeline::~GraphicsPipeline() {
 		vkDestroyPipeline(m_VulkanEngine.GetLogicalDevice().GetHandle(), m_GraphicsPipeline, nullptr);
+	}
+
+	PipelineBuilder& PipelineBuilder::AddVertexShader(Assets::VertexShader& vertexShader) {
+		m_VertexShader = &vertexShader;
+		return *this;
+	}
+
+	PipelineBuilder& PipelineBuilder::AddFragmentShader(Assets::FragmentShader& fragmentShader) {
+		m_FragmentShader = &fragmentShader;
+		return *this;
+	}
+
+	PipelineBuilder& PipelineBuilder::AddRenderPass(VkRenderPass& renderPass) {
+		m_RenderPass = &renderPass;
+		return *this;
+	}
+	
+	PipelineBuilder& PipelineBuilder::AddPipelineLayout(PipelineLayout& pipelineLayout) {
+		m_PipelineLayout = &pipelineLayout;
+		return *this;
+	}
+
+	std::unique_ptr<class GraphicsPipeline> PipelineBuilder::BuildGraphicsPipeline(VulkanEngine& vulkanEngine) {
+		std::unique_ptr<class GraphicsPipeline> graphicsPipeline = std::make_unique<class GraphicsPipeline>(
+			*m_VertexShader,
+			*m_FragmentShader,
+			vulkanEngine,
+			*m_RenderPass,
+			*m_PipelineLayout
+		);
+
+		m_VertexShader = nullptr;
+		m_FragmentShader = nullptr;
+		m_RenderPass = nullptr;
+		m_PipelineLayout = nullptr;
+
+		return graphicsPipeline;
 	}
 }

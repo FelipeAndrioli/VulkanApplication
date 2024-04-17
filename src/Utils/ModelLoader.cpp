@@ -45,6 +45,11 @@ namespace Engine {
 			std::vector<Assets::Texture>& loadedTextures,
 			VulkanEngine& vulkanEngine) {
 
+			if (object.ModelPath == nullptr && object.MaterialPath == nullptr) { 
+				LoadCustomModel(object, sceneMaterials);
+				return;
+			}
+
 			tinyobj::attrib_t attributes;
 			std::vector<tinyobj::shape_t> shapes;
 			std::vector<tinyobj::material_t> materials;
@@ -107,6 +112,9 @@ namespace Engine {
 
 				std::map<Assets::TextureType, std::string>::iterator it;
 				for (it = textureMap.begin(); it != textureMap.end(); it++) {
+					if (!object.Textured)
+						object.Textured = true;
+
 					ModelLoader::ProcessTexture(
 						sceneMaterials,
 						loadedTextures,
@@ -126,7 +134,7 @@ namespace Engine {
 			for (const auto& shape : shapes) {
 				std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices{};
 
-				Assets::Mesh* newMesh = new Assets::Mesh();
+				Assets::Mesh newMesh = Assets::Mesh();
 
 				for (const auto& index : shape.mesh.indices) {
 					Assets::Vertex vertex{};
@@ -145,15 +153,15 @@ namespace Engine {
 					vertex.color = { 1.0f, 1.0f, 1.0f };
 
 					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh->Vertices.size());
-						newMesh->Vertices.push_back(vertex);
+						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh.Vertices.size());
+						newMesh.Vertices.push_back(vertex);
 					}
 
-					newMesh->Indices.push_back(uniqueVertices[vertex]);
+					newMesh.Indices.push_back(uniqueVertices[vertex]);
 				}
 
-				newMesh->MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
-				newMesh->MaterialIndex = static_cast<size_t>(GetMaterialIndex(sceneMaterials, newMesh->MaterialName));
+				newMesh.MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
+				newMesh.MaterialIndex = static_cast<size_t>(GetMaterialIndex(sceneMaterials, newMesh.MaterialName));
 
 				object.Meshes.push_back(newMesh);
 			}
@@ -276,6 +284,16 @@ namespace Engine {
 			}
 
 			return UNEXISTENT;
+		}
+
+		void ModelLoader::LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials) {
+			for (auto& mesh : object.Meshes) {
+				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
+					sceneMaterials.push_back(mesh.CustomMeshMaterial);
+				}
+
+				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
+			}
 		}
 	}
 }

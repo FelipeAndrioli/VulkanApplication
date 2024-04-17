@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "../src/Vulkan.h"
+#include <glm/glm.hpp>
 
 namespace Engine {
 	class LogicalDevice;
@@ -46,6 +47,7 @@ namespace Assets {
 		void OnUIRender();
 		virtual void OnUpdate(float t, const Engine::InputSystem::Input& input);
 		void OnResize(uint32_t width, uint32_t height);
+		void SetCameraPosition(glm::vec3 pos, float yaw, float pitch);
 	public:
 		std::vector<Object*> RenderableObjects;
 		std::vector<Assets::GraphicsPipeline> SceneGraphicsPipelines;

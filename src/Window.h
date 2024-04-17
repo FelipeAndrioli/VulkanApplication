@@ -19,8 +19,9 @@ namespace Engine {
 		void WaitEvents();
 		void Close();
 
-		inline float GetLastFrameTime() { return m_LastFrameTime; };
-		inline GLFWwindow* GetHandle() const { return m_Window; };
+		inline float GetLastFrameTime() { return m_LastFrameTime; }
+		float GetCurrentFrametime() { return m_CurrentFrameTime; }
+		inline GLFWwindow* GetHandle() const { return m_Window; }
 		VkExtent2D GetFramebufferSize() const;
 
 		std::function<void(float time)> Update;

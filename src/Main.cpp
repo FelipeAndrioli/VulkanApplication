@@ -53,193 +53,13 @@
 #include "../Assets/Object.h"
 #include "../Assets/Shader.h"
 #include "../Assets/Pipeline.h"
-
-class MyCubeOne : public Assets::Object {
-public:
-	bool Rotate = false;
-
-	void OnCreate() {
-
-		std::vector<Assets::Vertex> v = {
-			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
-			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f }},		// top back right		1 - OK
-			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},		// top front left		2 - OK
-			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},		// top back left		3 - OK
-			{{ -0.5f, -0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},		// bottom front left	4 - OK
-			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},	// bottom back left		5 - OK
-			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},		// bottom front right	6 - OK
-			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }}		// bottom back right	7 - OK
-		};
-
-		std::vector<uint32_t> i = {
-			0, 2, 6, 2, 4, 6,		// front face
-			0, 6, 7, 0, 1, 7,		// right face
-			3, 4, 2, 3, 5, 4,		// left face
-			3, 5, 7, 3, 7, 1,		// bottom face
-			2, 3, 0, 3, 0, 1,		// top face
-			5, 4, 6, 5, 6, 7		// bottom face
-		};
-
-		Transformations.translation.z = -4.0f;
-
-		//this->Meshes.push_back({ v, i });
-	}
-
-	void OnUIRender() {
-		std::string t = "Transformations " + ID;
-
-		if (ImGui::TreeNode(t.c_str())) {
-			std::string t_label_x = "Translation x " + ID;
-			std::string t_label_y = "Translation y " + ID;
-			std::string t_label_z = "Translation z " + ID;
-
-			ImGui::SliderFloat(t_label_x.c_str(), &Transformations.translation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &Transformations.translation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &Transformations.translation.z, -200.0f, 200.0f);
-
-			std::string r_label_x = "Rotation x " + ID;
-			std::string r_label_y = "Rotation y " + ID;
-			std::string r_label_z = "Rotation z " + ID;
-			
-			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
-
-			ImGui::Checkbox("Rotate", &Rotate);
-			ImGui::TreePop();
-		}
-	}
-
-	void OnUpdate(float t) {
-		if (Rotate) {
-			Transformations.rotation.x += t * 0.05f;
-		}
-	}
-};
-
-class MyCubeTwo : public Assets::Object {
-public:
-	void OnCreate() {
-
-		std::vector<Assets::Vertex> v = {
-			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
-			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f }},		// top back right		1 - OK
-			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},		// top front left		2 - OK
-			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},		// top back left		3 - OK
-			{{ -0.5f, -0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},		// bottom front left	4 - OK
-			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},	// bottom back left		5 - OK
-			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},		// bottom front right	6 - OK
-			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }}		// bottom back right	7 - OK
-		};
-
-		std::vector<uint32_t> i = {
-			0, 2, 6, 2, 4, 6,		// front face
-			0, 6, 7, 0, 1, 7,		// right face
-			3, 4, 2, 3, 5, 4,		// left face
-			3, 5, 7, 3, 7, 1,		// bottom face
-			2, 3, 0, 3, 0, 1,		// top face
-			5, 4, 6, 5, 6, 7		// bottom face
-		};
-
-		Transformations.translation.x = 2.0f;
-		Transformations.translation.z = -4.0f;
-
-		//this->Meshes.push_back({ v, i });
-	}
-
-	void OnUIRender() {
-		std::string t = "Transformations " + ID;
-
-		if (ImGui::TreeNode(t.c_str())) {
-			std::string t_label_x = "Translation x " + ID;
-			std::string t_label_y = "Translation y " + ID;
-			std::string t_label_z = "Translation z " + ID;
-
-			ImGui::SliderFloat(t_label_x.c_str(), &Transformations.translation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &Transformations.translation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &Transformations.translation.z, -200.0f, 200.0f);
-
-			std::string r_label_x = "Rotation x " + ID;
-			std::string r_label_y = "Rotation y " + ID;
-			std::string r_label_z = "Rotation z " + ID;
-			
-			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
-			
-			//ImGui::ColorEdit3("Color", glm::value_ptr(ubo->color));
-
-			ImGui::TreePop();
-		}
-	}
-
-	void OnUpdate(float t) {
-		Transformations.rotation.y += t * 0.05f;
-	}
-};
-
-class MyCubeThree : public Assets::Object {
-public:
-
-	void OnCreate() {
-
-		std::vector<Assets::Vertex> v = {
-			{{ 0.5f, 0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},		// top front right		0 - OK
-			{{ 0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f }},		// top back right		1 - OK
-			{{ -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},		// top front left		2 - OK
-			{{ -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},		// top back left		3 - OK
-			{{ -0.5f, -0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},		// bottom front left	4 - OK
-			{{ -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},	// bottom back left		5 - OK
-			{{ 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},		// bottom front right	6 - OK
-			{{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }}		// bottom back right	7 - OK
-		};
-
-		std::vector<uint32_t> i = {
-			0, 2, 6, 2, 4, 6,		// front face
-			0, 6, 7, 0, 1, 7,		// right face
-			3, 4, 2, 3, 5, 4,		// left face
-			3, 5, 7, 3, 7, 1,		// bottom face
-			2, 3, 0, 3, 0, 1,		// top face
-			5, 4, 6, 5, 6, 7		// bottom face
-		};
-
-		Transformations.translation.x = -2.0f;
-		Transformations.translation.z = -4.0f;
-
-		//this->Meshes.push_back({ v, i });
-	}
-
-	void OnUIRender() {
-		std::string t = "Transformations " + ID;
-
-		if (ImGui::TreeNode(t.c_str())) {
-			std::string t_label_x = "Translation x " + ID;
-			std::string t_label_y = "Translation y " + ID;
-			std::string t_label_z = "Translation z " + ID;
-
-			ImGui::SliderFloat(t_label_x.c_str(), &Transformations.translation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &Transformations.translation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &Transformations.translation.z, -200.0f, 200.0f);
-
-			std::string r_label_x = "Rotation x " + ID;
-			std::string r_label_y = "Rotation y " + ID;
-			std::string r_label_z = "Rotation z " + ID;
-			
-			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
-
-			ImGui::TreePop();
-		}
-	}
-
-	void OnUpdate(float t) {
-		Transformations.rotation.z += t * 0.05f;
-	}
-};
+#include "../Assets/Material.h"
+#include "../Assets/Utils/MeshGenerator.h"
 
 class CustomObject : public Assets::Object {
 public:
+
+	using Object::Object;
 
 	bool rotate = false;
 
@@ -288,6 +108,22 @@ public:
 
 int main() {
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
+	myScene->SetCameraPosition({ 5, 2, 0 }, -181, -7);
+
+	/*
+	CustomObject plane = CustomObject();
+	//model.SetMesh(Assets::MeshGenerator::GenerateSinglePlaneMesh(glm::vec3(0, 0, 0), 1.0f));
+	//model.SetMesh(Assets::MeshGenerator::GenerateDisconnectedPlaneMesh(glm::vec3(0, 0, 0), 1.0f, 10));
+	//plane.SetMesh(Assets::MeshGenerator::GeneratePlaneMesh(glm::vec3(0, 0, 0), 0.5f, 100));
+	plane.SetMesh(Assets::MeshGenerator::GenerateCubeMesh(glm::vec3(0, 0, 0), 1.0f));
+	plane.ID = "Custom Mesh";
+	myScene->AddRenderableObject(&plane);
+
+	CustomObject cube = {};
+	cube.SetMesh(Assets::MeshGenerator::GenerateCubeMesh(glm::vec3(1.0f, 0.0f, 0.0f), 1.0f));
+	cube.ID = "Cube";
+	myScene->AddRenderableObject(&cube);
+	*/
 
 	CustomObject model = CustomObject();
 	model.ID = "Sponza";
@@ -296,35 +132,14 @@ int main() {
 	model.Transformations.scaleHandler = 0.008f;
 	myScene->AddRenderableObject(&model);
 
-	CustomObject testObject = CustomObject();
+	CustomObject testObject = CustomObject(glm::vec3(0.0f, 5.7f, -0.09f));
 	testObject.ID = "Backpack";
 	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
 	testObject.FlipTexturesVertically = true;
-	testObject.Transformations.translation.y = 5.714f;
-	testObject.Transformations.translation.z = -0.095f;
 	testObject.Transformations.rotation.y = 87.6f;
 	testObject.Transformations.scaleHandler = 0.219f;
 	myScene->AddRenderableObject(&testObject);
-
-	/*
-	CustomObject model = CustomObject();
-	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace/palace.obj";
-	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/palace";
-	model.Transformations.rotation.x = -90.0f;
-	model.Transformations.translation.y = -6.0f;
-	model.Transformations.translation.z = -42.0f;
-	myScene->AddRenderableObject(&model);
-
-	CustomObject testObject2 = CustomObject();
-	testObject2.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
-	testObject2.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
-	testObject2.FlipTexturesVertically = true;
-	testObject2.PipelineName = wireFramePipeline.Name;
-	testObject2.Transformations.translation.x = 5.0f;
-	testObject2.Transformations.translation.z = -2.0f;
-	myScene->AddRenderableObject(&testObject2);
-	*/
 
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
@@ -345,10 +160,6 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-	//rainbowMaterial.reset();
-	//colorMaterial.reset();
-	//texturedMaterial.reset();
-	
 	myScene.reset();
 	app.reset();
 

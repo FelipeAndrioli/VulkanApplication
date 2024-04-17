@@ -59,7 +59,7 @@ namespace Engine {
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = descriptorBinding.buffer->GetBuffer(static_cast<uint32_t>(bufferIndex));
 		bufferInfo.offset = descriptorBinding.bufferOffset;
-		bufferInfo.range = descriptorBinding.bufferSize;
+		bufferInfo.range = descriptorBinding.bufferSize == 0 ? 256 : descriptorBinding.bufferSize;
 
 		VkWriteDescriptorSet descriptorWrite = {};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -82,6 +82,10 @@ namespace Engine {
 	}
 
 	void DescriptorSets::WriteDescriptorImage(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding) {
+
+		if (descriptorBinding.textures->empty() || descriptorBinding.textures->size() == 0)
+			return;
+
 		std::vector<VkDescriptorImageInfo> imageInfo;
 		VkWriteDescriptorSet descriptorWrite = {};
 

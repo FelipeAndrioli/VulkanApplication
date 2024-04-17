@@ -8,7 +8,8 @@
 #include<glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
 
-#include "../src/Vulkan.h"
+#include "../src/VulkanHeader.h"
+#include "../Assets/Material.h"
 
 namespace Engine {
 	class Buffer;
@@ -19,9 +20,9 @@ namespace Assets {
 
 	struct Vertex {
 
-		glm::vec3 pos;
-		glm::vec3 color;
-		glm::vec2 texCoord;
+		glm::vec3 pos = glm::vec3(1.0f, 1.0f, 1.0f);
+		glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
+		glm::vec2 texCoord = glm::vec2(0.0f, 0.0f);
 
 		bool operator==(const Vertex& other) const {
 			return pos == other.pos && color == other.color && texCoord == other.texCoord;
@@ -58,8 +59,8 @@ namespace Assets {
 	};
 
 	struct Mesh {
-		std::string MaterialName;
-		Assets::Material* Material = nullptr;
+		std::string MaterialName = "Default";
+		Assets::Material CustomMeshMaterial = {};
 
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;

@@ -12,7 +12,7 @@
 #include "SwapChain.h"
 #include "RenderPass.h"
 #include "PipelineLayout.h"
-#include "GraphicsPipeline.h"
+#include "Pipeline.h"
 #include "DescriptorSetLayout.h"
 #include "DescriptorSets.h"
 #include "ComputePipeline.h"
@@ -50,6 +50,8 @@ namespace Engine {
 		m_Window->OnMouseClick = std::bind(&InputSystem::Input::ProcessMouseClick, m_Input.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 		m_Window->OnCursorMove = std::bind(&InputSystem::Input::ProcessCursorMove, m_Input.get(), std::placeholders::_1, std::placeholders::_2);
 		m_Window->OnCursorOnScreen = std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
+
+		m_SceneGPUData = {};
 	}
 
 	Application::~Application() {
@@ -76,6 +78,8 @@ namespace Engine {
 	}
 
 	void Application::Update(float t) {
+
+		m_SceneGPUData.time = m_Window->GetCurrentFrametime();
 
 		if (m_Input->Keys[GLFW_KEY_ESCAPE].IsPressed) m_Window->Close();
 
@@ -108,6 +112,13 @@ namespace Engine {
 		
 		CreatePipelineLayouts();
 		CreateGraphicsPipelines();
+
+		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {
+			if (renderableObject->Textured)
+				renderableObject->SetGraphicsPipeline(m_TexturedPipeline.get());
+			else
+				renderableObject->SetGraphicsPipeline(m_ColoredPipeline.get());
+		}
 	}
 
 	void Application::Shutdown() {
@@ -119,9 +130,10 @@ namespace Engine {
 		m_GPUDataBuffer.reset();
 		m_SceneGeometryBuffer.reset();
 
-		m_MainGraphicsPipelineLayout.reset();
+		m_MainPipelineLayout.reset();
 		m_TexturedPipeline.reset();
 		m_WireframePipeline.reset();
+		m_ColoredPipeline.reset();
 
 		m_Materials.clear();
 		m_LoadedTextures.clear();
@@ -158,6 +170,7 @@ namespace Engine {
 		ImGui::Text("Last Frame: %f ms", m_Settings.ms);
 		ImGui::Text("Framerate: %.1f fps", m_Settings.frames);
 		ImGui::Checkbox("Limit Framerate", &m_Settings.limitFramerate);
+		ImGui::Checkbox("Enable Wireframe", &m_Settings.wireframeEnabled);
 
 		p_ActiveScene->OnUIRender();
 	}
@@ -181,47 +194,40 @@ namespace Engine {
 			VK_INDEX_TYPE_UINT32
 		);
 
-		SceneGPUData sceneGPUData = SceneGPUData();
-		sceneGPUData.view = p_ActiveScene->MainCamera->ViewMatrix;
-		sceneGPUData.proj = p_ActiveScene->MainCamera->ProjectionMatrix;
+		m_SceneGPUData.view = p_ActiveScene->MainCamera->ViewMatrix;
+		m_SceneGPUData.proj = p_ActiveScene->MainCamera->ProjectionMatrix;
 
 		VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
-		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &sceneGPUData, sizeof(SceneGPUData));
-
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TexturedPipeline->GetHandle());
-		//vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePipeline->GetHandle());
-
-		VkViewport viewport = {};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)swapChainExtent.width;
-		viewport.height = (float)swapChainExtent.height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-		VkRect2D scissor = {};
-		scissor.offset = { 0, 0 };
-		scissor.extent = swapChainExtent;
-
-		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+		m_GPUDataBuffer->Update(m_CurrentFrame, sceneBufferOffset, &m_SceneGPUData, sizeof(SceneGPUData));
 
 		m_GlobalDescriptorSets->Bind(
 			m_CurrentFrame,
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			m_MainGraphicsPipelineLayout->GetHandle()
+			m_MainPipelineLayout->GetHandle()
 		);
 
-		for (size_t i = 0; i < p_ActiveScene->RenderableObjects.size(); i++) {
-			Assets::Object* object = p_ActiveScene->RenderableObjects[i];
+		RenderScene(commandBuffer, m_TexturedPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+		RenderScene(commandBuffer, m_ColoredPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+
+		if (m_Settings.wireframeEnabled)
+			RenderScene(commandBuffer, m_WireframePipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+	}
+
+	void Application::RenderScene(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline, const std::vector<Assets::Object*>& objects) {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+		for (size_t i = 0; i < objects.size(); i++) {
+			if (objects[i]->GetGraphicsPipeline()->GetHandle() != graphicsPipeline && graphicsPipeline != m_WireframePipeline->GetHandle())
+				continue;
+
+			Assets::Object* object = objects[i];
 
 			object->DescriptorSets->Bind(
 				m_CurrentFrame, 
 				commandBuffer, 
 				VK_PIPELINE_BIND_POINT_GRAPHICS, 
-				m_MainGraphicsPipelineLayout->GetHandle()
+				m_MainPipelineLayout->GetHandle()
 			);
 
 			ObjectGPUData objectGPUData = ObjectGPUData();
@@ -230,30 +236,26 @@ namespace Engine {
 			VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 			m_GPUDataBuffer->Update(m_CurrentFrame, objectBufferOffset, &objectGPUData, sizeof(ObjectGPUData));
 
-			Assets::Material* material = nullptr;
-
-			for (const Assets::Mesh* mesh : object->Meshes) {
+			for (const auto& mesh : object->Meshes) {
 				vkCmdPushConstants(
 					commandBuffer,
-					m_MainGraphicsPipelineLayout->GetHandle(),
+					m_MainPipelineLayout->GetHandle(),
 					VK_SHADER_STAGE_FRAGMENT_BIT,
 					0,
 					sizeof(int),
-					&mesh->MaterialIndex
+					&mesh.MaterialIndex
 				);
 
 				vkCmdDrawIndexed(
 					commandBuffer,
-					static_cast<uint32_t>(mesh->Indices.size()),
+					static_cast<uint32_t>(mesh.Indices.size()),
 					1,
-					static_cast<uint32_t>(mesh->IndexOffset),
-					static_cast<int32_t>(mesh->VertexOffset),
+					static_cast<uint32_t>(mesh.IndexOffset),
+					static_cast<int32_t>(mesh.VertexOffset),
 					0
 				);
 			}
 		}
-
-		//vkCmdEndRenderPass(commandBuffer);
 	}
 
 	void Application::ProcessResize(int width, int height) {
@@ -408,38 +410,46 @@ namespace Engine {
 	}
 
 	void Application::CreatePipelineLayouts() {
-		std::vector<DescriptorSetLayout*> descriptorSetLayouts = { m_ObjectGPUDataDescriptorSetLayout.get(), m_GlobalDescriptorSetLayout.get() };
+		PipelineLayoutBuilder pipelineLayoutBuilder = PipelineLayoutBuilder();
+		
+		VkPushConstantRange mainPipelinePushConstant = { VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) };
 
-		m_MainGraphicsPipelineLayout = std::make_unique<class PipelineLayout>(
-			m_VulkanEngine->GetLogicalDevice().GetHandle(),
-			descriptorSetLayouts	
-		);
+		m_MainPipelineLayout = pipelineLayoutBuilder.AddDescriptorSetLayout(m_ObjectGPUDataDescriptorSetLayout->GetHandle())
+			.AddDescriptorSetLayout(m_GlobalDescriptorSetLayout->GetHandle())
+			.AddPushConstant(mainPipelinePushConstant)
+			.BuildPipelineLayout(m_VulkanEngine->GetLogicalDevice().GetHandle());
 	}
 
 	void Application::CreateGraphicsPipelines() {
 
-		Assets::VertexShader texturedVertexShader = Assets::VertexShader("Textured Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_vert.spv");
+		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/default_vert.spv");
+		//Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/sinewave_vert.spv");
 		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_frag.spv");
 
-		m_TexturedPipeline = std::make_unique<class GraphicsPipeline>(
-			texturedVertexShader,
-			texturedFragmentShader,
-			*m_VulkanEngine.get(),
-			m_VulkanEngine->GetDefaultRenderPass().GetHandle(),
-			*m_MainGraphicsPipelineLayout
-		);
+		PipelineBuilder pipelineBuilder = PipelineBuilder();
+		m_TexturedPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
+			.AddFragmentShader(texturedFragmentShader)
+			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
+			.AddPipelineLayout(*m_MainPipelineLayout)
+			.BuildGraphicsPipeline(*m_VulkanEngine.get());
 
-		Assets::VertexShader wireframeVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/textured_vert.spv");
-		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/textured_frag.spv");
+		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/wireframe_frag.spv");
 		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
+		wireframeFragShader.LineWidth = 3.0f;
 
-		m_WireframePipeline = std::make_unique<class GraphicsPipeline>(
-			wireframeVertexShader,
-			wireframeFragShader,
-			*m_VulkanEngine.get(),
-			m_VulkanEngine->GetDefaultRenderPass().GetHandle(),
-			*m_MainGraphicsPipelineLayout
-		);
+		m_WireframePipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
+			.AddFragmentShader(wireframeFragShader)
+			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
+			.AddPipelineLayout(*m_MainPipelineLayout)
+			.BuildGraphicsPipeline(*m_VulkanEngine.get());
+
+		Assets::FragmentShader coloredFragShader = Assets::FragmentShader("Colored Fragment Shader", "./Assets/Shaders/colored_frag.spv");
+
+		m_ColoredPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
+			.AddFragmentShader(coloredFragShader)
+			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
+			.AddPipelineLayout(*m_MainPipelineLayout)
+			.BuildGraphicsPipeline(*m_VulkanEngine.get());
 	}
 
 	void Application::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer) {
@@ -459,6 +469,22 @@ namespace Engine {
 		renderPassBeginInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)swapChainExtent.width;
+		viewport.height = (float)swapChainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = swapChainExtent;
+
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 	}
 
 	void Application::EndRenderPass(VkCommandBuffer& commandBuffer) {

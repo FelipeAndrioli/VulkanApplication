@@ -21,6 +21,8 @@ namespace Assets {
 		void OnUIRender();
 		void UpdateCameraVectors();
 		void Resize(uint32_t width, uint32_t height);
+		void UpdateViewMatrix();
+		void UpdateProjectionMatrix();
 	public:
 		float Fov;
 		float Near = 0.1f;
@@ -39,11 +41,6 @@ namespace Assets {
 		glm::vec3 WorldUp = glm::vec3(0.0f, 1.0f, 0.0f);
 		glm::vec3 Up;
 		glm::vec3 Right;
-
-	private:
-		void UpdateViewMatrix();
-		void UpdateProjectionMatrix();
-
 	private:
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
