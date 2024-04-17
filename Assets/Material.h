@@ -5,11 +5,11 @@
 
 namespace Assets {
 	struct MeshMaterialData {
-		glm::vec4 Ambient = glm::vec4(1.0f);		// ignore w
-		glm::vec4 Diffuse = glm::vec4(1.0f);		// ignore w
-		glm::vec4 Specular = glm::vec4(1.0f);		// ignore w
-		glm::vec4 Transmittance = glm::vec4(1.0f);	// ignore w
-		glm::vec4 Emission = glm::vec4(1.0f);		// ignore w
+		glm::vec4 Ambient = glm::vec4(1.0f);						// ignore w
+		glm::vec4 Diffuse = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);		// ignore w
+		glm::vec4 Specular = glm::vec4(1.0f);						// ignore w
+		glm::vec4 Transmittance = glm::vec4(1.0f);					// ignore w
+		glm::vec4 Emission = glm::vec4(1.0f);						// ignore w
 		glm::vec4 extra[6];
 
 		alignas(4) int Pad2 = 0;
@@ -39,9 +39,7 @@ namespace Assets {
 	};
 
 	struct Material {
-		std::string Name = "";
-		size_t Index = 0;
-
+		std::string Name = "Default";
 		MeshMaterialData MaterialData = {};
 	};
 }

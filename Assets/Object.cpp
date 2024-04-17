@@ -6,10 +6,10 @@
 #include "../src/DescriptorSets.h"
 
 namespace Assets {
-	Object::Object() {
+	Object::Object(glm::vec3 pos) {
 
 		Transformations.scaleHandler = 1.0f;
-		Transformations.translation = glm::vec3(0.0f, 0.0f, 0.0f);
+		Transformations.translation = pos;
 		Transformations.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
 	}
 
@@ -33,5 +33,9 @@ namespace Assets {
 		Meshes.clear();
 
 		DescriptorSets.reset();
+	}
+
+	void Object::SetMesh(std::vector<Assets::Mesh> mesh) {
+		Meshes = mesh;
 	}
 }

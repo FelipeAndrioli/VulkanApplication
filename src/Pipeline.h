@@ -27,4 +27,21 @@ namespace Engine {
 		PipelineLayout& m_GraphicsPipelineLayout;
 		VulkanEngine& m_VulkanEngine;
 	};
+
+	class PipelineBuilder {
+	public:
+		PipelineBuilder() {};
+		~PipelineBuilder() {};
+
+		PipelineBuilder& AddVertexShader(Assets::VertexShader& vertexShader);
+		PipelineBuilder& AddFragmentShader(Assets::FragmentShader& fragmentShader);
+		PipelineBuilder& AddRenderPass(VkRenderPass& renderPass);
+		PipelineBuilder& AddPipelineLayout(PipelineLayout& pipelineLayout);
+		std::unique_ptr<class GraphicsPipeline> BuildGraphicsPipeline(VulkanEngine& vulkanEngine);
+
+		Assets::VertexShader* m_VertexShader = nullptr;
+		Assets::FragmentShader* m_FragmentShader = nullptr;
+		VkRenderPass* m_RenderPass = nullptr;
+		PipelineLayout* m_PipelineLayout = nullptr;
+	};
 }

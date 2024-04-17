@@ -12,6 +12,7 @@
 
 namespace Assets {
 	class Scene;
+	class Object;
 	struct Material;
 
 	struct Texture;
@@ -30,7 +31,11 @@ namespace Engine {
 	};
 
 	struct SceneGPUData {
-		glm::vec4 extra[8];
+		float time = 0.0f;
+		float extra_s_1 = 0.0f;
+		float extra_s_2 = 0.0f;
+		float extra_s_3 = 0.0f;
+		glm::vec4 extra[7];
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
 	};
@@ -49,6 +54,7 @@ namespace Engine {
 		void Shutdown();
 		void Draw();
 		void DrawFrame(const VkCommandBuffer& commandBuffer);
+		void RenderScene(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline, const std::vector<Assets::Object*>& objects);
 		void DrawUI();
 		void ProcessResize(int width, int height);
 		void InitializeBuffers();
@@ -73,9 +79,11 @@ namespace Engine {
 		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
 		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
 
-		std::unique_ptr<class PipelineLayout> m_MainGraphicsPipelineLayout;
+		std::unique_ptr<class PipelineLayout> m_MainPipelineLayout;
+
 		std::unique_ptr<class GraphicsPipeline> m_TexturedPipeline;
 		std::unique_ptr<class GraphicsPipeline> m_WireframePipeline;
+		std::unique_ptr<class GraphicsPipeline> m_ColoredPipeline;
 
 		std::vector<Assets::Material> m_Materials;
 		std::vector<Assets::Texture> m_LoadedTextures;
@@ -94,6 +102,8 @@ namespace Engine {
 		   [object 1 | object 2 | materials 1 | materials 2 | scene data]	
 		*/
 		std::unique_ptr<class Engine::Buffer> m_GPUDataBuffer;
+
+		SceneGPUData m_SceneGPUData;
 
 		static const int OBJECT_BUFFER_INDEX = 0;
 		static const int MATERIAL_BUFFER_INDEX = 1;

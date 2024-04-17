@@ -12,7 +12,7 @@
 #include "../src/PhysicalDevice.h"
 #include "../src/DescriptorSetLayout.h"
 #include "../src/DescriptorPool.h"
-#include "../src/GraphicsPipeline.h"
+#include "../src/Pipeline.h"
 
 #include "../src/Input/Input.h"
 #include "../src/Utils/ModelLoader.h"
@@ -24,10 +24,12 @@ namespace Assets {
 
 		MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), 45.0f, m_Width, m_Height);
 
+		/*
 		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "./Assets/Shaders/vert.spv");
 		Assets::FragmentShader defaultFragmentShader = Assets::FragmentShader("Default Fragment Shader", "./Assets/Shaders/frag.spv"); 
 		Assets::GraphicsPipeline defaultGraphicsPipeline = Assets::GraphicsPipeline("defaultPipeline", defaultVertexShader, defaultFragmentShader);
 		AddGraphicsPipeline(defaultGraphicsPipeline);
+		*/
 	}
 
 	Scene::~Scene() {
@@ -88,14 +90,22 @@ namespace Assets {
 		MainCamera->Resize(m_Width, m_Height);
 	}
 
+	void Scene::SetCameraPosition(glm::vec3 pos, float yaw, float pitch) {
+		MainCamera->Position = pos;
+		MainCamera->Yaw = yaw;
+		MainCamera->Pitch = pitch;
+		MainCamera->UpdateCameraVectors();
+		MainCamera->UpdateProjectionMatrix();
+	}
+
 	void Scene::Setup() {
 		for (auto& renderableObject : RenderableObjects) {
 			for (auto& mesh : renderableObject->Meshes) {
-				mesh->IndexOffset = Indices.size();
-				mesh->VertexOffset = Vertices.size();
+				mesh.IndexOffset = Indices.size();
+				mesh.VertexOffset = Vertices.size();
 
-				Indices.insert(Indices.end(), mesh->Indices.begin(), mesh->Indices.end());
-				Vertices.insert(Vertices.end(), mesh->Vertices.begin(), mesh->Vertices.end());
+				Indices.insert(Indices.end(), mesh.Indices.begin(), mesh.Indices.end());
+				Vertices.insert(Vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
 			}
 		}
 
