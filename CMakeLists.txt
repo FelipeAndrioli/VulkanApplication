@@ -8,15 +8,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 file(GLOB_RECURSE SOURCE_FILES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/libs/imgui/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Utils/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Input/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Assets/Utils/*.cpp
 )
 
 file(GLOB_RECURSE HEADER_FILES 
 	${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
-	${CMAKE_CURRENT_SOURCE_DIR}/libs/imgui/*.h
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Utils/*.h
+	${CMAKE_CURRENT_SOURCE_DIR}/src/Input/*.h
+	${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.h
+	${CMAKE_CURRENT_SOURCE_DIR}/Assets/Utils/*.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw)
+target_link_libraries(${PROJECT_NAME} glfw)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/glm)
 target_link_libraries(${PROJECT_NAME} glm)
