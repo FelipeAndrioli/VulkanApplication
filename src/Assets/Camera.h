@@ -2,12 +2,12 @@
 
 #include <iostream>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm.hpp>
+#include <ext/matrix_transform.hpp>
+#include <ext/matrix_clip_space.hpp>
 
 #include <imgui.h>
-
-#include "../src/Input/Input.h"
+#include "../Input/Input.h"
 
 namespace Assets {
 	class Camera {

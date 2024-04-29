@@ -1,7 +1,8 @@
 #include "./TextureLoader.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "../../libs/stb/stb_image.h"
+//#include <stb_image.h>
 
 #include "../Buffer.h"
 #include "../BufferHelper.h"

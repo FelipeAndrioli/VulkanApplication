@@ -5,7 +5,7 @@
 #include <map>
 #include <unordered_map>
 
-#include <glm/glm.hpp>
+#include <glm.hpp>
 
 #include "Settings.h"
 #include "Vulkan.h"

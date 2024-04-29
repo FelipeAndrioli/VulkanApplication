@@ -1,5 +1,7 @@
 #include "Instance.h"
 
+#include <cstring>
+
 namespace Engine {
 	Instance::Instance(const std::vector<const char*> &validationLayers, 
 		const bool &enableValidationLayers) : m_ValidationLayers(validationLayers), 

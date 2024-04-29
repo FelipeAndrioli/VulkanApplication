@@ -2,8 +2,9 @@
 
 #include <iostream>
 #include <vector>
+#include <memory>
 
-#include "glm/gtc/matrix_transform.hpp"
+#include <gtc/matrix_transform.hpp>
 
 namespace Engine {
 	class Buffer;

@@ -1,41 +1,49 @@
-cmake_minimum_required(VERSION 3.25.0)
-project(VulkanApplication)
+cmake_minimum_required(VERSION 3.8)
 
-option(BUILD_ASSIMP "Build ASSIMP library" OFF)
+project("VulkanApplication")
+
+set(BUILD_SHARED_LIBRARY false CACHE BOOL "Build shared library.")
+set(ENABLE_IMGUI true CACHE BOOL "Enable ImGui.")
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
-file(GLOB_RECURSE SOURCE_FILES
-	${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/Utils/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/Input/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/Assets/Utils/*.cpp
-)
+set(SRC_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src")
+set(ASSETS_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src/Assets")
+set(ASSETS_UTILS_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src/Assets/Utils")
+set(INPUT_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src/Input")
+set(UTILS_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src/Utils")
+set(GLFW_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/glfw/include")
+set(GLM_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/glm/glm")
+set(STB_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/stb")
+set(IMGUI_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/imgui")
+set(IMGUI_BACKENDS_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/imgui/backends")
+#set(ASSIMP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/libs/assimp/include")
+set(TINY_OBJ_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/tinyobjloader")
 
-file(GLOB_RECURSE HEADER_FILES 
-	${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
-	${CMAKE_CURRENT_SOURCE_DIR}/src/Utils/*.h
-	${CMAKE_CURRENT_SOURCE_DIR}/src/Input/*.h
-	${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.h
-	${CMAKE_CURRENT_SOURCE_DIR}/Assets/Utils/*.h
-)
+find_package(Vulkan REQUIRED)
 
-add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/glfw)
-target_link_libraries(${PROJECT_NAME} glfw)
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/glm)
-target_link_libraries(${PROJECT_NAME} glm)
-
-if(BUILD_ASSIMP)
-	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/assimp)
-	target_link_libraries(${PROJECT_NAME} assimp)
+if (NOT Vulkan_FOUND)
+	message(FATAL_ERROR "Vulkan not found!")
 endif()
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
-set_property(TARGET ${PROJECT_NAME} PROPERTY RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/bin/Debug)
-set_property(TARGET ${PROJECT_NAME} PROPERTY RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/bin/Release)
-set_property(TARGET ${PROJECT_NAME} PROPERTY OUTPUT_NAME "VulkanApplication")
+set(VK_APP_INCLUDES ${APP_INCLUDE_DIRS}
+	${ASSETS_INCLUDE_DIRS}
+	${ASSETS_UTILS_INCLUDE_DIRS}
+	${INPUT_INCLUDE_DIRS}
+	${UTILS_INCLUDE_DIRS}
+	${GLFW_INCLUDE_DIRS}
+	${GLM_INCLUDE_DIRS}
+	${STB_INCLUDE_DIRS}
+	${IMGUI_INCLUDE_DIRS}
+	${IMGUI_BACKENDS_INCLUDE_DIRS}
+	${ASSIMP_INCLUDE_DIRS}
+	${TINY_OBJ_INCLUDE_DIRS}
+	${Vulkan_INCLUDE_DIR})
+
+add_subdirectory(${PROJECT_SOURCE_DIR}/libs/glm)
+add_subdirectory(${PROJECT_SOURCE_DIR}/libs/glfw)
+
+add_subdirectory(src)

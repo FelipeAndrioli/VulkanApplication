@@ -2,8 +2,8 @@
 
 #include "Mesh.h"
 
-#include "../src/Buffer.h"
-#include "../src/DescriptorSets.h"
+#include "../Buffer.h"
+#include "../DescriptorSets.h"
 
 namespace Assets {
 	Object::Object(glm::vec3 pos) {

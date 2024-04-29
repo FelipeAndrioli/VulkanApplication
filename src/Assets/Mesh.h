@@ -5,11 +5,11 @@
 #include <vector>
 #include <array>
 
-#include<glm/glm.hpp>
-#include <glm/gtx/hash.hpp>
+#include <glm.hpp>
+#include <gtx/hash.hpp>
 
-#include "../src/VulkanHeader.h"
-#include "../Assets/Material.h"
+#include "../VulkanHeader.h"
+#include "./Material.h"
 
 namespace Engine {
 	class Buffer;

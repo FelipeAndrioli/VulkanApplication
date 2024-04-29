@@ -1,60 +1,18 @@
-/*
-	Future Challenges
-
-	- Implement a dynamic uniform buffer 
-
-	- Use a different queue family specifically for transfer operations
-		It will require the following modifications to the program:
-
-		- Modify QueueFamilyIndices and findQueueFamilies to explicitly look for a queue family with the
-		VK_QUEUE_TRANSFER_BIT bit, but not the VK_QUEUE_GRAPHICS_BIT.
-		- Modify createLogicalDevice to request a handle to the transfer queue.
-		- Create a second command pool for command buffers that are submitted on the transfer queue family.
-		- Submit any transfer commands like vkCmdCopyBuffer to the transfer queue instead of the graphics queue.
-
-	- Proper buffer memory allocation
-		In a real world application, we're not supposed to actually call vkAllocateMemory for every individual
-		buffer. The maximum number of simultaneous memory allocations is limited by the maxMemoryAllocationCount
-		physical device limit, which may be as low as 4096 even on high end hardware. The right way to allocate
-		memory for a large number of objects at the same time is to create a custom allocator that splits up a
-		single allocation among many different objects by using the offset parameters that we've seen in many
-		functions.
-
-	- Multiple buffers into a single VkBuffer
-		The Driver developers from Vulkan recommend that we also store multiple buffers, like the vertex and
-		index buffer, into a single VkBuffer and use offsets in commands like vkCmdBindVertexBuffers. The
-		advantage is that our data is more cache friendly in that case, because it's closer together. It is
-		even possible to reuse the same chunk of memory for multiple resources if they are not used during
-		the same render operations, provided that their data is refreshed, of course. This is known as
-		aliasing and some Vulkan functions have explicit flags to specify that you want to do this.
-
-	- Asynchronous Command Buffer
-		Create a setupCommandBuffer that the helper functions record commands into, and add a flushSetupCommands 
-		to execute the commands that have been recorded so far. It's best to do this after the texture mapping 
-		works to check if the texture resources are still set up correctly.
-
-	- MipMaps
-		It is uncommon in practice to generate the mipmap levels at runtime. Usually they are pregenerated and
-		stored in the texture file alongside the base level to improve loading speed. A better approach would be
-		to implement resizing in software and load multiple levels from a file.
-
-*/
-
 #include <iostream>
+#include <memory>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm.hpp>
+#include <gtc/type_ptr.hpp>
 
 #include "Application.h"
-#include "UI.h"
 
-#include "../Assets/Camera.h"
-#include "../Assets/Scene.h"
-#include "../Assets/Object.h"
-#include "../Assets/Shader.h"
-#include "../Assets/Pipeline.h"
-#include "../Assets/Material.h"
-#include "../Assets/Utils/MeshGenerator.h"
+#include "./Assets/Camera.h"
+#include "./Assets/Scene.h"
+#include "./Assets/Object.h"
+#include "./Assets/Shader.h"
+#include "./Assets/Pipeline.h"
+#include "./Assets/Material.h"
+#include "./Assets/Utils/MeshGenerator.h"
 
 class CustomObject : public Assets::Object {
 public:
@@ -132,14 +90,14 @@ int main() {
 	model.Transformations.scaleHandler = 0.008f;
 	myScene->AddRenderableObject(&model);
 
-	CustomObject testObject = CustomObject(glm::vec3(0.0f, 5.7f, -0.09f));
-	testObject.ID = "Backpack";
-	testObject.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
-	testObject.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
-	testObject.FlipTexturesVertically = true;
-	testObject.Transformations.rotation.y = 87.6f;
-	testObject.Transformations.scaleHandler = 0.219f;
-	myScene->AddRenderableObject(&testObject);
+	CustomObject backpack = CustomObject(glm::vec3(0.0f, 5.7f, -0.09f));
+	backpack.ID = "Backpack";
+	backpack.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
+	backpack.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack";
+	backpack.FlipTexturesVertically = true;
+	backpack.Transformations.rotation.y = 87.6f;
+	backpack.Transformations.scaleHandler = 0.219f;
+	myScene->AddRenderableObject(&backpack);
 
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";

@@ -7,15 +7,9 @@
 #include <unordered_map>
 #include <stdexcept>
 
+#include <sys/stat.h>
+
 #include "../Vulkan.h"
-/*
-#include "../LogicalDevice.h"
-#include "../PhysicalDevice.h"
-#include "../CommandPool.h"
-#include "../BufferHelper.h"
-#include "../Buffer.h"
-#include "../DescriptorSets.h"
-*/
 
 #include "../../Assets/Object.h"
 #include "../../Assets/Mesh.h"
@@ -49,6 +43,8 @@ namespace Engine {
 				LoadCustomModel(object, sceneMaterials);
 				return;
 			}
+			
+			std::cout << "Loading model - " << object.ModelPath << '\n';
 
 			tinyobj::attrib_t attributes;
 			std::vector<tinyobj::shape_t> shapes;
@@ -72,7 +68,7 @@ namespace Engine {
 				if (GetMaterialIndex(sceneMaterials, material.name) >= 0)
 					continue;
 
-				Assets::Material newMaterial = struct Assets::Material();
+				Assets::Material newMaterial = {};
 				newMaterial.Name = material.name;
 				newMaterial.MaterialData.Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2], 1.0f };
 				newMaterial.MaterialData.Specular = { material.specular[0], material.specular[1], material.specular[2], 1.0f };
@@ -183,7 +179,7 @@ namespace Engine {
 
 			if (textureName == "" || !fileExists(basePath + textureName)) {
 				texName = "error_texture.jpg";
-				path = "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Textures/";
+				path = "C:/Users/Felipe/Documents/current_projects/NewVulkanApplication/src/Assets/Textures/";
 			}
 
 			ValidateAndInsertTexture(
@@ -294,6 +290,11 @@ namespace Engine {
 
 				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
 			}
+		}
+
+		bool ModelLoader::fileExists(const std::string& path) {
+			struct stat buffer;
+			return (stat(path.c_str(), &buffer) == 0);
 		}
 	}
 }

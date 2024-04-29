@@ -6,13 +6,10 @@
 #include <unordered_map>
 #include <memory>
 
-namespace Assets {
-	class Object;
-	struct Material;
-	struct Texture;
-
-	enum TextureType;
-}
+#include "../Assets/Object.h"
+#include "../Assets/Mesh.h"
+#include "../Assets/Texture.h"
+#include "../Assets/Material.h"
 
 namespace Engine {
 	/*
@@ -31,7 +28,7 @@ namespace Engine {
 
 			static void LoadModelAndMaterials(
 				Assets::Object& object, 
-				std::vector<Assets::Material>& sceneMaterials,
+				std::vector<Assets::Material>& sceneMaterials,				
 				std::vector<Assets::Texture>& loadedTextures,
 				VulkanEngine& vulkanEngine
 				/*
@@ -42,11 +39,6 @@ namespace Engine {
 			);
 
 			static void LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials);
-
-			static inline bool fileExists(const std::string& path) {
-				struct stat buffer;
-				return (stat(path.c_str(), &buffer) == 0);
-			}
 
 		private:
 			static void ProcessTexture(
@@ -91,6 +83,8 @@ namespace Engine {
 
 			static int GetTextureIndex(std::vector<Assets::Texture>& loadedTextures, std::string textureName);
 			static int GetMaterialIndex(std::vector<Assets::Material>& sceneMaterials, std::string materialName);
+
+			static bool fileExists(const std::string& path);
 		};
 	}
 }

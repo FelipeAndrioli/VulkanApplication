@@ -11,11 +11,6 @@
 #include "Buffer.h"
 #include "Image.h"
 
-namespace Assets {
-	enum TextureType;
-	struct Texture;
-};
-
 namespace Engine {
 	class DescriptorSetLayout;
 
