@@ -426,6 +426,7 @@ namespace Engine {
 	
 		std::string shadersPath = "C:/Users/Felipe/Documents/current_projects/VulkanApplication/src/Assets/Shaders/";
 		std::string defaultVert = shadersPath + "default_vert.spv";
+		//std::string defaultVert = shadersPath + "sinewave_vert.spv";
 		std::string texturedFrag = shadersPath + "textured_frag.spv";
 		std::string wireframeFrag = shadersPath + "wireframe_frag.spv";
 		std::string untexturedFrag = shadersPath + "colored_frag.spv";
