@@ -179,7 +179,7 @@ namespace Engine {
 
 			if (textureName == "" || !fileExists(basePath + textureName)) {
 				texName = "error_texture.jpg";
-				path = "C:/Users/Felipe/Documents/current_projects/NewVulkanApplication/src/Assets/Textures/";
+				path = "C:/Users/Felipe/Documents/current_projects/VulkanApplication/src/Assets/Textures/";
 			}
 
 			ValidateAndInsertTexture(

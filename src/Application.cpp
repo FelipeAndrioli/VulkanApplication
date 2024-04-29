@@ -424,7 +424,7 @@ namespace Engine {
 	void Application::CreateGraphicsPipelines() {
 		PipelineBuilder pipelineBuilder = PipelineBuilder();
 	
-		std::string shadersPath = "C:/Users/Felipe/Documents/current_projects/NewVulkanApplication/src/Assets/Shaders/";
+		std::string shadersPath = "C:/Users/Felipe/Documents/current_projects/VulkanApplication/src/Assets/Shaders/";
 		std::string defaultVert = shadersPath + "default_vert.spv";
 		std::string texturedFrag = shadersPath + "textured_frag.spv";
 		std::string wireframeFrag = shadersPath + "wireframe_frag.spv";
