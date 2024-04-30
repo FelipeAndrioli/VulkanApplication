@@ -7,7 +7,6 @@ include_directories(${VK_APP_INCLUDES})
 
 file(GLOB_RECURSE SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
-
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/imgui.cpp)
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/imgui_demo.cpp)
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/imgui_draw.cpp)
@@ -16,7 +15,7 @@ list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/imgui_widgets.cpp)
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/backends/imgui_impl_glfw.cpp)
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/backends/imgui_impl_vulkan.cpp)
 
-add_executable(VulkanApplication ${SOURCE_FILES})
+add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME} glm)
 target_link_libraries(${PROJECT_NAME} glfw)
