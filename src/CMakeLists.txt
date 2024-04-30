@@ -20,4 +20,5 @@ add_executable(VulkanApplication ${SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME} glm)
 target_link_libraries(${PROJECT_NAME} glfw)
+target_link_libraries(${PROJECT_NAME} assimp)
 target_link_libraries(${PROJECT_NAME} ${Vulkan_LIBRARY})
