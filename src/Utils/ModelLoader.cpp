@@ -39,11 +39,75 @@ namespace Engine {
 			std::vector<Assets::Texture>& loadedTextures,
 			VulkanEngine& vulkanEngine) {
 
-			if (object.ModelPath == nullptr && object.MaterialPath == nullptr) { 
+			// new model loading using assimp
+
+			const aiScene* scene = aiImportFile(object.ModelPath, aiProcess_Triangulate);
+
+			if (!scene || !scene->HasMeshes()) {
+				throw std::runtime_error("Unable to load file!");
+			}
+
+			ProcessNode(object, scene->mRootNode, scene);
+
+			for (auto& mesh : object.Meshes) {
+				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
+					sceneMaterials.push_back(mesh.CustomMeshMaterial);
+				}
+
+				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
+			}
+		}
+
+		void ModelLoader::ProcessNode(Assets::Object& object, const aiNode* node, const aiScene* scene) {
+			for (size_t i = 0; i < node->mNumMeshes; i++) {
+				const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+				object.Meshes.push_back(ProcessMesh(mesh, scene));
+			}
+
+			for (size_t i = 0; i < node->mNumChildren; i++) {
+				ProcessNode(object, node->mChildren[i], scene);
+			}
+		}
+
+		Assets::Mesh ModelLoader::ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
+			Assets::Mesh newMesh = {};
+			std::vector<Assets::Vertex> vertices;
+			std::vector<uint32_t> indices;
+
+			for (size_t i = 0; i < mesh->mNumVertices; i++) {
+				Assets::Vertex vertex = {};
+				vertex.pos = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
+
+				if (mesh->mTextureCoords[0]) {
+					vertex.texCoord = { mesh->mTextureCoords[0]->x, mesh->mTextureCoords[0]->y };
+				} else {
+					vertex.texCoord = { 0.0f, 0.0f };
+				}
+
+				vertices.push_back(vertex);
+			}
+
+			for (size_t i = 0; i < mesh->mNumFaces; i++) {
+				const aiFace face = mesh->mFaces[i];
+
+				for (size_t j = 0; j < face.mNumIndices; j++) {
+					indices.push_back(face.mIndices[j]);
+				}
+			}
+
+			newMesh.Vertices = vertices;
+			newMesh.Indices = indices;
+
+			return newMesh;
+		}
+
+		void ModelLoader::TinyLoad(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials,
+			std::vector<Assets::Texture>& loadedTextures, VulkanEngine& vulkanEngine) {
+			if (object.ModelPath == nullptr && object.MaterialPath == nullptr) {
 				LoadCustomModel(object, sceneMaterials);
 				return;
 			}
-			
+
 			std::cout << "Loading model - " << object.ModelPath << '\n';
 
 			tinyobj::attrib_t attributes;

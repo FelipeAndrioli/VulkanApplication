@@ -6,6 +6,11 @@
 #include <unordered_map>
 #include <memory>
 
+#include <assimp/cimport.h>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/mesh.h>
+
 #include "../Assets/Object.h"
 #include "../Assets/Mesh.h"
 #include "../Assets/Texture.h"
@@ -31,16 +36,22 @@ namespace Engine {
 				std::vector<Assets::Material>& sceneMaterials,				
 				std::vector<Assets::Texture>& loadedTextures,
 				VulkanEngine& vulkanEngine
-				/*
-				Engine::LogicalDevice& logicalDevice,
-				Engine::PhysicalDevice& physicalDevice,
-				Engine::CommandPool& commandPool
-				*/
 			);
 
 			static void LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials);
 
 		private:
+
+			static void ProcessNode(Assets::Object& object, const aiNode* node, const aiScene* scene);
+			static Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene);
+
+			static void TinyLoad(
+				Assets::Object& object,
+				std::vector<Assets::Material>& sceneMaterials,
+				std::vector<Assets::Texture>& loadedTextures,
+				VulkanEngine& vulkanEngine
+			);
+
 			static void ProcessTexture(
 				std::vector<Assets::Material>& sceneMaterials,
 				std::vector<Assets::Texture>& loadedTextures,
@@ -49,11 +60,6 @@ namespace Engine {
 				std::string basePath,
 				std::string materialName,
 				VulkanEngine& vulkanEngine,
-				/*
-				Engine::LogicalDevice& logicalDevice,
-				Engine::PhysicalDevice& physicalDevice,
-				Engine::CommandPool& commandPool,
-				*/
 				bool flipTexturesVertically,
 				bool generateMipMaps
 			);
@@ -64,11 +70,6 @@ namespace Engine {
 				std::string textureName,
 				std::string basePath,
 				VulkanEngine& vulkanEngine,
-				/*
-				Engine::LogicalDevice& logicalDevice,
-				Engine::PhysicalDevice& physicalDevice,
-				Engine::CommandPool& commandPool,
-				*/
 				bool flipTexturesVertically,
 				bool generateMipMaps
 			);
