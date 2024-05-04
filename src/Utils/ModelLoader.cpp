@@ -39,7 +39,7 @@ namespace Engine {
 			std::vector<Assets::Texture>& loadedTextures,
 			VulkanEngine& vulkanEngine) {
 
-			// new model loading using assimp
+			//TinyLoad(object, sceneMaterials, loadedTextures, vulkanEngine);
 
 			const aiScene* scene = aiImportFile(object.ModelPath, aiProcess_Triangulate);
 
@@ -47,7 +47,7 @@ namespace Engine {
 				throw std::runtime_error("Unable to load file!");
 			}
 
-			ProcessNode(object, scene->mRootNode, scene);
+			ProcessNode(object, vulkanEngine, scene->mRootNode, scene, sceneMaterials, loadedTextures);
 
 			for (auto& mesh : object.Meshes) {
 				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
@@ -58,18 +58,32 @@ namespace Engine {
 			}
 		}
 
-		void ModelLoader::ProcessNode(Assets::Object& object, const aiNode* node, const aiScene* scene) {
+		void ModelLoader::ProcessNode(
+			Assets::Object& object, 
+			VulkanEngine& vulkanEngine,
+			const aiNode* node, 
+			const aiScene* scene, 
+			std::vector<Assets::Material>& sceneMaterials,
+			std::vector<Assets::Texture>& loadedTextures
+		) {
 			for (size_t i = 0; i < node->mNumMeshes; i++) {
 				const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-				object.Meshes.push_back(ProcessMesh(mesh, scene));
+				object.Meshes.push_back(ProcessMesh(object, vulkanEngine, mesh, scene, sceneMaterials, loadedTextures));
 			}
 
 			for (size_t i = 0; i < node->mNumChildren; i++) {
-				ProcessNode(object, node->mChildren[i], scene);
+				ProcessNode(object, vulkanEngine, node->mChildren[i], scene, sceneMaterials, loadedTextures);
 			}
 		}
 
-		Assets::Mesh ModelLoader::ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
+		Assets::Mesh ModelLoader::ProcessMesh(
+			Assets::Object& object, 
+			VulkanEngine& vulkanEngine,
+			const aiMesh* mesh, 
+			const aiScene* scene,
+			std::vector<Assets::Material>& sceneMaterials,
+			std::vector<Assets::Texture>& loadedTextures
+		) {
 			Assets::Mesh newMesh = {};
 			std::vector<Assets::Vertex> vertices;
 			std::vector<uint32_t> indices;
@@ -98,7 +112,87 @@ namespace Engine {
 			newMesh.Vertices = vertices;
 			newMesh.Indices = indices;
 
+			aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+
+			aiString materialName;
+			aiColor3D diffuseColor;
+			aiColor3D specularColor;
+			aiColor3D ambientColor;
+			aiColor3D emissiveColor;
+			aiColor3D transparentColor;
+			float opacity;
+			float shininess;
+			float shininessStrength;
+
+			material->Get(AI_MATKEY_NAME, materialName);
+			material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+			material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
+			material->Get(AI_MATKEY_COLOR_AMBIENT, ambientColor);
+			material->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor);
+			material->Get(AI_MATKEY_COLOR_TRANSPARENT, transparentColor);
+			material->Get(AI_MATKEY_OPACITY, opacity);
+			material->Get(AI_MATKEY_SHININESS, shininess);
+			material->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength);
+
+			Assets::Material newMaterial = {};
+			newMaterial.Name = materialName.C_Str();
+			newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
+			newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
+			newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, 1.0f);
+			newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, 1.0f);
+			newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, 1.0f);
+			newMaterial.MaterialData.Opacity = opacity;
+			newMaterial.MaterialData.Shininess = shininess;
+			newMaterial.MaterialData.ShininessStrength = shininessStrength;
+
+			sceneMaterials.push_back(newMaterial);
+
+			LoadTextures(object, vulkanEngine, material, aiTextureType_AMBIENT, Assets::TextureType::AMBIENT, sceneMaterials, loadedTextures);
+			LoadTextures(object, vulkanEngine, material, aiTextureType_DIFFUSE, Assets::TextureType::DIFFUSE, sceneMaterials, loadedTextures);
+			LoadTextures(object, vulkanEngine, material, aiTextureType_SPECULAR, Assets::TextureType::SPECULAR, sceneMaterials, loadedTextures);
+			LoadTextures(object, vulkanEngine, material, aiTextureType_NORMALS, Assets::TextureType::NORMAL, sceneMaterials, loadedTextures);
+			LoadTextures(object, vulkanEngine, material, aiTextureType_HEIGHT, Assets::TextureType::BUMP, sceneMaterials, loadedTextures);
+
+			newMesh.MaterialName = material == nullptr ? "DefaultMaterial" : material->GetName().C_Str();
+			newMesh.MaterialIndex = static_cast<uint32_t>(GetMaterialIndex(sceneMaterials, newMesh.MaterialName));
+
 			return newMesh;
+		}
+
+		void ModelLoader::LoadTextures(
+			Assets::Object& object, 
+			VulkanEngine& vulkanEngine,
+			aiMaterial* material, 
+			aiTextureType textureType, 
+			Assets::TextureType customTextureType,
+			std::vector<Assets::Material>& sceneMaterials,
+			std::vector<Assets::Texture>& loadedTextures
+		) {
+			
+			std::vector<Assets::Texture> textures;
+			
+			if (material == nullptr)
+				return;
+
+			for (size_t i = 0; i < material->GetTextureCount(textureType); i++) {
+				aiString util;
+
+				material->GetTexture(textureType, i, &util);
+
+				ProcessTexture(
+					sceneMaterials, 
+					loadedTextures, 
+					customTextureType, 
+					util.C_Str(), 
+					object.MaterialPath, 
+					material->GetName().C_Str(), 
+					vulkanEngine, 
+					object.FlipTexturesVertically, 
+					object.GenerateMipMaps
+				);
+
+				object.Textured = true;
+			}
 		}
 
 		void ModelLoader::TinyLoad(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials,
@@ -136,11 +230,11 @@ namespace Engine {
 				newMaterial.Name = material.name;
 				newMaterial.MaterialData.Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2], 1.0f };
 				newMaterial.MaterialData.Specular = { material.specular[0], material.specular[1], material.specular[2], 1.0f };
-				newMaterial.MaterialData.Transmittance = { material.transmittance[0], material.transmittance[1], material.transmittance[2], 1.0f };
+				//newMaterial.MaterialData.Transmittance = { material.transmittance[0], material.transmittance[1], material.transmittance[2], 1.0f };
 				newMaterial.MaterialData.Emission = { material.emission[0], material.emission[1], material.emission[2], 1.0f };
 				newMaterial.MaterialData.Shininess = material.shininess;
-				newMaterial.MaterialData.Ior = material.ior;
-				newMaterial.MaterialData.Dissolve = material.dissolve;
+				//newMaterial.MaterialData.Ior = material.ior;
+				//newMaterial.MaterialData.Dissolve = material.dissolve;
 				newMaterial.MaterialData.Roughness = material.roughness;
 				newMaterial.MaterialData.Metallic = material.metallic;
 				newMaterial.MaterialData.Sheen = material.sheen;

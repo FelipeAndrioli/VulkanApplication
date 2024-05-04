@@ -42,8 +42,33 @@ namespace Engine {
 
 		private:
 
-			static void ProcessNode(Assets::Object& object, const aiNode* node, const aiScene* scene);
-			static Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene);
+			static void ProcessNode(
+				Assets::Object& object,
+				VulkanEngine& vulkanEngine,
+				const aiNode* node, 
+				const aiScene* scene, 
+				std::vector<Assets::Material>& sceneMaterials,				
+				std::vector<Assets::Texture>& loadedTextures
+			);
+
+			static Assets::Mesh ProcessMesh(
+				Assets::Object& object,
+				VulkanEngine& vulkanEngine,
+				const aiMesh* mesh, 
+				const aiScene* scene,
+				std::vector<Assets::Material>& sceneMaterials,				
+				std::vector<Assets::Texture>& loadedTextures
+			);
+
+			static void LoadTextures(
+				Assets::Object& object,
+				VulkanEngine& vulkanEngine,
+				aiMaterial* material, 
+				aiTextureType textureType, 
+				Assets::TextureType customTextureType,
+				std::vector<Assets::Material>& sceneMaterials,				
+				std::vector<Assets::Texture>& loadedTextures
+			);
 
 			static void TinyLoad(
 				Assets::Object& object,

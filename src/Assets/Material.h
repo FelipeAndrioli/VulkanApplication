@@ -8,7 +8,7 @@ namespace Assets {
 		glm::vec4 Ambient = glm::vec4(1.0f);						// ignore w
 		glm::vec4 Diffuse = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);		// ignore w
 		glm::vec4 Specular = glm::vec4(1.0f);						// ignore w
-		glm::vec4 Transmittance = glm::vec4(1.0f);					// ignore w
+		glm::vec4 Transparency = glm::vec4(1.0f);					// ignore w
 		glm::vec4 Emission = glm::vec4(1.0f);						// ignore w
 		glm::vec4 extra[6];
 
@@ -25,9 +25,9 @@ namespace Assets {
 
 		alignas(4) int ExtraScalar = 0;
 
+		alignas(4) float Opacity = 0.0f;
 		alignas(4) float Shininess = 0.0f;
-		alignas(4) float Ior = 0.0f;
-		alignas(4) float Dissolve = 0.0f;
+		alignas(4) float ShininessStrength = 0.0f;
 		alignas(4) float Roughness = 0.0f;
 		alignas(4) float Metallic = 0.0f;
 		alignas(4) float Sheen = 0.0f;
