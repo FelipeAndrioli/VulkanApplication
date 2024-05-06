@@ -77,9 +77,9 @@ namespace Engine {
 		}
 
 		Assets::Mesh ModelLoader::ProcessMesh(
-			Assets::Object& object, 
+			Assets::Object& object,
 			VulkanEngine& vulkanEngine,
-			const aiMesh* mesh, 
+			const aiMesh* mesh,
 			const aiScene* scene,
 			std::vector<Assets::Material>& sceneMaterials,
 			std::vector<Assets::Texture>& loadedTextures
@@ -93,8 +93,9 @@ namespace Engine {
 				vertex.pos = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
 
 				if (mesh->mTextureCoords[0]) {
-					vertex.texCoord = { mesh->mTextureCoords[0]->x, mesh->mTextureCoords[0]->y };
-				} else {
+					vertex.texCoord = { mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y};
+				}
+				else {
 					vertex.texCoord = { 0.0f, 0.0f };
 				}
 
@@ -134,18 +135,20 @@ namespace Engine {
 			material->Get(AI_MATKEY_SHININESS, shininess);
 			material->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength);
 
-			Assets::Material newMaterial = {};
-			newMaterial.Name = materialName.C_Str();
-			newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
-			newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
-			newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, 1.0f);
-			newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, 1.0f);
-			newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, 1.0f);
-			newMaterial.MaterialData.Opacity = opacity;
-			newMaterial.MaterialData.Shininess = shininess;
-			newMaterial.MaterialData.ShininessStrength = shininessStrength;
+			if (GetMaterialIndex(sceneMaterials, materialName.C_Str()) == UNEXISTENT) {
+				Assets::Material newMaterial = {};
+				newMaterial.Name = materialName.C_Str();
+				newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
+				newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
+				newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, 1.0f);
+				newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, 1.0f);
+				newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, 1.0f);
+				newMaterial.MaterialData.Opacity = opacity;
+				newMaterial.MaterialData.Shininess = shininess;
+				newMaterial.MaterialData.ShininessStrength = shininessStrength;
 
-			sceneMaterials.push_back(newMaterial);
+				sceneMaterials.push_back(newMaterial);
+			}
 
 			LoadTextures(object, vulkanEngine, material, aiTextureType_AMBIENT, Assets::TextureType::AMBIENT, sceneMaterials, loadedTextures);
 			LoadTextures(object, vulkanEngine, material, aiTextureType_DIFFUSE, Assets::TextureType::DIFFUSE, sceneMaterials, loadedTextures);
@@ -168,8 +171,6 @@ namespace Engine {
 			std::vector<Assets::Material>& sceneMaterials,
 			std::vector<Assets::Texture>& loadedTextures
 		) {
-			
-			std::vector<Assets::Texture> textures;
 			
 			if (material == nullptr)
 				return;

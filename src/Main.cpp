@@ -81,20 +81,21 @@ int main() {
 	cube.SetMesh(Assets::MeshGenerator::GenerateCubeMesh(glm::vec3(1.0f, 0.0f, 0.0f), 1.0f));
 	cube.ID = "Cube";
 	myScene->AddRenderableObject(&cube);
+	*/
 
 	CustomObject model = CustomObject();
 	model.ID = "Sponza";
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
-	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master";
+	model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/";
 	model.Transformations.scaleHandler = 0.008f;
+	model.FlipTexturesVertically = true;
 	myScene->AddRenderableObject(&model);
-	*/
 
 	CustomObject backpack = CustomObject(glm::vec3(0.0f, 5.7f, -0.09f));
 	backpack.ID = "Backpack";
 	backpack.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj";
 	backpack.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/";
-	backpack.FlipTexturesVertically = true;
+	backpack.FlipTexturesVertically = false;
 	backpack.Transformations.rotation.y = 87.6f;
 	backpack.Transformations.scaleHandler = 0.219f;
 	myScene->AddRenderableObject(&backpack);
