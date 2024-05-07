@@ -49,12 +49,18 @@ namespace Engine {
 
 			ProcessNode(object, vulkanEngine, scene->mRootNode, scene, sceneMaterials, loadedTextures);
 
+			size_t indices = 0;
+			size_t vertices = 0;
+			
 			for (auto& mesh : object.Meshes) {
 				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
 					sceneMaterials.push_back(mesh.CustomMeshMaterial);
 				}
 
 				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
+
+				indices += mesh.Indices.size();
+				vertices += mesh.Vertices.size();
 			}
 		}
 
@@ -84,34 +90,39 @@ namespace Engine {
 			std::vector<Assets::Material>& sceneMaterials,
 			std::vector<Assets::Texture>& loadedTextures
 		) {
-			Assets::Mesh newMesh = {};
 			std::vector<Assets::Vertex> vertices;
 			std::vector<uint32_t> indices;
-
-			for (size_t i = 0; i < mesh->mNumVertices; i++) {
-				Assets::Vertex vertex = {};
-				vertex.pos = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
-
-				if (mesh->mTextureCoords[0]) {
-					vertex.texCoord = { mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y};
-				}
-				else {
-					vertex.texCoord = { 0.0f, 0.0f };
-				}
-
-				vertices.push_back(vertex);
-			}
+			Assets::Mesh newMesh = {};
+			std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices = {};
 
 			for (size_t i = 0; i < mesh->mNumFaces; i++) {
+
 				const aiFace face = mesh->mFaces[i];
 
 				for (size_t j = 0; j < face.mNumIndices; j++) {
-					indices.push_back(face.mIndices[j]);
+					Assets::Vertex vertex = {};
+					vertex.pos = {
+						mesh->mVertices[face.mIndices[j]].x,
+						mesh->mVertices[face.mIndices[j]].y,
+						mesh->mVertices[face.mIndices[j]].z
+					};
+
+					if (mesh->mTextureCoords[0]) {
+						vertex.texCoord = {
+							mesh->mTextureCoords[0][face.mIndices[j]].x,
+							mesh->mTextureCoords[0][face.mIndices[j]].y
+						};
+					}
+
+					if (uniqueVertices.count(vertex) == 0) {
+						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh.Vertices.size());
+						newMesh.Vertices.push_back(vertex);
+					}
+
+					newMesh.Indices.push_back(uniqueVertices[vertex]);
 				}
 			}
 
-			newMesh.Vertices = vertices;
-			newMesh.Indices = indices;
 
 			aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
