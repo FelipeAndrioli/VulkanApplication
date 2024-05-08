@@ -39,7 +39,10 @@ namespace Engine {
 			std::vector<Assets::Texture>& loadedTextures,
 			VulkanEngine& vulkanEngine) {
 
-			//TinyLoad(object, sceneMaterials, loadedTextures, vulkanEngine);
+			if (object.ModelPath == nullptr && object.MaterialPath == nullptr) {
+				LoadCustomModel(object, sceneMaterials);
+				return;
+			}
 
 			const aiScene* scene = aiImportFile(object.ModelPath, aiProcess_Triangulate);
 
@@ -47,49 +50,24 @@ namespace Engine {
 				throw std::runtime_error("Unable to load file!");
 			}
 
-			ProcessNode(object, vulkanEngine, scene->mRootNode, scene, sceneMaterials, loadedTextures);
+			ProcessNode(object, scene->mRootNode, scene);
+			ProcessMaterials(vulkanEngine, object, scene, sceneMaterials, loadedTextures);
 
-			size_t indices = 0;
-			size_t vertices = 0;
-			
-			for (auto& mesh : object.Meshes) {
-				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
-					sceneMaterials.push_back(mesh.CustomMeshMaterial);
-				}
-
-				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
-
-				indices += mesh.Indices.size();
-				vertices += mesh.Vertices.size();
-			}
+			LinkMeshesToMaterials(object.Meshes, sceneMaterials);
 		}
 
-		void ModelLoader::ProcessNode(
-			Assets::Object& object, 
-			VulkanEngine& vulkanEngine,
-			const aiNode* node, 
-			const aiScene* scene, 
-			std::vector<Assets::Material>& sceneMaterials,
-			std::vector<Assets::Texture>& loadedTextures
-		) {
+		void ModelLoader::ProcessNode(Assets::Object& object, const aiNode* node, const aiScene* scene) {
 			for (size_t i = 0; i < node->mNumMeshes; i++) {
 				const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-				object.Meshes.push_back(ProcessMesh(object, vulkanEngine, mesh, scene, sceneMaterials, loadedTextures));
+				object.Meshes.push_back(ProcessMesh(mesh, scene));
 			}
 
 			for (size_t i = 0; i < node->mNumChildren; i++) {
-				ProcessNode(object, vulkanEngine, node->mChildren[i], scene, sceneMaterials, loadedTextures);
+				ProcessNode(object, node->mChildren[i], scene);
 			}
 		}
 
-		Assets::Mesh ModelLoader::ProcessMesh(
-			Assets::Object& object,
-			VulkanEngine& vulkanEngine,
-			const aiMesh* mesh,
-			const aiScene* scene,
-			std::vector<Assets::Material>& sceneMaterials,
-			std::vector<Assets::Texture>& loadedTextures
-		) {
+		Assets::Mesh ModelLoader::ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 			std::vector<Assets::Vertex> vertices;
 			std::vector<uint32_t> indices;
 			Assets::Mesh newMesh = {};
@@ -121,56 +99,76 @@ namespace Engine {
 
 					newMesh.Indices.push_back(uniqueVertices[vertex]);
 				}
+
 			}
 
-
-			aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-
-			aiString materialName;
-			aiColor3D diffuseColor;
-			aiColor3D specularColor;
-			aiColor3D ambientColor;
-			aiColor3D emissiveColor;
-			aiColor3D transparentColor;
-			float opacity;
-			float shininess;
-			float shininessStrength;
-
-			material->Get(AI_MATKEY_NAME, materialName);
-			material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
-			material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
-			material->Get(AI_MATKEY_COLOR_AMBIENT, ambientColor);
-			material->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor);
-			material->Get(AI_MATKEY_COLOR_TRANSPARENT, transparentColor);
-			material->Get(AI_MATKEY_OPACITY, opacity);
-			material->Get(AI_MATKEY_SHININESS, shininess);
-			material->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength);
-
-			if (GetMaterialIndex(sceneMaterials, materialName.C_Str()) == UNEXISTENT) {
-				Assets::Material newMaterial = {};
-				newMaterial.Name = materialName.C_Str();
-				newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
-				newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
-				newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, 1.0f);
-				newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, 1.0f);
-				newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, 1.0f);
-				newMaterial.MaterialData.Opacity = opacity;
-				newMaterial.MaterialData.Shininess = shininess;
-				newMaterial.MaterialData.ShininessStrength = shininessStrength;
-
-				sceneMaterials.push_back(newMaterial);
-			}
-
-			LoadTextures(object, vulkanEngine, material, aiTextureType_AMBIENT, Assets::TextureType::AMBIENT, sceneMaterials, loadedTextures);
-			LoadTextures(object, vulkanEngine, material, aiTextureType_DIFFUSE, Assets::TextureType::DIFFUSE, sceneMaterials, loadedTextures);
-			LoadTextures(object, vulkanEngine, material, aiTextureType_SPECULAR, Assets::TextureType::SPECULAR, sceneMaterials, loadedTextures);
-			LoadTextures(object, vulkanEngine, material, aiTextureType_NORMALS, Assets::TextureType::NORMAL, sceneMaterials, loadedTextures);
-			LoadTextures(object, vulkanEngine, material, aiTextureType_HEIGHT, Assets::TextureType::BUMP, sceneMaterials, loadedTextures);
-
-			newMesh.MaterialName = material == nullptr ? "DefaultMaterial" : material->GetName().C_Str();
-			newMesh.MaterialIndex = static_cast<uint32_t>(GetMaterialIndex(sceneMaterials, newMesh.MaterialName));
-
+			newMesh.MaterialName = scene->mMaterials[mesh->mMaterialIndex]->GetName().C_Str();
+			
 			return newMesh;
+		}
+
+		void ModelLoader::ProcessMaterials(
+			VulkanEngine& vulkanEngine,
+			Assets::Object& object,
+			const aiScene* scene, 
+			std::vector<Assets::Material>& sceneMaterials,
+			std::vector<Assets::Texture>& loadedTextures) {
+
+			for (size_t i = 0; i < scene->mNumMaterials; i++) {
+				aiMaterial* material = scene->mMaterials[i];
+
+				aiString materialName;
+				aiColor3D diffuseColor;
+				aiColor3D specularColor;
+				aiColor3D ambientColor;
+				aiColor3D emissiveColor;
+				aiColor3D transparentColor;
+				float opacity;
+				float shininess;
+				float shininessStrength;
+
+				material->Get(AI_MATKEY_NAME, materialName);
+				material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+				material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
+				material->Get(AI_MATKEY_COLOR_AMBIENT, ambientColor);
+				material->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor);
+				material->Get(AI_MATKEY_COLOR_TRANSPARENT, transparentColor);
+				material->Get(AI_MATKEY_OPACITY, opacity);
+				material->Get(AI_MATKEY_SHININESS, shininess);
+				material->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength);
+
+				if (GetMaterialIndex(sceneMaterials, materialName.C_Str()) == UNEXISTENT) {
+					Assets::Material newMaterial = {};
+					newMaterial.Name = materialName.C_Str();
+					newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
+					newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
+					newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, 1.0f);
+					newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, 1.0f);
+					newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, 1.0f);
+					newMaterial.MaterialData.Opacity = opacity;
+					newMaterial.MaterialData.Shininess = shininess;
+					newMaterial.MaterialData.ShininessStrength = shininessStrength;
+
+					sceneMaterials.push_back(newMaterial);
+				}
+
+				LoadTextures(object, vulkanEngine, material, aiTextureType_AMBIENT, Assets::TextureType::AMBIENT, sceneMaterials, loadedTextures);
+				LoadTextures(object, vulkanEngine, material, aiTextureType_DIFFUSE, Assets::TextureType::DIFFUSE, sceneMaterials, loadedTextures);
+				LoadTextures(object, vulkanEngine, material, aiTextureType_SPECULAR, Assets::TextureType::SPECULAR, sceneMaterials, loadedTextures);
+				LoadTextures(object, vulkanEngine, material, aiTextureType_NORMALS, Assets::TextureType::NORMAL, sceneMaterials, loadedTextures);
+				LoadTextures(object, vulkanEngine, material, aiTextureType_HEIGHT, Assets::TextureType::BUMP, sceneMaterials, loadedTextures);
+			}
+		}
+
+		void ModelLoader::LinkMeshesToMaterials(std::vector<Assets::Mesh>& meshes, std::vector<Assets::Material>& sceneMaterials) {
+			for (auto& mesh : meshes) {
+				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
+					sceneMaterials.push_back(mesh.CustomMeshMaterial);
+					mesh.MaterialName = "DefaultMaterial";
+				} 
+
+				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
+			}
 		}
 
 		void ModelLoader::LoadTextures(
@@ -204,132 +202,6 @@ namespace Engine {
 				);
 
 				object.Textured = true;
-			}
-		}
-
-		void ModelLoader::TinyLoad(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials,
-			std::vector<Assets::Texture>& loadedTextures, VulkanEngine& vulkanEngine) {
-			if (object.ModelPath == nullptr && object.MaterialPath == nullptr) {
-				LoadCustomModel(object, sceneMaterials);
-				return;
-			}
-
-			std::cout << "Loading model - " << object.ModelPath << '\n';
-
-			tinyobj::attrib_t attributes;
-			std::vector<tinyobj::shape_t> shapes;
-			std::vector<tinyobj::material_t> materials;
-
-			std::string warn;
-			std::string error;
-
-			if (!tinyobj::LoadObj(&attributes, &shapes, &materials, &warn, &error, object.ModelPath, object.MaterialPath)) {
-				throw std::runtime_error(warn + error);
-			}
-
-			std::cout << "Loading model materials..." << '\n';
-
-			std::string modelBasePath = materials.size() > 0 ? object.MaterialPath : "";
-			modelBasePath.append("/");
-
-			for (size_t i = 0; i < materials.size(); i++) {
-				const auto& material = materials[i];
-
-				if (GetMaterialIndex(sceneMaterials, material.name) >= 0)
-					continue;
-
-				Assets::Material newMaterial = {};
-				newMaterial.Name = material.name;
-				newMaterial.MaterialData.Diffuse = { material.diffuse[0], material.diffuse[1], material.diffuse[2], 1.0f };
-				newMaterial.MaterialData.Specular = { material.specular[0], material.specular[1], material.specular[2], 1.0f };
-				//newMaterial.MaterialData.Transmittance = { material.transmittance[0], material.transmittance[1], material.transmittance[2], 1.0f };
-				newMaterial.MaterialData.Emission = { material.emission[0], material.emission[1], material.emission[2], 1.0f };
-				newMaterial.MaterialData.Shininess = material.shininess;
-				//newMaterial.MaterialData.Ior = material.ior;
-				//newMaterial.MaterialData.Dissolve = material.dissolve;
-				newMaterial.MaterialData.Roughness = material.roughness;
-				newMaterial.MaterialData.Metallic = material.metallic;
-				newMaterial.MaterialData.Sheen = material.sheen;
-				newMaterial.MaterialData.ClearcoatThickness = material.clearcoat_thickness;
-				newMaterial.MaterialData.ClearcoatRoughness = material.clearcoat_roughness;
-				newMaterial.MaterialData.Anisotropy = material.anisotropy;
-				newMaterial.MaterialData.AnisotropyRotation = material.anisotropy_rotation;
-				//sceneMaterials[material.name]->MaterialData.Pad0 = material.pad0;
-				newMaterial.MaterialData.Pad2 = material.pad2;
-				newMaterial.MaterialData.Illum = material.illum;
-
-				sceneMaterials.push_back(newMaterial);
-
-				std::map<Assets::TextureType, std::string> textureMap{
-					{ Assets::TextureType::AMBIENT, material.ambient_texname },								// 0
-					{ Assets::TextureType::DIFFUSE, material.diffuse_texname },								// 1
-					{ Assets::TextureType::SPECULAR, material.specular_texname },							// 2
-					{ Assets::TextureType::BUMP, material.bump_texname },									// 3
-					{ Assets::TextureType::ROUGHNESS, material.roughness_texname },							// 4
-					{ Assets::TextureType::METALLIC, material.metallic_texname },							// 5
-					{ Assets::TextureType::NORMAL, material.normal_texname }								// 6
-					//{ Assets::TextureType::SPECULAR_HIGHTLIGHT, material.specular_highlight_texname },	// 7
-					//{ Assets::TextureType::DISPLACEMENT, material.displacement_texname },					// 8
-					//{ Assets::TextureType::ALPHA, material.alpha_texname },								// 9
-					//{ Assets::TextureType::REFLECTION, material.reflection_texname },						// 10
-					//{ Assets::TextureType::SHEEN, material.sheen_texname },								// 11
-					//{ Assets::TextureType::EMISSIVE, material.emissive_texname },							// 12
-				};
-
-				std::map<Assets::TextureType, std::string>::iterator it;
-				for (it = textureMap.begin(); it != textureMap.end(); it++) {
-					if (!object.Textured)
-						object.Textured = true;
-
-					ModelLoader::ProcessTexture(
-						sceneMaterials,
-						loadedTextures,
-						it->first,
-						it->second,
-						modelBasePath,
-						material.name,
-						vulkanEngine,
-						object.FlipTexturesVertically,
-						object.GenerateMipMaps
-					);
-				}
-			}
-
-			std::cout << "Loading model meshes..." << '\n';
-
-			for (const auto& shape : shapes) {
-				std::unordered_map<Assets::Vertex, uint32_t> uniqueVertices{};
-
-				Assets::Mesh newMesh = Assets::Mesh();
-
-				for (const auto& index : shape.mesh.indices) {
-					Assets::Vertex vertex{};
-
-					vertex.pos = {
-						attributes.vertices[3 * index.vertex_index + 0],
-						attributes.vertices[3 * index.vertex_index + 1],
-						attributes.vertices[3 * index.vertex_index + 2]
-					};
-
-					vertex.texCoord = {
-						attributes.texcoords[2 * index.texcoord_index + 0],
-						1.0f - attributes.texcoords[2 * index.texcoord_index + 1]
-					};
-
-					vertex.color = { 1.0f, 1.0f, 1.0f };
-
-					if (uniqueVertices.count(vertex) == 0) {
-						uniqueVertices[vertex] = static_cast<uint32_t>(newMesh.Vertices.size());
-						newMesh.Vertices.push_back(vertex);
-					}
-
-					newMesh.Indices.push_back(uniqueVertices[vertex]);
-				}
-
-				newMesh.MaterialName = materials.size() == 0 ? "DefaultMaterial" : materials[shape.mesh.material_ids[0]].name;
-				newMesh.MaterialIndex = static_cast<size_t>(GetMaterialIndex(sceneMaterials, newMesh.MaterialName));
-
-				object.Meshes.push_back(newMesh);
 			}
 		}
 
@@ -453,16 +325,11 @@ namespace Engine {
 		}
 
 		void ModelLoader::LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials) {
-			for (auto& mesh : object.Meshes) {
-				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
-					sceneMaterials.push_back(mesh.CustomMeshMaterial);
-				}
-
-				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
-			}
+			LinkMeshesToMaterials(object.Meshes, sceneMaterials);
 		}
 
 		bool ModelLoader::fileExists(const std::string& path) {
+			std::cout << path << '\n';
 			struct stat buffer;
 			return (stat(path.c_str(), &buffer) == 0);
 		}
