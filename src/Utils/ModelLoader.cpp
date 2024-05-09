@@ -164,7 +164,7 @@ namespace Engine {
 			for (auto& mesh : meshes) {
 				if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
 					sceneMaterials.push_back(mesh.CustomMeshMaterial);
-					mesh.MaterialName = "DefaultMaterial";
+					mesh.MaterialName = "Default";
 				} 
 
 				mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
@@ -326,6 +326,7 @@ namespace Engine {
 
 		void ModelLoader::LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials) {
 			LinkMeshesToMaterials(object.Meshes, sceneMaterials);
+			object.Textured = false;
 		}
 
 		bool ModelLoader::fileExists(const std::string& path) {
