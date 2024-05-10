@@ -99,7 +99,6 @@ namespace Engine {
 
 					newMesh.Indices.push_back(uniqueVertices[vertex]);
 				}
-
 			}
 
 			newMesh.MaterialName = scene->mMaterials[mesh->mMaterialIndex]->GetName().C_Str();
@@ -220,6 +219,7 @@ namespace Engine {
 			std::string path = basePath;
 
 			if (textureName == "" || !fileExists(basePath + textureName)) {
+				std::cout << "File: " << basePath + textureName << "doesn't exists! Loading custom texture!" << '\n';
 				texName = "error_texture.jpg";
 				path = "C:/Users/Felipe/Documents/current_projects/VulkanApplication/src/Assets/Textures/";
 			}
@@ -330,7 +330,6 @@ namespace Engine {
 		}
 
 		bool ModelLoader::fileExists(const std::string& path) {
-			std::cout << path << '\n';
 			struct stat buffer;
 			return (stat(path.c_str(), &buffer) == 0);
 		}

@@ -99,6 +99,19 @@ int main() {
 	backpack.Transformations.rotation.y = 87.6f;
 	backpack.Transformations.scaleHandler = 0.219f;
 	myScene->AddRenderableObject(&backpack);
+
+	CustomObject duck = CustomObject();
+	duck.ID = "Rubber Duck";
+	duck.ModelPath = "C:/Users/Felipe/Downloads/rubber_duck/scene.gltf";
+	duck.MaterialPath = "C:/Users/Felipe/Downloads/rubber_duck/";
+	duck.FlipTexturesVertically = true;
+	duck.Transformations.scaleHandler = 0.006f;
+	duck.Transformations.rotation.x = -90.0f;
+	duck.Transformations.rotation.z = 70.0f;
+	duck.Transformations.translation.x = -400.0f;
+	duck.Transformations.translation.y = 300.8f;
+	duck.Transformations.translation.z = 13.1f;
+	myScene->AddRenderableObject(&duck);
 	
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
