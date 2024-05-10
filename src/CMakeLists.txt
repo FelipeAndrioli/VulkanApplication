@@ -7,6 +7,17 @@ include_directories(${VK_APP_INCLUDES})
 
 file(GLOB_RECURSE SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
+message("Configuring shaders")
+set(SHADERS_PATH ${PROJECT_SOURCE_DIR}/src/Assets/Shaders)
+set(TEXTURE_PATH ${PROJECT_SOURCE_DIR}/src/Assets/Textures)
+message("Shaders Path: ${SHADERS_PATH}")
+
+file(GLOB_RECURSE SHADERS ${SHADERS_PATH}/*.spv)
+message("Shaders: ${SHADERS}")
+
+file(COPY ${SHADERS} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/)
+file(COPY ${TEXTURE_PATH}/error_texture.jpg DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Textures/)
+
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/imgui.cpp)
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/imgui_demo.cpp)
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/imgui_draw.cpp)

@@ -221,7 +221,7 @@ namespace Engine {
 			if (textureName == "" || !fileExists(basePath + textureName)) {
 				std::cout << "File: " << basePath + textureName << "doesn't exists! Loading custom texture!" << '\n';
 				texName = "error_texture.jpg";
-				path = "C:/Users/Felipe/Documents/current_projects/VulkanApplication/src/Assets/Textures/";
+				path = "./Textures/";
 			}
 
 			ValidateAndInsertTexture(

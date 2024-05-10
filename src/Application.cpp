@@ -423,13 +423,18 @@ namespace Engine {
 
 	void Application::CreateGraphicsPipelines() {
 		PipelineBuilder pipelineBuilder = PipelineBuilder();
-	
-		std::string shadersPath = "C:/Users/Felipe/Documents/current_projects/VulkanApplication/src/Assets/Shaders/";
+
+		std::string shadersPath = "./Shaders/";
 		std::string defaultVert = shadersPath + "default_vert.spv";
 		//std::string defaultVert = shadersPath + "sinewave_vert.spv";
 		std::string texturedFrag = shadersPath + "textured_frag.spv";
 		std::string wireframeFrag = shadersPath + "wireframe_frag.spv";
 		std::string untexturedFrag = shadersPath + "colored_frag.spv";
+
+		std::cout << defaultVert << '\n';
+		std::cout << texturedFrag << '\n';
+		std::cout << wireframeFrag << '\n';
+		std::cout << untexturedFrag << '\n';
 
 		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", defaultVert);
 		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", texturedFrag);
