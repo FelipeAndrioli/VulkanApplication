@@ -102,8 +102,8 @@ int main() {
 
 	CustomObject duck = CustomObject();
 	duck.ID = "Rubber Duck";
-	duck.ModelPath = "C:/Users/Felipe/Downloads/rubber_duck/scene.gltf";
-	duck.MaterialPath = "C:/Users/Felipe/Downloads/rubber_duck/";
+	duck.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/rubber_duck/scene.gltf";
+	duck.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/rubber_duck/";
 	duck.FlipTexturesVertically = true;
 	duck.Transformations.scaleHandler = 0.006f;
 	duck.Transformations.rotation.x = -90.0f;
