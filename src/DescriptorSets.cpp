@@ -1,7 +1,7 @@
 #include "DescriptorSets.h"
 #include "DescriptorSetLayout.h"
 
-#include "../Assets/Texture.h"
+#include "./Assets/Texture.h"
 
 namespace Engine {
 	DescriptorSets::DescriptorSets(

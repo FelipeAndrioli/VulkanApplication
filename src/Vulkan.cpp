@@ -14,7 +14,8 @@
 
 namespace Engine {
 	VulkanEngine::VulkanEngine(Window& window, Settings& settings) {
-		m_Instance = std::make_unique<class Instance>(c_ValidationLayers, c_EnableValidationLayers);
+		//m_Instance = std::make_unique<class Instance>(c_ValidationLayers, c_EnableValidationLayers);
+		m_Instance = std::make_unique<class Instance>(c_ValidationLayers, true);
 
 		if (c_EnableValidationLayers)
 			m_DebugMessenger = std::make_unique<class DebugUtilsMessenger>(m_Instance->GetHandle());

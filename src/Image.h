@@ -17,7 +17,7 @@ namespace Engine {
 			const VkImageTiling tiling, 
 			const VkImageUsageFlagBits usage, 
 			const VkMemoryPropertyFlagBits properties,
-			const VkImageAspectFlags aspectFlags = NULL, 
+			const VkImageAspectFlags aspectFlags, 
 			VkImageLayout imageLayout = VK_IMAGE_LAYOUT_UNDEFINED
 		);
 		~Image();
@@ -35,8 +35,8 @@ namespace Engine {
 		void CreateImageSampler();
 		void GenerateMipMaps(VkCommandPool& commandPool, VkQueue& queue);
 	public:
-		VkImageView ImageView;
-		VkSampler ImageSampler;
+		VkImageView ImageView = VK_NULL_HANDLE;
+		VkSampler ImageSampler = VK_NULL_HANDLE;
 		VkImageLayout ImageLayout;
 
 		uint32_t Width;

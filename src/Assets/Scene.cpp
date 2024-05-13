@@ -5,18 +5,7 @@
 #include "Mesh.h"
 #include "Pipeline.h"
 
-#include "../src/Buffer.h"
-#include "../src/BufferHelper.h"
-#include "../src/DescriptorSets.h"
-#include "../src/LogicalDevice.h"
-#include "../src/PhysicalDevice.h"
-#include "../src/DescriptorSetLayout.h"
-#include "../src/DescriptorPool.h"
-#include "../src/Pipeline.h"
-
-#include "../src/Input/Input.h"
-#include "../src/Utils/ModelLoader.h"
-#include "../src/Utils/TextureLoader.h"
+#include "../Input/Input.h"
 
 namespace Assets {
 	Scene::Scene() {
