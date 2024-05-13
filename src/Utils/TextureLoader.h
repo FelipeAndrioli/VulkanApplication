@@ -6,7 +6,11 @@
 #include "../Vulkan.h"
 #include "../Image.h"
 
-#include "../../Assets/Texture.h"
+#include "../Assets/Texture.h"
+
+namespace Assets {
+	struct Texture;
+}
 
 namespace Engine {
 	class VulkanEngine;

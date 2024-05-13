@@ -131,14 +131,13 @@ namespace Engine {
 	}
 
 	template <class T>
-	static void BufferHelper::CreateBuffer(
+	void BufferHelper::CreateBuffer(
 		const int bufferQuantity, 
 		VulkanEngine& vulkanEngine,
 		const VkBufferUsageFlags usageFlags, 
 		const VkMemoryPropertyFlags memoryPropertyFlags,
 		const T& content, 
-		std::unique_ptr<Buffer>& buffer
-	) {
+		std::unique_ptr<Buffer>& buffer) {
 	
 		VkDeviceSize bufferSize = sizeof(T);
 
@@ -154,7 +153,7 @@ namespace Engine {
 	}
 
 	template <class T>
-	static void BufferHelper::CreateBuffer(
+	void BufferHelper::CreateBuffer(
 		const int numBuffer, 
 		VulkanEngine& vulkanEngine,
 		const VkBufferUsageFlags usageFlags, 

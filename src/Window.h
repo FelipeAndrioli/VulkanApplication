@@ -4,7 +4,8 @@
 #include <functional>
 #include <stdexcept>
 
-#include "Vulkan.h"
+#include "VulkanHeader.h"
+
 #include "Settings.h"
 #include "Timestep.h"
 

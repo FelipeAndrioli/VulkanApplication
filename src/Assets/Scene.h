@@ -8,9 +8,10 @@
 #include <string>
 #include <memory>
 
-#include "../src/Vulkan.h"
-#include <glm/glm.hpp>
+//#include "../Vulkan.h"
+#include <glm.hpp>
 
+/*
 namespace Engine {
 	class LogicalDevice;
 	class PhysicalDevice;
@@ -20,6 +21,13 @@ namespace Engine {
 	class GraphicsPipeline;
 	class Buffer;
 
+	namespace InputSystem {
+		class Input;
+	}
+}
+*/
+
+namespace Engine {
 	namespace InputSystem {
 		class Input;
 	}

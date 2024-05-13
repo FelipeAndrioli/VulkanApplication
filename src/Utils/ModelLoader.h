@@ -6,13 +6,15 @@
 #include <unordered_map>
 #include <memory>
 
-namespace Assets {
-	class Object;
-	struct Material;
-	struct Texture;
+#include <assimp/cimport.h>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/mesh.h>
 
-	enum TextureType;
-}
+#include "../Assets/Object.h"
+#include "../Assets/Mesh.h"
+#include "../Assets/Texture.h"
+#include "../Assets/Material.h"
 
 namespace Engine {
 	/*
@@ -31,24 +33,39 @@ namespace Engine {
 
 			static void LoadModelAndMaterials(
 				Assets::Object& object, 
-				std::vector<Assets::Material>& sceneMaterials,
+				std::vector<Assets::Material>& sceneMaterials,				
 				std::vector<Assets::Texture>& loadedTextures,
 				VulkanEngine& vulkanEngine
-				/*
-				Engine::LogicalDevice& logicalDevice,
-				Engine::PhysicalDevice& physicalDevice,
-				Engine::CommandPool& commandPool
-				*/
 			);
 
 			static void LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials);
 
-			static inline bool fileExists(const std::string& path) {
-				struct stat buffer;
-				return (stat(path.c_str(), &buffer) == 0);
-			}
-
 		private:
+
+			static void ProcessNode(Assets::Object& object, const aiNode* node, const aiScene* scene);
+
+			static Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene);
+
+			static void ProcessMaterials(
+				VulkanEngine& vulkanEngine,
+				Assets::Object& object,
+				const aiScene* scene,
+				std::vector<Assets::Material>& sceneMaterials,
+				std::vector<Assets::Texture>& loadedTextures
+			);
+
+			static void LoadTextures(
+				Assets::Object& object,
+				VulkanEngine& vulkanEngine,
+				aiMaterial* material, 
+				aiTextureType textureType, 
+				Assets::TextureType customTextureType,
+				std::vector<Assets::Material>& sceneMaterials,				
+				std::vector<Assets::Texture>& loadedTextures
+			);
+
+			static void LinkMeshesToMaterials(std::vector<Assets::Mesh>& meshes, std::vector<Assets::Material>& sceneMaterials);
+
 			static void ProcessTexture(
 				std::vector<Assets::Material>& sceneMaterials,
 				std::vector<Assets::Texture>& loadedTextures,
@@ -57,11 +74,6 @@ namespace Engine {
 				std::string basePath,
 				std::string materialName,
 				VulkanEngine& vulkanEngine,
-				/*
-				Engine::LogicalDevice& logicalDevice,
-				Engine::PhysicalDevice& physicalDevice,
-				Engine::CommandPool& commandPool,
-				*/
 				bool flipTexturesVertically,
 				bool generateMipMaps
 			);
@@ -72,11 +84,6 @@ namespace Engine {
 				std::string textureName,
 				std::string basePath,
 				VulkanEngine& vulkanEngine,
-				/*
-				Engine::LogicalDevice& logicalDevice,
-				Engine::PhysicalDevice& physicalDevice,
-				Engine::CommandPool& commandPool,
-				*/
 				bool flipTexturesVertically,
 				bool generateMipMaps
 			);
@@ -91,6 +98,8 @@ namespace Engine {
 
 			static int GetTextureIndex(std::vector<Assets::Texture>& loadedTextures, std::string textureName);
 			static int GetMaterialIndex(std::vector<Assets::Material>& sceneMaterials, std::string materialName);
+
+			static bool fileExists(const std::string& path);
 		};
 	}
 }

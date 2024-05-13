@@ -3,8 +3,9 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <array>
 
-#include "../src/Vulkan.h"
+#include "../VulkanHeader.h"
 
 #include "Mesh.h"
 

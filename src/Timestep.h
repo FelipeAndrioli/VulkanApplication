@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Vulkan.h"
-
 namespace Engine {
 	class Timestep {
 	public:

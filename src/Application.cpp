@@ -1,5 +1,7 @@
 #include "Application.h" 
 
+#include <filesystem>
+
 #include "Vulkan.h"
 #include "Common.h"
 #include "UI.h"
@@ -31,16 +33,16 @@
 #include "./Utils/ModelLoader.h"
 #include "./Utils/TextureLoader.h"
 
-#include "../Assets/Object.h"
-#include "../Assets/Scene.h"
-#include "../Assets/Pipeline.h"
-#include "../Assets/Camera.h"
-#include "../Assets/Material.h"
+#include "./Assets/Object.h"
+#include "./Assets/Scene.h"
+//#include "./Assets/Pipeline.h"
+#include "./Assets/Camera.h"
+#include "./Assets/Material.h"
+#include "./Assets/Texture.h"
 
 namespace Engine {
 	Application::Application(const Settings &settings) : m_Settings(settings) {
 		m_Window.reset(new class Window(m_Settings));
-
 		m_Input.reset(new class InputSystem::Input());
 
 		m_Window->Render = std::bind(&Application::Draw, this);
@@ -78,7 +80,6 @@ namespace Engine {
 	}
 
 	void Application::Update(float t) {
-
 		m_SceneGPUData.time = m_Window->GetCurrentFrametime();
 
 		if (m_Input->Keys[GLFW_KEY_ESCAPE].IsPressed) m_Window->Close();
@@ -100,7 +101,7 @@ namespace Engine {
 				*m_VulkanEngine.get()
 			);
 		}
-		
+			
 		p_ActiveScene->Setup();
 		p_ActiveScene->OnResize(
 			m_VulkanEngine->GetSwapChain().GetSwapChainExtent().width,
@@ -109,7 +110,7 @@ namespace Engine {
 
 		InitializeBuffers();
 		InitializeDescriptors();
-		
+			
 		CreatePipelineLayouts();
 		CreateGraphicsPipelines();
 
@@ -139,7 +140,7 @@ namespace Engine {
 		m_LoadedTextures.clear();
 		m_DescriptorPool.reset();
 		m_VulkanEngine.reset();
-		
+			
 		glfwTerminate();
 	}
 
@@ -186,7 +187,7 @@ namespace Engine {
 			&m_SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
 			offsets
 		);
-		
+			
 		vkCmdBindIndexBuffer(
 			commandBuffer,
 			m_SceneGeometryBuffer->GetBuffer(m_CurrentFrame),
@@ -269,7 +270,7 @@ namespace Engine {
 		VkDeviceSize objectBufferSize = sizeof(ObjectGPUData) * p_ActiveScene->RenderableObjects.size();
 		VkDeviceSize materialsBufferSize = sizeof(Assets::MeshMaterialData) * m_Materials.size();
 		VkDeviceSize sceneBufferSize = sizeof(SceneGPUData);
-		
+			
 		m_GPUDataBuffer = std::make_unique<class Engine::Buffer>(
 			Engine::MAX_FRAMES_IN_FLIGHT,
 			*m_VulkanEngine.get(),
@@ -300,7 +301,7 @@ namespace Engine {
 		// Scene Geometry Buffer Begin
 		VkDeviceSize bufferSize = sizeof(uint32_t) * p_ActiveScene->Indices.size() 
 			+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
-		
+			
 		m_SceneGeometryBuffer = std::make_unique<class Engine::Buffer>(
 			Engine::MAX_FRAMES_IN_FLIGHT,
 			*m_VulkanEngine.get(),
@@ -411,7 +412,7 @@ namespace Engine {
 
 	void Application::CreatePipelineLayouts() {
 		PipelineLayoutBuilder pipelineLayoutBuilder = PipelineLayoutBuilder();
-		
+			
 		VkPushConstantRange mainPipelinePushConstant = { VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) };
 
 		m_MainPipelineLayout = pipelineLayoutBuilder.AddDescriptorSetLayout(m_ObjectGPUDataDescriptorSetLayout->GetHandle())
@@ -421,29 +422,39 @@ namespace Engine {
 	}
 
 	void Application::CreateGraphicsPipelines() {
-
-		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/default_vert.spv");
-		//Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/sinewave_vert.spv");
-		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", "C:/Users/Felipe/Documents/current_projects/VulkanApplication/Assets/Shaders/textured_frag.spv");
-
 		PipelineBuilder pipelineBuilder = PipelineBuilder();
+
+		std::string shadersPath = "./Shaders/";
+		std::string defaultVert = shadersPath + "default_vert.spv";
+		//std::string defaultVert = shadersPath + "sinewave_vert.spv";
+		std::string texturedFrag = shadersPath + "textured_frag.spv";
+		std::string wireframeFrag = shadersPath + "wireframe_frag.spv";
+		std::string untexturedFrag = shadersPath + "colored_frag.spv";
+
+		std::cout << defaultVert << '\n';
+		std::cout << texturedFrag << '\n';
+		std::cout << wireframeFrag << '\n';
+		std::cout << untexturedFrag << '\n';
+
+		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", defaultVert);
+		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", texturedFrag);
+		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", wireframeFrag);
+		Assets::FragmentShader coloredFragShader = Assets::FragmentShader("Colored Fragment Shader", untexturedFrag);
+		
 		m_TexturedPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(texturedFragmentShader)
 			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
 			.AddPipelineLayout(*m_MainPipelineLayout)
 			.BuildGraphicsPipeline(*m_VulkanEngine.get());
 
-		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", "./Assets/Shaders/wireframe_frag.spv");
 		wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
 		wireframeFragShader.LineWidth = 3.0f;
-
+		
 		m_WireframePipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(wireframeFragShader)
 			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
 			.AddPipelineLayout(*m_MainPipelineLayout)
 			.BuildGraphicsPipeline(*m_VulkanEngine.get());
-
-		Assets::FragmentShader coloredFragShader = Assets::FragmentShader("Colored Fragment Shader", "./Assets/Shaders/colored_frag.spv");
 
 		m_ColoredPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(coloredFragShader)
