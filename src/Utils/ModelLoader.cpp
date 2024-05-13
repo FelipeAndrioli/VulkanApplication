@@ -219,7 +219,7 @@ namespace Engine {
 			std::string path = basePath;
 
 			if (textureName == "" || !fileExists(basePath + textureName)) {
-				std::cout << "File: " << basePath + textureName << "doesn't exists! Loading custom texture!" << '\n';
+				std::cout << "File: " << basePath + textureName << " doesn't exists! Loading custom texture!" << '\n';
 				texName = "error_texture.jpg";
 				path = "./Textures/";
 			}

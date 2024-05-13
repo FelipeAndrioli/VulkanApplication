@@ -112,7 +112,7 @@ int main() {
 	duck.Transformations.translation.y = 300.8f;
 	duck.Transformations.translation.z = 13.1f;
 	myScene->AddRenderableObject(&duck);
-	
+
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
 	settings.Width = 1600;
