@@ -83,6 +83,7 @@ int main() {
 	myScene->AddRenderableObject(&cube);
 	*/
 
+	/*
 	CustomObject model = CustomObject();
 	model.ID = "Sponza";
 	model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
@@ -112,6 +113,28 @@ int main() {
 	duck.Transformations.translation.y = 300.8f;
 	duck.Transformations.translation.z = 13.1f;
 	myScene->AddRenderableObject(&duck);
+	*/
+
+	/* TODO: fix this model loading
+	CustomObject chessSet = CustomObject();
+	chessSet.ID = "Chess Set";
+	chessSet.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/chess_set/chess_set_4k.gltf";
+	chessSet.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/chess_set/";
+	chessSet.FlipTexturesVertically = true;
+	myScene->AddRenderableObject(&chessSet);
+	*/
+
+	CustomObject ship = CustomObject();
+	ship.ID = "Ship";
+	ship.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/ship_pinnace_4k.gltf";
+	ship.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/";
+	ship.FlipTexturesVertically = true;
+	ship.Transformations.translation.x = -10.8f;
+	ship.Transformations.translation.y = -2.5f;
+	ship.Transformations.rotation.y = 45.0f;
+	ship.Transformations.scaleHandler = 0.2f;
+
+	myScene->AddRenderableObject(&ship);
 
 	Engine::Settings settings;
 	settings.Title = "VulkanApplication.exe";
