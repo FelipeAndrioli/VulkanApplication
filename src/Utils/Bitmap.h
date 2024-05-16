@@ -59,13 +59,21 @@ public:
 	void setPixel(int x, int y, const glm::vec4& c) {
 		(*this.*setPixelFunc)(x, y, c);
 	}
-	
+
 	// TODO: rework this function to use std::function and std::bind
 	glm::vec4 getPixel(int x, int y) const {
 		return ((*this.*getPixelFunc)(x, y));
 	}
 
-	eBitmapType getType() { return m_Type; }
+	eBitmapType getType() const { return m_Type; }
+	eBitmapFormat getFormat() const { return m_Format; }
+
+	int getWidth() const { return m_Width; }
+	int getHeight() const { return m_Height; }
+	int getDepth() const { return m_Depth; }
+	int getComp() const { return m_Comp; }
+
+	std::vector<uint8_t> getData() const { return m_Data; }
 
 private:
 	void initGetSetFuncs() {
@@ -80,7 +88,7 @@ private:
 		}
 	}
 
-	void setPixelFloat(int x, int y, const glm::vec4& c) const {
+	void setPixelFloat(int x, int y, const glm::vec4& c) {
 		const int offset = m_Comp * (y * m_Width + x);
 
 		float* data = reinterpret_cast<float*>(m_Data.data());
@@ -128,8 +136,8 @@ private:
 	int m_Depth = 1;
 	int m_Comp = 3;		// components per pixel
 
-	eBitMapFormat m_Format = eBitMapFormat_UnsignedByte;
-	eBitMapType m_Type = eBitMapType_2D;
+	eBitmapFormat m_Format = eBitmapFormat_UnsignedByte;
+	eBitmapType m_Type = eBitmapType_2D;
 
 	std::vector<uint8_t> m_Data;
 
