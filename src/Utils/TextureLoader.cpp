@@ -1,8 +1,7 @@
 #include "./TextureLoader.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "../../libs/stb/stb_image.h"
-//#include <stb_image.h>
+#include <stb_image.h>
 
 #include "../Buffer.h"
 #include "../BufferHelper.h"
@@ -11,6 +10,9 @@
 #include "../CommandPool.h"
 #include "../CommandBuffer.h"
 #include "../Vulkan.h"
+
+#include "./Bitmap.h"
+#include "./UtilsCubemap.h"
 
 namespace Engine {
 	namespace Utils {
@@ -97,6 +99,24 @@ namespace Engine {
 			texture.TextureImage->GenerateMipMaps(vulkanEngine.GetCommandPool().GetHandle(), vulkanEngine.GetLogicalDevice().GetGraphicsQueue());
 			texture.TextureImage->CreateImageSampler();
 			
+			return texture;
+		}
+
+		Assets::Texture LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine) {
+			Assets::Texture texture = {};
+
+			int width;
+			int height;
+			int comp;
+
+			const float* img = stbi_loadf(texturePath, &width, &height, &comp, 3);
+
+			Bitmap in(width, height, comp, eBitmapFormat_Float, img);
+			
+			stbi_image_free((void*)img);
+
+			Bitmap out = Utils::convertEquirectangularMapToVerticalCross(in);
+
 			return texture;
 		}
 	}
