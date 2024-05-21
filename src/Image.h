@@ -25,6 +25,7 @@ namespace Engine {
 		VkImage& GetImage() { return m_Image; }
 
 		void CreateImageView();
+		void CreateImageView(const VkImageViewType viewType);
 		void Resize(const uint32_t imageWidth, const uint32_t imageHeight);
 		void TransitionImageLayoutTo(
 			VkCommandPool& commandPool,

@@ -55,6 +55,24 @@ namespace Engine {
 		}
 	}
 
+	void Image::CreateImageView(const VkImageViewType viewType) {
+
+		VkImageViewCreateInfo viewCreateInfo{};
+		viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewCreateInfo.image = m_Image;
+		viewCreateInfo.viewType = viewType;
+		viewCreateInfo.format = m_Format;
+		viewCreateInfo.subresourceRange.aspectMask = m_AspectFlags;
+		viewCreateInfo.subresourceRange.baseMipLevel = 0;
+		viewCreateInfo.subresourceRange.levelCount = MipLevels;
+		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
+		viewCreateInfo.subresourceRange.layerCount = 1;
+
+		if (vkCreateImageView(*p_LogicalDevice, &viewCreateInfo, nullptr, &ImageView) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create Image View!");
+		}
+	}
+
 	void Image::Resize(const uint32_t imageWidth, const uint32_t imageHeight) {
 		CleanUp();
 	
