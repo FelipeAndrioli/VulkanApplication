@@ -101,6 +101,8 @@ namespace Engine {
 				*m_VulkanEngine.get()
 			);
 		}
+
+		Utils::TextureLoader::LoadCubemapTexture("./Textures/piazza_bologni_1k.hdr", *m_VulkanEngine.get());
 			
 		p_ActiveScene->Setup();
 		p_ActiveScene->OnResize(

@@ -2,6 +2,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
 
 #include "../Buffer.h"
 #include "../BufferHelper.h"
@@ -102,22 +104,63 @@ namespace Engine {
 			return texture;
 		}
 
-		Assets::Texture LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine) {
+		//Assets::Texture LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine) {
+		void TextureLoader::LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine) {
+
 			Assets::Texture texture = {};
+			const uint32_t mipLevels = 1;
 
 			int width;
 			int height;
 			int comp;
 
+			stbi_set_flip_vertically_on_load(false);
 			const float* img = stbi_loadf(texturePath, &width, &height, &comp, 3);
 
+			if (!img) {
+				throw std::runtime_error("Failed to load image!");
+			}
+
 			Bitmap in(width, height, comp, eBitmapFormat_Float, img);
-			
+			stbi_write_hdr("scrennshot_in.hdr", in.getWidth(), in.getHeight(), in.getComp(), reinterpret_cast<const float*>(in.Data.data()));
+			Bitmap out = Utils::convertEquirectangularMapToVerticalCross(in);
+			stbi_write_hdr("scrennshot_out.hdr", out.getWidth(), out.getHeight(), out.getComp(), reinterpret_cast<const float*>(out.Data.data()));
+
 			stbi_image_free((void*)img);
 
-			Bitmap out = Utils::convertEquirectangularMapToVerticalCross(in);
+			Bitmap cubemap = convertVerticalCrossToCubeMapFaces(out);
+			stbi_write_hdr("scrennshot_cubemap.hdr", cubemap.getWidth(), cubemap.getHeight(), cubemap.getComp(), reinterpret_cast<const float*>(cubemap.Data.data()));
+
+			/*
+			Buffer transferBuffer = Buffer(1, vulkanEngine, 0, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			transferBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+			BufferHelper bufferHelper;
+
+			texture.TextureImage = std::make_unique<class Image>(
+				vulkanEngine.GetLogicalDevice().GetHandle(),
+				vulkanEngine.GetPhysicalDevice().GetHandle(),
+				static_cast<uint32_t>(width),
+				static_cast<uint32_t>(height),
+				mipLevels,
+				VK_SAMPLE_COUNT_1_BIT,
+				VK_FORMAT_R8G8B8A8_SRGB,
+				VK_IMAGE_TILING_OPTIMAL,
+				static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				VK_IMAGE_ASPECT_COLOR_BIT
+			);
+
+			texture.TextureImage->CreateImageView(VK_IMAGE_VIEW_TYPE_CUBE);
+			texture.TextureImage->TransitionImageLayoutTo(
+				vulkanEngine.GetCommandPool().GetHandle(),
+				vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
+				VK_FORMAT_R8G8B8A8_SRGB,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+			);
 
 			return texture;
+			*/
 		}
 	}
 }
