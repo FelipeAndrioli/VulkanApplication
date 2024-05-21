@@ -17,6 +17,7 @@ message("Shaders: ${SHADERS}")
 
 file(COPY ${SHADERS} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/)
 file(COPY ${TEXTURE_PATH}/error_texture.jpg DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Textures/)
+file(COPY ${TEXTURE_PATH}/piazza_bologni_1k.hdr DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Textures/)
 
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/imgui.cpp)
 list(APPEND SOURCE_FILES ${PROJECT_SOURCE_DIR}/libs/imgui/imgui_demo.cpp)
