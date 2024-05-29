@@ -33,6 +33,17 @@ namespace Engine {
 		);
 
 		template <class T>
+		static void UploadDataToImage(
+			VulkanEngine& vulkanEngine,
+			const T* content,
+			const VkDeviceSize& contentSize,
+			VkImage& image,
+			uint32_t width,
+			uint32_t height,
+			uint32_t layerCount 
+		);
+
+		template <class T>
 		static void AppendData(
 			VulkanEngine& vulkanEngine, 
 			const std::vector<T>& content, 
@@ -60,6 +71,11 @@ namespace Engine {
 			const std::vector<T>& content, 
 			std::unique_ptr<Buffer>& buffer
 		);
+
+		/*
+		static void CopyBufferToImage(VulkanEngine& vulkanEngine, VkBuffer buffer, VkImage image, 
+			uint32_t width, uint32_t height, uint32_t layerCount);
+		*/
 	};
 
 	template <class T>
@@ -75,7 +91,7 @@ namespace Engine {
 		auto stagingBuffer = std::make_unique<Buffer>(1, vulkanEngine, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		stagingBuffer->BufferMemory->MapMemory();
+		stagingBuffer->BufferMemory->MapMemory(bufferSize);
 		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content.data(), bufferSize);
 		stagingBuffer->BufferMemory->UnmapMemory();
 
@@ -106,7 +122,7 @@ namespace Engine {
 		);
 		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		stagingBuffer->BufferMemory->MapMemory();
+		stagingBuffer->BufferMemory->MapMemory(bufferSize);
 		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content, bufferSize);
 		stagingBuffer->BufferMemory->UnmapMemory();
 
@@ -114,6 +130,103 @@ namespace Engine {
 
 		stagingBuffer.reset();
 
+	}
+
+	/*
+	void BufferHelper::CopyBufferToImage(VulkanEngine& vulkanEngine, VkBuffer buffer, VkImage image,
+		uint32_t width, uint32_t height, uint32_t layerCount) {
+
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(),
+			vulkanEngine.GetCommandPool().GetHandle());
+
+		const VkBufferImageCopy region = {
+			.bufferOffset = 0,
+			.bufferRowLength = 0,
+			.bufferImageHeight = 0,
+			.imageSubresource = VkImageSubresourceLayers {
+				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = layerCount
+			},
+			.imageOffset = VkOffset3D {
+				.x = 0,
+				.y = 0,
+				.z = 0
+			},
+			.imageExtent = VkExtent3D {
+				.width = width,
+				.height = height,
+				.depth = 1
+			}
+		};
+
+		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+		CommandBuffer::EndSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(), 
+			vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
+			commandBuffer, vulkanEngine.GetCommandPool().GetHandle());
+	}
+	*/
+
+	template <class T>
+	static void BufferHelper::UploadDataToImage(
+		VulkanEngine& vulkanEngine,
+		const T* content,
+		const VkDeviceSize& contentSize,
+		VkImage& image,
+		uint32_t width,
+		uint32_t height,
+		uint32_t layerCount
+	) {
+		if (contentSize == 0) return;
+
+		auto stagingBuffer = std::make_unique<Buffer>(
+			1,
+			vulkanEngine,
+			contentSize,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+		);
+		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		stagingBuffer->BufferMemory->MapMemory(contentSize);
+		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content, contentSize);
+		stagingBuffer->BufferMemory->UnmapMemory();
+
+		//CopyBufferToImage(vulkanEngine, stagingBuffer->GetBuffer(0), image, width, height, layerCount);
+
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(),
+			vulkanEngine.GetCommandPool().GetHandle());
+
+		const VkBufferImageCopy region = {
+			.bufferOffset = 0,
+			.bufferRowLength = 0,
+			.bufferImageHeight = 0,
+			.imageSubresource = VkImageSubresourceLayers {
+				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = layerCount
+			},
+			.imageOffset = VkOffset3D {
+				.x = 0,
+				.y = 0,
+				.z = 0
+			},
+			.imageExtent = VkExtent3D {
+				.width = width,
+				.height = height,
+				.depth = 1
+			}
+		};
+
+		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer->GetBuffer(0), image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+		CommandBuffer::EndSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(), 
+			vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
+			commandBuffer, vulkanEngine.GetCommandPool().GetHandle());
+
+
+		stagingBuffer.reset();
 	}
 
 	template <class T>

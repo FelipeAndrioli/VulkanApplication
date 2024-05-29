@@ -111,7 +111,7 @@ namespace Engine {
 	}
 
 	void Buffer::Update(uint32_t bufferIndex, VkDeviceSize offset, void* data, size_t dataSize) {
-		BufferMemory->MapMemory(bufferIndex, offset);
+		BufferMemory->MapMemory(bufferIndex, offset, static_cast<VkDeviceSize>(dataSize));
 		memcpy(BufferMemory->MemoryMapped[bufferIndex], data, dataSize);
 		BufferMemory->UnmapMemory(bufferIndex);
 	}
