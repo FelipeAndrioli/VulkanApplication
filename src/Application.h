@@ -87,6 +87,7 @@ namespace Engine {
 
 		std::vector<Assets::Material> m_Materials;
 		std::vector<Assets::Texture> m_LoadedTextures;
+		std::unique_ptr< struct Assets::Texture> m_Skybox;
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_GlobalDescriptorSetLayout;

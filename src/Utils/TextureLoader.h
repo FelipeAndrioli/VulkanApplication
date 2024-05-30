@@ -29,8 +29,7 @@ namespace Engine {
 				bool generateMipMaps
 			);
 
-			//static Assets::Texture LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine);
-			static void LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine);
+			static Assets::Texture LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine);
 		};
 	}
 }

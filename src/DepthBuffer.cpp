@@ -23,7 +23,7 @@ namespace Engine {
 			VK_IMAGE_ASPECT_DEPTH_BIT
 		));
 
-		m_DepthBufferImage->CreateImageView();
+		m_DepthBufferImage->CreateImageView(VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 	}
 
 	DepthBuffer::~DepthBuffer() {

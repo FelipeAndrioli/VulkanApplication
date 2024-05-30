@@ -61,8 +61,9 @@ namespace Engine {
 
 			transferBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			BufferHelper bufferHelper;
-			bufferHelper.CopyFromStaging(vulkanEngine, pixels, imageSize, &transferBuffer);
+			//BufferHelper bufferHelper;
+			//bufferHelper.CopyFromStaging(vulkanEngine, pixels, imageSize, &transferBuffer);
+			BufferHelper::CopyFromStaging(vulkanEngine, pixels, imageSize, &transferBuffer);
 
 			stbi_image_free(pixels);
 
@@ -84,7 +85,6 @@ namespace Engine {
 			texture.TextureImage->TransitionImageLayoutTo(
 				vulkanEngine.GetCommandPool().GetHandle(),
 				vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
-				VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 			);
 
@@ -104,12 +104,34 @@ namespace Engine {
 			return texture;
 		}
 
-		//Assets::Texture LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine) {
-		void TextureLoader::LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine) {
+		uint32_t bytesPerTexFormat(VkFormat format) {
+			switch (format) {
+			case VK_FORMAT_R8_SINT:
+			case VK_FORMAT_R8_UNORM:
+				return 1;
+			case VK_FORMAT_R16_SFLOAT:
+				return 2;
+			case VK_FORMAT_R16G16_SFLOAT:
+			case VK_FORMAT_R16G16_SNORM:
+			case VK_FORMAT_B8G8R8A8_UNORM:
+			case VK_FORMAT_R8G8B8A8_UNORM:
+			case VK_FORMAT_R8G8B8A8_SRGB:
+				return 4;
+			case VK_FORMAT_R16G16B16A16_SFLOAT:
+				return 4 * sizeof(uint16_t);
+			case VK_FORMAT_R32G32B32A32_SFLOAT:
+				return 4 * sizeof(float);
+			default:
+				break;
+			}
 
+			return 0;
+		}
+
+		Assets::Texture TextureLoader::LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine) {
 			Assets::Texture texture = {};
 			const uint32_t mipLevels = 1;
-
+		
 			int width;
 			int height;
 			int comp;
@@ -122,45 +144,56 @@ namespace Engine {
 			}
 
 			Bitmap in(width, height, comp, eBitmapFormat_Float, img);
-			stbi_write_hdr("scrennshot_in.hdr", in.getWidth(), in.getHeight(), in.getComp(), reinterpret_cast<const float*>(in.Data.data()));
 			Bitmap out = Utils::convertEquirectangularMapToVerticalCross(in);
-			stbi_write_hdr("scrennshot_out.hdr", out.getWidth(), out.getHeight(), out.getComp(), reinterpret_cast<const float*>(out.Data.data()));
 
 			stbi_image_free((void*)img);
 
 			Bitmap cubemap = convertVerticalCrossToCubeMapFaces(out);
-			stbi_write_hdr("scrennshot_cubemap.hdr", cubemap.getWidth(), cubemap.getHeight(), cubemap.getComp(), reinterpret_cast<const float*>(cubemap.Data.data()));
 
-			/*
-			Buffer transferBuffer = Buffer(1, vulkanEngine, 0, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			transferBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			VkFormat texFormat = VK_FORMAT_R32G32B32A32_SFLOAT; // validate
 
-			BufferHelper bufferHelper;
+			// update texture image
+			uint32_t bytesPerPixel = bytesPerTexFormat(texFormat);
+			uint32_t layerCount = 6;
+
+			VkDeviceSize layerSize = cubemap.getWidth() * cubemap.getHeight() * bytesPerPixel;
+			VkDeviceSize imageSize = layerSize * layerCount;
 
 			texture.TextureImage = std::make_unique<class Image>(
 				vulkanEngine.GetLogicalDevice().GetHandle(),
 				vulkanEngine.GetPhysicalDevice().GetHandle(),
-				static_cast<uint32_t>(width),
-				static_cast<uint32_t>(height),
+				static_cast<uint32_t>(cubemap.getWidth()),
+				static_cast<uint32_t>(cubemap.getHeight()),
 				mipLevels,
 				VK_SAMPLE_COUNT_1_BIT,
-				VK_FORMAT_R8G8B8A8_SRGB,
+				texFormat,
 				VK_IMAGE_TILING_OPTIMAL,
-				static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+				static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT),
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				VK_IMAGE_ASPECT_COLOR_BIT
+				VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT
 			);
-
-			texture.TextureImage->CreateImageView(VK_IMAGE_VIEW_TYPE_CUBE);
+			texture.TextureImage->CreateImageView(VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT, layerCount);
 			texture.TextureImage->TransitionImageLayoutTo(
 				vulkanEngine.GetCommandPool().GetHandle(),
 				vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
-				VK_FORMAT_R8G8B8A8_SRGB,
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				layerCount
 			);
 
+			BufferHelper::UploadDataToImage(vulkanEngine, cubemap.Data.data(), imageSize, texture.TextureImage->GetImage(), 
+				cubemap.getWidth(), cubemap.getHeight(), layerCount);
+
+			texture.TextureImage->TransitionImageLayoutTo(
+				vulkanEngine.GetCommandPool().GetHandle(),
+				vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				layerCount
+			);
+
+			texture.TextureImage->GenerateMipMaps(vulkanEngine.GetCommandPool().GetHandle(), vulkanEngine.GetLogicalDevice().GetGraphicsQueue());
+			texture.TextureImage->CreateImageSampler();
+
 			return texture;
-			*/
 		}
 	}
 }
