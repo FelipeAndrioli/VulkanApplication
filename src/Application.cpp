@@ -102,7 +102,7 @@ namespace Engine {
 			);
 		}
 
-		//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/piazza_bologni_1k.hdr", *m_VulkanEngine.get()));
+		m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/piazza_bologni_1k.hdr", *m_VulkanEngine.get()));
 			
 		p_ActiveScene->Setup();
 		p_ActiveScene->OnResize(
@@ -125,7 +125,6 @@ namespace Engine {
 	}
 
 	void Application::Shutdown() {
-
 		m_ObjectGPUDataDescriptorSetLayout.reset();
 		m_GlobalDescriptorSetLayout.reset();
 
@@ -138,6 +137,7 @@ namespace Engine {
 		m_WireframePipeline.reset();
 		m_ColoredPipeline.reset();
 
+		m_Skybox.reset();
 		m_Materials.clear();
 		m_LoadedTextures.clear();
 		m_DescriptorPool.reset();

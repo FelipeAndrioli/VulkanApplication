@@ -286,7 +286,6 @@ namespace Engine {
 		imageCreateInfo.arrayLayers = (uint32_t)(m_AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6 : 1);
 
 		if (m_AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
-			std::cout << "Settings image flags..." << '\n';
 			imageCreateInfo.flags = m_AspectFlags;
 		}
 

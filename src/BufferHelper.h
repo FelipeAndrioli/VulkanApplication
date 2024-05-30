@@ -35,12 +35,12 @@ namespace Engine {
 		template <class T>
 		static void UploadDataToImage(
 			VulkanEngine& vulkanEngine,
-			const T* content,
-			const VkDeviceSize& contentSize,
-			VkImage& image,
-			uint32_t width,
-			uint32_t height,
-			uint32_t layerCount 
+			const T* imageData,
+			const VkDeviceSize& imageSize,
+			VkImage& dstImage,
+			const uint32_t width,
+			const uint32_t height,
+			const uint32_t layerCount 
 		);
 
 		template <class T>
@@ -170,29 +170,27 @@ namespace Engine {
 	*/
 
 	template <class T>
-	static void BufferHelper::UploadDataToImage(
+	void BufferHelper::UploadDataToImage(
 		VulkanEngine& vulkanEngine,
-		const T* content,
-		const VkDeviceSize& contentSize,
-		VkImage& image,
-		uint32_t width,
-		uint32_t height,
-		uint32_t layerCount
+		const T* imageData,
+		const VkDeviceSize& imageSize,
+		VkImage& dstImage,
+		const uint32_t width,
+		const uint32_t height,
+		const uint32_t layerCount
 	) {
-		if (contentSize == 0) return;
+		if (imageSize == 0) return;
 
 		auto stagingBuffer = std::make_unique<Buffer>(
 			1,
 			vulkanEngine,
-			contentSize,
+			imageSize,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT
 		);
 		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		stagingBuffer->BufferMemory->MapMemory(contentSize);
-		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content, contentSize);
+		stagingBuffer->BufferMemory->MapMemory(imageSize);
+		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], imageData, imageSize);
 		stagingBuffer->BufferMemory->UnmapMemory();
-
-		//CopyBufferToImage(vulkanEngine, stagingBuffer->GetBuffer(0), image, width, height, layerCount);
 
 		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(),
 			vulkanEngine.GetCommandPool().GetHandle());
@@ -219,7 +217,7 @@ namespace Engine {
 			}
 		};
 
-		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer->GetBuffer(0), image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer->GetBuffer(0), dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 		CommandBuffer::EndSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(), 
 			vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
