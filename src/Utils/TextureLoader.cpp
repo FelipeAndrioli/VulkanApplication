@@ -61,8 +61,6 @@ namespace Engine {
 
 			transferBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			//BufferHelper bufferHelper;
-			//bufferHelper.CopyFromStaging(vulkanEngine, pixels, imageSize, &transferBuffer);
 			BufferHelper::CopyFromStaging(vulkanEngine, pixels, imageSize, &transferBuffer);
 
 			stbi_image_free(pixels);
@@ -128,6 +126,17 @@ namespace Engine {
 			return 0;
 		}
 
+		static void float24to32(int w, int h, const float* img24, float* img32) {
+			const int numPixels = w * h;
+
+			for (int i = 0; i < numPixels; i++) {
+				*img32++ = *img24++;
+				*img32++ = *img24++;
+				*img32++ = *img24++;
+				*img32++ = 1.0f;
+			}
+		}
+
 		Assets::Texture TextureLoader::LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine) {
 			Assets::Texture texture = {};
 			const uint32_t mipLevels = 1;
@@ -137,20 +146,27 @@ namespace Engine {
 			int comp;
 
 			stbi_set_flip_vertically_on_load(false);
+
 			const float* img = stbi_loadf(texturePath, &width, &height, &comp, 3);
 
 			if (!img) {
 				throw std::runtime_error("Failed to load image!");
 			}
 
-			Bitmap in(width, height, comp, eBitmapFormat_Float, img);
+			// stbi_loadf only load 3 components, we need to convert it from float (8) 24 (RGB) float (8) to 32 (RGBA)
+			// setting the fourth component to 1.0f, Vulkan doesn't have a R24G24B24 format
+			std::vector<float> img32(width * height * 4);
+			float24to32(width, height, img, img32.data());
+			comp = 4;
+
+			Bitmap in(width, height, comp, eBitmapFormat_Float, img32.data());
 			Bitmap out = Utils::convertEquirectangularMapToVerticalCross(in);
 
 			stbi_image_free((void*)img);
 
 			Bitmap cubemap = convertVerticalCrossToCubeMapFaces(out);
 
-			VkFormat texFormat = VK_FORMAT_R32G32B32A32_SFLOAT; // validate
+			VkFormat texFormat = VK_FORMAT_R32G32B32A32_SFLOAT; 
 
 			// update texture image
 			uint32_t bytesPerPixel = bytesPerTexFormat(texFormat);
@@ -190,7 +206,6 @@ namespace Engine {
 				layerCount
 			);
 
-			texture.TextureImage->GenerateMipMaps(vulkanEngine.GetCommandPool().GetHandle(), vulkanEngine.GetLogicalDevice().GetGraphicsQueue());
 			texture.TextureImage->CreateImageSampler();
 
 			return texture;
