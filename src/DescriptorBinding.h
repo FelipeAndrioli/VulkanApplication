@@ -10,12 +10,13 @@ namespace Engine {
 	class Buffer;
 
 	struct DescriptorBinding {
-		uint32_t binding;
-		uint32_t descriptorCount;
+		uint32_t binding = 0;
+		uint32_t descriptorCount = 0;
 		VkDescriptorType type;
 		VkShaderStageFlags stage;
 		Buffer* buffer = nullptr;
 		std::vector<Assets::Texture>* textures = nullptr;
+		Assets::Texture* texture = nullptr;
 		VkDeviceSize bufferSize = 0;
 		VkDeviceSize bufferOffset = 0;
 	};

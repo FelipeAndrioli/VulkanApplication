@@ -37,12 +37,14 @@ namespace Engine {
 	void DescriptorSetLayout::Update(
 		const size_t index, 
 		Buffer* buffer, 
-		std::vector<Assets::Texture>* textures, 
+		std::vector<Assets::Texture>* textures,
+		Assets::Texture* texture,
 		size_t bufferSize, 
 		size_t bufferOffset
 	) {
 		m_DescriptorBindings[index].buffer = buffer;
 		m_DescriptorBindings[index].textures = textures;
+		m_DescriptorBindings[index].texture = texture;
 		m_DescriptorBindings[index].bufferSize = bufferSize;
 		m_DescriptorBindings[index].bufferOffset = bufferOffset;
 	}
@@ -76,6 +78,11 @@ namespace Engine {
 		m_DescriptorBinding.textures = &textures;
 		return *this;
 	}
+
+	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetResource(Assets::Texture& texture) {
+		m_DescriptorBinding.texture = &texture;
+		return *this;
+	}
 	
 	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetBufferSize(VkDeviceSize bufferSize) {
 		m_DescriptorBinding.bufferSize = bufferSize;
@@ -94,6 +101,7 @@ namespace Engine {
 		m_DescriptorBinding.type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
 		m_DescriptorBinding.buffer = nullptr;
 		m_DescriptorBinding.textures = nullptr;
+		m_DescriptorBinding.texture = nullptr;
 		m_DescriptorBinding.bufferSize = 0;
 		m_DescriptorBinding.bufferOffset = 0;
 		

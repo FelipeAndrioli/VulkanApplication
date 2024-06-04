@@ -110,6 +110,8 @@ namespace Engine {
 			m_VulkanEngine->GetSwapChain().GetSwapChainExtent().height
 		);
 
+		m_SkyboxObj = std::make_unique<class Assets::Object>(glm::vec3(0.0f));
+		
 		InitializeBuffers();
 		InitializeDescriptors();
 			
@@ -136,6 +138,7 @@ namespace Engine {
 		m_TexturedPipeline.reset();
 		m_WireframePipeline.reset();
 		m_ColoredPipeline.reset();
+		m_SkyboxPipeline.reset();
 
 		m_Skybox.reset();
 		m_Materials.clear();
@@ -210,11 +213,24 @@ namespace Engine {
 			m_MainPipelineLayout->GetHandle()
 		);
 
+		RenderSkybox(commandBuffer, m_SkyboxPipeline->GetHandle());
 		RenderScene(commandBuffer, m_TexturedPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
 		RenderScene(commandBuffer, m_ColoredPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
 
 		if (m_Settings.wireframeEnabled)
 			RenderScene(commandBuffer, m_WireframePipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+	}
+
+	void Application::RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline) {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+		m_SkyboxObj->DescriptorSets->Bind(m_CurrentFrame, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
+		ObjectGPUData objectGPUData = ObjectGPUData();
+		objectGPUData.model = m_SkyboxObj->GetModelMatrix();
+
+		m_GPUDataBuffer->Update(m_CurrentFrame, 0, &objectGPUData, sizeof(ObjectGPUData));
+
+		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
 
 	void Application::RenderScene(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline, const std::vector<Assets::Object*>& objects) {
@@ -382,6 +398,14 @@ namespace Engine {
 			.SetBufferSize(0)
 			.SetBufferOffset(0)
 			.Add()
+			.NewBinding(3)
+			.SetDescriptorCount(1)
+			.SetType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+			.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
+			.SetResource({ *m_Skybox.get() })
+			.SetBufferSize(0)
+			.SetBufferOffset(0)
+			.Add()
 			.Build(m_VulkanEngine->GetLogicalDevice().GetHandle());
 
 		// Renderable Objects Descriptor Sets Begin
@@ -399,6 +423,14 @@ namespace Engine {
 				1
 			);
 		}
+
+		m_SkyboxObj->DescriptorSets = std::make_unique<class Engine::DescriptorSets>(
+			m_VulkanEngine->GetLogicalDevice().GetHandle(),
+			m_DescriptorPool->GetHandle(),
+			*m_ObjectGPUDataDescriptorSetLayout.get(),
+			0,
+			1
+		);
 		// Renderable Objects Descriptor Sets End 
 
 		// Global Descriptor Sets Begin
@@ -432,16 +464,23 @@ namespace Engine {
 		std::string texturedFrag = shadersPath + "textured_frag.spv";
 		std::string wireframeFrag = shadersPath + "wireframe_frag.spv";
 		std::string untexturedFrag = shadersPath + "colored_frag.spv";
+		std::string skyboxVert = shadersPath + "skybox_vert.spv";
+		std::string skyboxFrag = shadersPath + "skybox_frag.spv";
 
 		std::cout << defaultVert << '\n';
 		std::cout << texturedFrag << '\n';
 		std::cout << wireframeFrag << '\n';
 		std::cout << untexturedFrag << '\n';
+		std::cout << skyboxVert << '\n';
+		std::cout << skyboxFrag << '\n';
 
 		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", defaultVert);
 		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", texturedFrag);
 		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", wireframeFrag);
 		Assets::FragmentShader coloredFragShader = Assets::FragmentShader("Colored Fragment Shader", untexturedFrag);
+
+		Assets::VertexShader skyboxVertexShader = Assets::VertexShader("Skybox Vertex Shader", skyboxVert);
+		Assets::FragmentShader skyboxFragmentShader = Assets::FragmentShader("Skybox Fragment Shader", skyboxFrag);
 		
 		m_TexturedPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(texturedFragmentShader)
@@ -460,6 +499,12 @@ namespace Engine {
 
 		m_ColoredPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(coloredFragShader)
+			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
+			.AddPipelineLayout(*m_MainPipelineLayout)
+			.BuildGraphicsPipeline(*m_VulkanEngine.get());
+
+		m_SkyboxPipeline = pipelineBuilder.AddVertexShader(skyboxVertexShader)
+			.AddFragmentShader(skyboxFragmentShader)
 			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
 			.AddPipelineLayout(*m_MainPipelineLayout)
 			.BuildGraphicsPipeline(*m_VulkanEngine.get());

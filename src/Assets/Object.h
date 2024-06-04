@@ -28,9 +28,9 @@ namespace Assets {
 		Object(glm::vec3 pos = glm::vec3(0.0f, 0.0f, 0.0f));
 		~Object();
 
-		virtual void OnCreate() = 0;
-		virtual void OnUpdate(float t) = 0;
-		virtual void OnUIRender() = 0;
+		virtual void OnCreate() {};
+		virtual void OnUpdate(float t) {};
+		virtual void OnUIRender() {};
 
 		glm::mat4 GetModelMatrix();
 

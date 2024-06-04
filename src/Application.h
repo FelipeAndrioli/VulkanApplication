@@ -63,6 +63,7 @@ namespace Engine {
 		void CreateGraphicsPipelines();
 		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer);
 		void EndRenderPass(VkCommandBuffer& commandBuffer);
+		void RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline);
 	private:
 		Settings m_Settings;
 		bool m_FramebufferResized = false;
@@ -84,10 +85,13 @@ namespace Engine {
 		std::unique_ptr<class GraphicsPipeline> m_TexturedPipeline;
 		std::unique_ptr<class GraphicsPipeline> m_WireframePipeline;
 		std::unique_ptr<class GraphicsPipeline> m_ColoredPipeline;
+		std::unique_ptr<class GraphicsPipeline> m_SkyboxPipeline;
 
 		std::vector<Assets::Material> m_Materials;
 		std::vector<Assets::Texture> m_LoadedTextures;
-		std::unique_ptr< struct Assets::Texture> m_Skybox;
+		std::unique_ptr<struct Assets::Texture> m_Skybox;
+		std::unique_ptr<class Assets::Object> m_SkyboxObj;
+
 
 		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 		std::unique_ptr<class DescriptorSetLayout> m_GlobalDescriptorSetLayout;

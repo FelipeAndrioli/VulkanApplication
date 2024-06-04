@@ -32,6 +32,10 @@ namespace Engine {
 				}
 
 				if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorBinding.textures) {
+					WriteDescriptorImages(logicalDevice, m_DescriptorSets[i], descriptorBinding);
+				}
+
+				if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorBinding.texture) {
 					WriteDescriptorImage(logicalDevice, m_DescriptorSets[i], descriptorBinding);
 				}
 			}
@@ -81,7 +85,7 @@ namespace Engine {
 		);
 	}
 
-	void DescriptorSets::WriteDescriptorImage(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding) {
+	void DescriptorSets::WriteDescriptorImages(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding) {
 
 		if (descriptorBinding.textures->empty() || descriptorBinding.textures->size() == 0)
 			return;
@@ -105,6 +109,31 @@ namespace Engine {
 		descriptorWrite.descriptorType = descriptorBinding.type;
 		descriptorWrite.descriptorCount = static_cast<uint32_t>(imageInfo.size());
 		descriptorWrite.pImageInfo = imageInfo.data();
+		
+		vkUpdateDescriptorSets(
+			logicalDevice,
+			1,
+			&descriptorWrite,
+			0,
+			nullptr
+		); 
+	}
+
+	void DescriptorSets::WriteDescriptorImage(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding) {
+
+		VkDescriptorImageInfo newImageInfo = {};
+		newImageInfo.imageLayout = descriptorBinding.texture->TextureImage->ImageLayout;
+		newImageInfo.imageView = descriptorBinding.texture->TextureImage->ImageView;
+		newImageInfo.sampler = descriptorBinding.texture->TextureImage->ImageSampler;
+
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = descriptorBinding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = descriptorBinding.type;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pImageInfo = &newImageInfo;
 		
 		vkUpdateDescriptorSets(
 			logicalDevice,
