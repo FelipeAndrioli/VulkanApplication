@@ -110,8 +110,6 @@ namespace Engine {
 			m_VulkanEngine->GetSwapChain().GetSwapChainExtent().height
 		);
 
-		m_SkyboxObj = std::make_unique<class Assets::Object>(glm::vec3(0.0f));
-		
 		InitializeBuffers();
 		InitializeDescriptors();
 			
@@ -223,12 +221,6 @@ namespace Engine {
 
 	void Application::RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-		m_SkyboxObj->DescriptorSets->Bind(m_CurrentFrame, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
-		ObjectGPUData objectGPUData = ObjectGPUData();
-		objectGPUData.model = m_SkyboxObj->GetModelMatrix();
-
-		m_GPUDataBuffer->Update(m_CurrentFrame, 0, &objectGPUData, sizeof(ObjectGPUData));
 
 		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
@@ -423,14 +415,6 @@ namespace Engine {
 				1
 			);
 		}
-
-		m_SkyboxObj->DescriptorSets = std::make_unique<class Engine::DescriptorSets>(
-			m_VulkanEngine->GetLogicalDevice().GetHandle(),
-			m_DescriptorPool->GetHandle(),
-			*m_ObjectGPUDataDescriptorSetLayout.get(),
-			0,
-			1
-		);
 		// Renderable Objects Descriptor Sets End 
 
 		// Global Descriptor Sets Begin

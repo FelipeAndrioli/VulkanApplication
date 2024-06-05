@@ -48,6 +48,6 @@ const int indices[36] = int[36](
 void main() {
 	float cubeSize = 100.0;
 	int idx = indices[gl_VertexIndex];
-	gl_Position = sceneGPUData.proj * sceneGPUData.view * objectGPUData.model * vec4(cubeSize * pos[idx], 1.0);
+	gl_Position = sceneGPUData.proj * sceneGPUData.view * vec4(cubeSize * pos[idx], 1.0);
 	dir = pos[idx].xyz;
 }
