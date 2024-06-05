@@ -141,6 +141,7 @@ int main() {
 	settings.Width = 1600;
 	settings.Height = 900;
 	settings.uiEnabled = true;
+	settings.renderSkybox = true;
 
 	std::unique_ptr<Engine::Application> app = std::make_unique<Engine::Application>(settings);
 

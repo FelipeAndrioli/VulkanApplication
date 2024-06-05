@@ -175,6 +175,7 @@ namespace Engine {
 		ImGui::Text("Framerate: %.1f fps", m_Settings.frames);
 		ImGui::Checkbox("Limit Framerate", &m_Settings.limitFramerate);
 		ImGui::Checkbox("Enable Wireframe", &m_Settings.wireframeEnabled);
+		ImGui::Checkbox("Render SKybox", &m_Settings.renderSkybox);
 
 		p_ActiveScene->OnUIRender();
 	}
@@ -211,12 +212,14 @@ namespace Engine {
 			m_MainPipelineLayout->GetHandle()
 		);
 
-		RenderSkybox(commandBuffer, m_SkyboxPipeline->GetHandle());
 		RenderScene(commandBuffer, m_TexturedPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
 		RenderScene(commandBuffer, m_ColoredPipeline->GetHandle(), p_ActiveScene->RenderableObjects);
 
 		if (m_Settings.wireframeEnabled)
 			RenderScene(commandBuffer, m_WireframePipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+
+		if (m_Settings.renderSkybox)
+			RenderSkybox(commandBuffer, m_SkyboxPipeline->GetHandle());
 	}
 
 	void Application::RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline) {
