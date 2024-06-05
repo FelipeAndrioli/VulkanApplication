@@ -35,7 +35,7 @@ namespace Engine {
 			VkImageLayout newLayout,
 			uint32_t layerCount = 1
 		);
-		void CreateImageSampler();
+		void CreateImageSampler(VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 		void GenerateMipMaps(VkCommandPool& commandPool, VkQueue& queue);
 	public:
 		VkImageView ImageView = VK_NULL_HANDLE;

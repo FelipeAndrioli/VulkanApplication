@@ -206,7 +206,7 @@ namespace Engine {
 				layerCount
 			);
 
-			texture.TextureImage->CreateImageSampler();
+			texture.TextureImage->CreateImageSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
 
 			return texture;
 		}
