@@ -27,12 +27,20 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Individual Cells Plane 
 	- [x] Unique Cells Plane 
 	- [x] Cube
+- [x] glTF
+- [x] Cubemap/Skybox 
+
+## Next Up
+- [ ] Runtime shader compilation
+- [ ] Refactoring
+- [ ] Normals
+
+## Planning 
 - [ ] Lighting
 	- [ ] Load Normals 
 	- [ ] Generate Normals 
 - [ ] Compute Shaders
 - [ ] GPU Driven Rendering
-- [ ] glTF
 - [ ] Ray Tracer
 - [ ] Render Graph
 - [ ] Scene selection
