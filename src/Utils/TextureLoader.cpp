@@ -6,6 +6,7 @@
 #include <stb_image_write.h>
 
 #include "../Buffer.h"
+#include "../DeviceMemory.h"
 #include "../BufferHelper.h"
 #include "../LogicalDevice.h"
 #include "../PhysicalDevice.h"
@@ -206,6 +207,80 @@ namespace Engine {
 				layerCount
 			);
 
+			texture.TextureImage->CreateImageSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+			return texture;
+		}
+
+		Assets::Texture TextureLoader::LoadCubemapTexture(std::vector<std::string> texturePaths, VulkanEngine& vulkanEngine) {
+			/* - Correct order to load
+			right
+			left
+			top				
+			bottom	
+			front		
+			back	
+			*/
+
+			int width = 0;
+			int height = 0;
+			int channels = 0;
+
+			uint32_t mipLevels = 1;
+
+			unsigned char* pixels[6] = {};
+			
+			stbi_set_flip_vertically_on_load(false);
+
+			for (int i = 0; i < texturePaths.size(); i++) {
+				pixels[i] = stbi_load(texturePaths[i].c_str(), &width, &height, &channels, STBI_rgb_alpha);
+
+				if (!pixels) {
+					std::cout << "Failed to load texture: " << texturePaths[i].c_str() << '\n';
+					throw std::runtime_error("Failed to load texture.");
+				}
+			}
+
+			VkDeviceSize layerSize = width * height * 4;
+			VkDeviceSize imageSize = layerSize * 6;
+			
+			std::vector<unsigned char> cubemapData(imageSize);
+	
+			for (int i = 0; i < 6; i++) {
+				for (int j = 0; j < layerSize; j++) {
+					cubemapData[j + (i * layerSize)] = pixels[i][j];
+				}
+				stbi_image_free(pixels[i]);
+			}
+			
+			Assets::Texture texture = {};
+			texture.TextureImage = std::make_unique<class Image>(
+				vulkanEngine.GetLogicalDevice().GetHandle(),
+				vulkanEngine.GetPhysicalDevice().GetHandle(),
+				static_cast<uint32_t>(width),
+				static_cast<uint32_t>(height),
+				mipLevels,
+				VK_SAMPLE_COUNT_1_BIT,
+				VK_FORMAT_R8G8B8A8_SRGB,
+				VK_IMAGE_TILING_OPTIMAL,
+				static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT
+			);
+			texture.TextureImage->CreateImageView(VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT, 6);
+			texture.TextureImage->TransitionImageLayoutTo(
+				vulkanEngine.GetCommandPool().GetHandle(),
+				vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 6);
+
+			BufferHelper::UploadDataToImage(vulkanEngine, cubemapData.data(), imageSize, texture.TextureImage->GetImage(), width, height, 6);
+
+			texture.TextureImage->TransitionImageLayoutTo(
+				vulkanEngine.GetCommandPool().GetHandle(),
+				vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				6	
+			);
 			texture.TextureImage->CreateImageSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
 
 			return texture;

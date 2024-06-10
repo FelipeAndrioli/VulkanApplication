@@ -29,7 +29,9 @@ namespace Engine {
 			VulkanEngine& vulkanEngine, 
 			const T& content, 
 			const VkDeviceSize& contentSize, 
-			Buffer* dstBuffer
+			Buffer* dstBuffer,
+			size_t srcOffset = 0,
+			size_t dstOffset = 0
 		);
 
 		template <class T>
@@ -40,13 +42,24 @@ namespace Engine {
 			VkImage& dstImage,
 			const uint32_t width,
 			const uint32_t height,
-			const uint32_t layerCount 
+			const uint32_t layerCount,
+			const uint32_t mipLevel = 0
 		);
 
 		template <class T>
 		static void AppendData(
 			VulkanEngine& vulkanEngine, 
 			const std::vector<T>& content, 
+			Buffer& buffer, 
+			size_t srcOffset, 
+			size_t dstOffset
+		);
+
+		template <class T>
+		static void AppendData(
+			VulkanEngine& vulkanEngine, 
+			const T& content, 
+			const size_t contentSize,
 			Buffer& buffer, 
 			size_t srcOffset, 
 			size_t dstOffset
@@ -71,11 +84,6 @@ namespace Engine {
 			const std::vector<T>& content, 
 			std::unique_ptr<Buffer>& buffer
 		);
-
-		/*
-		static void CopyBufferToImage(VulkanEngine& vulkanEngine, VkBuffer buffer, VkImage image, 
-			uint32_t width, uint32_t height, uint32_t layerCount);
-		*/
 	};
 
 	template <class T>
@@ -110,7 +118,9 @@ namespace Engine {
 		VulkanEngine& vulkanEngine, 
 		const T& content, 
 		const VkDeviceSize& contentSize, 
-		Buffer* dstBuffer
+		Buffer* dstBuffer,
+		size_t srcOffset,
+		size_t dstOffset
 	) {
 
 		auto bufferSize = contentSize;
@@ -126,48 +136,11 @@ namespace Engine {
 		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content, bufferSize);
 		stagingBuffer->BufferMemory->UnmapMemory();
 
-		dstBuffer->CopyFrom(stagingBuffer->GetBuffer(0), bufferSize, 0, 0);
+		dstBuffer->CopyFrom(stagingBuffer->GetBuffer(0), bufferSize, srcOffset, dstOffset);
 
 		stagingBuffer.reset();
 
 	}
-
-	/*
-	void BufferHelper::CopyBufferToImage(VulkanEngine& vulkanEngine, VkBuffer buffer, VkImage image,
-		uint32_t width, uint32_t height, uint32_t layerCount) {
-
-		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(),
-			vulkanEngine.GetCommandPool().GetHandle());
-
-		const VkBufferImageCopy region = {
-			.bufferOffset = 0,
-			.bufferRowLength = 0,
-			.bufferImageHeight = 0,
-			.imageSubresource = VkImageSubresourceLayers {
-				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-				.mipLevel = 0,
-				.baseArrayLayer = 0,
-				.layerCount = layerCount
-			},
-			.imageOffset = VkOffset3D {
-				.x = 0,
-				.y = 0,
-				.z = 0
-			},
-			.imageExtent = VkExtent3D {
-				.width = width,
-				.height = height,
-				.depth = 1
-			}
-		};
-
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-		CommandBuffer::EndSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(), 
-			vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
-			commandBuffer, vulkanEngine.GetCommandPool().GetHandle());
-	}
-	*/
 
 	template <class T>
 	void BufferHelper::UploadDataToImage(
@@ -177,7 +150,8 @@ namespace Engine {
 		VkImage& dstImage,
 		const uint32_t width,
 		const uint32_t height,
-		const uint32_t layerCount
+		const uint32_t layerCount,
+		const uint32_t mipLevel
 	) {
 		if (imageSize == 0) return;
 
@@ -201,7 +175,7 @@ namespace Engine {
 			.bufferImageHeight = 0,
 			.imageSubresource = VkImageSubresourceLayers {
 				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-				.mipLevel = 0,
+				.mipLevel = mipLevel,
 				.baseArrayLayer = 0,
 				.layerCount = layerCount
 			},
@@ -239,6 +213,14 @@ namespace Engine {
 		if (content.size() == 0) return;
 
 		CopyFromStaging(vulkanEngine, content, buffer, srcOffset, dstOffset);
+	}
+
+	template <class T>
+	void BufferHelper::AppendData(VulkanEngine& vulkanEngine, const T& content, const size_t contentSize, Buffer& buffer, size_t srcOffset, size_t dstOffset) {
+
+		if (contentSize == 0) return;
+
+		CopyFromStaging(vulkanEngine, content, contentSize, buffer, srcOffset, dstOffset);
 	}
 
 	template <class T>
