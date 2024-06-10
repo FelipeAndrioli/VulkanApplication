@@ -102,7 +102,18 @@ namespace Engine {
 			);
 		}
 
-		m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
+		//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
+
+		std::vector<std::string> cubeTextures = { 
+			"./Textures/right.jpg",
+			"./Textures/left.jpg",
+			"./Textures/top.jpg",				
+			"./Textures/bottom.jpg",	
+			"./Textures/front.jpg",		
+			"./Textures/back.jpg",	
+		};
+
+		m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture(cubeTextures, *m_VulkanEngine.get()));
 			
 		p_ActiveScene->Setup();
 		p_ActiveScene->OnResize(
@@ -218,7 +229,7 @@ namespace Engine {
 		if (m_Settings.wireframeEnabled)
 			RenderScene(commandBuffer, m_WireframePipeline->GetHandle(), p_ActiveScene->RenderableObjects);
 
-		if (m_Settings.renderSkybox)
+		if (m_Settings.renderSkybox && m_Skybox)
 			RenderSkybox(commandBuffer, m_SkyboxPipeline->GetHandle());
 	}
 
