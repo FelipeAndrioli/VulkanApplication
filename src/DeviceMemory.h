@@ -16,9 +16,9 @@ namespace Engine {
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 		VkMemoryRequirements GetMemoryRequirements(VkBuffer& buffer);
 
-		void MapMemory();
-		void MapMemory(void* data);
-		void MapMemory(uint32_t index, const VkDeviceSize& offset);
+		void MapMemory(void* data, const VkDeviceSize dataSize);
+		void MapMemory(const VkDeviceSize dataSize);
+		void MapMemory(uint32_t index, const VkDeviceSize& offset, const VkDeviceSize dataSize);
 		void UnmapMemory();
 		void UnmapMemory(uint32_t index);
 	public:

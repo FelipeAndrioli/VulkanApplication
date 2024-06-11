@@ -38,17 +38,22 @@ namespace Engine {
 		CleanUp();
 	}
 
-	void Image::CreateImageView() {
+	void Image::CreateImageView(const VkImageViewType viewType, const VkImageAspectFlags aspectFlags, const uint32_t layerCount) {
+
+		m_ViewType = viewType;
+		m_LayerCount = layerCount;
+		m_AspectFlags = aspectFlags;
+
 		VkImageViewCreateInfo viewCreateInfo{};
 		viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewCreateInfo.image = m_Image;
-		viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		viewCreateInfo.viewType = viewType;
 		viewCreateInfo.format = m_Format;
 		viewCreateInfo.subresourceRange.aspectMask = m_AspectFlags;
 		viewCreateInfo.subresourceRange.baseMipLevel = 0;
 		viewCreateInfo.subresourceRange.levelCount = MipLevels;
 		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		viewCreateInfo.subresourceRange.layerCount = 1;
+		viewCreateInfo.subresourceRange.layerCount = layerCount;
 
 		if (vkCreateImageView(*p_LogicalDevice, &viewCreateInfo, nullptr, &ImageView) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create Image View!");
@@ -65,14 +70,14 @@ namespace Engine {
 		m_ImageMemory = std::make_unique<class DeviceMemory>(*p_LogicalDevice, *p_PhysicalDevice, 1);
 		
 		CreateImage();
-		CreateImageView();
+		CreateImageView(m_ViewType, m_LayerCount);
 	}
 
 	void Image::TransitionImageLayoutTo(
 		VkCommandPool& commandPool,
 		VkQueue& queue,
-		VkFormat format,
-		VkImageLayout newLayout
+		VkImageLayout newLayout,
+		uint32_t layerCount
 	) {
 
 		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(*p_LogicalDevice, commandPool);
@@ -88,7 +93,7 @@ namespace Engine {
 		barrier.subresourceRange.baseMipLevel = 0;
 		barrier.subresourceRange.levelCount = MipLevels;
 		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
+		barrier.subresourceRange.layerCount = layerCount;
 
 		VkPipelineStageFlags sourceStage;
 		VkPipelineStageFlags dstStage;
@@ -127,16 +132,16 @@ namespace Engine {
 		ImageLayout = newLayout;
 	}
 
-	void Image::CreateImageSampler() {
+	void Image::CreateImageSampler(VkSamplerAddressMode addressMode) {
 
 		// TODO: add parameters as variables
 		VkSamplerCreateInfo samplerInfo{};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		samplerInfo.magFilter = VK_FILTER_LINEAR;
 		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeU = addressMode;
+		samplerInfo.addressModeV = addressMode;
+		samplerInfo.addressModeW = addressMode;
 		samplerInfo.anisotropyEnable = VK_TRUE;
 
 		VkPhysicalDeviceProperties properties{};
@@ -278,7 +283,12 @@ namespace Engine {
 		imageCreateInfo.extent.height = Height;
 		imageCreateInfo.extent.depth = 1;
 		imageCreateInfo.mipLevels = MipLevels;
-		imageCreateInfo.arrayLayers = 1;
+		imageCreateInfo.arrayLayers = (uint32_t)(m_AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6 : 1);
+
+		if (m_AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
+			imageCreateInfo.flags = m_AspectFlags;
+		}
+
 		imageCreateInfo.format = m_Format;
 		imageCreateInfo.tiling = m_Tiling;
 		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;

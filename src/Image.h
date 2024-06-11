@@ -24,15 +24,18 @@ namespace Engine {
 		
 		VkImage& GetImage() { return m_Image; }
 
-		void CreateImageView();
+		void CreateImageView(const VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D,
+			const VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
+			const uint32_t layerCount = 1
+		);
 		void Resize(const uint32_t imageWidth, const uint32_t imageHeight);
 		void TransitionImageLayoutTo(
 			VkCommandPool& commandPool,
 			VkQueue& queue,
-			VkFormat format,
-			VkImageLayout newLayout
+			VkImageLayout newLayout,
+			uint32_t layerCount = 1
 		);
-		void CreateImageSampler();
+		void CreateImageSampler(VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 		void GenerateMipMaps(VkCommandPool& commandPool, VkQueue& queue);
 	public:
 		VkImageView ImageView = VK_NULL_HANDLE;
@@ -55,6 +58,8 @@ namespace Engine {
 		VkImageUsageFlagBits m_Usage;
 		VkMemoryPropertyFlagBits m_Properties;
 		VkImageAspectFlags m_AspectFlags;
+		VkImageViewType m_ViewType = VK_IMAGE_VIEW_TYPE_2D;
+		uint32_t m_LayerCount = 1;
 		
 		VkDevice* p_LogicalDevice = nullptr;
 		VkPhysicalDevice* p_PhysicalDevice = nullptr;

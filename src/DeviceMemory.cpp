@@ -17,20 +17,20 @@ namespace Engine {
 		MemoryMapped.clear();
 	}
 
-	void DeviceMemory::MapMemory() {
+	void DeviceMemory::MapMemory(void* data, const VkDeviceSize dataSize) {
 		for (size_t i = 0; i < Memory.size(); i++) {
-			vkMapMemory(*p_LogicalDevice, Memory[i], 0, Memory.size(), 0, &MemoryMapped[i]);
+			vkMapMemory(*p_LogicalDevice, Memory[i], 0, dataSize, 0, &data);
 		}
 	}
 
-	void DeviceMemory::MapMemory(void* data) {
+	void DeviceMemory::MapMemory(const VkDeviceSize dataSize) {
 		for (size_t i = 0; i < Memory.size(); i++) {
-			vkMapMemory(*p_LogicalDevice, Memory[i], 0, Memory.size(), 0, &data);
+			vkMapMemory(*p_LogicalDevice, Memory[i], 0, dataSize, 0, &MemoryMapped[i]);
 		}
 	}
 
-	void DeviceMemory::MapMemory(uint32_t index, const VkDeviceSize& offset) {
-		vkMapMemory(*p_LogicalDevice, Memory[index], offset, Memory.size(), 0, &MemoryMapped[index]);
+	void DeviceMemory::MapMemory(uint32_t index, const VkDeviceSize& offset, const VkDeviceSize dataSize) {
+		vkMapMemory(*p_LogicalDevice, Memory[index], offset, dataSize, 0, &MemoryMapped[index]);
 	}
 
 	void DeviceMemory::UnmapMemory() {

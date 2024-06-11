@@ -101,6 +101,19 @@ namespace Engine {
 				*m_VulkanEngine.get()
 			);
 		}
+
+		//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
+
+		std::vector<std::string> cubeTextures = { 
+			"./Textures/right.jpg",
+			"./Textures/left.jpg",
+			"./Textures/top.jpg",				
+			"./Textures/bottom.jpg",	
+			"./Textures/front.jpg",		
+			"./Textures/back.jpg",	
+		};
+
+		m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture(cubeTextures, *m_VulkanEngine.get()));
 			
 		p_ActiveScene->Setup();
 		p_ActiveScene->OnResize(
@@ -123,7 +136,6 @@ namespace Engine {
 	}
 
 	void Application::Shutdown() {
-
 		m_ObjectGPUDataDescriptorSetLayout.reset();
 		m_GlobalDescriptorSetLayout.reset();
 
@@ -135,7 +147,9 @@ namespace Engine {
 		m_TexturedPipeline.reset();
 		m_WireframePipeline.reset();
 		m_ColoredPipeline.reset();
+		m_SkyboxPipeline.reset();
 
+		m_Skybox.reset();
 		m_Materials.clear();
 		m_LoadedTextures.clear();
 		m_DescriptorPool.reset();
@@ -172,6 +186,7 @@ namespace Engine {
 		ImGui::Text("Framerate: %.1f fps", m_Settings.frames);
 		ImGui::Checkbox("Limit Framerate", &m_Settings.limitFramerate);
 		ImGui::Checkbox("Enable Wireframe", &m_Settings.wireframeEnabled);
+		ImGui::Checkbox("Render SKybox", &m_Settings.renderSkybox);
 
 		p_ActiveScene->OnUIRender();
 	}
@@ -213,6 +228,15 @@ namespace Engine {
 
 		if (m_Settings.wireframeEnabled)
 			RenderScene(commandBuffer, m_WireframePipeline->GetHandle(), p_ActiveScene->RenderableObjects);
+
+		if (m_Settings.renderSkybox && m_Skybox)
+			RenderSkybox(commandBuffer, m_SkyboxPipeline->GetHandle());
+	}
+
+	void Application::RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline) {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
 
 	void Application::RenderScene(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline, const std::vector<Assets::Object*>& objects) {
@@ -380,6 +404,14 @@ namespace Engine {
 			.SetBufferSize(0)
 			.SetBufferOffset(0)
 			.Add()
+			.NewBinding(3)
+			.SetDescriptorCount(1)
+			.SetType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+			.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
+			.SetResource({ *m_Skybox.get() })
+			.SetBufferSize(0)
+			.SetBufferOffset(0)
+			.Add()
 			.Build(m_VulkanEngine->GetLogicalDevice().GetHandle());
 
 		// Renderable Objects Descriptor Sets Begin
@@ -430,16 +462,23 @@ namespace Engine {
 		std::string texturedFrag = shadersPath + "textured_frag.spv";
 		std::string wireframeFrag = shadersPath + "wireframe_frag.spv";
 		std::string untexturedFrag = shadersPath + "colored_frag.spv";
+		std::string skyboxVert = shadersPath + "skybox_vert.spv";
+		std::string skyboxFrag = shadersPath + "skybox_frag.spv";
 
 		std::cout << defaultVert << '\n';
 		std::cout << texturedFrag << '\n';
 		std::cout << wireframeFrag << '\n';
 		std::cout << untexturedFrag << '\n';
+		std::cout << skyboxVert << '\n';
+		std::cout << skyboxFrag << '\n';
 
 		Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", defaultVert);
 		Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", texturedFrag);
 		Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", wireframeFrag);
 		Assets::FragmentShader coloredFragShader = Assets::FragmentShader("Colored Fragment Shader", untexturedFrag);
+
+		Assets::VertexShader skyboxVertexShader = Assets::VertexShader("Skybox Vertex Shader", skyboxVert);
+		Assets::FragmentShader skyboxFragmentShader = Assets::FragmentShader("Skybox Fragment Shader", skyboxFrag);
 		
 		m_TexturedPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(texturedFragmentShader)
@@ -458,6 +497,12 @@ namespace Engine {
 
 		m_ColoredPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
 			.AddFragmentShader(coloredFragShader)
+			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
+			.AddPipelineLayout(*m_MainPipelineLayout)
+			.BuildGraphicsPipeline(*m_VulkanEngine.get());
+
+		m_SkyboxPipeline = pipelineBuilder.AddVertexShader(skyboxVertexShader)
+			.AddFragmentShader(skyboxFragmentShader)
 			.AddRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle())
 			.AddPipelineLayout(*m_MainPipelineLayout)
 			.BuildGraphicsPipeline(*m_VulkanEngine.get());

@@ -28,6 +28,9 @@ namespace Engine {
 				bool flipTextureVertically,
 				bool generateMipMaps
 			);
+
+			static Assets::Texture LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine);
+			static Assets::Texture LoadCubemapTexture(std::vector<std::string> texturePaths, VulkanEngine& vulkanEngine);
 		};
 	}
 }

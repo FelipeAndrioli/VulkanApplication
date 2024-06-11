@@ -29,13 +29,37 @@ namespace Engine {
 			VulkanEngine& vulkanEngine, 
 			const T& content, 
 			const VkDeviceSize& contentSize, 
-			Buffer* dstBuffer
+			Buffer* dstBuffer,
+			size_t srcOffset = 0,
+			size_t dstOffset = 0
+		);
+
+		template <class T>
+		static void UploadDataToImage(
+			VulkanEngine& vulkanEngine,
+			const T* imageData,
+			const VkDeviceSize& imageSize,
+			VkImage& dstImage,
+			const uint32_t width,
+			const uint32_t height,
+			const uint32_t layerCount,
+			const uint32_t mipLevel = 0
 		);
 
 		template <class T>
 		static void AppendData(
 			VulkanEngine& vulkanEngine, 
 			const std::vector<T>& content, 
+			Buffer& buffer, 
+			size_t srcOffset, 
+			size_t dstOffset
+		);
+
+		template <class T>
+		static void AppendData(
+			VulkanEngine& vulkanEngine, 
+			const T& content, 
+			const size_t contentSize,
 			Buffer& buffer, 
 			size_t srcOffset, 
 			size_t dstOffset
@@ -75,7 +99,7 @@ namespace Engine {
 		auto stagingBuffer = std::make_unique<Buffer>(1, vulkanEngine, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		stagingBuffer->BufferMemory->MapMemory();
+		stagingBuffer->BufferMemory->MapMemory(bufferSize);
 		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content.data(), bufferSize);
 		stagingBuffer->BufferMemory->UnmapMemory();
 
@@ -94,7 +118,9 @@ namespace Engine {
 		VulkanEngine& vulkanEngine, 
 		const T& content, 
 		const VkDeviceSize& contentSize, 
-		Buffer* dstBuffer
+		Buffer* dstBuffer,
+		size_t srcOffset,
+		size_t dstOffset
 	) {
 
 		auto bufferSize = contentSize;
@@ -106,14 +132,73 @@ namespace Engine {
 		);
 		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		stagingBuffer->BufferMemory->MapMemory();
+		stagingBuffer->BufferMemory->MapMemory(bufferSize);
 		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content, bufferSize);
 		stagingBuffer->BufferMemory->UnmapMemory();
 
-		dstBuffer->CopyFrom(stagingBuffer->GetBuffer(0), bufferSize, 0, 0);
+		dstBuffer->CopyFrom(stagingBuffer->GetBuffer(0), bufferSize, srcOffset, dstOffset);
 
 		stagingBuffer.reset();
 
+	}
+
+	template <class T>
+	void BufferHelper::UploadDataToImage(
+		VulkanEngine& vulkanEngine,
+		const T* imageData,
+		const VkDeviceSize& imageSize,
+		VkImage& dstImage,
+		const uint32_t width,
+		const uint32_t height,
+		const uint32_t layerCount,
+		const uint32_t mipLevel
+	) {
+		if (imageSize == 0) return;
+
+		auto stagingBuffer = std::make_unique<Buffer>(
+			1,
+			vulkanEngine,
+			imageSize,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+		);
+		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		stagingBuffer->BufferMemory->MapMemory(imageSize);
+		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], imageData, imageSize);
+		stagingBuffer->BufferMemory->UnmapMemory();
+
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(),
+			vulkanEngine.GetCommandPool().GetHandle());
+
+		const VkBufferImageCopy region = {
+			.bufferOffset = 0,
+			.bufferRowLength = 0,
+			.bufferImageHeight = 0,
+			.imageSubresource = VkImageSubresourceLayers {
+				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+				.mipLevel = mipLevel,
+				.baseArrayLayer = 0,
+				.layerCount = layerCount
+			},
+			.imageOffset = VkOffset3D {
+				.x = 0,
+				.y = 0,
+				.z = 0
+			},
+			.imageExtent = VkExtent3D {
+				.width = width,
+				.height = height,
+				.depth = 1
+			}
+		};
+
+		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer->GetBuffer(0), dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+		CommandBuffer::EndSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(), 
+			vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
+			commandBuffer, vulkanEngine.GetCommandPool().GetHandle());
+
+
+		stagingBuffer.reset();
 	}
 
 	template <class T>
@@ -128,6 +213,14 @@ namespace Engine {
 		if (content.size() == 0) return;
 
 		CopyFromStaging(vulkanEngine, content, buffer, srcOffset, dstOffset);
+	}
+
+	template <class T>
+	void BufferHelper::AppendData(VulkanEngine& vulkanEngine, const T& content, const size_t contentSize, Buffer& buffer, size_t srcOffset, size_t dstOffset) {
+
+		if (contentSize == 0) return;
+
+		CopyFromStaging(vulkanEngine, content, contentSize, buffer, srcOffset, dstOffset);
 	}
 
 	template <class T>

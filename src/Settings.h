@@ -12,5 +12,6 @@ namespace Engine {
 		bool limitFramerate = false;
 		bool uiEnabled = false;
 		bool wireframeEnabled = false;
+		bool renderSkybox = false;
 	};
 }

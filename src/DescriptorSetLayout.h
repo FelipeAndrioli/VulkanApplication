@@ -25,6 +25,7 @@ namespace Engine {
 			const size_t index, 
 			Buffer* buffer, 
 			std::vector<Assets::Texture>* textures, 
+			Assets::Texture* texture, 
 			size_t bufferSize, 
 			size_t bufferOffset
 		);
@@ -47,6 +48,7 @@ namespace Engine {
 		DescriptorSetLayoutBuild& SetStage(VkShaderStageFlags stage);
 		DescriptorSetLayoutBuild& SetResource(Buffer& buffer);
 		DescriptorSetLayoutBuild& SetResource(std::vector<Assets::Texture>& textures);
+		DescriptorSetLayoutBuild& SetResource(Assets::Texture& texture);
 		DescriptorSetLayoutBuild& SetBufferSize(VkDeviceSize bufferSize);
 		DescriptorSetLayoutBuild& SetBufferOffset(VkDeviceSize bufferOffset);
 		DescriptorSetLayoutBuild& Add();
