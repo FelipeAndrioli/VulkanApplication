@@ -31,7 +31,7 @@ namespace Engine {
 
 	class VulkanEngine {
 	public:
-		VulkanEngine(Window& window, Settings& settings);
+		VulkanEngine(Window& window);
 		~VulkanEngine();
 
 		void Resize();

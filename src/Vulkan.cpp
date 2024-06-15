@@ -13,7 +13,7 @@
 #include "UI.h"
 
 namespace Engine {
-	VulkanEngine::VulkanEngine(Window& window, Settings& settings) {
+	VulkanEngine::VulkanEngine(Window& window) {
 		//m_Instance = std::make_unique<class Instance>(c_ValidationLayers, c_EnableValidationLayers);
 		m_Instance = std::make_unique<class Instance>(c_ValidationLayers, true);
 
@@ -59,15 +59,14 @@ namespace Engine {
 		m_CommandPool = std::make_unique<class CommandPool>(m_LogicalDevice->GetHandle(), m_PhysicalDevice->GetQueueFamilyIndices());	
 		m_CommandBuffers = std::make_unique<class CommandBuffer>(MAX_FRAMES_IN_FLIGHT, m_CommandPool->GetHandle(), m_LogicalDevice->GetHandle());
 
-		if (settings.uiEnabled)
-			m_UI = std::make_unique<class UI>(
-				*window.GetHandle(),
-				*m_Instance.get(),
-				*m_PhysicalDevice.get(),
-				*m_LogicalDevice.get(),
-				*m_DefaultRenderPass.get(),
-				MAX_FRAMES_IN_FLIGHT
-			);
+		m_UI = std::make_unique<class UI>(
+			*window.GetHandle(),
+			*m_Instance.get(),
+			*m_PhysicalDevice.get(),
+			*m_LogicalDevice.get(),
+			*m_DefaultRenderPass.get(),
+			MAX_FRAMES_IN_FLIGHT
+		);
 	}
 
 	VulkanEngine::~VulkanEngine() {

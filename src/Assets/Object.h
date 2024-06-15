@@ -51,6 +51,7 @@ namespace Assets {
 		Transform Transformations = {};
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
 
+		bool m_Rotate = false;
 	private:
 		Engine::GraphicsPipeline* m_GraphicsPipeline = nullptr;
 	};

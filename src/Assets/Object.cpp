@@ -2,6 +2,7 @@
 
 #include "Mesh.h"
 
+#include "../UI.h"
 #include "../Buffer.h"
 #include "../DescriptorSets.h"
 
@@ -37,5 +38,43 @@ namespace Assets {
 
 	void Object::SetMesh(std::vector<Assets::Mesh> mesh) {
 		Meshes = mesh;
+	}
+
+	void Object::OnUIRender() {
+		std::string t = "Transformations " + ID;
+
+		if (ImGui::TreeNode(t.c_str())) {
+			std::string t_label_x = "Translation x " + ID;
+			std::string t_label_y = "Translation y " + ID;
+			std::string t_label_z = "Translation z " + ID;
+
+			ImGui::SliderFloat(t_label_x.c_str(), &Transformations.translation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_y.c_str(), &Transformations.translation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(t_label_z.c_str(), &Transformations.translation.z, -200.0f, 200.0f);
+
+			std::string r_label_x = "Rotation x " + ID;
+			std::string r_label_y = "Rotation y " + ID;
+			std::string r_label_z = "Rotation z " + ID;
+			
+			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
+			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
+
+			std::string s_label = "Scale Handler " + ID;
+			ImGui::SliderFloat(s_label.c_str(), &Transformations.scaleHandler, 0.0f, 2.0f);
+
+			ImGui::Checkbox("Rotate", &m_Rotate);
+
+			ImGui::TreePop();
+		}
+	}
+
+	void Object::OnUpdate(float t) {
+		if (m_Rotate) {
+			Transformations.rotation.y += 0.01f * t;
+
+			if (Transformations.rotation.y > 360.0f)
+				Transformations.rotation.y = 0.0f;
+		}
 	}
 }
