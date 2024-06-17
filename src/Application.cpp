@@ -90,7 +90,7 @@ namespace Engine {
 	}
 
 	void Application::InitVulkan() {
-		m_VulkanEngine = std::make_unique<class VulkanEngine>(*m_Window.get(), m_Settings);
+		m_VulkanEngine = std::make_unique<class VulkanEngine>(*m_Window.get());
 
 		// Load models/materials/textures
 		for (Assets::Object* renderableObject : p_ActiveScene->RenderableObjects) {

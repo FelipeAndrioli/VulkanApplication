@@ -64,9 +64,11 @@ public:
 	}
 };
 
+/*
 int main() {
 	std::unique_ptr<Assets::Scene> myScene = std::make_unique<Assets::Scene>();
 	myScene->SetCameraPosition({ 5, 2, 0 }, -181, -7);
+*/
 
 	/*
 	CustomObject plane = CustomObject();
@@ -124,6 +126,7 @@ int main() {
 	myScene->AddRenderableObject(&chessSet);
 	*/
 
+/*
 	CustomObject ship = CustomObject();
 	ship.ID = "Ship";
 	ship.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/ship_pinnace_4k.gltf";
@@ -161,3 +164,4 @@ int main() {
 
 	return EXIT_SUCCESS;
 }
+*/

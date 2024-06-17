@@ -9,6 +9,7 @@
 #include "PipelineLayout.h"
 #include "DescriptorSets.h"
 #include "Buffer.h"
+#include "RenderPass.h"
 
 #include "Input/Input.h"
 #include "Assets/Object.h"
@@ -21,14 +22,10 @@ namespace Engine {
 	public:
 		virtual void StartUp(Engine::VulkanEngine& vulkanEngine) = 0;
 		virtual void CleanUp() = 0;
-		virtual bool IsDone(InputSystem::Input& input);
+		virtual bool IsDone(Engine::InputSystem::Input& input) = 0;
 		virtual void Update(float d, Engine::InputSystem::Input& input) = 0;
-		virtual void RenderScene() = 0;
+		virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) = 0;
 		virtual void RenderUI() = 0;
-
-		bool IsDone(InputSystem::Input& input) {
-			return input.Keys[GLFW_KEY_ESCAPE].IsPressed;
-		}
 	};
 
 	struct SceneGPUData {
@@ -65,6 +62,7 @@ namespace Engine {
 		float m_LastFrameTime = 0.0;
 
 		uint32_t m_CurrentFrame = 0;
+		uint32_t m_ImageIndex = 0;
 
 		Settings m_Settings;
 		SceneGPUData m_SceneGPUData;

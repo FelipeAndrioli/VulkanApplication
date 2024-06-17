@@ -54,6 +54,8 @@ namespace Engine {
 	
 		void BeginUIFrame();
 		void EndUIFrame(const VkCommandBuffer& commandBuffer);
+		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkFramebuffer& framebuffer);
+		void EndRenderPass(VkCommandBuffer& commandBuffer);
 	private:
 		std::unique_ptr<class DebugUtilsMessenger> m_DebugMessenger;
 		std::unique_ptr<class Instance> m_Instance;
