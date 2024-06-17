@@ -38,6 +38,19 @@ namespace Assets {
 
 	void Object::SetMesh(std::vector<Assets::Mesh> mesh) {
 		Meshes = mesh;
+
+		for (auto iMesh : Meshes) {
+			IndicesAmount += iMesh.Indices.size();
+			VerticesAmount += iMesh.Vertices.size();
+		}
+	}
+
+	void Object::AddMesh(Assets::Mesh mesh) {
+		mesh.IndexOffset = IndicesAmount;
+		mesh.VertexOffset = VerticesAmount;
+		Meshes.push_back(mesh);
+		IndicesAmount += mesh.Indices.size();
+		VerticesAmount += mesh.Vertices.size();
 	}
 
 	void Object::OnUIRender() {

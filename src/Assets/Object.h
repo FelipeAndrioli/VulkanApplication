@@ -29,29 +29,37 @@ namespace Assets {
 		~Object();
 
 		virtual void OnCreate() {};
-		virtual void OnUpdate(float t) {};
-		virtual void OnUIRender() {};
+		virtual void OnUpdate(float t);
+		virtual void OnUIRender();
 
 		glm::mat4 GetModelMatrix();
 
 		void ResetResources();
 		void SetMesh(std::vector<Assets::Mesh> mesh);
+		void AddMesh(Assets::Mesh mesh);
 		void SetGraphicsPipeline(Engine::GraphicsPipeline* graphicsPipeline) { m_GraphicsPipeline = graphicsPipeline; }
 		Engine::GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline; }
 
 	public:
 		std::string ID = "";
 		std::string PipelineName = "";
+
 		const char* ModelPath = nullptr;
 		const char* MaterialPath = nullptr;
+
 		bool Textured = false;
 		bool FlipTexturesVertically = false;
 		bool GenerateMipMaps = true;
+		bool m_Rotate = false;
+
 		std::vector<Mesh> Meshes;
+
 		Transform Transformations = {};
+
 		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets;
 
-		bool m_Rotate = false;
+		uint32_t IndicesAmount = 0;
+		uint32_t VerticesAmount = 0;
 	private:
 		Engine::GraphicsPipeline* m_GraphicsPipeline = nullptr;
 	};

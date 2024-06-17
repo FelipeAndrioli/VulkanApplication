@@ -59,7 +59,8 @@ namespace Engine {
 		void ModelLoader::ProcessNode(Assets::Object& object, const aiNode* node, const aiScene* scene) {
 			for (size_t i = 0; i < node->mNumMeshes; i++) {
 				const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-				object.Meshes.push_back(ProcessMesh(mesh, scene));
+				//object.Meshes.push_back(ProcessMesh(mesh, scene));
+				object.AddMesh(ProcessMesh(mesh, scene));
 			}
 
 			for (size_t i = 0; i < node->mNumChildren; i++) {
