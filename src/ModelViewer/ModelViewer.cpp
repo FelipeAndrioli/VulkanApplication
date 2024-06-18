@@ -346,23 +346,29 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 }
 
 void ModelViewer::CleanUp() {
+	delete m_Camera;
+
 	m_Ship.ResetResources();
 
-	m_Materials.clear();
-	m_Textures.clear();
-
-	m_GPUDataBuffer.reset();
-	m_SceneGeometryBuffer.reset();
-	m_DescriptorPool.reset();
 	m_ObjectGPUDataDescriptorSetLayout.reset();
 	m_GlobalDescriptorSetLayout.reset();
 
+	m_GlobalDescriptorSets.reset();
+	m_GPUDataBuffer.reset();
+	m_SceneGeometryBuffer.reset();
+	
 	m_MainPipelineLayout.reset();
 
 	m_TexturedPipeline.reset();
 	m_WireframePipeline.reset();
 	m_ColoredPipeline.reset();
 	m_SkyboxPipeline.reset();
+
+	m_Skybox.reset();
+	m_Materials.clear();
+	m_Textures.clear();
+	
+	m_DescriptorPool.reset();
 }
 
 void ModelViewer::Update(float d, Engine::InputSystem::Input& input) {

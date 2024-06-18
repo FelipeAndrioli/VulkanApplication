@@ -20,7 +20,7 @@ namespace Engine {
 	}
 	
 	ApplicationCore::~ApplicationCore() {
-
+	
 	}
 
 	void ApplicationCore::RunApplication(IScene& scene) {
@@ -30,6 +30,7 @@ namespace Engine {
 			glfwPollEvents();
 		}
 
+		m_VulkanEngine->GetLogicalDevice().WaitIdle();
 		TerminateApplication(scene);
 	}
 
@@ -71,6 +72,10 @@ namespace Engine {
 
 	void ApplicationCore::TerminateApplication(IScene& scene) {
 		scene.CleanUp();
+
+		m_Input.reset();
+		m_Window.reset();
+		m_VulkanEngine.reset();
 	}
 
 	void ApplicationCore::Resize(int width, int height) {
