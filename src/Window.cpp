@@ -77,7 +77,7 @@ namespace Engine {
 			m_CurrentFrameTime = (float)glfwGetTime();
 			Timestep timestep = m_CurrentFrameTime - m_LastFrameTime;
 
-			if (p_Settings->limitFramerate && timestep.GetSeconds() < (1 / 60.0f)) continue;
+			//if (p_Settings->limitFramerate && timestep.GetSeconds() < (1 / 60.0f)) continue;
 			
 			if (Update) {
 				Update(timestep.GetMilliseconds());
@@ -89,8 +89,8 @@ namespace Engine {
 
 			m_LastFrameTime = m_CurrentFrameTime;
 
-			p_Settings->ms = timestep.GetMilliseconds();
-			p_Settings->frames = static_cast<float>(1 / timestep.GetSeconds());
+			//p_Settings->ms = timestep.GetMilliseconds();
+			//p_Settings->frames = static_cast<float>(1 / timestep.GetSeconds());
 		}
 	}
 

@@ -14,6 +14,7 @@
 #include "../Pipeline.h"
 #include "../PipelineLayout.h"
 #include "../RenderPass.h"
+#include "../Settings.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Scene.h"
@@ -466,10 +467,7 @@ void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& com
 }
 
 void ModelViewer::RenderUI() {
-	ImGui::Begin("Settings");
-	ImGui::Text("Last Frame: %f ms", m_Settings.ms);
-	ImGui::Text("Framerate: %.1f fps", m_Settings.frames);
-	ImGui::Checkbox("Limit Framerate", &m_Settings.limitFramerate);
+	ImGui::SeparatorText("Model Viewer");
 	ImGui::Checkbox("Enable Wireframe", &m_Settings.wireframeEnabled);
 	ImGui::Checkbox("Render SKybox", &m_Settings.renderSkybox);
 
@@ -482,13 +480,13 @@ bool ModelViewer::IsDone(Engine::InputSystem::Input& input) {
 }
 
 int main() {
-	
+
 	Engine::Settings settings = {};
 	settings.Title = "ModelViewer.exe";
 	settings.Width = 1600;
 	settings.Height = 900;
 	settings.uiEnabled = true;
-	
+
 	Engine::ApplicationCore app = Engine::ApplicationCore(settings);
 	ModelViewer modelViewer = ModelViewer(settings);
 

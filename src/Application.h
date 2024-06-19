@@ -19,6 +19,7 @@ namespace Assets {
 }
 
 namespace Engine {
+
 	namespace InputSystem {
 		class Input;
 	}

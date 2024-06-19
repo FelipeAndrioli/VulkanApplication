@@ -2,8 +2,9 @@
 
 namespace Engine {
 
-	ApplicationCore::ApplicationCore(const Settings &settings) : m_Settings(settings) {
-		m_Window.reset(new class Window(m_Settings));
+	ApplicationCore::ApplicationCore(Settings &settings) {
+
+		m_Window.reset(new class Window(settings));
 		m_Input.reset(new class InputSystem::Input());
 
 		//m_Window->Render = std::bind(&Application::Draw, this);
@@ -34,11 +35,19 @@ namespace Engine {
 		TerminateApplication(scene);
 	}
 
+	void ApplicationCore::RenderUI() {
+		ImGui::Begin("Settings");
+		ImGui::SeparatorText("Application Core");
+		ImGui::Text("Last Frame: %f ms", m_Milliseconds);
+		ImGui::Text("Framerate: %.1f fps", m_FramesPerSecond);
+		ImGui::Checkbox("Limit Framerate", &m_Vsync);
+	}
+
 	bool ApplicationCore::UpdateApplication(IScene& scene) {
 		m_CurrentFrameTime = (float)glfwGetTime();
 		Timestep timestep = m_CurrentFrameTime - m_LastFrameTime;
 
-		if (m_Settings.limitFramerate && timestep.GetSeconds() < (1 / 60.0f)) return true;
+		if (m_Vsync && timestep.GetSeconds() < (1 / 60.0f)) return true;
 		
 		scene.Update(timestep.GetMilliseconds(), *m_Input.get());
 
@@ -51,6 +60,7 @@ namespace Engine {
 		m_VulkanEngine->BeginUIFrame();
 
 		scene.RenderScene(m_CurrentFrame, *commandBuffer);
+		RenderUI();
 		scene.RenderUI();
 
 		m_VulkanEngine->EndUIFrame(*commandBuffer);
@@ -60,8 +70,8 @@ namespace Engine {
 
 		m_LastFrameTime = m_CurrentFrameTime;
 
-		m_Settings.ms = timestep.GetMilliseconds();
-		m_Settings.frames = static_cast<float>(1 / timestep.GetSeconds());
+		m_Milliseconds = timestep.GetMilliseconds();
+		m_FramesPerSecond = static_cast<float>(1 / timestep.GetSeconds());
 
 		return !scene.IsDone(*m_Input.get());
 	}

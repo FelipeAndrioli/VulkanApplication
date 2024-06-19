@@ -182,10 +182,10 @@ namespace Engine {
 			return;
 
 		ImGui::Begin("Settings");
-		ImGui::Text("Last Frame: %f ms", m_Settings.ms);
-		ImGui::Text("Framerate: %.1f fps", m_Settings.frames);
-		ImGui::Checkbox("Limit Framerate", &m_Settings.limitFramerate);
-		ImGui::Checkbox("Enable Wireframe", &m_Settings.wireframeEnabled);
+		//ImGui::Text("Last Frame: %f ms", m_Settings.ms);
+		//ImGui::Text("Framerate: %.1f fps", m_Settings.frames);
+		//ImGui::Checkbox("Limit Framerate", &m_Settings.limitFramerate);
+		//ImGui::Checkbox("Enable Wireframe", &m_Settings.wireframeEnabled);
 		ImGui::Checkbox("Render SKybox", &m_Settings.renderSkybox);
 
 		p_ActiveScene->OnUIRender();

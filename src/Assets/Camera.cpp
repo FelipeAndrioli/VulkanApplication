@@ -62,7 +62,7 @@ namespace Assets {
 	}
 
 	void Camera::OnUIRender() {
-		if (ImGui::TreeNode("Camera")) {
+		if (ImGui::TreeNode("Camera Settings")) {
 			ImGui::SliderFloat("Camera Near Clip", &Near, -1.0f, 20.0f);
 			ImGui::SliderFloat("Camera Far Clip", &Far, 10.0f, 1000.0f);
 			ImGui::SliderFloat("Camera Position X", &Position.x, -20.0f, 20.0f);
