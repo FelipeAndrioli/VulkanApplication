@@ -70,7 +70,7 @@ namespace Engine {
 		m_ImageMemory = std::make_unique<class DeviceMemory>(*p_LogicalDevice, *p_PhysicalDevice, 1);
 		
 		CreateImage();
-		CreateImageView(m_ViewType, m_LayerCount);
+		CreateImageView(m_ViewType, m_AspectFlags, m_LayerCount);
 	}
 
 	void Image::TransitionImageLayoutTo(
