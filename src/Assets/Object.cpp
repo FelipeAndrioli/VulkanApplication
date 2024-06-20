@@ -36,12 +36,12 @@ namespace Assets {
 		DescriptorSets.reset();
 	}
 
-	void Object::SetMesh(std::vector<Assets::Mesh> mesh) {
-		Meshes = mesh;
+	void Object::AddMeshes(std::vector<Assets::Mesh> meshes) {
+		Meshes = meshes;
 
-		for (auto iMesh : Meshes) {
-			IndicesAmount += iMesh.Indices.size();
-			VerticesAmount += iMesh.Vertices.size();
+		for (auto mesh : Meshes) {
+			IndicesAmount += mesh.Indices.size();
+			VerticesAmount += mesh.Vertices.size();
 		}
 	}
 
