@@ -12,8 +12,8 @@
 namespace Assets {
 	class Camera {
 	public:
-		Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 3.0f), float fov = 45.0f, 
-			uint32_t width = 800, uint32_t height = 600
+		Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 3.0f), float fov = 45.0f,
+			float yaw = -90.0f, float pitch = 0.0f, uint32_t width = 800, uint32_t height = 600
 		);
 		~Camera();
 

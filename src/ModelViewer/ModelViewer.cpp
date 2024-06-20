@@ -37,6 +37,7 @@ public:
 	virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) override;
 	virtual void RenderUI() override;
 	virtual bool IsDone(Engine::InputSystem::Input& input) override;
+	virtual void Resize(uint32_t width, uint32_t height) override;
 
 	void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline);
 private:
@@ -76,16 +77,22 @@ private:
 	static const int INDEX_BUFFER_INDEX = 0;			// :) 
 	static const int VERTEX_BUFFER_INDEX = 1;
 	const std::string DEFAULT_GRAPHICS_PIPELINE = "defaultPipeline";
+
+	uint32_t m_Width = 0;
+	uint32_t m_Height = 0;
 };
 
 void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 
-	m_Camera = new Assets::Camera(glm::vec3(0.0f, 0.0f, 3.0f), 45.0f, 1900, 600);
+	m_Width = m_Settings.Width;
+	m_Height = m_Settings.Height;
+
+	m_Camera = new Assets::Camera(glm::vec3(0.6f, 2.1f, 9.2f), 45.0f, -113.0f, -1.7f, m_Width, m_Height);
 
 	m_Ship.ID = "Ship";
 	m_Ship.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/ship_pinnace_4k.gltf";
 	m_Ship.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/";
-	m_Ship.FlipTexturesVertically = false;
+	m_Ship.FlipTexturesVertically = true;
 	m_Ship.Transformations.translation.x = -10.8f;
 	m_Ship.Transformations.translation.y = -2.5f;
 	m_Ship.Transformations.rotation.y = 45.0f;
@@ -160,23 +167,36 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	//m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size() });
 	m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * m_Ship.VerticesAmount });
 
+	size_t indexOffset = 0;
+
 	for (auto mesh : m_Ship.Meshes) {
+
 		Engine::BufferHelper::AppendData(
 			vulkanEngine,
 			//p_ActiveScene->Indices,
 			mesh.Indices,
 			*m_SceneGeometryBuffer.get(),
 			0,
-			0
+			//0
+			indexOffset
 		);
+		
+		indexOffset += sizeof(uint32_t) * mesh.Indices.size();
+	}
+	
+	size_t vertexOffset = indexOffset;
 
+	for (auto mesh : m_Ship.Meshes) {
 		Engine::BufferHelper::AppendData(
 			vulkanEngine,
 			mesh.Vertices,
 			*m_SceneGeometryBuffer.get(),
 			0,
-			m_SceneGeometryBuffer->Chunks[INDEX_BUFFER_INDEX].ChunkSize
+			//m_SceneGeometryBuffer->Chunks[INDEX_BUFFER_INDEX].ChunkSize
+			vertexOffset
 		);
+
+		vertexOffset += sizeof(Assets::Vertex) * mesh.Vertices.size();
 	}
 
 	/*
@@ -477,6 +497,10 @@ void ModelViewer::RenderUI() {
 
 bool ModelViewer::IsDone(Engine::InputSystem::Input& input) {
 	return input.Keys[GLFW_KEY_ESCAPE].IsPressed;
+}
+
+void ModelViewer::Resize(uint32_t width, uint32_t height) {
+	m_Camera->Resize(width, height);
 }
 
 int main() {

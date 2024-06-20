@@ -35,7 +35,7 @@ namespace Engine {
 		TerminateApplication(scene);
 	}
 
-	void ApplicationCore::RenderUI() {
+	void ApplicationCore::RenderCoreUI() {
 		ImGui::Begin("Settings");
 		ImGui::SeparatorText("Application Core");
 		ImGui::Text("Last Frame: %f ms", m_Milliseconds);
@@ -46,6 +46,11 @@ namespace Engine {
 	bool ApplicationCore::UpdateApplication(IScene& scene) {
 		m_CurrentFrameTime = (float)glfwGetTime();
 		Timestep timestep = m_CurrentFrameTime - m_LastFrameTime;
+
+		if (m_ResizeApplication) {
+			m_ResizeApplication = false;
+			scene.Resize(m_VulkanEngine->GetSwapChain().GetSwapChainExtent().width, m_VulkanEngine->GetSwapChain().GetSwapChainExtent().height);
+		}
 
 		if (m_Vsync && timestep.GetSeconds() < (1 / 60.0f)) return true;
 		
@@ -60,7 +65,7 @@ namespace Engine {
 		m_VulkanEngine->BeginUIFrame();
 
 		scene.RenderScene(m_CurrentFrame, *commandBuffer);
-		RenderUI();
+		RenderCoreUI();
 		scene.RenderUI();
 
 		m_VulkanEngine->EndUIFrame(*commandBuffer);
@@ -90,13 +95,8 @@ namespace Engine {
 
 	void ApplicationCore::Resize(int width, int height) {
 		std::cout << "width - " << width << " height - " << height << '\n';
-		//m_VulkanEngine->Resize();
+		m_VulkanEngine->Resize();
+		m_ResizeApplication = true;
 		//p_ActiveScene->OnResize(width, height);
-	}
-
-	void ApplicationCore::RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline) {
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
 }

@@ -1,7 +1,8 @@
 #include "./Camera.h"
 
 namespace Assets {
-	Camera::Camera(glm::vec3 position, float fov, uint32_t width, uint32_t height) : Position(position), Fov(fov) {
+	Camera::Camera(glm::vec3 position, float fov, float yaw, float pitch, uint32_t width, uint32_t height) 
+		: Position(position), Fov(fov), Yaw(yaw), Pitch(pitch) {
 		Resize(width, height);
 		UpdateCameraVectors();
 	}

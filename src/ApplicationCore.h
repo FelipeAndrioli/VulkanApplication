@@ -28,6 +28,7 @@ namespace Engine {
 			virtual void Update(float d, Engine::InputSystem::Input& input) = 0;
 			virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) = 0;
 			virtual void RenderUI() = 0;
+			virtual void Resize(uint32_t width, uint32_t height) = 0;
 		};
 
 		struct SceneGPUData {
@@ -49,15 +50,10 @@ namespace Engine {
 		~ApplicationCore();
 
 		void RunApplication(IScene& scene);
-		void RenderUI();
+		void RenderCoreUI();
 		bool UpdateApplication(IScene& scene);
 		void InitializeApplication(IScene& scene);
 		void TerminateApplication(IScene& scene);
-
-		void RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline);
-		void RenderModel(const VkCommandBuffer& commandBuffer, const Assets::Object& object);
-		void RenderScene(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline, const std::vector<Assets::Object*>& objects);
-
 	private:
 		void Resize(int width, int height);
 	private:
@@ -67,6 +63,7 @@ namespace Engine {
 		float m_FramesPerSecond = 0.0f;
 	
 		bool m_Vsync = false;
+		bool m_ResizeApplication = false;
 
 		uint32_t m_CurrentFrame = 0;
 		uint32_t m_ImageIndex = 0;
