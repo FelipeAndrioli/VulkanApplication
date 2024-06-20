@@ -49,52 +49,52 @@ namespace Engine {
 		m_DescriptorBindings[index].bufferOffset = bufferOffset;
 	}
 
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::NewBinding(uint32_t binding) {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::NewBinding(uint32_t binding) {
 		m_DescriptorBinding.binding = binding;
 		return *this;
 	}
 
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetDescriptorCount(uint32_t descriptorCount) {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::SetDescriptorCount(uint32_t descriptorCount) {
 		m_DescriptorBinding.descriptorCount = descriptorCount;
 		return *this;
 	}
 
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetType(VkDescriptorType type) {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::SetType(VkDescriptorType type) {
 		m_DescriptorBinding.type = type;
 		return *this;
 	}
 
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetStage(VkShaderStageFlags stage) {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::SetStage(VkShaderStageFlags stage) {
 		m_DescriptorBinding.stage = stage;
 		return *this;
 	}
 
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetResource(Buffer& buffer) {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::SetResource(Buffer& buffer) {
 		m_DescriptorBinding.buffer = &buffer;
 		return *this;
 	}
 
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetResource(std::vector<Assets::Texture>& textures) {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::SetResource(std::vector<Assets::Texture>& textures) {
 		m_DescriptorBinding.textures = &textures;
 		return *this;
 	}
 
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetResource(Assets::Texture& texture) {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::SetResource(Assets::Texture& texture) {
 		m_DescriptorBinding.texture = &texture;
 		return *this;
 	}
 	
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetBufferSize(VkDeviceSize bufferSize) {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::SetBufferSize(VkDeviceSize bufferSize) {
 		m_DescriptorBinding.bufferSize = bufferSize;
 		return *this;
 	}
 
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::SetBufferOffset(VkDeviceSize bufferOffset) {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::SetBufferOffset(VkDeviceSize bufferOffset) {
 		m_DescriptorBinding.bufferOffset = bufferOffset;
 		return *this;
 	}
 	
-	DescriptorSetLayoutBuild& DescriptorSetLayoutBuild::Add() {
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::Add() {
 		m_DescriptorBindings.push_back(m_DescriptorBinding);
 		m_DescriptorBinding.binding = 0;
 		m_DescriptorBinding.descriptorCount = 0;
@@ -108,7 +108,7 @@ namespace Engine {
 		return *this;
 	}
 
-	std::unique_ptr<class DescriptorSetLayout> DescriptorSetLayoutBuild::Build(VkDevice& logicalDevice) {
+	std::unique_ptr<class DescriptorSetLayout> DescriptorSetLayoutBuilder::Build(VkDevice& logicalDevice) {
 		std::unique_ptr<class DescriptorSetLayout> newLayout = std::make_unique<class DescriptorSetLayout>(m_DescriptorBindings, logicalDevice);
 		m_DescriptorBindings.clear();
 

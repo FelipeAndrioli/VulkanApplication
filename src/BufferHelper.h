@@ -67,7 +67,6 @@ namespace Engine {
 
 		template <class T>
 		static void CreateBuffer(
-			const int bufferQuantity, 
 			VulkanEngine& vulkanEngine, 
 			const VkBufferUsageFlags usageFlags, 
 			const VkMemoryPropertyFlags memoryPropertyFlags,
@@ -77,7 +76,6 @@ namespace Engine {
 
 		template <class T>
 		static void CreateBuffer(
-			const int numBuffer, 
 			VulkanEngine& vulkanEngine, 
 			const VkBufferUsageFlags usageFlags, 
 			const VkMemoryPropertyFlags memoryPropertyFlags,
@@ -96,19 +94,14 @@ namespace Engine {
 	) {
 
 		auto bufferSize = sizeof(content[0]) * content.size();
-		auto stagingBuffer = std::make_unique<Buffer>(1, vulkanEngine, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+		auto stagingBuffer = std::make_unique<Buffer>(vulkanEngine, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		stagingBuffer->BufferMemory->MapMemory(bufferSize);
-		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content.data(), bufferSize);
+		memcpy(stagingBuffer->BufferMemory->MemoryMapped, content.data(), bufferSize);
 		stagingBuffer->BufferMemory->UnmapMemory();
 
-		buffer.CopyFrom(
-			stagingBuffer->GetBuffer(0), 
-			bufferSize,
-			srcOffset, 
-			dstOffset
-		);
+		buffer.CopyFrom(stagingBuffer->GetHandle(), bufferSize, srcOffset, dstOffset);
 
 		stagingBuffer.reset();
 	}
@@ -124,19 +117,14 @@ namespace Engine {
 	) {
 
 		auto bufferSize = contentSize;
-		auto stagingBuffer = std::make_unique<Buffer>(
-			1, 
-			vulkanEngine, 
-			bufferSize, 
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-		);
+		auto stagingBuffer = std::make_unique<Buffer>(vulkanEngine, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		stagingBuffer->BufferMemory->MapMemory(bufferSize);
-		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], content, bufferSize);
+		memcpy(stagingBuffer->BufferMemory->MemoryMapped, content, bufferSize);
 		stagingBuffer->BufferMemory->UnmapMemory();
 
-		dstBuffer->CopyFrom(stagingBuffer->GetBuffer(0), bufferSize, srcOffset, dstOffset);
+		dstBuffer->CopyFrom(stagingBuffer->GetHandle(), bufferSize, srcOffset, dstOffset);
 
 		stagingBuffer.reset();
 
@@ -155,15 +143,10 @@ namespace Engine {
 	) {
 		if (imageSize == 0) return;
 
-		auto stagingBuffer = std::make_unique<Buffer>(
-			1,
-			vulkanEngine,
-			imageSize,
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-		);
+		auto stagingBuffer = std::make_unique<Buffer>(vulkanEngine, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 		stagingBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		stagingBuffer->BufferMemory->MapMemory(imageSize);
-		memcpy(stagingBuffer->BufferMemory->MemoryMapped[0], imageData, imageSize);
+		memcpy(stagingBuffer->BufferMemory->MemoryMapped, imageData, imageSize);
 		stagingBuffer->BufferMemory->UnmapMemory();
 
 		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(),
@@ -191,7 +174,7 @@ namespace Engine {
 			}
 		};
 
-		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer->GetBuffer(0), dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer->GetHandle(), dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 		CommandBuffer::EndSingleTimeCommandBuffer(vulkanEngine.GetLogicalDevice().GetHandle(), 
 			vulkanEngine.GetLogicalDevice().GetGraphicsQueue(),
@@ -225,7 +208,6 @@ namespace Engine {
 
 	template <class T>
 	void BufferHelper::CreateBuffer(
-		const int bufferQuantity, 
 		VulkanEngine& vulkanEngine,
 		const VkBufferUsageFlags usageFlags, 
 		const VkMemoryPropertyFlags memoryPropertyFlags,
@@ -234,12 +216,7 @@ namespace Engine {
 	
 		VkDeviceSize bufferSize = sizeof(T);
 
-		buffer.reset(new class Buffer(
-			bufferQuantity,
-			vulkanEngine,
-			bufferSize,
-			usageFlags
-		));
+		buffer.reset(new class Buffer(vulkanEngine, bufferSize, usageFlags));
 		buffer->AllocateMemory(memoryPropertyFlags);
 
 		CopyFromStaging(vulkanEngine, content, buffer.get());
@@ -247,7 +224,6 @@ namespace Engine {
 
 	template <class T>
 	void BufferHelper::CreateBuffer(
-		const int numBuffer, 
 		VulkanEngine& vulkanEngine,
 		const VkBufferUsageFlags usageFlags, 
 		const VkMemoryPropertyFlags memoryPropertyFlags,
@@ -257,12 +233,7 @@ namespace Engine {
 	
 		VkDeviceSize bufferSize = sizeof(T) * content.size();
 
-		buffer.reset(new class Buffer(
-			numBuffer,
-			vulkanEngine,
-			bufferSize,
-			usageFlags
-		));
+		buffer.reset(new class Buffer(vulkanEngine, bufferSize, usageFlags));
 		buffer->AllocateMemory(memoryPropertyFlags);
 
 		CopyFromStaging(vulkanEngine, content, buffer.get());

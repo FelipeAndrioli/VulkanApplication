@@ -37,21 +37,21 @@ namespace Engine {
 		VkDevice& p_LogicalDevice;
 	};
 
-	class DescriptorSetLayoutBuild {
+	class DescriptorSetLayoutBuilder {
 	public:
-		DescriptorSetLayoutBuild() {};
-		~DescriptorSetLayoutBuild() {};
+		DescriptorSetLayoutBuilder() {};
+		~DescriptorSetLayoutBuilder() {};
 
-		DescriptorSetLayoutBuild& NewBinding(uint32_t binding);
-		DescriptorSetLayoutBuild& SetDescriptorCount(uint32_t descriptorCount);
-		DescriptorSetLayoutBuild& SetType(VkDescriptorType type);
-		DescriptorSetLayoutBuild& SetStage(VkShaderStageFlags stage);
-		DescriptorSetLayoutBuild& SetResource(Buffer& buffer);
-		DescriptorSetLayoutBuild& SetResource(std::vector<Assets::Texture>& textures);
-		DescriptorSetLayoutBuild& SetResource(Assets::Texture& texture);
-		DescriptorSetLayoutBuild& SetBufferSize(VkDeviceSize bufferSize);
-		DescriptorSetLayoutBuild& SetBufferOffset(VkDeviceSize bufferOffset);
-		DescriptorSetLayoutBuild& Add();
+		DescriptorSetLayoutBuilder& NewBinding(uint32_t binding);
+		DescriptorSetLayoutBuilder& SetDescriptorCount(uint32_t descriptorCount);
+		DescriptorSetLayoutBuilder& SetType(VkDescriptorType type);
+		DescriptorSetLayoutBuilder& SetStage(VkShaderStageFlags stage);
+		DescriptorSetLayoutBuilder& SetResource(Buffer& buffer);
+		DescriptorSetLayoutBuilder& SetResource(std::vector<Assets::Texture>& textures);
+		DescriptorSetLayoutBuilder& SetResource(Assets::Texture& texture);
+		DescriptorSetLayoutBuilder& SetBufferSize(VkDeviceSize bufferSize);
+		DescriptorSetLayoutBuilder& SetBufferOffset(VkDeviceSize bufferOffset);
+		DescriptorSetLayoutBuilder& Add();
 		std::unique_ptr<class DescriptorSetLayout> Build(VkDevice& logicalDevice);
 
 	private:

@@ -109,6 +109,7 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 		"./Textures/back.jpg",
 	};
 
+	//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
 	m_Skybox = std::make_unique<Assets::Texture>(Engine::Utils::TextureLoader::LoadCubemapTexture(cubeTextures, vulkanEngine));
 
 	// Buffers initialization
@@ -116,13 +117,9 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	VkDeviceSize objectBufferSize = sizeof(Engine::ApplicationCore::ObjectGPUData) * 1; // TODO: make it an array
 	VkDeviceSize materialsBufferSize = sizeof(Assets::MeshMaterialData) * m_Materials.size();
 	VkDeviceSize sceneBufferSize = sizeof(Engine::ApplicationCore::SceneGPUData);
+	VkDeviceSize gpuBufferSize = objectBufferSize + materialsBufferSize + sceneBufferSize;
 
-	m_GPUDataBuffer = std::make_unique<class Engine::Buffer>(
-		Engine::MAX_FRAMES_IN_FLIGHT,
-		vulkanEngine,
-		objectBufferSize + materialsBufferSize + sceneBufferSize,
-		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-	);
+	m_GPUDataBuffer = std::make_unique<class Engine::Buffer>(vulkanEngine, gpuBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	m_GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	m_GPUDataBuffer->NewChunk({ sizeof(Engine::ApplicationCore::ObjectGPUData), objectBufferSize });
@@ -145,23 +142,16 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	// GPU Data Buffer End
 
 	// Scene Geometry Buffer Begin
-	VkDeviceSize bufferSize = sizeof(uint32_t) * m_Ship.IndicesAmount + sizeof(Assets::Vertex) * m_Ship.VerticesAmount;
+	VkDeviceSize sceneGeometryBufferSize = sizeof(uint32_t) * m_Ship.IndicesAmount + sizeof(Assets::Vertex) * m_Ship.VerticesAmount;
 	/*
 	VkDeviceSize bufferSize = sizeof(uint32_t) * p_ActiveScene->Indices.size()
 		+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
 	*/
 
-	m_SceneGeometryBuffer = std::make_unique<class Engine::Buffer>(
-		Engine::MAX_FRAMES_IN_FLIGHT,
-		vulkanEngine,
-		bufferSize,
-		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-		VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT
-	);
-
+	m_SceneGeometryBuffer = std::make_unique<class Engine::Buffer>(vulkanEngine, sceneGeometryBufferSize, 
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 	m_SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
 	//m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * p_ActiveScene->Indices.size() });
 	m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * m_Ship.IndicesAmount });
 	//m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size() });
@@ -229,8 +219,8 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 		.SetMaxSets(50)
 		.Build(vulkanEngine.GetLogicalDevice().GetHandle());
 
-	Engine::DescriptorSetLayoutBuild descriptorLayoutBuild = {};
-	m_ObjectGPUDataDescriptorSetLayout = descriptorLayoutBuild.NewBinding(0)
+	Engine::DescriptorSetLayoutBuilder descriptorLayoutBuilder = {};
+	m_ObjectGPUDataDescriptorSetLayout = descriptorLayoutBuilder.NewBinding(0)
 		.SetDescriptorCount(1)
 		.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 		.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
@@ -240,7 +230,7 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 		.Add()
 		.Build(vulkanEngine.GetLogicalDevice().GetHandle());
 
-	m_GlobalDescriptorSetLayout = descriptorLayoutBuild.NewBinding(0)
+	m_GlobalDescriptorSetLayout = descriptorLayoutBuilder.NewBinding(0)
 		.SetDescriptorCount(1)
 		.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 		.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
@@ -411,13 +401,13 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		commandBuffer,
 		0,
 		1,
-		&m_SceneGeometryBuffer->GetBuffer(currentFrame),
+		&m_SceneGeometryBuffer->GetHandle(),
 		offsets
 	);
 
 	vkCmdBindIndexBuffer(
 		commandBuffer,
-		m_SceneGeometryBuffer->GetBuffer(currentFrame),
+		m_SceneGeometryBuffer->GetHandle(),
 		0,
 		VK_INDEX_TYPE_UINT32
 	);
@@ -426,14 +416,9 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	m_SceneGPUData.proj = m_Camera->ProjectionMatrix;
 
 	VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
-	m_GPUDataBuffer->Update(currentFrame, sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
+	m_GPUDataBuffer->Update(sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
 
-	m_GlobalDescriptorSets->Bind(
-		currentFrame,
-		commandBuffer,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		m_MainPipelineLayout->GetHandle()
-	);
+	m_GlobalDescriptorSets->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
 
 	Render(currentFrame, commandBuffer, m_TexturedPipeline->GetHandle());
 	Render(currentFrame, commandBuffer, m_ColoredPipeline->GetHandle());
@@ -451,19 +436,14 @@ void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& com
 	if (m_Ship.GetGraphicsPipeline()->GetHandle() != graphicsPipeline && graphicsPipeline != m_WireframePipeline->GetHandle())
 		return;
 
-	m_Ship.DescriptorSets->Bind(
-		currentFrame, 
-		commandBuffer, 
-		VK_PIPELINE_BIND_POINT_GRAPHICS, 
-		m_MainPipelineLayout->GetHandle()
-	);
+	m_Ship.DescriptorSets->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
 
 	Engine::ApplicationCore::ObjectGPUData objectGPUData = Engine::ApplicationCore::ObjectGPUData();
 	objectGPUData.model = m_Ship.GetModelMatrix();
 
 	//VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-	m_GPUDataBuffer->Update(currentFrame, objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
+	m_GPUDataBuffer->Update(objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
 
 	for (const auto& mesh : m_Ship.Meshes) {
 		vkCmdPushConstants(
@@ -510,6 +490,7 @@ int main() {
 	settings.Width = 1600;
 	settings.Height = 900;
 	settings.uiEnabled = true;
+	settings.renderSkybox = true;
 
 	Engine::ApplicationCore app = Engine::ApplicationCore(settings);
 	ModelViewer modelViewer = ModelViewer(settings);

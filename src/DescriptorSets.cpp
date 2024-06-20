@@ -11,33 +11,29 @@ namespace Engine {
 		const uint32_t set,
 		const uint32_t setCount
 	) : m_Set(set), m_SetCount(setCount) {
-		std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout.GetHandle());
+		std::vector<VkDescriptorSetLayout> layouts(1, descriptorSetLayout.GetHandle());
 
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocInfo.descriptorPool = descriptorPool;
-		allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = layouts.data();
 
-		m_DescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-
-		if (vkAllocateDescriptorSets(logicalDevice, &allocInfo, m_DescriptorSets.data()) != VK_SUCCESS) {
+		if (vkAllocateDescriptorSets(logicalDevice, &allocInfo, &m_DescriptorSet) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to allocate Descriptor Sets!");
 		}
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			for (const auto& descriptorBinding : descriptorSetLayout.GetDescriptorBindings()) {
-				if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER && descriptorBinding.buffer) {
-					WriteDescriptorUniformBuffer(logicalDevice, m_DescriptorSets[i], descriptorBinding, i);
-				}
+		for (const auto& descriptorBinding : descriptorSetLayout.GetDescriptorBindings()) {
+			if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER && descriptorBinding.buffer) {
+				WriteDescriptorUniformBuffer(logicalDevice, m_DescriptorSet, descriptorBinding);
+			}
 
-				if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorBinding.textures) {
-					WriteDescriptorImages(logicalDevice, m_DescriptorSets[i], descriptorBinding);
-				}
+			if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorBinding.textures) {
+				WriteDescriptorImages(logicalDevice, m_DescriptorSet, descriptorBinding);
+			}
 
-				if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorBinding.texture) {
-					WriteDescriptorImage(logicalDevice, m_DescriptorSets[i], descriptorBinding);
-				}
+			if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorBinding.texture) {
+				WriteDescriptorImage(logicalDevice, m_DescriptorSet, descriptorBinding);
 			}
 		}
 	}
@@ -46,22 +42,10 @@ namespace Engine {
 	
 	}
 
-	VkDescriptorSet& DescriptorSets::GetDescriptorSet(uint32_t index) {
-		if (index > m_DescriptorSets.size() || index < 0) {
-			throw std::runtime_error("Index out of bounds trying to access the descriptor set!");
-		}
-
-		return m_DescriptorSets[index];
-	}
-
-	void DescriptorSets::WriteDescriptorUniformBuffer(
-		const VkDevice& logicalDevice, 
-		const VkDescriptorSet& descriptorSet, 
-		const DescriptorBinding& descriptorBinding, 
-		const size_t bufferIndex
-	) {
+	void DescriptorSets::WriteDescriptorUniformBuffer(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, 
+		const DescriptorBinding& descriptorBinding) {
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = descriptorBinding.buffer->GetBuffer(static_cast<uint32_t>(bufferIndex));
+		bufferInfo.buffer = descriptorBinding.buffer->GetHandle();
 		bufferInfo.offset = descriptorBinding.bufferOffset;
 		bufferInfo.range = descriptorBinding.bufferSize == 0 ? 256 : descriptorBinding.bufferSize;
 
@@ -76,13 +60,7 @@ namespace Engine {
 		descriptorWrite.pImageInfo = nullptr;
 		descriptorWrite.pTexelBufferView = nullptr;
 
-		vkUpdateDescriptorSets(
-			logicalDevice,
-			1,
-			&descriptorWrite,
-			0,
-			nullptr
-		);
+		vkUpdateDescriptorSets(logicalDevice, 1, &descriptorWrite, 0, nullptr);
 	}
 
 	void DescriptorSets::WriteDescriptorImages(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding) {
@@ -110,13 +88,7 @@ namespace Engine {
 		descriptorWrite.descriptorCount = static_cast<uint32_t>(imageInfo.size());
 		descriptorWrite.pImageInfo = imageInfo.data();
 		
-		vkUpdateDescriptorSets(
-			logicalDevice,
-			1,
-			&descriptorWrite,
-			0,
-			nullptr
-		); 
+		vkUpdateDescriptorSets(logicalDevice, 1, &descriptorWrite, 0, nullptr); 
 	}
 
 	void DescriptorSets::WriteDescriptorImage(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding) {
@@ -135,30 +107,10 @@ namespace Engine {
 		descriptorWrite.descriptorCount = 1;
 		descriptorWrite.pImageInfo = &newImageInfo;
 		
-		vkUpdateDescriptorSets(
-			logicalDevice,
-			1,
-			&descriptorWrite,
-			0,
-			nullptr
-		); 
+		vkUpdateDescriptorSets(logicalDevice, 1, &descriptorWrite, 0, nullptr); 
 	}
 
-	void DescriptorSets::Bind(
-		const uint32_t setIndex,
-		const VkCommandBuffer& commandBuffer, 
-		const VkPipelineBindPoint& bindPoint,
-		const VkPipelineLayout& pipelineLayout
-	) {
-		vkCmdBindDescriptorSets(
-			commandBuffer, 
-			VK_PIPELINE_BIND_POINT_GRAPHICS, 
-			pipelineLayout,
-			m_Set, 
-			m_SetCount,
-			&m_DescriptorSets[setIndex],
-			0, 
-			nullptr
-		);
+	void DescriptorSets::Bind(const VkCommandBuffer& commandBuffer, const VkPipelineBindPoint& bindPoint, const VkPipelineLayout& pipelineLayout) {
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, m_Set, m_SetCount, &m_DescriptorSet, 0, nullptr);
 	}
 }

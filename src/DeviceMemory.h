@@ -8,22 +8,21 @@
 namespace Engine {
 	class DeviceMemory {
 	public:
-		DeviceMemory(VkDevice& logicalDevice, VkPhysicalDevice& physicalDevice, int numMemory);
+		DeviceMemory(VkDevice& logicalDevice, VkPhysicalDevice& physicalDevice);
 		~DeviceMemory();
 
-		void AllocateMemory(std::vector<VkBuffer>& buffer, VkMemoryPropertyFlags properties);
-		void AllocateMemory(VkImage& image, VkMemoryPropertyFlags properties);
+		void AllocateMemory(const VkBuffer& buffer, const VkMemoryPropertyFlags properties);
+		void AllocateMemory(const VkImage& image, const VkMemoryPropertyFlags properties);
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-		VkMemoryRequirements GetMemoryRequirements(VkBuffer& buffer);
+		VkMemoryRequirements GetMemoryRequirements(const VkBuffer& buffer);
 
 		void MapMemory(void* data, const VkDeviceSize dataSize);
 		void MapMemory(const VkDeviceSize dataSize);
-		void MapMemory(uint32_t index, const VkDeviceSize& offset, const VkDeviceSize dataSize);
+		void MapMemory(const VkDeviceSize& offset, const VkDeviceSize dataSize);
 		void UnmapMemory();
-		void UnmapMemory(uint32_t index);
 	public:
-		std::vector<VkDeviceMemory> Memory;
-		std::vector<void*> MemoryMapped;
+		VkDeviceMemory Memory;
+		void* MemoryMapped;
 
 	private:
 		VkDevice* p_LogicalDevice = nullptr;

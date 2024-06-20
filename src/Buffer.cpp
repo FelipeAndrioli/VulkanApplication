@@ -3,36 +3,27 @@
 #include "CommandPool.h"
 
 namespace Engine {
-	Buffer::Buffer(const int numBuffers, VulkanEngine& vulkanEngine, const size_t bufferSize, 
-		const VkBufferUsageFlags usage) : m_VulkanEngine(&vulkanEngine), m_NumBuffers(numBuffers), BufferSize(bufferSize) {
+	Buffer::Buffer(VulkanEngine& vulkanEngine, const size_t bufferSize, 
+		const VkBufferUsageFlags usage) : m_VulkanEngine(&vulkanEngine), BufferSize(bufferSize) {
 
-		m_Buffer.resize(m_NumBuffers);
 		BufferMemory.reset(new class DeviceMemory(
 			vulkanEngine.GetLogicalDevice().GetHandle(), 
-			vulkanEngine.GetPhysicalDevice().GetHandle(), 
-			m_NumBuffers
+			vulkanEngine.GetPhysicalDevice().GetHandle()
 		));
 
-		for (size_t i = 0; i < m_NumBuffers; i++) {
-			VkBufferCreateInfo bufferInfo{};
-			bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			bufferInfo.size = bufferSize == 0 ? 256 : bufferSize;
-			bufferInfo.usage = usage;
-			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = bufferSize == 0 ? 256 : bufferSize;
+		bufferInfo.usage = usage;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-			if (vkCreateBuffer(vulkanEngine.GetLogicalDevice().GetHandle(), &bufferInfo, nullptr, &m_Buffer[i]) != VK_SUCCESS) {
-				throw std::runtime_error("Failed to create buffer!");
-			}
+		if (vkCreateBuffer(vulkanEngine.GetLogicalDevice().GetHandle(), &bufferInfo, nullptr, &m_Buffer) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create buffer!");
 		}
 	}
 
 	Buffer::~Buffer() {
-		if (!m_Buffer.empty()) {
-			for (size_t i = 0; i < m_Buffer.size(); i++) {
-				vkDestroyBuffer(m_VulkanEngine->GetLogicalDevice().GetHandle(), m_Buffer[i], nullptr);
-			}
-		}
-		
+		vkDestroyBuffer(m_VulkanEngine->GetLogicalDevice().GetHandle(), m_Buffer, nullptr);
 		BufferMemory.reset();
 	}
 
@@ -52,9 +43,7 @@ namespace Engine {
 		copyRegion.dstOffset = dstOffset;
 		copyRegion.size = bufferSize;
 
-		for (size_t i = 0; i < m_Buffer.size(); i++) {
-			vkCmdCopyBuffer(commandBuffer, srcBuffer, m_Buffer[i], 1, &copyRegion);
-		}
+		vkCmdCopyBuffer(commandBuffer, srcBuffer, m_Buffer, 1, &copyRegion);
 
 		CommandBuffer::EndSingleTimeCommandBuffer(
 			m_VulkanEngine->GetLogicalDevice().GetHandle(),
@@ -110,25 +99,13 @@ namespace Engine {
 		Chunks.push_back(newChunk);
 	}
 
-	void Buffer::Update(uint32_t bufferIndex, VkDeviceSize offset, void* data, size_t dataSize) {
-		BufferMemory->MapMemory(bufferIndex, offset, static_cast<VkDeviceSize>(dataSize));
-		memcpy(BufferMemory->MemoryMapped[bufferIndex], data, dataSize);
-		BufferMemory->UnmapMemory(bufferIndex);
+	void Buffer::Update(VkDeviceSize offset, void* data, size_t dataSize) {
+		BufferMemory->MapMemory(offset, static_cast<VkDeviceSize>(dataSize));
+		memcpy(BufferMemory->MemoryMapped, data, dataSize);
+		BufferMemory->UnmapMemory();
 	}
 
-	VkBuffer& Buffer::GetBuffer(uint32_t index) {
-		if (index > m_Buffer.size() || index < 0) {
-			throw std::runtime_error("Index to retrieve buffer out of bounds!");
-		}
-
-		return m_Buffer[index];
-	}
-
-	void* Buffer::GetBufferMemoryMapped(uint32_t index) {
-		if (index > m_Buffer.size() || index < 0) {
-			throw std::runtime_error("Index to retrieve buffer memory mapped out of bounds!");
-		}
-		
-		return BufferMemory->MemoryMapped[index];
+	void* Buffer::GetMappedMemory() {
+		return BufferMemory->MemoryMapped;
 	}
 }

@@ -97,6 +97,5 @@ namespace Engine {
 		std::cout << "width - " << width << " height - " << height << '\n';
 		m_VulkanEngine->Resize();
 		m_ResizeApplication = true;
-		//p_ActiveScene->OnResize(width, height);
 	}
 }

@@ -16,16 +16,11 @@ namespace Engine {
 
 	class Buffer {
 	public:
-		Buffer(const int numBuffers, VulkanEngine& vulkanEngine, const size_t bufferSize, const VkBufferUsageFlags usage);
+		Buffer(VulkanEngine& vulkanEngine, const size_t bufferSize, const VkBufferUsageFlags usage);
 		~Buffer();
 
 		void AllocateMemory(VkMemoryPropertyFlags properties);
-		void CopyFrom(
-			VkBuffer srcBuffer, 
-			VkDeviceSize bufferSize, 
-			size_t srcOffset = 0, 
-			size_t dstOffset = 0
-		);
+		void CopyFrom(VkBuffer srcBuffer, VkDeviceSize bufferSize, size_t srcOffset = 0, size_t dstOffset = 0);
 
 		static void CopyToImage(
 			VulkanEngine& vulkanEngine,
@@ -37,19 +32,16 @@ namespace Engine {
 			VkBuffer& buffer
 		);
 		void NewChunk(BufferChunk newChunk);
-		void Update(uint32_t bufferIndex, VkDeviceSize offset, void* data, size_t dataSize);
+		void Update(VkDeviceSize offset, void* data, size_t dataSize);
 
-		VkBuffer& GetBuffer(uint32_t index);
-		void* GetBufferMemoryMapped(uint32_t index);
-		inline VkBuffer& GetBuffer() { return m_Buffer[0]; };
+		void* GetMappedMemory();
+		inline VkBuffer& GetHandle() { return m_Buffer; };
 	public:
 		std::vector<BufferChunk> Chunks;
 		size_t BufferSize;
 		std::unique_ptr<class DeviceMemory> BufferMemory;
 	private:
-		int m_NumBuffers;
-		std::vector<VkBuffer> m_Buffer;
-
+		VkBuffer m_Buffer;
 		VulkanEngine* m_VulkanEngine;
 	};
 }

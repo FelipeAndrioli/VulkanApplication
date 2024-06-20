@@ -53,13 +53,7 @@ namespace Engine {
 				throw std::runtime_error("Failed to load texture image!");
 			}
 
-			Buffer transferBuffer = Buffer(
-				1, 
-				vulkanEngine,
-				imageSize, 
-				VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-			);
-
+			Buffer transferBuffer = Buffer(vulkanEngine, imageSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			transferBuffer.AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 			BufferHelper::CopyFromStaging(vulkanEngine, pixels, imageSize, &transferBuffer);
@@ -94,7 +88,7 @@ namespace Engine {
 				texture.TextureImage->Width,
 				texture.TextureImage->Height,
 				texture.TextureImage->ImageLayout,
-				transferBuffer.GetBuffer(0)
+				transferBuffer.GetHandle()
 			);
 
 			texture.TextureImage->GenerateMipMaps(vulkanEngine.GetCommandPool().GetHandle(), vulkanEngine.GetLogicalDevice().GetGraphicsQueue());
