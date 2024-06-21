@@ -22,36 +22,22 @@ namespace Engine {
 		if (vkAllocateDescriptorSets(logicalDevice, &allocInfo, &m_DescriptorSet) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to allocate Descriptor Sets!");
 		}
-
-		for (const auto& descriptorBinding : descriptorSetLayout.GetDescriptorBindings()) {
-			if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER && descriptorBinding.buffer) {
-				WriteDescriptorUniformBuffer(logicalDevice, m_DescriptorSet, descriptorBinding);
-			}
-
-			if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorBinding.textures) {
-				WriteDescriptorImages(logicalDevice, m_DescriptorSet, descriptorBinding);
-			}
-
-			if (descriptorBinding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorBinding.texture) {
-				WriteDescriptorImage(logicalDevice, m_DescriptorSet, descriptorBinding);
-			}
-		}
 	}
 	
 	DescriptorSets::~DescriptorSets() {
 	
 	}
 
-	void DescriptorSets::WriteDescriptorUniformBuffer(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, 
-		const DescriptorBinding& descriptorBinding) {
+	void DescriptorSets::WriteDescriptorUniformBuffer(const VkDevice& logicalDevice, const DescriptorBinding& descriptorBinding, 
+		const VkBuffer& buffer, const size_t bufferSize, const size_t bufferOffset) {
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = descriptorBinding.buffer->GetHandle();
-		bufferInfo.offset = descriptorBinding.bufferOffset;
-		bufferInfo.range = descriptorBinding.bufferSize == 0 ? 256 : descriptorBinding.bufferSize;
+		bufferInfo.buffer = buffer;
+		bufferInfo.offset = bufferOffset;
+		bufferInfo.range = bufferSize == 0 ? 256 : bufferSize;
 
 		VkWriteDescriptorSet descriptorWrite = {};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstSet = m_DescriptorSet;
 		descriptorWrite.dstBinding = descriptorBinding.binding;
 		descriptorWrite.dstArrayElement = 0;
 		descriptorWrite.descriptorType = descriptorBinding.type;
@@ -63,15 +49,15 @@ namespace Engine {
 		vkUpdateDescriptorSets(logicalDevice, 1, &descriptorWrite, 0, nullptr);
 	}
 
-	void DescriptorSets::WriteDescriptorImages(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding) {
+	void DescriptorSets::WriteDescriptorImages(const VkDevice& logicalDevice, const DescriptorBinding& descriptorBinding, std::vector<Assets::Texture>& textures) {
 
-		if (descriptorBinding.textures->empty() || descriptorBinding.textures->size() == 0)
+		if (textures.size() == 0)
 			return;
 
 		std::vector<VkDescriptorImageInfo> imageInfo;
 		VkWriteDescriptorSet descriptorWrite = {};
 
-		for (auto& texture : *descriptorBinding.textures) {
+		for (auto& texture : textures) {
 			VkDescriptorImageInfo newImageInfo = {};
 			newImageInfo.imageLayout = texture.TextureImage->ImageLayout;
 			newImageInfo.imageView = texture.TextureImage->ImageView;
@@ -81,7 +67,7 @@ namespace Engine {
 		}
 
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstSet = m_DescriptorSet;
 		descriptorWrite.dstBinding = descriptorBinding.binding;
 		descriptorWrite.dstArrayElement = 0;
 		descriptorWrite.descriptorType = descriptorBinding.type;
@@ -91,16 +77,16 @@ namespace Engine {
 		vkUpdateDescriptorSets(logicalDevice, 1, &descriptorWrite, 0, nullptr); 
 	}
 
-	void DescriptorSets::WriteDescriptorImage(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding) {
+	void DescriptorSets::WriteDescriptorImage(const VkDevice& logicalDevice, const DescriptorBinding& descriptorBinding, Assets::Texture& texture) {
 
 		VkDescriptorImageInfo newImageInfo = {};
-		newImageInfo.imageLayout = descriptorBinding.texture->TextureImage->ImageLayout;
-		newImageInfo.imageView = descriptorBinding.texture->TextureImage->ImageView;
-		newImageInfo.sampler = descriptorBinding.texture->TextureImage->ImageSampler;
+		newImageInfo.imageLayout = texture.TextureImage->ImageLayout;
+		newImageInfo.imageView = texture.TextureImage->ImageView;
+		newImageInfo.sampler = texture.TextureImage->ImageSampler;
 
 		VkWriteDescriptorSet descriptorWrite = {};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstSet = m_DescriptorSet;
 		descriptorWrite.dstBinding = descriptorBinding.binding;
 		descriptorWrite.dstArrayElement = 0;
 		descriptorWrite.descriptorType = descriptorBinding.type;

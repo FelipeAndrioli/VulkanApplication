@@ -41,7 +41,7 @@ public:
 
 	void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline);
 private:
-	Assets::Camera* m_Camera;
+	Assets::Camera* m_Camera = nullptr;
 	std::unique_ptr<struct Assets::Texture> m_Skybox;
 
 	Engine::Settings m_Settings = {};
@@ -54,7 +54,7 @@ private:
 	std::vector<Assets::Material> m_Materials;
 	std::vector<Assets::Texture> m_Textures;
 
-	std::unique_ptr<Engine::Buffer> m_GPUDataBuffer;
+	std::unique_ptr<Engine::Buffer> m_GPUDataBuffer[Engine::MAX_FRAMES_IN_FLIGHT];
 	std::unique_ptr<Engine::Buffer> m_SceneGeometryBuffer;
 
 	std::unique_ptr<Engine::DescriptorPool> m_DescriptorPool;
@@ -62,7 +62,7 @@ private:
 	std::unique_ptr<Engine::DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 	std::unique_ptr<Engine::DescriptorSetLayout> m_GlobalDescriptorSetLayout;
 
-	std::unique_ptr<Engine::DescriptorSets> m_GlobalDescriptorSets;
+	std::unique_ptr<Engine::DescriptorSets> m_GlobalDescriptorSets[Engine::MAX_FRAMES_IN_FLIGHT];
 	
 	std::unique_ptr<Engine::PipelineLayout> m_MainPipelineLayout;
 
@@ -119,26 +119,28 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	VkDeviceSize sceneBufferSize = sizeof(Engine::ApplicationCore::SceneGPUData);
 	VkDeviceSize gpuBufferSize = objectBufferSize + materialsBufferSize + sceneBufferSize;
 
-	m_GPUDataBuffer = std::make_unique<class Engine::Buffer>(vulkanEngine, gpuBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-	m_GPUDataBuffer->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	m_GPUDataBuffer->NewChunk({ sizeof(Engine::ApplicationCore::ObjectGPUData), objectBufferSize });
-	m_GPUDataBuffer->NewChunk({ sizeof(Assets::MeshMaterialData), materialsBufferSize });
-	m_GPUDataBuffer->NewChunk({ sizeof(Engine::ApplicationCore::SceneGPUData), sceneBufferSize });
-
 	std::vector<Assets::MeshMaterialData> meshMaterialData;
 
 	for (const auto& material : m_Materials) {
 		meshMaterialData.push_back(material.MaterialData);
 	}
 
-	Engine::BufferHelper::AppendData(
-		vulkanEngine,
-		meshMaterialData,
-		*m_GPUDataBuffer.get(),
-		0,
-		m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
-	);
+	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+		m_GPUDataBuffer[i] = std::make_unique<class Engine::Buffer>(vulkanEngine, gpuBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		m_GPUDataBuffer[i]->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+		m_GPUDataBuffer[i]->NewChunk({sizeof(Engine::ApplicationCore::ObjectGPUData), objectBufferSize});
+		m_GPUDataBuffer[i]->NewChunk({sizeof(Assets::MeshMaterialData), materialsBufferSize});
+		m_GPUDataBuffer[i]->NewChunk({sizeof(Engine::ApplicationCore::SceneGPUData), sceneBufferSize});
+
+		Engine::BufferHelper::AppendData(
+			vulkanEngine,
+			meshMaterialData,
+			*m_GPUDataBuffer[i].get(),
+			0,
+			m_GPUDataBuffer[i]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
+		);
+	}
 	// GPU Data Buffer End
 
 	// Scene Geometry Buffer Begin
@@ -224,9 +226,6 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 		.SetDescriptorCount(1)
 		.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 		.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
-		.SetResource(*m_GPUDataBuffer.get())
-		.SetBufferSize(m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize)
-		.SetBufferOffset(0)
 		.Add()
 		.Build(vulkanEngine.GetLogicalDevice().GetHandle());
 
@@ -234,57 +233,71 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 		.SetDescriptorCount(1)
 		.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 		.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
-		.SetResource(*m_GPUDataBuffer.get())
-		.SetBufferSize(m_GPUDataBuffer->Chunks[SCENE_BUFFER_INDEX].ChunkSize)
-		.SetBufferOffset(m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize)
 		.Add()
 		.NewBinding(1)
 		.SetDescriptorCount(1)
 		.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 		.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
-		.SetResource(*m_GPUDataBuffer.get())
-		.SetBufferSize(m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize)
-		.SetBufferOffset(m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize)
 		.Add()
 		.NewBinding(2)
 		.SetDescriptorCount(static_cast<uint32_t>(m_Textures.size()))
 		.SetType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 		.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
-		.SetResource(m_Textures)
-		.SetBufferSize(0)
-		.SetBufferOffset(0)
 		.Add()
 		.NewBinding(3)
 		.SetDescriptorCount(1)
 		.SetType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 		.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
-		.SetResource({ *m_Skybox.get() })
-		.SetBufferSize(0)
-		.SetBufferOffset(0)
 		.Add()
 		.Build(vulkanEngine.GetLogicalDevice().GetHandle());
 
 	// Renderable Objects Descriptor Sets Begin
-	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-	m_ObjectGPUDataDescriptorSetLayout->UpdateOffset(0, objectBufferOffset);
+	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0]->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 
-	m_Ship.DescriptorSets = std::make_unique<class Engine::DescriptorSets>(
-		vulkanEngine.GetLogicalDevice().GetHandle(),
-		m_DescriptorPool->GetHandle(),
-		*m_ObjectGPUDataDescriptorSetLayout.get(),
-		0,
-		1
-	);
+	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+		m_Ship.DescriptorSets[i] = std::make_unique<class Engine::DescriptorSets>(
+			vulkanEngine.GetLogicalDevice().GetHandle(),
+			m_DescriptorPool->GetHandle(),
+			*m_ObjectGPUDataDescriptorSetLayout.get(),
+			0,
+			1
+		);
+		m_Ship.DescriptorSets[i]->WriteDescriptorUniformBuffer(
+			vulkanEngine.GetLogicalDevice().GetHandle(),
+			m_ObjectGPUDataDescriptorSetLayout->GetDescriptorBindings()[0],
+			m_GPUDataBuffer[i]->GetHandle(),
+			m_GPUDataBuffer[i]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize,
+			objectBufferOffset
+		);
+	}
 	// Renderable Objects Descriptor Sets End 
 
 	// Global Descriptor Sets Begin
-	m_GlobalDescriptorSets = std::make_unique<Engine::DescriptorSets>(
-		vulkanEngine.GetLogicalDevice().GetHandle(),
-		m_DescriptorPool->GetHandle(),
-		*m_GlobalDescriptorSetLayout.get(),
-		1,
-		1
-	);
+	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+		m_GlobalDescriptorSets[i] = std::make_unique<Engine::DescriptorSets>(
+			vulkanEngine.GetLogicalDevice().GetHandle(),
+			m_DescriptorPool->GetHandle(),
+			*m_GlobalDescriptorSetLayout.get(),
+			1,
+			1
+		);
+		m_GlobalDescriptorSets[i]->WriteDescriptorUniformBuffer(
+			vulkanEngine.GetLogicalDevice().GetHandle(),
+			m_GlobalDescriptorSetLayout->GetDescriptorBindings()[0],
+			m_GPUDataBuffer[i]->GetHandle(),
+			m_GPUDataBuffer[i]->Chunks[SCENE_BUFFER_INDEX].ChunkSize,
+			m_GPUDataBuffer[i]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer[i]->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
+		);
+		m_GlobalDescriptorSets[i]->WriteDescriptorUniformBuffer(
+			vulkanEngine.GetLogicalDevice().GetHandle(),
+			m_GlobalDescriptorSetLayout->GetDescriptorBindings()[1],
+			m_GPUDataBuffer[i]->GetHandle(),
+			m_GPUDataBuffer[i]->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
+			m_GPUDataBuffer[i]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
+		);
+		m_GlobalDescriptorSets[i]->WriteDescriptorImages(vulkanEngine.GetLogicalDevice().GetHandle(), m_GlobalDescriptorSetLayout->GetDescriptorBindings()[2], m_Textures);
+		m_GlobalDescriptorSets[i]->WriteDescriptorImage(vulkanEngine.GetLogicalDevice().GetHandle(), m_GlobalDescriptorSetLayout->GetDescriptorBindings()[3], *m_Skybox.get());
+	}
 	// Global Descriptor Sets End
 
 	// Create pipeline layouts start
@@ -364,8 +377,12 @@ void ModelViewer::CleanUp() {
 	m_ObjectGPUDataDescriptorSetLayout.reset();
 	m_GlobalDescriptorSetLayout.reset();
 
-	m_GlobalDescriptorSets.reset();
-	m_GPUDataBuffer.reset();
+
+	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+		m_GlobalDescriptorSets[i].reset();
+		m_GPUDataBuffer[i].reset();
+	}
+
 	m_SceneGeometryBuffer.reset();
 	
 	m_MainPipelineLayout.reset();
@@ -415,10 +432,10 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	m_SceneGPUData.view = m_Camera->ViewMatrix;
 	m_SceneGPUData.proj = m_Camera->ProjectionMatrix;
 
-	VkDeviceSize sceneBufferOffset = m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
-	m_GPUDataBuffer->Update(sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
+	VkDeviceSize sceneBufferOffset = m_GPUDataBuffer[currentFrame]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer[currentFrame]->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
+	m_GPUDataBuffer[currentFrame]->Update(sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
 
-	m_GlobalDescriptorSets->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
+	m_GlobalDescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
 
 	Render(currentFrame, commandBuffer, m_TexturedPipeline->GetHandle());
 	Render(currentFrame, commandBuffer, m_ColoredPipeline->GetHandle());
@@ -436,14 +453,14 @@ void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& com
 	if (m_Ship.GetGraphicsPipeline()->GetHandle() != graphicsPipeline && graphicsPipeline != m_WireframePipeline->GetHandle())
 		return;
 
-	m_Ship.DescriptorSets->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
+	m_Ship.DescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
 
 	Engine::ApplicationCore::ObjectGPUData objectGPUData = Engine::ApplicationCore::ObjectGPUData();
 	objectGPUData.model = m_Ship.GetModelMatrix();
 
 	//VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-	m_GPUDataBuffer->Update(objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
+	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame]->Chunks[OBJECT_BUFFER_INDEX].DataSize;
+	m_GPUDataBuffer[currentFrame]->Update(objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
 
 	for (const auto& mesh : m_Ship.Meshes) {
 		vkCmdPushConstants(

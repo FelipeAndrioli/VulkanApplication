@@ -33,7 +33,9 @@ namespace Assets {
 	void Object::ResetResources() {
 		Meshes.clear();
 
-		DescriptorSets.reset();
+		for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+			DescriptorSets[i].reset();
+		}
 	}
 
 	void Object::AddMeshes(std::vector<Assets::Mesh> meshes) {

@@ -20,17 +20,6 @@ namespace Engine {
 
 		inline VkDescriptorSetLayout& GetHandle() { return m_DescriptorSetLayout; };
 		std::vector<DescriptorBinding>& GetDescriptorBindings() { return m_DescriptorBindings; }
-
-		void Update(
-			const size_t index, 
-			Buffer* buffer, 
-			std::vector<Assets::Texture>* textures, 
-			Assets::Texture* texture, 
-			size_t bufferSize, 
-			size_t bufferOffset
-		);
-		
-		void UpdateOffset(size_t index, size_t bufferOffset) { m_DescriptorBindings[index].bufferOffset = bufferOffset; }
 	private:
 		VkDescriptorSetLayout m_DescriptorSetLayout;
 		std::vector<DescriptorBinding> m_DescriptorBindings;
@@ -46,11 +35,6 @@ namespace Engine {
 		DescriptorSetLayoutBuilder& SetDescriptorCount(uint32_t descriptorCount);
 		DescriptorSetLayoutBuilder& SetType(VkDescriptorType type);
 		DescriptorSetLayoutBuilder& SetStage(VkShaderStageFlags stage);
-		DescriptorSetLayoutBuilder& SetResource(Buffer& buffer);
-		DescriptorSetLayoutBuilder& SetResource(std::vector<Assets::Texture>& textures);
-		DescriptorSetLayoutBuilder& SetResource(Assets::Texture& texture);
-		DescriptorSetLayoutBuilder& SetBufferSize(VkDeviceSize bufferSize);
-		DescriptorSetLayoutBuilder& SetBufferOffset(VkDeviceSize bufferOffset);
 		DescriptorSetLayoutBuilder& Add();
 		std::unique_ptr<class DescriptorSetLayout> Build(VkDevice& logicalDevice);
 

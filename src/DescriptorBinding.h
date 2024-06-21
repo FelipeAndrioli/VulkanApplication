@@ -14,11 +14,6 @@ namespace Engine {
 		uint32_t descriptorCount = 0;
 		VkDescriptorType type;
 		VkShaderStageFlags stage;
-		Buffer* buffer = nullptr;
-		std::vector<Assets::Texture>* textures = nullptr;
-		Assets::Texture* texture = nullptr;
-		VkDeviceSize bufferSize = 0;
-		VkDeviceSize bufferOffset = 0;
 	};
 
 	struct PoolDescriptorBinding {

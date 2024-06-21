@@ -27,12 +27,13 @@ namespace Engine {
 
 		~DescriptorSets();
 		VkDescriptorSet& GetHandle() { return m_DescriptorSet; }
-		void WriteDescriptorUniformBuffer(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding);
-		void WriteDescriptorImages(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding);
-		void WriteDescriptorImage(const VkDevice& logicalDevice, const VkDescriptorSet& descriptorSet, const DescriptorBinding& descriptorBinding);
+		void WriteDescriptorUniformBuffer(const VkDevice& logicalDevice, const DescriptorBinding& descriptorBinding, 
+			const VkBuffer& buffer, const size_t bufferSize, const size_t bufferOffset);
+		void WriteDescriptorImages(const VkDevice& logicalDevice, const DescriptorBinding& descriptorBinding, std::vector<Assets::Texture>& textures);
+		void WriteDescriptorImage(const VkDevice& logicalDevice, const DescriptorBinding& descriptorBinding, Assets::Texture& texture);
 		void Bind(const VkCommandBuffer& commandBuffer, const VkPipelineBindPoint& bindPoint, const VkPipelineLayout& pipelineLayout);
 	private:
-		VkDescriptorSet m_DescriptorSet;
+		VkDescriptorSet m_DescriptorSet = VK_NULL_HANDLE;
 		uint32_t m_Set = 0;
 		uint32_t m_SetCount = 0;
 	};
