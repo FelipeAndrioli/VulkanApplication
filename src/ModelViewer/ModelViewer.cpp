@@ -78,16 +78,16 @@ private:
 	static const int VERTEX_BUFFER_INDEX = 1;
 	const std::string DEFAULT_GRAPHICS_PIPELINE = "defaultPipeline";
 
-	uint32_t m_Width = 0;
-	uint32_t m_Height = 0;
+	uint32_t m_ScreenWidth = 0;
+	uint32_t m_ScreenHeight = 0;
 };
 
 void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 
-	m_Width = m_Settings.Width;
-	m_Height = m_Settings.Height;
+	m_ScreenWidth = m_Settings.Width;
+	m_ScreenHeight = m_Settings.Height;
 
-	m_Camera = new Assets::Camera(glm::vec3(0.6f, 2.1f, 9.2f), 45.0f, -113.0f, -1.7f, m_Width, m_Height);
+	m_Camera = new Assets::Camera(glm::vec3(0.6f, 2.1f, 9.2f), 45.0f, -113.0f, -1.7f, m_ScreenWidth, m_ScreenHeight);
 
 	m_Model.ID = "Ship";
 	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/ship_pinnace_4k.gltf";
