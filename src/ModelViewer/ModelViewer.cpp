@@ -47,7 +47,7 @@ private:
 	Engine::Settings m_Settings = {};
 
 	// TODO: make it an array
-	Assets::Object m_Ship = {};
+	Assets::Object m_Model = {};
 		
 	Engine::ApplicationCore::SceneGPUData m_SceneGPUData;
 
@@ -89,16 +89,24 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 
 	m_Camera = new Assets::Camera(glm::vec3(0.6f, 2.1f, 9.2f), 45.0f, -113.0f, -1.7f, m_Width, m_Height);
 
-	m_Ship.ID = "Ship";
-	m_Ship.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/ship_pinnace_4k.gltf";
-	m_Ship.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/";
-	m_Ship.FlipTexturesVertically = true;
-	m_Ship.Transformations.translation.x = -10.8f;
-	m_Ship.Transformations.translation.y = -2.5f;
-	m_Ship.Transformations.rotation.y = 45.0f;
-	m_Ship.Transformations.scaleHandler = 0.2f;
+	m_Model.ID = "Ship";
+	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/ship_pinnace_4k.gltf";
+	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/";
 
-	Engine::Utils::ModelLoader::LoadModelAndMaterials(m_Ship, m_Materials, m_Textures, vulkanEngine);
+	/*
+	m_Model.ID = "Sponza";
+	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
+	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/";
+	m_Model.Transformations.scaleHandler = 0.008f;
+	*/
+
+	m_Model.FlipTexturesVertically = true;
+	m_Model.Transformations.translation.x = -10.8f;
+	m_Model.Transformations.translation.y = -2.5f;
+	m_Model.Transformations.rotation.y = 45.0f;
+	m_Model.Transformations.scaleHandler = 0.2f;
+
+	Engine::Utils::ModelLoader::LoadModelAndMaterials(m_Model, m_Materials, m_Textures, vulkanEngine);
 
 	std::vector<std::string> cubeTextures = {
 		"./Textures/right.jpg",
@@ -144,7 +152,7 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	// GPU Data Buffer End
 
 	// Scene Geometry Buffer Begin
-	VkDeviceSize sceneGeometryBufferSize = sizeof(uint32_t) * m_Ship.IndicesAmount + sizeof(Assets::Vertex) * m_Ship.VerticesAmount;
+	VkDeviceSize sceneGeometryBufferSize = sizeof(uint32_t) * m_Model.IndicesAmount + sizeof(Assets::Vertex) * m_Model.VerticesAmount;
 	/*
 	VkDeviceSize bufferSize = sizeof(uint32_t) * p_ActiveScene->Indices.size()
 		+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
@@ -155,13 +163,13 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	m_SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	//m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * p_ActiveScene->Indices.size() });
-	m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * m_Ship.IndicesAmount });
+	m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * m_Model.IndicesAmount });
 	//m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size() });
-	m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * m_Ship.VerticesAmount });
+	m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * m_Model.VerticesAmount });
 
 	size_t indexOffset = 0;
 
-	for (auto mesh : m_Ship.Meshes) {
+	for (auto mesh : m_Model.Meshes) {
 
 		Engine::BufferHelper::AppendData(
 			vulkanEngine,
@@ -178,7 +186,7 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	
 	size_t vertexOffset = indexOffset;
 
-	for (auto mesh : m_Ship.Meshes) {
+	for (auto mesh : m_Model.Meshes) {
 		Engine::BufferHelper::AppendData(
 			vulkanEngine,
 			mesh.Vertices,
@@ -255,14 +263,14 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0]->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 
 	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		m_Ship.DescriptorSets[i] = std::make_unique<class Engine::DescriptorSets>(
+		m_Model.DescriptorSets[i] = std::make_unique<class Engine::DescriptorSets>(
 			vulkanEngine.GetLogicalDevice().GetHandle(),
 			m_DescriptorPool->GetHandle(),
 			*m_ObjectGPUDataDescriptorSetLayout.get(),
 			0,
 			1
 		);
-		m_Ship.DescriptorSets[i]->WriteDescriptorUniformBuffer(
+		m_Model.DescriptorSets[i]->WriteDescriptorUniformBuffer(
 			vulkanEngine.GetLogicalDevice().GetHandle(),
 			m_ObjectGPUDataDescriptorSetLayout->GetDescriptorBindings()[0],
 			m_GPUDataBuffer[i]->GetHandle(),
@@ -366,13 +374,13 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 		.BuildGraphicsPipeline(vulkanEngine);
 	// Create pipelines end 
 
-	m_Ship.SetGraphicsPipeline(m_TexturedPipeline.get());
+	m_Model.SetGraphicsPipeline(m_TexturedPipeline.get());
 }
 
 void ModelViewer::CleanUp() {
 	delete m_Camera;
 
-	m_Ship.ResetResources();
+	m_Model.ResetResources();
 
 	m_ObjectGPUDataDescriptorSetLayout.reset();
 	m_GlobalDescriptorSetLayout.reset();
@@ -401,7 +409,7 @@ void ModelViewer::CleanUp() {
 
 void ModelViewer::Update(float d, Engine::InputSystem::Input& input) {
 	m_Camera->OnUpdate(d, input);
-	m_Ship.OnUpdate(d);
+	m_Model.OnUpdate(d);
 }
 
 void RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline) {
@@ -412,7 +420,7 @@ void RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphi
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	//VkDeviceSize offsets[] = { p_ActiveScene->VertexOffset };
-	VkDeviceSize offsets[] = { sizeof(uint32_t) * m_Ship.IndicesAmount };
+	VkDeviceSize offsets[] = { sizeof(uint32_t) * m_Model.IndicesAmount };
 
 	vkCmdBindVertexBuffers(
 		commandBuffer,
@@ -450,19 +458,19 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline) {
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-	if (m_Ship.GetGraphicsPipeline()->GetHandle() != graphicsPipeline && graphicsPipeline != m_WireframePipeline->GetHandle())
+	if (m_Model.GetGraphicsPipeline()->GetHandle() != graphicsPipeline && graphicsPipeline != m_WireframePipeline->GetHandle())
 		return;
 
-	m_Ship.DescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
+	m_Model.DescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
 
 	Engine::ApplicationCore::ObjectGPUData objectGPUData = Engine::ApplicationCore::ObjectGPUData();
-	objectGPUData.model = m_Ship.GetModelMatrix();
+	objectGPUData.model = m_Model.GetModelMatrix();
 
 	//VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame]->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 	m_GPUDataBuffer[currentFrame]->Update(objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
 
-	for (const auto& mesh : m_Ship.Meshes) {
+	for (const auto& mesh : m_Model.Meshes) {
 		vkCmdPushConstants(
 			commandBuffer,
 			m_MainPipelineLayout->GetHandle(),
@@ -489,7 +497,7 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox("Render SKybox", &m_Settings.renderSkybox);
 
 	m_Camera->OnUIRender();
-	m_Ship.OnUIRender();
+	m_Model.OnUIRender();
 }
 
 bool ModelViewer::IsDone(Engine::InputSystem::Input& input) {
