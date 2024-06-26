@@ -5,9 +5,11 @@
 #include <optional>
 #include <string>
 #include <set>
+#include <algorithm>
 #include <assert.h>
 
 #include "VulkanHeader.h"
+#include "Window.h"
 
 namespace PhysicalDevice {
 
@@ -15,12 +17,6 @@ namespace PhysicalDevice {
 	const std::vector<const char*> c_DeviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
-	};
-
-	struct SwapChainSupportDetails {
-		VkSurfaceCapabilitiesKHR capabilities;
-		std::vector<VkSurfaceFormatKHR> formats;
-		std::vector<VkPresentModeKHR> presentModes;
 	};
 
 	struct QueueFamilyIndices {
@@ -34,7 +30,6 @@ namespace PhysicalDevice {
 	};
 
 	VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
-	SwapChainSupportDetails QuerySwapChainSupportDetails(VkPhysicalDevice& device, VkSurfaceKHR& surface);
 	QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice& device, VkSurfaceKHR& surface);
 	bool isDeviceSuitable(const VkPhysicalDevice& device, const VkSurfaceKHR& surface);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
@@ -76,11 +71,25 @@ namespace DebugMessenger {
 	VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 }
 
+namespace SwapChain {
+	struct SwapChainSupportDetails {
+		VkSurfaceCapabilitiesKHR capabilities;
+		std::vector<VkSurfaceFormatKHR> formats;
+		std::vector<VkPresentModeKHR> presentModes;
+	};
+
+	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, VkSwapchainKHR& swapChain, std::vector<VkImage> swapChainImages, VkFormat& swapChainImageFormat, VkExtent2D& swapChainExtent, const VkExtent2D& currentExtent);
+	void CreateImageViews(VkDevice& logicalDevice, std::vector<VkImageView> swapChainImageViews, size_t swapChainImages);
+	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, const VkExtent2D& extent);
+}
+
 namespace Engine {
 	
 	class GraphicsDevice {
 	public:
-		GraphicsDevice(GLFWwindow& window);
+		GraphicsDevice(Window& window);
 		~GraphicsDevice();
 
 	private:
@@ -89,8 +98,9 @@ namespace Engine {
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
 		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
+		VkSwapchainKHR m_SwapChain = VK_NULL_HANDLE;
 
-		PhysicalDevice::SwapChainSupportDetails m_SwapChainSupportDetails;
+		SwapChain::SwapChainSupportDetails m_SwapChainSupportDetails;
 		PhysicalDevice::QueueFamilyIndices m_QueueFamilyIndices;
 		VkSampleCountFlagBits m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 		VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
@@ -98,6 +108,11 @@ namespace Engine {
 		VkQueue m_GraphicsQueue;
 		VkQueue m_PresentQueue;
 		VkQueue m_ComputeQueue;
+
+		std::vector<VkImage> m_SwapChainImages;
+		VkFormat m_SwapChainImageFormat;
+		VkExtent2D m_SwapChainExtent;
+		std::vector<VkImageView> m_SwapChainImageViews;
 
 
 	};
