@@ -1,6 +1,6 @@
 #include "GraphicsDevice.h"
 
-namespace PhysicalDevice {
+namespace Engine::Graphics {
 	VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface) {
 
 		assert(instance != VK_NULL_HANDLE);
@@ -86,7 +86,7 @@ namespace PhysicalDevice {
 		bool swapChainAdequate = false;
 
 		if (extensionsSupported) {
-			SwapChain::SwapChainSupportDetails swapChainSupport = SwapChain::QuerySwapChainSupportDetails(device, surface);
+			SwapChainSupportDetails swapChainSupport = QuerySwapChainSupportDetails(device, surface);
 			swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
 		}
 
@@ -131,19 +131,16 @@ namespace PhysicalDevice {
 
 		return deviceProperties;
 	}
-}
 
-namespace Surface {
 	void CreateSurface(VkInstance& instance, GLFWwindow& window, VkSurfaceKHR& surface) {
 		assert(instance != VK_NULL_HANDLE, "Instance must not be VK_NULL_HANDLE");
 		assert(surface == VK_NULL_HANDLE, "Surface must be VK_NULL_HANDLE");
+
 		VkResult result = glfwCreateWindowSurface(instance, &window, nullptr, &surface);
 
 		assert(result == VK_SUCCESS);
 	}
-}
 
-namespace Instance {
 	void CreateInstance(VkInstance& instance) {
 
 		assert(instance == VK_NULL_HANDLE, "Instance must be VK_NULL_HANDLE!");
@@ -260,10 +257,8 @@ namespace Instance {
 
 		return extensions;
 	}
-}
 
-namespace LogicalDevice {
-	void CreateLogicalDevice(PhysicalDevice::QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice) {
+	void CreateLogicalDevice(QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice) {
 		assert(logicalDevice == VK_NULL_HANDLE, "Logical device must be VK_NULL_HANDLE");
 		assert(physicalDevice != VK_NULL_HANDLE, "Physical device must not be VK_NULL_HANDLE");
 
@@ -298,8 +293,8 @@ namespace LogicalDevice {
 
 		//createInfo.pEnabledFeatures = &deviceFeatures;
 
-		createInfo.enabledExtensionCount = static_cast<uint32_t>(PhysicalDevice::c_DeviceExtensions.size());
-		createInfo.ppEnabledExtensionNames = PhysicalDevice::c_DeviceExtensions.data();
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(c_DeviceExtensions.size());
+		createInfo.ppEnabledExtensionNames = c_DeviceExtensions.data();
 
 		VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingCreateInfo = {};
 		descriptorIndexingCreateInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
@@ -312,9 +307,9 @@ namespace LogicalDevice {
 
 		createInfo.pNext = &deviceFeatures2;
 
-		if (Instance::c_EnableValidationLayers) {
-			createInfo.enabledLayerCount = static_cast<uint32_t>(Instance::c_ValidationLayers.size());
-			createInfo.ppEnabledLayerNames = Instance::c_ValidationLayers.data();
+		if (c_EnableValidationLayers) {
+			createInfo.enabledLayerCount = static_cast<uint32_t>(c_ValidationLayers.size());
+			createInfo.ppEnabledLayerNames = c_ValidationLayers.data();
 		}
 		else {
 			createInfo.enabledLayerCount = 0;
@@ -332,9 +327,7 @@ namespace LogicalDevice {
 	void WaitIdle(VkDevice& logicalDevice) {
 		vkDeviceWaitIdle(logicalDevice);
 	}
-}
 
-namespace DebugMessenger {
 	VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -392,9 +385,7 @@ namespace DebugMessenger {
 			func(instance, debugMessenger, pAllocator);
 		}
 	}
-}
 
-namespace SwapChain {
 	SwapChainSupportDetails QuerySwapChainSupportDetails(VkPhysicalDevice& device, VkSurfaceKHR& surface) {
 		SwapChainSupportDetails details;
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
@@ -451,8 +442,7 @@ namespace SwapChain {
 		}
 	}
 
-	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, VkSwapchainKHR& swapChain,
-		std::vector<VkImage> swapChainImages, VkFormat& swapChainImageFormat, VkExtent2D& swapChainExtent, const VkExtent2D& currentExtent) {
+	void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent) {
 		SwapChainSupportDetails swapChainSupport = QuerySwapChainSupportDetails(physicalDevice, surface);
 
 		VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -475,7 +465,7 @@ namespace SwapChain {
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-		PhysicalDevice::QueueFamilyIndices indices = PhysicalDevice::FindQueueFamilies(physicalDevice, surface);
+		QueueFamilyIndices indices = FindQueueFamilies(physicalDevice, surface);
 		uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
 		if (indices.graphicsFamily != indices.presentFamily) {
@@ -501,26 +491,26 @@ namespace SwapChain {
 		createInfo.clipped = VK_TRUE;
 		createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-		if (vkCreateSwapchainKHR(logicalDevice, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
+		if (vkCreateSwapchainKHR(logicalDevice, &createInfo, nullptr, &swapChain.swapChain) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create swap chain!");
 		}
 
-		vkGetSwapchainImagesKHR(logicalDevice, swapChain, &imageCount, nullptr);
-		swapChainImages.resize(imageCount);
-		vkGetSwapchainImagesKHR(logicalDevice, swapChain, &imageCount, swapChainImages.data());
-		swapChainImageFormat = surfaceFormat.format;
-		swapChainExtent = extent;
+		vkGetSwapchainImagesKHR(logicalDevice, swapChain.swapChain, &imageCount, nullptr);
+		swapChain.swapChainImages.resize(imageCount);
+		vkGetSwapchainImagesKHR(logicalDevice, swapChain.swapChain, &imageCount, swapChain.swapChainImages.data());
+		swapChain.swapChainImageFormat = surfaceFormat.format;
+		swapChain.swapChainExtent = extent;
 	}
 
-	void CreateImageViews(VkDevice& logicalDevice, std::vector<VkImageView> swapChainImageViews, std::vector<VkImage> swapChainImages, VkFormat swapChainImageFormat) {
-		swapChainImageViews.resize(swapChainImages.size());
+	void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain) {
+		swapChain.swapChainImageViews.resize(swapChain.swapChainImages.size());
 
-		for (size_t i = 0; i < swapChainImages.size(); i++) {
+		for (size_t i = 0; i < swapChain.swapChainImages.size(); i++) {
 			VkImageViewCreateInfo createInfo{};
 			createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			createInfo.image = swapChainImages[i];
+			createInfo.image = swapChain.swapChainImages[i];
 			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			createInfo.format = swapChainImageFormat;
+			createInfo.format = swapChain.swapChainImageFormat;
 
 			createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 			createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -533,45 +523,71 @@ namespace SwapChain {
 			createInfo.subresourceRange.baseArrayLayer = 0;
 			createInfo.subresourceRange.layerCount = 1;
 
-			if (vkCreateImageView(logicalDevice, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
+			if (vkCreateImageView(logicalDevice, &createInfo, nullptr, &swapChain.swapChainImageViews[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to create image views");
 			}
 		}
 	}
 
-}
+	void DestroySwapChain(VkDevice& logicalDevice, SwapChain& swapChain) {
+		for (auto imageView : swapChain.swapChainImageViews) {
+			vkDestroyImageView(logicalDevice, imageView, nullptr);
+		}
 
-namespace Engine {
-	
+		vkDestroySwapchainKHR(logicalDevice, swapChain.swapChain, nullptr);
+	}
+
+	void RecreateSwapChain(Window& window, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain) {
+		VkExtent2D currentExtent = window.GetFramebufferSize();
+
+		while (currentExtent.width == 0 || currentExtent.height == 0) {
+			currentExtent = window.GetFramebufferSize();
+			window.WaitEvents();
+		}
+
+		vkDeviceWaitIdle(logicalDevice);
+
+		DestroySwapChain(logicalDevice, swapChain);
+		CreateSwapChainInternal(physicalDevice, logicalDevice, surface, swapChain, window.GetFramebufferSize());
+		CreateSwapChainImageViews(logicalDevice, swapChain);
+	}
+
+	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent) {
+		CreateSwapChainInternal(physicalDevice, logicalDevice, surface, swapChain, currentExtent);
+		CreateSwapChainImageViews(logicalDevice, swapChain);
+	}
+
 	GraphicsDevice::GraphicsDevice(Window& window) {
-		Instance::CreateInstance(m_VulkanInstance);
-		Surface::CreateSurface(m_VulkanInstance, *window.GetHandle(), m_Surface);
-		m_PhysicalDevice = PhysicalDevice::CreatePhysicalDevice(m_VulkanInstance, m_Surface);
+		CreateInstance(m_VulkanInstance);
+		CreateSurface(m_VulkanInstance, *window.GetHandle(), m_Surface);
+		m_PhysicalDevice = CreatePhysicalDevice(m_VulkanInstance, m_Surface);
 
-		m_PhysicalDeviceProperties = PhysicalDevice::GetDeviceProperties(m_PhysicalDevice);
+		m_PhysicalDeviceProperties = GetDeviceProperties(m_PhysicalDevice);
 
 		std::cout << "Selected device: " << m_PhysicalDeviceProperties.deviceName << '\n';
 		std::cout << "MSAA Samples: " << m_MsaaSamples << '\n';
 
-		m_MsaaSamples = PhysicalDevice::GetMaxSampleCount(m_PhysicalDeviceProperties);
-		m_QueueFamilyIndices = PhysicalDevice::FindQueueFamilies(m_PhysicalDevice, m_Surface);
+		m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
+		m_QueueFamilyIndices = FindQueueFamilies(m_PhysicalDevice, m_Surface);
 
-		LogicalDevice::CreateLogicalDevice(m_QueueFamilyIndices, m_PhysicalDevice, m_LogicalDevice);
-		LogicalDevice::CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.graphicsFamily.value(), m_GraphicsQueue);
-		LogicalDevice::CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.presentFamily.value(), m_PresentQueue);
-		LogicalDevice::CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.graphicsAndComputeFamily.value(), m_ComputeQueue);
+		CreateLogicalDevice(m_QueueFamilyIndices, m_PhysicalDevice, m_LogicalDevice);
+		CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.graphicsFamily.value(), m_GraphicsQueue);
+		CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.presentFamily.value(), m_PresentQueue);
+		CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.graphicsAndComputeFamily.value(), m_ComputeQueue);
 
-		DebugMessenger::CreateDebugMessenger(m_VulkanInstance, m_DebugMessenger);
-		
-		m_SwapChainSupportDetails = SwapChain::QuerySwapChainSupportDetails(m_PhysicalDevice, m_Surface);
-		SwapChain::CreateSwapChain(m_PhysicalDevice, m_LogicalDevice, m_Surface, m_SwapChain, m_SwapChainImages, m_SwapChainImageFormat, m_SwapChainExtent, window.GetFramebufferSize());
-		SwapChain::CreateImageViews(m_LogicalDevice, m_SwapChainImageViews, m_SwapChainImages, m_SwapChainImageFormat);
+		CreateDebugMessenger(m_VulkanInstance, m_DebugMessenger);
 	}
 
 	GraphicsDevice::~GraphicsDevice() {
-		DebugMessenger::DestroyDebugUtilsMessengerEXT(m_VulkanInstance, m_DebugMessenger, nullptr);
+		DestroyDebugUtilsMessengerEXT(m_VulkanInstance, m_DebugMessenger, nullptr);
 		vkDestroyDevice(m_LogicalDevice, nullptr);
 		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
 		vkDestroyInstance(m_VulkanInstance, nullptr);
+	}
+
+	bool GraphicsDevice::CreateSwapChain(Window& window, SwapChain& swapChain) {
+		Engine::Graphics::CreateSwapChain(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
+
+		return true;
 	}
 }

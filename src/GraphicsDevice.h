@@ -11,8 +11,7 @@
 #include "VulkanHeader.h"
 #include "Window.h"
 
-namespace PhysicalDevice {
-
+namespace Engine::Graphics {
 	const int DEDICATED_GPU = 2;
 	const std::vector<const char*> c_DeviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -34,11 +33,9 @@ namespace PhysicalDevice {
 	bool isDeviceSuitable(const VkPhysicalDevice& device, const VkSurfaceKHR& surface);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 	VkSampleCountFlagBits GetMaxSampleCount(VkPhysicalDeviceProperties deviceProperties);
-		
-	std::vector<VkPhysicalDevice> m_AvailablePhysicalDevices;
-}
 
-namespace Instance {
+	std::vector<VkPhysicalDevice> m_AvailablePhysicalDevices;
+
 #ifndef NDEBUG
 	const bool c_EnableValidationLayers = true;
 #else
@@ -51,69 +48,63 @@ namespace Instance {
 
 	void CreateInstance(VkInstance& instance);
 	bool checkValidationLayerSupport();
-}
 
-namespace Surface {
 	void CreateSurface(VkInstance& instance, GLFWwindow& window, VkSurfaceKHR& surface);
-}
 
-namespace LogicalDevice {
-	void CreateLogicalDevice(PhysicalDevice::QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice);
+	void CreateLogicalDevice(QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice);
 	void CreateQueue(VkDevice& logicalDevice, uint32_t queueFamilyIndex, VkQueue& queue);
 	void WaitIdle(VkDevice& logicalDevice);
-}
 
-namespace DebugMessenger {
 	VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 	void CreateDebugMessenger(VkInstance& instance, VkDebugUtilsMessengerEXT& debugMessenger);
 	VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
-}
 
-namespace SwapChain {
 	struct SwapChainSupportDetails {
 		VkSurfaceCapabilitiesKHR capabilities;
 		std::vector<VkSurfaceFormatKHR> formats;
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
-	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, VkSwapchainKHR& swapChain, std::vector<VkImage> swapChainImages, VkFormat& swapChainImageFormat, VkExtent2D& swapChainExtent, const VkExtent2D& currentExtent);
-	void CreateImageViews(VkDevice& logicalDevice, std::vector<VkImageView> swapChainImageViews, size_t swapChainImages);
-	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
-	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, const VkExtent2D& extent);
-}
+	struct SwapChain {
+		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
 
-namespace Engine {
-	
+		std::vector<VkImage> swapChainImages;
+		std::vector<VkImageView> swapChainImageViews;
+
+		VkFormat swapChainImageFormat;
+
+		VkExtent2D swapChainExtent;
+	};
+
+	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
+	void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
+	void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
+	void DestroySwapChain(VkDevice& logicalDevice, SwapChain& swapChain);
+	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>&availableFormats);
+	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>&availablePresentModes);
+	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabilities, const VkExtent2D & extent);
+
 	class GraphicsDevice {
 	public:
 		GraphicsDevice(Window& window);
 		~GraphicsDevice();
 
-	private:
+		bool CreateSwapChain(Window& window, SwapChain& swapChain);
+
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
 		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
-		VkSwapchainKHR m_SwapChain = VK_NULL_HANDLE;
 
-		SwapChain::SwapChainSupportDetails m_SwapChainSupportDetails;
-		PhysicalDevice::QueueFamilyIndices m_QueueFamilyIndices;
+		QueueFamilyIndices m_QueueFamilyIndices;
 		VkSampleCountFlagBits m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 		VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
-		
+
 		VkQueue m_GraphicsQueue;
 		VkQueue m_PresentQueue;
 		VkQueue m_ComputeQueue;
-
-		std::vector<VkImage> m_SwapChainImages;
-		VkFormat m_SwapChainImageFormat;
-		VkExtent2D m_SwapChainExtent;
-		std::vector<VkImageView> m_SwapChainImageViews;
-
-
 	};
 }
