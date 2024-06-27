@@ -17,7 +17,11 @@ namespace Engine {
 
 		m_SceneGPUData = {};
 		
-		m_VulkanEngine = std::make_unique<class VulkanEngine>(*m_Window.get());
+		//m_VulkanEngine = std::make_unique<class VulkanEngine>(*m_Window.get());
+		graphicsDevice = std::make_unique<Engine::Graphics::GraphicsDevice>(*m_Window.get());
+		bool success = graphicsDevice->CreateSwapChain(*m_Window.get(), swapChain);
+
+		assert(success);
 	}
 	
 	ApplicationCore::~ApplicationCore() {

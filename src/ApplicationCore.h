@@ -13,6 +13,8 @@
 #include "UI.h"
 #include "Settings.h"
 
+#include "GraphicsDevice.h"
+
 #include "Input/Input.h"
 #include "Assets/Object.h"
 
@@ -72,5 +74,8 @@ namespace Engine {
 		std::unique_ptr<Window> m_Window;
 		std::unique_ptr<InputSystem::Input> m_Input;
 		std::unique_ptr<Engine::VulkanEngine> m_VulkanEngine;
+
+		Engine::Graphics::SwapChain swapChain;
+		std::unique_ptr<Engine::Graphics::GraphicsDevice> graphicsDevice;
 	};
 }
