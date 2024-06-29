@@ -10,8 +10,11 @@
 
 #include "VulkanHeader.h"
 #include "Window.h"
+#include "CommandBuffer.h"
+#include "Graphics.h"
 
 namespace Engine::Graphics {
+	const int FRAMES_IN_FLIGHT = 2;
 	const int DEDICATED_GPU = 2;
 	const std::vector<const char*> c_DeviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -72,20 +75,31 @@ namespace Engine::Graphics {
 
 		std::vector<VkImage> swapChainImages;
 		std::vector<VkImageView> swapChainImageViews;
+		std::vector<VkSemaphore> imageAvailableSemaphores;
 
 		VkFormat swapChainImageFormat;
 
 		VkExtent2D swapChainExtent;
+
+		uint32_t imageIndex;
 	};
 
 	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 	void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 	void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
 	void DestroySwapChain(VkDevice& logicalDevice, SwapChain& swapChain);
+	void RecreateSwapChain(Window& window, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain);
+	void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain);
+	void CreateCommandPool(VkDevice& logicalDevice, VkCommandPool& commandPool, uint32_t queueFamilyIndex);
 	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>&availableFormats);
 	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>&availablePresentModes);
 	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabilities, const VkExtent2D & extent);
+	void BeginCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);
+	void EndCommandBuffer(VkCommandBuffer& commandBuffer);
 
+	VkCommandBuffer BeginSingleTimeCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool);
+	void EndSingleTimeCommandBuffer(VkDevice& logicalDevice, VkQueue& queue, VkCommandBuffer& commandBuffer, VkCommandPool& commandPool);
+	
 	class GraphicsDevice {
 	public:
 		GraphicsDevice(Window& window);
@@ -93,11 +107,19 @@ namespace Engine::Graphics {
 
 		bool CreateSwapChain(Window& window, SwapChain& swapChain);
 
+		void WaitIdle();
+		void CreateFramesResources();
+		void BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer);
+		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
+
+		VkCommandBuffer* BeginFrame(SwapChain& swapChain);
+
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
 		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
+		VkCommandPool m_CommandPool = VK_NULL_HANDLE;
 
 		QueueFamilyIndices m_QueueFamilyIndices;
 		VkSampleCountFlagBits m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -106,5 +128,12 @@ namespace Engine::Graphics {
 		VkQueue m_GraphicsQueue;
 		VkQueue m_PresentQueue;
 		VkQueue m_ComputeQueue;
+
+		VkFence frameFences[FRAMES_IN_FLIGHT];
+
+		uint32_t currentFrame = 0;
+
+		VkCommandBuffer commandBuffers[FRAMES_IN_FLIGHT];
+
 	};
 }

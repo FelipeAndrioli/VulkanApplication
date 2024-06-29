@@ -537,6 +537,10 @@ namespace Engine::Graphics {
 		vkDestroySwapchainKHR(logicalDevice, swapChain.swapChain, nullptr);
 	}
 
+	void WaitIdle(VkDevice& logicalDevice) {
+		vkDeviceWaitIdle(logicalDevice);
+	}
+
 	void RecreateSwapChain(Window& window, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain) {
 		VkExtent2D currentExtent = window.GetFramebufferSize();
 
@@ -545,16 +549,97 @@ namespace Engine::Graphics {
 			window.WaitEvents();
 		}
 
-		vkDeviceWaitIdle(logicalDevice);
+		WaitIdle(logicalDevice);
 
 		DestroySwapChain(logicalDevice, swapChain);
 		CreateSwapChainInternal(physicalDevice, logicalDevice, surface, swapChain, window.GetFramebufferSize());
 		CreateSwapChainImageViews(logicalDevice, swapChain);
+		CreateSwapChainSemaphores(logicalDevice, swapChain);
+	}
+
+	void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain) {
+
+		if (!swapChain.imageAvailableSemaphores.empty())
+			return;
+
+		VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		for (size_t i = 0; i < swapChain.swapChainImages.size(); i++) {
+			VkResult result = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &swapChain.imageAvailableSemaphores.emplace_back());
+			assert(result == VK_SUCCESS);
+		}
 	}
 
 	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent) {
 		CreateSwapChainInternal(physicalDevice, logicalDevice, surface, swapChain, currentExtent);
 		CreateSwapChainImageViews(logicalDevice, swapChain);
+		CreateSwapChainSemaphores(logicalDevice, swapChain);
+	}
+
+	void CreateCommandPool(VkDevice& logicalDevice, VkCommandPool& commandPool, uint32_t queueFamilyIndex) {
+		VkCommandPoolCreateInfo poolInfo{};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		poolInfo.queueFamilyIndex = queueFamilyIndex;
+
+		VkResult result = vkCreateCommandPool(logicalDevice, &poolInfo, nullptr, &commandPool);
+		assert(result == VK_SUCCESS);
+	}
+
+	void BeginCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer) {
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = commandPool;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandBufferCount = 1;
+
+		VkResult result = vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
+
+		assert(result == VK_SUCCESS);
+	}
+
+	void EndCommandBuffer(VkCommandBuffer& commandBuffer) {
+		VkResult result = vkEndCommandBuffer(commandBuffer);
+		assert(result == VK_SUCCESS);
+	}
+
+	VkCommandBuffer BeginSingleTimeCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool) {
+		assert(logicalDevice != VK_NULL_HANDLE);
+		assert(commandPool != VK_NULL_HANDLE);
+
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool = commandPool;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer commandBuffer = {};
+		vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
+
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		VkResult result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		assert(result == VK_SUCCESS);
+
+		return commandBuffer;
+	}
+
+	void EndSingleTimeCommandBuffer(VkDevice& logicalDevice, VkQueue& queue, VkCommandBuffer& commandBuffer, VkCommandPool& commandPool) {
+
+		vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		info.commandBufferCount = 1;
+		info.pCommandBuffers = &commandBuffer;
+
+		vkQueueSubmit(queue, 1, &info, VK_NULL_HANDLE);
+		vkQueueWaitIdle(queue);
+
+		vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
 	}
 
 	GraphicsDevice::GraphicsDevice(Window& window) {
@@ -576,6 +661,8 @@ namespace Engine::Graphics {
 		CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.graphicsAndComputeFamily.value(), m_ComputeQueue);
 
 		CreateDebugMessenger(m_VulkanInstance, m_DebugMessenger);
+		CreateFramesResources();
+		CreateCommandPool(m_LogicalDevice, m_CommandPool, m_QueueFamilyIndices.graphicsFamily.value());
 	}
 
 	GraphicsDevice::~GraphicsDevice() {
@@ -589,5 +676,104 @@ namespace Engine::Graphics {
 		Engine::Graphics::CreateSwapChain(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
 
 		return true;
+	}
+
+	void GraphicsDevice::WaitIdle() {
+		Engine::Graphics::WaitIdle(m_LogicalDevice);
+	}
+
+	void GraphicsDevice::CreateFramesResources() {
+		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+			{
+				VkFenceCreateInfo fenceCreateInfo = {};
+				fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+				VkResult result = vkCreateFence(m_LogicalDevice, &fenceCreateInfo, nullptr, &frameFences[i]);
+				assert(result == VK_SUCCESS);
+			}
+
+			{
+				VkCommandBufferAllocateInfo allocInfo = {};
+				allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+				allocInfo.commandPool = m_CommandPool;
+				allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				allocInfo.commandBufferCount = 1;
+
+				VkResult result = vkAllocateCommandBuffers(m_LogicalDevice, &allocInfo, &commandBuffers[i]);
+				assert(result == VK_SUCCESS);
+			}
+		}
+	}
+
+	VkCommandBuffer* GraphicsDevice::BeginFrame(SwapChain& swapChain) {
+		VkResult result;
+
+		vkWaitForFences(m_LogicalDevice, 1, &frameFences[currentFrame], VK_TRUE, UINT64_MAX);
+		
+		VkResult result = vkAcquireNextImageKHR(
+			m_LogicalDevice, 
+			swapChain.swapChain, 
+			UINT64_MAX,
+			swapChain.imageAvailableSemaphores[currentFrame],
+			VK_NULL_HANDLE, 
+			&swapChain.imageIndex
+		);
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+			return nullptr;
+		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+			throw std::runtime_error("Failed to acquire swap chain image!");
+		}
+
+		vkResetFences(m_LogicalDevice, 1, &frameFences[currentFrame]);
+
+		Engine::Graphics::BeginCommandBuffer(m_LogicalDevice, m_CommandPool, commandBuffers[currentFrame]);
+
+		return &commandBuffers[currentFrame];
+	}
+
+	void GraphcisDevice::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkFramebuffer& framebuffer, const Rect& rect) {
+		VkExtent2D renderArea = {};
+		renderArea.width = abs(rect.right - rect.left);
+		renderArea.height = abs(rect.top - rect.bottom);
+
+		std::array<VkClearValue, 2> clearValues{};
+		clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+
+		VkRenderPassBeginInfo renderPassBeginInfo{};
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass = renderPass;
+		renderPassBeginInfo.framebuffer = framebuffer;
+		renderPassBeginInfo.renderArea.offset = {0, 0};
+		renderPassBeginInfo.renderArea.extent = swapChainExtent;
+		renderPassBeginInfo.pNext = nullptr;
+		renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassBeginInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	}
+
+	void GraphicsDevice::BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer) {
+
+		VkViewport vp = {};
+		vp.x = 0.0f;
+		vp.y = 0.0f;
+		vp.width = viewport.width;
+		vp.height = viewport.height;
+		vp.minDepth = 0.0f;
+		vp.maxDepth = 1.0f;
+
+		vkCmdSetViewport(commandBuffer, 0, 1, &vp);
+	}
+
+	void GraphicsDevice::BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer) {
+
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent.width = abs(rect.right - rect.left);
+		scissor.extent.height = abs(rect.top - rect.bottom);
+
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 	}
 }
