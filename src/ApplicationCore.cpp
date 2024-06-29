@@ -15,8 +15,6 @@ namespace Engine {
 		m_Window->OnCursorMove = std::bind(&InputSystem::Input::ProcessCursorMove, m_Input.get(), std::placeholders::_1, std::placeholders::_2);
 		m_Window->OnCursorOnScreen = std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
 
-		m_SceneGPUData = {};
-		
 		//m_VulkanEngine = std::make_unique<class VulkanEngine>(*m_Window.get());
 		graphicsDevice = std::make_unique<Engine::Graphics::GraphicsDevice>(*m_Window.get());
 		bool success = graphicsDevice->CreateSwapChain(*m_Window.get(), swapChain);
@@ -35,7 +33,7 @@ namespace Engine {
 			glfwPollEvents();
 		}
 
-		m_VulkanEngine->GetLogicalDevice().WaitIdle();
+		graphicsDevice->WaitIdle();
 		TerminateApplication(scene);
 	}
 
@@ -53,7 +51,7 @@ namespace Engine {
 
 		if (m_ResizeApplication) {
 			m_ResizeApplication = false;
-			scene.Resize(m_VulkanEngine->GetSwapChain().GetSwapChainExtent().width, m_VulkanEngine->GetSwapChain().GetSwapChainExtent().height);
+			scene.Resize(m_Window->GetFramebufferSize().width, m_Window->GetFramebufferSize().height);
 		}
 
 		if (m_Vsync && timestep.GetSeconds() < (1 / 60.0f)) return true;

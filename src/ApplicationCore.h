@@ -70,7 +70,7 @@ namespace Engine {
 		uint32_t m_CurrentFrame = 0;
 		uint32_t m_ImageIndex = 0;
 
-		SceneGPUData m_SceneGPUData;
+		SceneGPUData m_SceneGPUData = {};
 		std::unique_ptr<Window> m_Window;
 		std::unique_ptr<InputSystem::Input> m_Input;
 		std::unique_ptr<Engine::VulkanEngine> m_VulkanEngine;
