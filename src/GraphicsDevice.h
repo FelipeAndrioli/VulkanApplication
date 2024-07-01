@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <vector>
+#include <array>
 #include <optional>
 #include <string>
 #include <set>
@@ -76,6 +77,7 @@ namespace Engine::Graphics {
 		std::vector<VkImage> swapChainImages;
 		std::vector<VkImageView> swapChainImageViews;
 		std::vector<VkSemaphore> imageAvailableSemaphores;
+		std::vector<VkSemaphore> renderFinishedSemaphores;
 
 		VkFormat swapChainImageFormat;
 
@@ -111,8 +113,14 @@ namespace Engine::Graphics {
 		void CreateFramesResources();
 		void BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer);
 		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
+		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkFramebuffer& framebuffer, const VkExtent2D renderArea);
+		void EndRenderPass(VkCommandBuffer& commandBuffer);
 
 		VkCommandBuffer* BeginFrame(SwapChain& swapChain);
+		void EndFrame(const VkDevice& logicalDevice, const VkCommandBuffer& commandBuffer, const SwapChain& swapChain);
+		void PresentFrame(const SwapChain& swapChain);
+
+		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent);
 
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
@@ -135,5 +143,6 @@ namespace Engine::Graphics {
 
 		VkCommandBuffer commandBuffers[FRAMES_IN_FLIGHT];
 
+		VkFramebuffer framebuffer;
 	};
 }

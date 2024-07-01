@@ -559,14 +559,17 @@ namespace Engine::Graphics {
 
 	void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain) {
 
-		if (!swapChain.imageAvailableSemaphores.empty())
-			return;
+		swapChain.imageAvailableSemaphores.clear();
+		swapChain.renderFinishedSemaphores.clear();
 
 		VkSemaphoreCreateInfo semaphoreCreateInfo = {};
 		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
 		for (size_t i = 0; i < swapChain.swapChainImages.size(); i++) {
 			VkResult result = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &swapChain.imageAvailableSemaphores.emplace_back());
+			assert(result == VK_SUCCESS);
+
+			result = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &swapChain.renderFinishedSemaphores.emplace_back());
 			assert(result == VK_SUCCESS);
 		}
 	}
@@ -732,11 +735,31 @@ namespace Engine::Graphics {
 		return &commandBuffers[currentFrame];
 	}
 
-	void GraphcisDevice::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkFramebuffer& framebuffer, const Rect& rect) {
-		VkExtent2D renderArea = {};
-		renderArea.width = abs(rect.right - rect.left);
-		renderArea.height = abs(rect.top - rect.bottom);
+	void GraphicsDevice::EndFrame(const VkDevice& logicalDevice, const VkCommandBuffer& commandBuffer, const SwapChain& swapChain) {
 
+		VkResult result = vkEndCommandBuffer(commandBuffer);
+		assert(result == VK_SUCCESS);
+
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		std::vector<VkCommandBuffer> cmdBuffers = { commandBuffer };
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &swapChain.imageAvailableSemaphores[currentFrame];
+
+		submitInfo.pWaitDstStageMask = waitStages;
+		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
+		submitInfo.pCommandBuffers = cmdBuffers.data();
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &swapChain.renderFinishedSemaphores[currentFrame];
+
+		result = vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, frameFences[currentFrame]);
+		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkFramebuffer& framebuffer, const VkExtent2D renderArea) {
 		std::array<VkClearValue, 2> clearValues{};
 		clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
 		clearValues[1].depthStencil = { 1.0f, 0 };
@@ -746,12 +769,16 @@ namespace Engine::Graphics {
 		renderPassBeginInfo.renderPass = renderPass;
 		renderPassBeginInfo.framebuffer = framebuffer;
 		renderPassBeginInfo.renderArea.offset = {0, 0};
-		renderPassBeginInfo.renderArea.extent = swapChainExtent;
+		renderPassBeginInfo.renderArea.extent = renderArea;
 		renderPassBeginInfo.pNext = nullptr;
 		renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 		renderPassBeginInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	}
+
+	void GraphicsDevice::EndRenderPass(VkCommandBuffer& commandBuffer) {
+		vkCmdEndRenderPass(commandBuffer);
 	}
 
 	void GraphicsDevice::BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer) {
@@ -775,5 +802,61 @@ namespace Engine::Graphics {
 		scissor.extent.height = abs(rect.top - rect.bottom);
 
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+	}
+
+	void GraphicsDevice::PresentFrame(const SwapChain& swapChain) {
+		VkResult result;
+
+		VkPresentInfoKHR presentInfo{};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.waitSemaphoreCount = 1;
+		//presentInfo.pWaitSemaphores = m_RenderFinishedSemaphores->GetHandle(currentFrame);
+		presentInfo.pWaitSemaphores = &swapChain.renderFinishedSemaphores[currentFrame];
+		
+		VkSwapchainKHR swapChains[] = { swapChain.swapChain };
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = swapChains;
+		presentInfo.pImageIndices = &swapChain.imageIndex;
+		presentInfo.pResults = nullptr;
+
+		result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+			currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
+			return;
+		} else {
+			assert(0);
+		}
+
+		// using modulo operator to ensure that the frame index loops around after every FRAMES_IN_FLIGHT enqueued frames
+		currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
+	}
+
+	void GraphicsDevice::CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent) {
+		std::vector<VkImageView> attachments(attachmentViews.size());
+
+		for (int i = 0; i < attachmentViews.size(); i++) {
+			attachments[i] = attachmentViews[i];
+		}
+
+		/*
+		std::array<VkImageView, 3> attachments = { 
+			m_RenderTarget->ImageView,
+			m_DepthBuffer->GetDepthBufferImageView(),
+			swapChain.swapChainImageViews[i]
+		};
+		*/
+
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = renderPass;
+		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		framebufferInfo.pAttachments = attachments.data();
+		framebufferInfo.width = framebufferExtent.width;
+		framebufferInfo.height = framebufferExtent.height;
+		framebufferInfo.layers = 1;
+
+		VkResult result = vkCreateFramebuffer(m_LogicalDevice, &framebufferInfo, nullptr, &framebuffer);
+		assert(result == VK_SUCCESS);
 	}
 }
