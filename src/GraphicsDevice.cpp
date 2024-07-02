@@ -849,6 +849,21 @@ namespace Engine::Graphics {
 		vkBindImageMemory(logicalDevice, image.Image, image.Memory, 0);
 	}
 
+	void AllocateMemory(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, GPUBuffer& buffer) {
+		VkMemoryRequirements memRequirements = GetMemoryRequirements(logicalDevice, buffer.Handle);
+
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memRequirements.size == 0 ? 256 : memRequirements.size;
+		allocInfo.memoryTypeIndex = FindMemoryType(physicalDevice, memRequirements.memoryTypeBits, buffer.MemoryProperty);
+
+		VkResult result = vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &buffer.Memory);
+
+		assert(result == VK_SUCCESS);
+
+		vkBindBufferMemory(logicalDevice, buffer.Handle, buffer.Memory, 0);
+	}
+
 	void CreateImageSampler(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, GPUImage& image, VkSamplerAddressMode addressMode) {
 		// TODO: add parameters as variables
 		VkSamplerCreateInfo samplerInfo{};
@@ -931,6 +946,35 @@ namespace Engine::Graphics {
 
 	bool HasStencilComponent(VkFormat format) {
 		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+	}
+
+	void CreateBuffer(VkDevice& logicalDevice, GPUBuffer& buffer) {
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = buffer.BufferSize == 0 ? 256 : buffer.BufferSize;
+		bufferInfo.usage = buffer.Usage;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		VkResult result = vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &buffer.Handle);
+
+		assert(result == VK_SUCCESS);
+	}
+
+	void CopyBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool, VkQueue& queue, VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset) {
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
+
+		VkBufferCopy copyRegion{};
+		copyRegion.srcOffset = srcOffset;
+		copyRegion.dstOffset = dstOffset;
+		copyRegion.size = size;
+
+		vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+		EndSingleTimeCommandBuffer(logicalDevice, queue, commandBuffer, commandPool);
+	}
+
+	void UpdateBuffer() {
+
 	}
 
 	GraphicsDevice::GraphicsDevice(Window& window) {
@@ -1223,8 +1267,8 @@ namespace Engine::Graphics {
 		return *this;
 	}
 
-	GraphicsDevice& GraphicsDevice::CopyBufferToImage(GPUImage& image, VkBuffer& srcBuffer) {
-		Engine::Graphics::CopyBufferToImage(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, image, srcBuffer);
+	GraphicsDevice& GraphicsDevice::CopyBufferToImage(GPUImage& image, GPUBuffer& srcBuffer) {
+		Engine::Graphics::CopyBufferToImage(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, image, srcBuffer.Handle);
 
 		return *this;
 	}
@@ -1304,5 +1348,39 @@ namespace Engine::Graphics {
 			.TransitionImageLayout(texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 			.CreateImageSampler(texture, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 		*/
+	}
+
+	void GraphicsDevice::CreateBuffer(GPUBuffer& buffer, size_t bufferSize, VkBufferUsageFlags usage) {
+		buffer.BufferSize = bufferSize;
+		buffer.Usage = usage;
+
+		Engine::Graphics::CreateBuffer(m_LogicalDevice, buffer);
+	}
+
+	GraphicsDevice& GraphicsDevice::AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty) {
+		buffer.MemoryProperty = memoryProperty;
+
+		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, buffer);
+
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset) {
+		Engine::Graphics::CopyBuffer(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, srcBuffer.Handle, dstBuffer.Handle, size, srcOffset, dstOffset);
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::AddBufferChunk(GPUBuffer& buffer, GPUBuffer::BufferChunk newChunk) {
+		buffer.Chunks.push_back(newChunk);
+
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, VkDeviceSize dataSize) {
+		vkMapMemory(m_LogicalDevice, buffer.Memory, offset, dataSize, 0, &buffer.MemoryMapped);
+		memcpy(buffer.MemoryMapped, data, dataSize);
+		vkUnmapMemory(m_LogicalDevice, buffer.Memory);
+
+		return *this;
 	}
 }

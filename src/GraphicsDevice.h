@@ -124,19 +124,20 @@ namespace Engine::Graphics {
 		GraphicsDevice& CreateImage(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageType imageType);
 		GraphicsDevice& CreateImageView(GPUImage& image, const VkImageViewType viewType, const VkImageAspectFlags aspectFlags, const uint32_t layerCount);
 		GraphicsDevice& RecreateImageView(GPUImage& image);
+		
 		GraphicsDevice& AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits memoryProperty);
+		GraphicsDevice& AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty);
 
 		GraphicsDevice& TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
 		GraphicsDevice& GenerateMipMaps(GPUImage& image);
 		GraphicsDevice& CreateImageSampler(GPUImage& image, VkSamplerAddressMode addressMode);
 		GraphicsDevice& RecreateImage(GPUImage& image);
 		GraphicsDevice& ResizeImage(GPUImage& image, uint32_t width, uint32_t height);
-		GraphicsDevice& CopyBufferToImage(GPUImage& image, VkBuffer& srcBuffer);
+		GraphicsDevice& CopyBufferToImage(GPUImage& image, GPUBuffer& srcBuffer);
+		GraphicsDevice& DestroyImage(GPUImage& image);
 
 		template <class T>
 		GraphicsDevice& UploadDataToImage(GPUImage& image, const T* data, const size_t dataSize);
-
-		GraphicsDevice& DestroyImage(GPUImage& image);
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent);
 		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
@@ -144,6 +145,11 @@ namespace Engine::Graphics {
 		GraphicsDevice& CreateTexture2D(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat);
 		GraphicsDevice& CreateCubeTexture(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat);
 
+		void CreateBuffer(GPUBuffer& buffer, size_t bufferSize, VkBufferUsageFlags usage);
+		GraphicsDevice& CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
+		GraphicsDevice& AddBufferChunk(GPUBuffer& buffer, GPUBuffer::BufferChunk newChunk);
+		GraphicsDevice& UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, VkDeviceSize dataSize);
+			
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
