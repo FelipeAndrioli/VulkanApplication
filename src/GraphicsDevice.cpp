@@ -1383,4 +1383,9 @@ namespace Engine::Graphics {
 
 		return *this;
 	}
+
+	GraphicsDevice& GraphicsDevice::DestroyBuffer(GPUBuffer& buffer) {
+		vkDestroyBuffer(m_LogicalDevice, buffer.Handle, nullptr);
+		vkFreeMemory(m_LogicalDevice, buffer.Memory, nullptr);
+	}
 }

@@ -149,6 +149,7 @@ namespace Engine::Graphics {
 		GraphicsDevice& CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
 		GraphicsDevice& AddBufferChunk(GPUBuffer& buffer, GPUBuffer::BufferChunk newChunk);
 		GraphicsDevice& UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, VkDeviceSize dataSize);
+		GraphicsDevice& DestroyBuffer(GPUBuffer& buffer);
 			
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
