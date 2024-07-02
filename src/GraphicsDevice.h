@@ -121,20 +121,24 @@ namespace Engine::Graphics {
 		void EndFrame(const VkDevice& logicalDevice, const VkCommandBuffer& commandBuffer, const SwapChain& swapChain);
 		void PresentFrame(const SwapChain& swapChain);
 
-		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent);
-		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
-
-		GraphicsDevice& CreateTexture2D(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format);
+		GraphicsDevice& CreateImage(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageType imageType);
 		GraphicsDevice& CreateImageView(GPUImage& image, const VkImageViewType viewType, const VkImageAspectFlags aspectFlags, const uint32_t layerCount);
 		GraphicsDevice& RecreateImageView(GPUImage& image);
-		GraphicsDevice& AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits properties);
+		GraphicsDevice& AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits memoryProperty);
+
 		GraphicsDevice& TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
 		GraphicsDevice& GenerateMipMaps(GPUImage& image);
 		GraphicsDevice& CreateImageSampler(GPUImage& image, VkSamplerAddressMode addressMode);
-		GraphicsDevice& RecreateTexture2D(GPUImage& image);
+		GraphicsDevice& RecreateImage(GPUImage& image);
 		GraphicsDevice& ResizeImage(GPUImage& image, uint32_t width, uint32_t height);
 		GraphicsDevice& CopyBufferToImage(GPUImage& image, VkBuffer& srcBuffer);
 		GraphicsDevice& DestroyImage(GPUImage& image);
+
+		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent);
+		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
+		void CreateRenderTarget(SwapChain& swapChain, GPUImage& renderTarget, uint32_t width, uint32_t height);
+		void CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat imageFormat);
+		GraphicsDevice& CreateTexture2D(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat);
 
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
