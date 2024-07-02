@@ -29,17 +29,18 @@ namespace Engine::Graphics {
 		uint32_t Width;
 		uint32_t Height;
 		uint32_t MipLevels;
-		VkSampleCountFlagBits MsaaSamples;
+		uint32_t LayerCount = 1;
 
 		VkDeviceMemory Memory;
 		void* MemoryMapped;
 
-		VkFormat Format;
-		VkImageTiling Tiling;
-		VkImageUsageFlagBits Usage;
-		VkMemoryPropertyFlagBits Properties;
-		VkImageAspectFlags AspectFlags;
+		VkFormat Format = VK_FORMAT_R8G8B8A8_SRGB;
+		VkImageTiling Tiling = VK_IMAGE_TILING_OPTIMAL;
+		VkImageUsageFlagBits Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+		VkMemoryPropertyFlagBits MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		VkImageAspectFlags AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 		VkImageViewType ViewType = VK_IMAGE_VIEW_TYPE_2D;
-		uint32_t LayerCount = 1;
+		VkSampleCountFlagBits MsaaSamples;
+		VkImageType ImageType = VK_IMAGE_TYPE_2D;
 	};
 }
