@@ -132,13 +132,17 @@ namespace Engine::Graphics {
 		GraphicsDevice& RecreateImage(GPUImage& image);
 		GraphicsDevice& ResizeImage(GPUImage& image, uint32_t width, uint32_t height);
 		GraphicsDevice& CopyBufferToImage(GPUImage& image, VkBuffer& srcBuffer);
+
+		template <class T>
+		GraphicsDevice& UploadDataToImage(GPUImage& image, const T* data, const size_t dataSize);
+
 		GraphicsDevice& DestroyImage(GPUImage& image);
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent);
 		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
-		void CreateRenderTarget(SwapChain& swapChain, GPUImage& renderTarget, uint32_t width, uint32_t height);
 		void CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat imageFormat);
 		GraphicsDevice& CreateTexture2D(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat);
+		GraphicsDevice& CreateCubeTexture(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat);
 
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;

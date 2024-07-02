@@ -1229,6 +1229,12 @@ namespace Engine::Graphics {
 		return *this;
 	}
 
+	template <class T>
+	GraphicsDevice& GraphicsDevice::UploadDataToImage(GPUImage& image, const T* data, const size_t dataSize) {
+		// TODO: Implement after reworking buffers
+		return *this;
+	}
+
 	GraphicsDevice& GraphicsDevice::DestroyImage(GPUImage& image) {
 		vkDestroySampler(m_LogicalDevice, image.ImageSampler, nullptr);
 		Engine::Graphics::DestroyImage(m_LogicalDevice, image);
@@ -1266,10 +1272,9 @@ namespace Engine::Graphics {
 		texture.Tiling = VK_IMAGE_TILING_OPTIMAL;
 		texture.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 		texture.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-		texture.MipLevels = mipLevels;
 		texture.Format = imageFormat;
 
-		CreateImage(texture, width, height, 0, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D);
+		CreateImage(texture, width, height, mipLevels, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D);
 		return *this;
 
 		/* Usage example.
@@ -1280,6 +1285,24 @@ namespace Engine::Graphics {
 			.CopyBufferToImage(texture, transferBuffer)
 			.GenerateMipMaps()
 			.CreateImageSampler(texture, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+		*/
+	}
+
+	GraphicsDevice& GraphicsDevice::CreateCubeTexture(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat) {
+		texture.Tiling = VK_IMAGE_TILING_OPTIMAL;
+		texture.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+		texture.AspectFlags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+		CreateImage(texture, width, height, mipLevels, imageFormat, VK_IMAGE_TYPE_2D);
+
+		/* Usage example.
+		CreateCubeTexture(texture, width, height, mipLevels, imageFormat)
+			.AllocateMemory(texture, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+			.CreateImageView(texture, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, 6)
+			.TransitionImageLayout(texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+			.UploadDataToImage(texture, nullptr, 1)
+			.TransitionImageLayout(texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+			.CreateImageSampler(texture, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 		*/
 	}
 }
