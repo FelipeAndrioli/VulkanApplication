@@ -43,4 +43,24 @@ namespace Engine::Graphics {
 		VkSampleCountFlagBits MsaaSamples;
 		VkImageType ImageType = VK_IMAGE_TYPE_2D;
 	};
+
+	struct GPUBuffer {
+
+		struct BufferChunk {
+			size_t DataSize;
+			size_t ChunkSize;
+		};
+
+		VkBuffer Handle = VK_NULL_HANDLE;
+		
+		VkBufferUsageFlags Usage;
+
+		size_t BufferSize = 0;
+
+		VkMemoryPropertyFlagBits MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		VkDeviceMemory Memory;
+		void* MemoryMapped;
+
+		std::vector<BufferChunk> Chunks;
+	};
 }
