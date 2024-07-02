@@ -897,11 +897,40 @@ namespace Engine::Graphics {
 		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, queue, commandBuffer, commandPool);
 	}
 
-
 	void DestroyImage(VkDevice& logicalDevice, GPUImage& image) {
 		vkDestroyImageView(logicalDevice, image.ImageView, nullptr);
 		vkDestroyImage(logicalDevice, image.Image, nullptr);
 		vkFreeMemory(logicalDevice, image.Memory, nullptr);
+	}
+
+	VkFormat FindDepthFormat(VkPhysicalDevice& physicalDevice) {
+		return FindSupportedFormat(physicalDevice,
+			{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+		);
+	}
+
+	VkFormat FindSupportedFormat(VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling,
+		VkFormatFeatureFlags features) {
+
+		for (VkFormat format : candidates) {
+			VkFormatProperties properties;
+			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &properties);
+
+			if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features) {
+				return format;
+			}
+			else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features) {
+				return format;
+			}
+		}
+
+		throw std::runtime_error("Failed to find supported format!");
+	}
+
+	bool HasStencilComponent(VkFormat format) {
+		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 	}
 
 	GraphicsDevice::GraphicsDevice(Window& window) {
@@ -1133,6 +1162,7 @@ namespace Engine::Graphics {
 
 	GraphicsDevice& GraphicsDevice::RecreateTexture2D(GPUImage& image) {
 		Engine::Graphics::CreateImage(m_LogicalDevice, image, VK_IMAGE_TYPE_2D);
+
 		return *this;
 	}
 
@@ -1148,27 +1178,32 @@ namespace Engine::Graphics {
 
 	GraphicsDevice& GraphicsDevice::RecreateImageView(GPUImage& image) {
 		Engine::Graphics::CreateImageView(m_LogicalDevice, image);
+
 		return *this;
 	}
 
 	GraphicsDevice& GraphicsDevice::AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits properties) {
 		image.Properties = properties;
 		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, image);
+
 		return *this;
 	}
 
 	GraphicsDevice& GraphicsDevice::TransitionImageLayout(GPUImage& image, VkImageLayout newLayout) {
 		Engine::Graphics::TransitionImageLayout(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, image, newLayout);
+
 		return *this;
 	}
 
 	GraphicsDevice& GraphicsDevice::GenerateMipMaps(GPUImage& image) {
 		Engine::Graphics::GenerateImageMipMaps(m_PhysicalDevice, m_LogicalDevice, m_CommandPool, m_GraphicsQueue, image);
+
 		return *this;
 	}
 
 	GraphicsDevice& GraphicsDevice::CreateImageSampler(GPUImage& image, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT) {
 		Engine::Graphics::CreateImageSampler(m_PhysicalDevice, m_LogicalDevice, image, addressMode);
+
 		return *this;
 	}
 
@@ -1183,21 +1218,25 @@ namespace Engine::Graphics {
 
 		RecreateTexture2D(image);
 		RecreateImageView(image);
+
 		return *this;
 	}
 
 	GraphicsDevice& GraphicsDevice::CopyBufferToImage(GPUImage& image, VkBuffer& srcBuffer) {
 		Engine::Graphics::CopyBufferToImage(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, image, srcBuffer);
+
 		return *this;
 	}
 
 	GraphicsDevice& GraphicsDevice::DestroyImage(GPUImage& image) {
 		vkDestroySampler(m_LogicalDevice, image.ImageSampler, nullptr);
 		Engine::Graphics::DestroyImage(m_LogicalDevice, image);
+
 		return *this;
 	}
 
-	void CreateDepthBuffer() {
-			
+	void GraphicsDevice::CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height) {
+		CreateTexture2D(depthBuffer, width, height, 1, Engine::Graphics::FindDepthFormat(m_PhysicalDevice))
+			.CreateImageView(depthBuffer, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 	}
 }

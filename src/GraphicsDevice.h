@@ -122,6 +122,7 @@ namespace Engine::Graphics {
 		void PresentFrame(const SwapChain& swapChain);
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent);
+		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
 
 		GraphicsDevice& CreateTexture2D(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format);
 		GraphicsDevice& CreateImageView(GPUImage& image, const VkImageViewType viewType, const VkImageAspectFlags aspectFlags, const uint32_t layerCount);
