@@ -645,6 +645,265 @@ namespace Engine::Graphics {
 		vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
 	}
 
+	uint32_t FindMemoryType(VkPhysicalDevice& physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+				return i;
+			}
+		}
+
+		throw std::runtime_error("Failed to find suitable memory type!");
+	}
+
+	VkMemoryRequirements GetMemoryRequirements(VkDevice& logicalDevice, const VkBuffer& buffer) {
+		VkMemoryRequirements memRequirements;
+		vkGetBufferMemoryRequirements(logicalDevice, buffer, &memRequirements);
+
+		return memRequirements;
+	}
+
+	void CreateImage(VkDevice& logicalDevice, GPUImage& image, VkImageType imageType) {
+		VkImageCreateInfo imageCreateInfo{};
+		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imageCreateInfo.imageType = imageType;
+		imageCreateInfo.extent.width = image.Width;
+		imageCreateInfo.extent.height = image.Height;
+		imageCreateInfo.extent.depth = 1;
+		imageCreateInfo.mipLevels = image.MipLevels;
+		imageCreateInfo.arrayLayers = (uint32_t)(image.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6 : 1);
+
+		if (image.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
+			imageCreateInfo.flags = image.AspectFlags;
+		}
+
+		imageCreateInfo.format = image.Format;
+		imageCreateInfo.tiling = image.Tiling;
+		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageCreateInfo.usage = image.Usage;
+		imageCreateInfo.samples = image.MsaaSamples;
+		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		VkResult result = vkCreateImage(logicalDevice, &imageCreateInfo, nullptr, &image.Image);
+
+		assert(result == VK_SUCCESS);
+	}
+
+	void CreateImageView(VkDevice& logicalDevice, GPUImage& image) {
+		VkImageViewCreateInfo viewCreateInfo{};
+		viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewCreateInfo.image = image.Image;
+		viewCreateInfo.viewType = image.ViewType;
+		viewCreateInfo.format = image.Format;
+		viewCreateInfo.subresourceRange.aspectMask = image.AspectFlags;
+		viewCreateInfo.subresourceRange.baseMipLevel = 0;
+		viewCreateInfo.subresourceRange.levelCount = image.MipLevels;
+		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
+		viewCreateInfo.subresourceRange.layerCount = image.LayerCount;
+
+		if (vkCreateImageView(logicalDevice, &viewCreateInfo, nullptr, &image.ImageView) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create Image View!");
+		}
+	}
+
+	void TransitionImageLayout(VkDevice& logicalDevice, VkCommandPool& commandPool, VkQueue& graphicsQueue, GPUImage& image, VkImageLayout newLayout) {
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
+
+		VkImageMemoryBarrier barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.oldLayout = image.ImageLayout;
+		barrier.newLayout = newLayout;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = image.Image;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = image.MipLevels;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = image.LayerCount;
+
+		VkPipelineStageFlags sourceStage;
+		VkPipelineStageFlags dstStage;
+
+		if (image.ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		} else if (image.ImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		} else {
+			throw std::invalid_argument("Unsupported layout transition!");
+		}
+
+		vkCmdPipelineBarrier(
+			commandBuffer,
+			sourceStage,  
+			dstStage, 
+			0,
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&barrier
+		);
+
+		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, graphicsQueue, commandBuffer, commandPool);
+
+		image.ImageLayout = newLayout;
+	}
+
+	void GenerateImageMipMaps(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkCommandPool& commandPool, VkQueue& queue, GPUImage& image) {
+		VkFormatProperties formatProperties;
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, image.Format, &formatProperties);
+
+		if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
+			throw std::runtime_error("Texture image format does not support linear blitting!");
+		}
+
+		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
+
+		VkImageMemoryBarrier barrier = {};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.image = image.Image;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.subresourceRange.levelCount = 1;
+
+		int32_t mipWidth = image.Width;
+		int32_t mipHeight = image.Height;
+
+		for (uint32_t i = 1; i < image.MipLevels; i++) {
+			barrier.subresourceRange.baseMipLevel = i - 1;
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+			VkImageBlit blit = {};
+			blit.srcOffsets[0] = { 0, 0, 0 };
+			blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+			blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blit.srcSubresource.mipLevel = i - 1;
+			blit.srcSubresource.baseArrayLayer = 0;
+			blit.srcSubresource.layerCount = 1;
+			blit.dstOffsets[0] = { 0, 0, 0 };
+			blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+			blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blit.dstSubresource.mipLevel = i;
+			blit.dstSubresource.baseArrayLayer = 0;
+			blit.dstSubresource.layerCount = 1;
+
+			vkCmdBlitImage(commandBuffer, image.Image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+			if (mipWidth > 1) mipWidth /= 2;
+			if (mipHeight > 1) mipHeight /= 2;
+		}
+
+		barrier.subresourceRange.baseMipLevel = image.MipLevels - 1;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);		
+
+		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, queue, commandBuffer, commandPool);
+		
+		image.ImageLayout = barrier.newLayout;
+	}
+
+	void AllocateMemory(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, GPUImage& image) {
+		VkMemoryRequirements memRequirements;
+		vkGetImageMemoryRequirements(logicalDevice, image.Image, &memRequirements);
+		
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = FindMemoryType(physicalDevice, memRequirements.memoryTypeBits, image.Properties);
+
+		VkResult result = vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &image.Memory);
+
+		assert(result == VK_SUCCESS);
+
+		vkBindImageMemory(logicalDevice, image.Image, image.Memory, 0);
+	}
+
+	void CreateImageSampler(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, GPUImage& image, VkSamplerAddressMode addressMode) {
+		// TODO: add parameters as variables
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.addressModeU = addressMode;
+		samplerInfo.addressModeV = addressMode;
+		samplerInfo.addressModeW = addressMode;
+		samplerInfo.anisotropyEnable = VK_TRUE;
+
+		VkPhysicalDeviceProperties properties{};
+		vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+	
+		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = static_cast<float>(image.MipLevels);
+
+		VkResult result = vkCreateSampler(logicalDevice, &samplerInfo, nullptr, &image.ImageSampler);
+
+		assert(result == VK_SUCCESS);
+	}
+
+	void CopyBufferToImage(VkDevice& logicalDevice, VkCommandPool& commandPool, VkQueue& queue, GPUImage& image, VkBuffer& srcBuffer) {
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
+
+		VkBufferImageCopy region{};
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+		region.imageOffset = { 0, 0, 0 };
+		region.imageExtent = { image.Width, image.Height, 1 }; 
+
+		vkCmdCopyBufferToImage(commandBuffer, srcBuffer, image.Image, image.ImageLayout, 1, &region);
+
+		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, queue, commandBuffer, commandPool);
+	}
+
+
+	void DestroyImage(VkDevice& logicalDevice, GPUImage& image) {
+		vkDestroyImageView(logicalDevice, image.ImageView, nullptr);
+		vkDestroyImage(logicalDevice, image.Image, nullptr);
+		vkFreeMemory(logicalDevice, image.Memory, nullptr);
+	}
+
 	GraphicsDevice::GraphicsDevice(Window& window) {
 		CreateInstance(m_VulkanInstance);
 		CreateSurface(m_VulkanInstance, *window.GetHandle(), m_Surface);
@@ -858,5 +1117,87 @@ namespace Engine::Graphics {
 
 		VkResult result = vkCreateFramebuffer(m_LogicalDevice, &framebufferInfo, nullptr, &framebuffer);
 		assert(result == VK_SUCCESS);
+	}
+
+	GraphicsDevice& GraphicsDevice::CreateTexture2D(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format) {
+		image.Width = width;
+		image.Height = height;
+		image.MipLevels = mipLevels;
+		image.Format = format;
+		image.MsaaSamples = m_MsaaSamples;
+
+		Engine::Graphics::CreateImage(m_LogicalDevice, image, VK_IMAGE_TYPE_2D);
+
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::RecreateTexture2D(GPUImage& image) {
+		Engine::Graphics::CreateImage(m_LogicalDevice, image, VK_IMAGE_TYPE_2D);
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::CreateImageView(GPUImage& image, const VkImageViewType viewType, const VkImageAspectFlags aspectFlags, const uint32_t layerCount) {
+		image.ViewType = viewType;
+		image.AspectFlags = aspectFlags;
+		image.LayerCount = layerCount;
+
+		Engine::Graphics::CreateImageView(m_LogicalDevice, image);
+		
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::RecreateImageView(GPUImage& image) {
+		Engine::Graphics::CreateImageView(m_LogicalDevice, image);
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits properties) {
+		image.Properties = properties;
+		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, image);
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::TransitionImageLayout(GPUImage& image, VkImageLayout newLayout) {
+		Engine::Graphics::TransitionImageLayout(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, image, newLayout);
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::GenerateMipMaps(GPUImage& image) {
+		Engine::Graphics::GenerateImageMipMaps(m_PhysicalDevice, m_LogicalDevice, m_CommandPool, m_GraphicsQueue, image);
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::CreateImageSampler(GPUImage& image, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT) {
+		Engine::Graphics::CreateImageSampler(m_PhysicalDevice, m_LogicalDevice, image, addressMode);
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::ResizeImage(GPUImage& image, uint32_t width, uint32_t height) {
+		assert(image.ImageView != VK_NULL_HANDLE && "Image view must be created first!");
+		assert(image.Image != VK_NULL_HANDLE && "Image must be created first!");
+
+		Engine::Graphics::DestroyImage(m_LogicalDevice, image);
+
+		image.Width = width;
+		image.Height = height;
+
+		RecreateTexture2D(image);
+		RecreateImageView(image);
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::CopyBufferToImage(GPUImage& image, VkBuffer& srcBuffer) {
+		Engine::Graphics::CopyBufferToImage(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, image, srcBuffer);
+		return *this;
+	}
+
+	GraphicsDevice& GraphicsDevice::DestroyImage(GPUImage& image) {
+		vkDestroySampler(m_LogicalDevice, image.ImageSampler, nullptr);
+		Engine::Graphics::DestroyImage(m_LogicalDevice, image);
+		return *this;
+	}
+
+	void CreateDepthBuffer() {
+			
 	}
 }
