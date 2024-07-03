@@ -181,4 +181,9 @@ namespace Engine::Graphics {
 
 		VkFramebuffer framebuffer;
 	};
+
+	inline GraphicsDevice*& GetDevice() {
+		static GraphicsDevice* device = nullptr;
+		return device;
+	}
 }
