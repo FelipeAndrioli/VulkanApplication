@@ -668,22 +668,22 @@ namespace Engine::Graphics {
 	void CreateImage(VkDevice& logicalDevice, GPUImage& image) {
 		VkImageCreateInfo imageCreateInfo{};
 		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		imageCreateInfo.imageType = image.ImageType;
-		imageCreateInfo.extent.width = image.Width;
-		imageCreateInfo.extent.height = image.Height;
+		imageCreateInfo.imageType = image.Description.ImageType;
+		imageCreateInfo.extent.width = image.Description.Width;
+		imageCreateInfo.extent.height = image.Description.Height;
 		imageCreateInfo.extent.depth = 1;
-		imageCreateInfo.mipLevels = image.MipLevels;
-		imageCreateInfo.arrayLayers = (uint32_t)(image.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6 : 1);
+		imageCreateInfo.mipLevels = image.Description.MipLevels;
+		imageCreateInfo.arrayLayers = (uint32_t)(image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6 : 1);
 
-		if (image.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
-			imageCreateInfo.flags = image.AspectFlags;
+		if (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
+			imageCreateInfo.flags = image.Description.AspectFlags;
 		}
 
-		imageCreateInfo.format = image.Format;
-		imageCreateInfo.tiling = image.Tiling;
+		imageCreateInfo.format = image.Description.Format;
+		imageCreateInfo.tiling = image.Description.Tiling;
 		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageCreateInfo.usage = image.Usage;
-		imageCreateInfo.samples = image.MsaaSamples;
+		imageCreateInfo.usage = image.Description.Usage;
+		imageCreateInfo.samples = image.Description.MsaaSamples;
 		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkResult result = vkCreateImage(logicalDevice, &imageCreateInfo, nullptr, &image.Image);
@@ -695,13 +695,13 @@ namespace Engine::Graphics {
 		VkImageViewCreateInfo viewCreateInfo{};
 		viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewCreateInfo.image = image.Image;
-		viewCreateInfo.viewType = image.ViewType;
-		viewCreateInfo.format = image.Format;
-		viewCreateInfo.subresourceRange.aspectMask = image.AspectFlags;
+		viewCreateInfo.viewType = image.Description.ViewType;
+		viewCreateInfo.format = image.Description.Format;
+		viewCreateInfo.subresourceRange.aspectMask = image.Description.AspectFlags;
 		viewCreateInfo.subresourceRange.baseMipLevel = 0;
-		viewCreateInfo.subresourceRange.levelCount = image.MipLevels;
+		viewCreateInfo.subresourceRange.levelCount = image.Description.MipLevels;
 		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		viewCreateInfo.subresourceRange.layerCount = image.LayerCount;
+		viewCreateInfo.subresourceRange.layerCount = image.Description.LayerCount;
 
 		if (vkCreateImageView(logicalDevice, &viewCreateInfo, nullptr, &image.ImageView) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create Image View!");
@@ -720,9 +720,9 @@ namespace Engine::Graphics {
 		barrier.image = image.Image;
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = image.MipLevels;
+		barrier.subresourceRange.levelCount = image.Description.MipLevels;
 		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = image.LayerCount;
+		barrier.subresourceRange.layerCount = image.Description.LayerCount;
 
 		VkPipelineStageFlags sourceStage;
 		VkPipelineStageFlags dstStage;
@@ -763,7 +763,7 @@ namespace Engine::Graphics {
 
 	void GenerateImageMipMaps(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkCommandPool& commandPool, VkQueue& queue, GPUImage& image) {
 		VkFormatProperties formatProperties;
-		vkGetPhysicalDeviceFormatProperties(physicalDevice, image.Format, &formatProperties);
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, image.Description.Format, &formatProperties);
 
 		if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
 			throw std::runtime_error("Texture image format does not support linear blitting!");
@@ -781,10 +781,10 @@ namespace Engine::Graphics {
 		barrier.subresourceRange.layerCount = 1;
 		barrier.subresourceRange.levelCount = 1;
 
-		int32_t mipWidth = image.Width;
-		int32_t mipHeight = image.Height;
+		int32_t mipWidth = image.Description.Width;
+		int32_t mipHeight = image.Description.Height;
 
-		for (uint32_t i = 1; i < image.MipLevels; i++) {
+		for (uint32_t i = 1; i < image.Description.MipLevels; i++) {
 			barrier.subresourceRange.baseMipLevel = i - 1;
 			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -820,7 +820,7 @@ namespace Engine::Graphics {
 			if (mipHeight > 1) mipHeight /= 2;
 		}
 
-		barrier.subresourceRange.baseMipLevel = image.MipLevels - 1;
+		barrier.subresourceRange.baseMipLevel = image.Description.MipLevels - 1;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -840,7 +840,7 @@ namespace Engine::Graphics {
 		VkMemoryAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = FindMemoryType(physicalDevice, memRequirements.memoryTypeBits, image.MemoryProperty);
+		allocInfo.memoryTypeIndex = FindMemoryType(physicalDevice, memRequirements.memoryTypeBits, image.Description.MemoryProperty);
 
 		VkResult result = vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &image.Memory);
 
@@ -855,7 +855,7 @@ namespace Engine::Graphics {
 		VkMemoryAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size == 0 ? 256 : memRequirements.size;
-		allocInfo.memoryTypeIndex = FindMemoryType(physicalDevice, memRequirements.memoryTypeBits, buffer.MemoryProperty);
+		allocInfo.memoryTypeIndex = FindMemoryType(physicalDevice, memRequirements.memoryTypeBits, buffer.Description.MemoryProperty);
 
 		VkResult result = vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &buffer.Memory);
 
@@ -864,15 +864,15 @@ namespace Engine::Graphics {
 		vkBindBufferMemory(logicalDevice, buffer.Handle, buffer.Memory, 0);
 	}
 
-	void CreateImageSampler(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, GPUImage& image, VkSamplerAddressMode addressMode) {
+	void CreateImageSampler(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, GPUImage& image) {
 		// TODO: add parameters as variables
 		VkSamplerCreateInfo samplerInfo{};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		samplerInfo.magFilter = VK_FILTER_LINEAR;
 		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		samplerInfo.addressModeU = addressMode;
-		samplerInfo.addressModeV = addressMode;
-		samplerInfo.addressModeW = addressMode;
+		samplerInfo.addressModeU = image.Description.AddressMode;
+		samplerInfo.addressModeV = image.Description.AddressMode;
+		samplerInfo.addressModeW = image.Description.AddressMode;
 		samplerInfo.anisotropyEnable = VK_TRUE;
 
 		VkPhysicalDeviceProperties properties{};
@@ -886,7 +886,7 @@ namespace Engine::Graphics {
 		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 		samplerInfo.mipLodBias = 0.0f;
 		samplerInfo.minLod = 0.0f;
-		samplerInfo.maxLod = static_cast<float>(image.MipLevels);
+		samplerInfo.maxLod = static_cast<float>(image.Description.MipLevels);
 
 		VkResult result = vkCreateSampler(logicalDevice, &samplerInfo, nullptr, &image.ImageSampler);
 
@@ -905,7 +905,7 @@ namespace Engine::Graphics {
 		region.imageSubresource.baseArrayLayer = 0;
 		region.imageSubresource.layerCount = 1;
 		region.imageOffset = { 0, 0, 0 };
-		region.imageExtent = { image.Width, image.Height, 1 }; 
+		region.imageExtent = { image.Description.Width, image.Description.Height, 1 }; 
 
 		vkCmdCopyBufferToImage(commandBuffer, srcBuffer, image.Image, image.ImageLayout, 1, &region);
 
@@ -951,8 +951,8 @@ namespace Engine::Graphics {
 	void CreateBuffer(VkDevice& logicalDevice, GPUBuffer& buffer) {
 		VkBufferCreateInfo bufferInfo{};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = buffer.BufferSize == 0 ? 256 : buffer.BufferSize;
-		bufferInfo.usage = buffer.Usage;
+		bufferInfo.size = buffer.Description.BufferSize == 0 ? 256 : buffer.Description.BufferSize;
+		bufferInfo.usage = buffer.Description.Usage;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkResult result = vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &buffer.Handle);
@@ -1193,12 +1193,12 @@ namespace Engine::Graphics {
 	}
 
 	GraphicsDevice& GraphicsDevice::CreateImage(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageType imageType) {
-		image.Width = width;
-		image.Height = height;
-		image.MipLevels = mipLevels;
-		image.Format = format;
-		image.MsaaSamples = m_MsaaSamples;
-		image.ImageType = imageType;
+		image.Description.Width = width;
+		image.Description.Height = height;
+		image.Description.MipLevels = mipLevels;
+		image.Description.Format = format;
+		image.Description.MsaaSamples = m_MsaaSamples;
+		image.Description.ImageType = imageType;
 
 		Engine::Graphics::CreateImage(m_LogicalDevice, image);
 
@@ -1212,9 +1212,9 @@ namespace Engine::Graphics {
 	}
 
 	GraphicsDevice& GraphicsDevice::CreateImageView(GPUImage& image, const VkImageViewType viewType, const VkImageAspectFlags aspectFlags, const uint32_t layerCount) {
-		image.ViewType = viewType;
-		image.AspectFlags = aspectFlags;
-		image.LayerCount = layerCount;
+		image.Description.ViewType = viewType;
+		image.Description.AspectFlags = aspectFlags;
+		image.Description.LayerCount = layerCount;
 
 		Engine::Graphics::CreateImageView(m_LogicalDevice, image);
 		
@@ -1228,7 +1228,7 @@ namespace Engine::Graphics {
 	}
 
 	GraphicsDevice& GraphicsDevice::AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits memoryProperty) {
-		image.MemoryProperty = memoryProperty;
+		image.Description.MemoryProperty = memoryProperty;
 		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, image);
 
 		return *this;
@@ -1246,8 +1246,8 @@ namespace Engine::Graphics {
 		return *this;
 	}
 
-	GraphicsDevice& GraphicsDevice::CreateImageSampler(GPUImage& image, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT) {
-		Engine::Graphics::CreateImageSampler(m_PhysicalDevice, m_LogicalDevice, image, addressMode);
+	GraphicsDevice& GraphicsDevice::CreateImageSampler(GPUImage& image) {
+		Engine::Graphics::CreateImageSampler(m_PhysicalDevice, m_LogicalDevice, image);
 
 		return *this;
 	}
@@ -1258,8 +1258,8 @@ namespace Engine::Graphics {
 
 		Engine::Graphics::DestroyImage(m_LogicalDevice, image);
 
-		image.Width = width;
-		image.Height = height;
+		image.Description.Width = width;
+		image.Description.Height = height;
 
 		RecreateImage(image);
 		RecreateImageView(image);
@@ -1274,8 +1274,45 @@ namespace Engine::Graphics {
 	}
 
 	template <class T>
-	GraphicsDevice& GraphicsDevice::UploadDataToImage(GPUImage& image, const T* data, const size_t dataSize) {
-		// TODO: Implement after reworking buffers
+	GraphicsDevice& GraphicsDevice::UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize) {
+		assert(imageSize != 0);
+
+		GPUBuffer stagingBuffer = {};
+
+		CreateBuffer(stagingBuffer, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+		AllocateMemory(stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, 0, nullptr);
+		memcpy(stagingBuffer.MemoryMapped, data, dataSize);
+		vkUnmapMemory(m_LogicalDevice, stagingBuffer.Memory);
+
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(m_LogicalDevice, m_CommandPool);
+
+		const VkBufferImageCopy region = {
+			.bufferOffset = 0,
+			.bufferRowLength = 0,
+			.bufferImageHeight = 0,
+			.imageSubresource = VkImageSubresourceLayers {
+				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+				.mipLevel = dstImage.Description.MipLevels,
+				.baseArrayLayer = 0,
+				.layerCount = dstImage.Description.LayerCount 
+			},
+			.imageOffset = VkOffset3D {
+				.x = 0,
+				.y = 0,
+				.z = 0
+			},
+			.imageExtent = VkExtent3D {
+				.width = dstImage.Description.width,
+				.height = dstImage.Description.height,
+				.depth = 1
+			}
+		};
+
+		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.Handle, dstImage.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+		EndSingleTimeCommandBuffer(m_LogicalDevice, m_GraphicsQueue, commandBuffer, m_CommandPool);
+		DestroyBuffer(stagingBuffer);
+
 		return *this;
 	}
 
@@ -1287,9 +1324,9 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height) {
-		depthBuffer.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		depthBuffer.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		depthBuffer.MipLevels = 1;
+		depthBuffer.Description.Tiling = VK_IMAGE_TILING_OPTIMAL;
+		depthBuffer.Description.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		depthBuffer.Description.MipLevels = 1;
 
 		CreateImage(depthBuffer, width, height, 1, Engine::Graphics::FindDepthFormat(m_PhysicalDevice), VK_IMAGE_TYPE_2D)
 			.AllocateMemory(depthBuffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
@@ -1300,9 +1337,9 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat imageFormat) {
-		renderTarget.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		renderTarget.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-		renderTarget.MipLevels = 1;
+		renderTarget.Description.Tiling = VK_IMAGE_TILING_OPTIMAL;
+		renderTarget.Description.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+		renderTarget.Description.MipLevels = 1;
 
 		CreateImage(renderTarget, width, height, 1, imageFormat, VK_IMAGE_TYPE_2D)
 			.AllocateMemory(renderTarget, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
@@ -1313,10 +1350,10 @@ namespace Engine::Graphics {
 	}
 
 	GraphicsDevice& GraphicsDevice::CreateTexture2D(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat) {
-		texture.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		texture.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-		texture.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-		texture.Format = imageFormat;
+		texture.Description.Tiling = VK_IMAGE_TILING_OPTIMAL;
+		texture.Description.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+		texture.Description.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+		texture.Description.Format = imageFormat;
 
 		CreateImage(texture, width, height, mipLevels, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D);
 		return *this;
@@ -1333,9 +1370,9 @@ namespace Engine::Graphics {
 	}
 
 	GraphicsDevice& GraphicsDevice::CreateCubeTexture(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat) {
-		texture.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		texture.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-		texture.AspectFlags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		texture.Description.Tiling = VK_IMAGE_TILING_OPTIMAL;
+		texture.Description.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+		texture.Description.AspectFlags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
 		CreateImage(texture, width, height, mipLevels, imageFormat, VK_IMAGE_TYPE_2D);
 
@@ -1351,14 +1388,14 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::CreateBuffer(GPUBuffer& buffer, size_t bufferSize, VkBufferUsageFlags usage) {
-		buffer.BufferSize = bufferSize;
-		buffer.Usage = usage;
+		buffer.Description.BufferSize = bufferSize;
+		buffer.Description.Usage = usage;
 
 		Engine::Graphics::CreateBuffer(m_LogicalDevice, buffer);
 	}
 
 	GraphicsDevice& GraphicsDevice::AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty) {
-		buffer.MemoryProperty = memoryProperty;
+		buffer.Description.MemoryProperty = memoryProperty;
 
 		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, buffer);
 
@@ -1370,8 +1407,8 @@ namespace Engine::Graphics {
 		return *this;
 	}
 
-	GraphicsDevice& GraphicsDevice::AddBufferChunk(GPUBuffer& buffer, GPUBuffer::BufferChunk newChunk) {
-		buffer.Chunks.push_back(newChunk);
+	GraphicsDevice& GraphicsDevice::AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk) {
+		buffer.Description.Chunks.push_back(newChunk);
 
 		return *this;
 	}
@@ -1387,5 +1424,55 @@ namespace Engine::Graphics {
 	GraphicsDevice& GraphicsDevice::DestroyBuffer(GPUBuffer& buffer) {
 		vkDestroyBuffer(m_LogicalDevice, buffer.Handle, nullptr);
 		vkFreeMemory(m_LogicalDevice, buffer.Memory, nullptr);
+	}
+
+	template <class T>
+	void GraphicsDevice::CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize) {
+		BufferDescription stagingDesc = {};
+		stagingDesc.BufferSize = dataSize;
+		stagingDesc.Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		stagingDesc.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+		GPUBuffer stagingBuffer = {};
+		stagingBuffer.Description = desc;
+
+		Engine::Graphics::CreateBuffer(m_LogicalDevice, stagingBuffer);
+		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, stagingBuffer);
+
+		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, stagingBuffer.Description.Usage, stagingBuffer.MemoryMapped);
+		memcpy(stagingBuffer.MemoryMapped, data, dataSize);
+		vkUnmapMemory(m_LogicalDevice, stagingBuffer.Memory);
+
+		CopyBuffer(stagingBuffer, dstBuffer, dataSize, 0, 0);
+		DestroyBuffer(stagingBuffer);
+	}
+
+	template <class T>
+	void GraphicsDevice::CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, T* initialData, size_t dataSize) {
+		desc.BufferSize = dataSize;
+		buffer.Description = desc;
+
+		Engine::Graphics::CreateBuffer(m_LogicalDevice, buffer);
+		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, buffer);
+
+		if (initialData == nullptr)
+			return;
+
+		CopyDataFromStaging(buffer, initialData, dataSize);
+	}
+
+	template <class T>
+	void GraphicsDevice::CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, T* initialData, size_t dataSize) {
+		desc.MsaaSamples = m_MsaaSamples;
+
+		texture.Description = desc;
+
+		Engine::Graphics::CreateImage(m_LogicalDevice, texture);
+		Engine::Graphics::CreateImageView(m_LogicalDevice, texture);
+		Engine::Graphics::TransitionImageLayout(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		UploadDataToImage(texture, initialData, dataSize);
+		Engine::Graphics::GenerateImageMipMaps(m_PhysicalDevice, m_LogicalDevice, m_CommandPool, m_GraphicsQueue, texture);
+		Engine::Graphics::TransitionImageLayout(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		Engine::Graphics::CreateImageSampler(m_PhysicalDevice, m_LogicalDevice, texture);
 	}
 }

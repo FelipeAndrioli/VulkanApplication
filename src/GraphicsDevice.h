@@ -130,14 +130,14 @@ namespace Engine::Graphics {
 
 		GraphicsDevice& TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
 		GraphicsDevice& GenerateMipMaps(GPUImage& image);
-		GraphicsDevice& CreateImageSampler(GPUImage& image, VkSamplerAddressMode addressMode);
+		GraphicsDevice& CreateImageSampler(GPUImage& image);
 		GraphicsDevice& RecreateImage(GPUImage& image);
 		GraphicsDevice& ResizeImage(GPUImage& image, uint32_t width, uint32_t height);
 		GraphicsDevice& CopyBufferToImage(GPUImage& image, GPUBuffer& srcBuffer);
 		GraphicsDevice& DestroyImage(GPUImage& image);
 
 		template <class T>
-		GraphicsDevice& UploadDataToImage(GPUImage& image, const T* data, const size_t dataSize);
+		GraphicsDevice& UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent);
 		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
@@ -145,9 +145,16 @@ namespace Engine::Graphics {
 		GraphicsDevice& CreateTexture2D(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat);
 		GraphicsDevice& CreateCubeTexture(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat);
 
+		template <class T>
+		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize);
+		template <class T>
+		void CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, T* initialData, size_t dataSize);
+		template <class T>
+		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, T* initialData, size_t dataSize);
+
 		void CreateBuffer(GPUBuffer& buffer, size_t bufferSize, VkBufferUsageFlags usage);
 		GraphicsDevice& CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
-		GraphicsDevice& AddBufferChunk(GPUBuffer& buffer, GPUBuffer::BufferChunk newChunk);
+		GraphicsDevice& AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
 		GraphicsDevice& UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, VkDeviceSize dataSize);
 		GraphicsDevice& DestroyBuffer(GPUBuffer& buffer);
 			
