@@ -65,7 +65,9 @@ namespace Engine::Graphics {
 			SHEEN				= 10,
 			EMISSIVE			= 11,
 			NORMAL				= 12,
-			UNKNOWN				= 13
+			CUBEMAP_SINGLE		= 13,
+			CUBEMAP_MULTI		= 14,
+			UNKNOWN				= 99
 		} Type = TextureType::UNKNOWN;
 
 		std::string Name = "";
