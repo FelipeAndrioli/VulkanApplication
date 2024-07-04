@@ -1192,19 +1192,6 @@ namespace Engine::Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
-	GraphicsDevice& GraphicsDevice::CreateImage(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageType imageType) {
-		image.Description.Width = width;
-		image.Description.Height = height;
-		image.Description.MipLevels = mipLevels;
-		image.Description.Format = format;
-		image.Description.MsaaSamples = m_MsaaSamples;
-		image.Description.ImageType = imageType;
-
-		Engine::Graphics::CreateImage(m_LogicalDevice, image);
-
-		return *this;
-	}
-
 	GraphicsDevice& GraphicsDevice::RecreateImage(GPUImage& image) {
 		Engine::Graphics::CreateImage(m_LogicalDevice, image);
 
@@ -1328,63 +1315,50 @@ namespace Engine::Graphics {
 		depthBuffer.Description.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		depthBuffer.Description.MipLevels = 1;
 
-		CreateImage(depthBuffer, width, height, 1, Engine::Graphics::FindDepthFormat(m_PhysicalDevice), VK_IMAGE_TYPE_2D)
-			.AllocateMemory(depthBuffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-			.CreateImageView(depthBuffer, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+		ImageDescription depthDesc = {};
+		depthDesc.Width = width;
+		depthDesc.Width = height;
+		depthDesc.MipLevels = 1;
+		depthDesc.MsaaSamples = m_MsaaSamples;
+		depthDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
+		depthDesc.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		depthDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		depthDesc.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+		depthDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;
+		depthDesc.LayerCount = 1;
+		depthDesc.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		depthDesc.Format = FindDepthFormat(m_PhysicalDevice);
+		depthDesc.ImageType = VK_IMAGE_TYPE_2D;
 
-		// usage example
-		//CreateDepthBuffer(depthBuffer, swapChain.extent.width, swapChain.extent.height);
+		depthBuffer.Description = depthDesc;
+
+		Engine::Graphics::CreateImage(m_LogicalDevice, depthBuffer);
+		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, depthBuffer);
+		Engine::Graphics::CreateImageView(m_LogicalDevice, depthBuffer);
 	}
 
-	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat imageFormat) {
-		renderTarget.Description.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		renderTarget.Description.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-		renderTarget.Description.MipLevels = 1;
+	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat format) {
 
-		CreateImage(renderTarget, width, height, 1, imageFormat, VK_IMAGE_TYPE_2D)
-			.AllocateMemory(renderTarget, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-			.CreateImageView(renderTarget, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		ImageDescription renderTargetDesc = {};
+		renderTargetDesc.Width = width;
+		renderTargetDesc.Height = height;
+		renderTargetDesc.MipLevels = 1;
+		renderTargetDesc.MsaaSamples = m_MsaaSamples;
+		renderTargetDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
+		renderTargetDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+		renderTargetDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		renderTargetDesc.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+		renderTargetDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;
+		renderTargetDesc.LayerCount = 1;
+		renderTargetDesc.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		renderTargetDesc.Format = format;
+		renderTargetDesc.ImageType = VK_IMAGE_TYPE_2D;
 
-		// usage example
-		//CreateRenderTarget(renderTarget, swapChain.extent.width, swapChain.extent.height, swapChain.imageFormat);
-	}
+		renderTarget.Description = renderTargetDesc;
 
-	GraphicsDevice& GraphicsDevice::CreateTexture2D(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat) {
-		texture.Description.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		texture.Description.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-		texture.Description.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-		texture.Description.Format = imageFormat;
-
-		CreateImage(texture, width, height, mipLevels, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D);
-		return *this;
-
-		/* Usage example.
-		CreateTexture2D(texture, width, height, mipLevels, VK_FORMAT_R8G8B8A8_SRGB)
-			.AllocateMemory(texture, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-			.CreateImageView(texture, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT, 1)
-			.TransitionImageLayout(texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-			.CopyBufferToImage(texture, transferBuffer)
-			.GenerateMipMaps()
-			.CreateImageSampler(texture, VK_SAMPLER_ADDRESS_MODE_REPEAT);
-		*/
-	}
-
-	GraphicsDevice& GraphicsDevice::CreateCubeTexture(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat) {
-		texture.Description.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		texture.Description.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-		texture.Description.AspectFlags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-
-		CreateImage(texture, width, height, mipLevels, imageFormat, VK_IMAGE_TYPE_2D);
-
-		/* Usage example.
-		CreateCubeTexture(texture, width, height, mipLevels, imageFormat)
-			.AllocateMemory(texture, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-			.CreateImageView(texture, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, 6)
-			.TransitionImageLayout(texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-			.UploadDataToImage(texture, nullptr, 1)
-			.TransitionImageLayout(texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-			.CreateImageSampler(texture, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-		*/
+		Engine::Graphics::CreateImage(m_LogicalDevice, renderTarget);
+		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, renderTarget);
+		Engine::Graphics::CreateImageView(m_LogicalDevice, renderTarget);
 	}
 
 	void GraphicsDevice::CreateBuffer(GPUBuffer& buffer, size_t bufferSize, VkBufferUsageFlags usage) {

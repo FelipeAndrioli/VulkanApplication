@@ -141,9 +141,7 @@ namespace Engine::Graphics {
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent);
 		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
-		void CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat imageFormat);
-		GraphicsDevice& CreateTexture2D(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat);
-		GraphicsDevice& CreateCubeTexture(GPUImage& texture, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat imageFormat);
+		void CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat format);
 
 		template <class T>
 		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize);
