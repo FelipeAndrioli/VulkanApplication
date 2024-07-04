@@ -155,6 +155,9 @@ namespace Engine::Graphics {
 		GraphicsDevice& AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
 		GraphicsDevice& UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, VkDeviceSize dataSize);
 		GraphicsDevice& DestroyBuffer(GPUBuffer& buffer);
+	
+		void CreateDefaultRenderPass(VkRenderPass& renderPass, VkFormat swapChainImageFormat, VkFormat depthBufferImageFormat);
+		void CreateRenderPass(VkRenderPass& renderPass, std::vector<VkAttachmentDescription> attachments, std::vector<VkSubpassDescription> subpass, std::vector<VkSubpassDependency> dependencies);
 			
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
