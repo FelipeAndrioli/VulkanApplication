@@ -8,10 +8,10 @@
 #include <set>
 #include <algorithm>
 #include <assert.h>
+#include <memory>
 
 #include "VulkanHeader.h"
 #include "Window.h"
-#include "CommandBuffer.h"
 #include "Graphics.h"
 #include "DeviceMemory.h"
 
@@ -90,8 +90,6 @@ namespace Engine::Graphics {
 	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 	void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 	void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
-	void DestroySwapChain(VkDevice& logicalDevice, SwapChain& swapChain);
-	void RecreateSwapChain(Window& window, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain);
 	void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain);
 	void CreateCommandPool(VkDevice& logicalDevice, VkCommandPool& commandPool, uint32_t queueFamilyIndex);
 	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>&availableFormats);
@@ -109,16 +107,18 @@ namespace Engine::Graphics {
 		~GraphicsDevice();
 
 		bool CreateSwapChain(Window& window, SwapChain& swapChain);
+		void RecreateSwapChain(Window& window, SwapChain& swapChain);
+		void DestroySwapChain(SwapChain& swapChain);
 
 		void WaitIdle();
 		void CreateFramesResources();
 		void BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer);
 		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
-		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkFramebuffer& framebuffer, const VkExtent2D renderArea);
+		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea);
 		void EndRenderPass(VkCommandBuffer& commandBuffer);
 
 		VkCommandBuffer* BeginFrame(SwapChain& swapChain);
-		void EndFrame(const VkDevice& logicalDevice, const VkCommandBuffer& commandBuffer, const SwapChain& swapChain);
+		void EndFrame(const VkCommandBuffer& commandBuffer, const SwapChain& swapChain);
 		void PresentFrame(const SwapChain& swapChain);
 
 		GraphicsDevice& CreateImage(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageType imageType);
@@ -139,7 +139,7 @@ namespace Engine::Graphics {
 		template <class T>
 		GraphicsDevice& UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
 
-		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent);
+		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView>& attachmentViews, VkExtent2D& framebufferExtent);
 		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
 		void CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat format);
 
@@ -158,7 +158,17 @@ namespace Engine::Graphics {
 	
 		void CreateDefaultRenderPass(VkRenderPass& renderPass, VkFormat swapChainImageFormat, VkFormat depthBufferImageFormat);
 		void CreateRenderPass(VkRenderPass& renderPass, std::vector<VkAttachmentDescription> attachments, std::vector<VkSubpassDescription> subpass, std::vector<VkSubpassDependency> dependencies);
-			
+		void DestroyRenderPass(VkRenderPass& renderPass);
+		void RecreateDefaultRenderPass(VkRenderPass& renderPass, SwapChain& swapChain);
+		void DestroyFramebuffer();
+
+		void DestroyCommandBuffer(VkCommandBuffer& commandBuffer);
+		void RecreateCommandBuffers();
+
+		void CreateUI(Window& window, VkRenderPass& renderPass);
+		void BeginUIFrame();
+		void EndUIFrame(const VkCommandBuffer& commandBuffer);
+
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
@@ -181,6 +191,8 @@ namespace Engine::Graphics {
 		VkCommandBuffer commandBuffers[FRAMES_IN_FLIGHT];
 
 		VkFramebuffer framebuffer;
+		
+		std::unique_ptr<class UI> m_UI;
 	};
 
 	inline GraphicsDevice*& GetDevice() {

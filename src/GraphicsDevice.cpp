@@ -1,5 +1,7 @@
 #include "GraphicsDevice.h"
 
+#include "UI.h"
+
 namespace Engine::Graphics {
 	VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface) {
 
@@ -529,32 +531,8 @@ namespace Engine::Graphics {
 		}
 	}
 
-	void DestroySwapChain(VkDevice& logicalDevice, SwapChain& swapChain) {
-		for (auto imageView : swapChain.swapChainImageViews) {
-			vkDestroyImageView(logicalDevice, imageView, nullptr);
-		}
-
-		vkDestroySwapchainKHR(logicalDevice, swapChain.swapChain, nullptr);
-	}
-
 	void WaitIdle(VkDevice& logicalDevice) {
 		vkDeviceWaitIdle(logicalDevice);
-	}
-
-	void RecreateSwapChain(Window& window, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain) {
-		VkExtent2D currentExtent = window.GetFramebufferSize();
-
-		while (currentExtent.width == 0 || currentExtent.height == 0) {
-			currentExtent = window.GetFramebufferSize();
-			window.WaitEvents();
-		}
-
-		WaitIdle(logicalDevice);
-
-		DestroySwapChain(logicalDevice, swapChain);
-		CreateSwapChainInternal(physicalDevice, logicalDevice, surface, swapChain, window.GetFramebufferSize());
-		CreateSwapChainImageViews(logicalDevice, swapChain);
-		CreateSwapChainSemaphores(logicalDevice, swapChain);
 	}
 
 	void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain) {
@@ -587,6 +565,18 @@ namespace Engine::Graphics {
 		poolInfo.queueFamilyIndex = queueFamilyIndex;
 
 		VkResult result = vkCreateCommandPool(logicalDevice, &poolInfo, nullptr, &commandPool);
+		assert(result == VK_SUCCESS);
+	}
+
+	void CreateCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer) {
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = commandPool;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandBufferCount = 1;
+
+		VkResult result = vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
+
 		assert(result == VK_SUCCESS);
 	}
 
@@ -996,12 +986,20 @@ namespace Engine::Graphics {
 		CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.graphicsAndComputeFamily.value(), m_ComputeQueue);
 
 		CreateDebugMessenger(m_VulkanInstance, m_DebugMessenger);
-		CreateFramesResources();
 		CreateCommandPool(m_LogicalDevice, m_CommandPool, m_QueueFamilyIndices.graphicsFamily.value());
+		CreateFramesResources();
 	}
 
 	GraphicsDevice::~GraphicsDevice() {
 		DestroyDebugUtilsMessengerEXT(m_VulkanInstance, m_DebugMessenger, nullptr);
+
+		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+			DestroyCommandBuffer(commandBuffers[i]);
+		}
+
+		DestroyFramebuffer();
+
+		vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
 		vkDestroyDevice(m_LogicalDevice, nullptr);
 		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
 		vkDestroyInstance(m_VulkanInstance, nullptr);
@@ -1011,6 +1009,30 @@ namespace Engine::Graphics {
 		Engine::Graphics::CreateSwapChain(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
 
 		return true;
+	}
+
+	void GraphicsDevice::RecreateSwapChain(Window& window, SwapChain& swapChain) {
+		VkExtent2D currentExtent = window.GetFramebufferSize();
+
+		while (currentExtent.width == 0 || currentExtent.height == 0) {
+			currentExtent = window.GetFramebufferSize();
+			window.WaitEvents();
+		}
+
+		WaitIdle();
+
+		DestroySwapChain(swapChain);
+		CreateSwapChainInternal(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
+		CreateSwapChainImageViews(m_LogicalDevice, swapChain);
+		CreateSwapChainSemaphores(m_LogicalDevice, swapChain);
+	}
+
+	void GraphicsDevice::DestroySwapChain(SwapChain& swapChain) {
+		for (auto imageView : swapChain.swapChainImageViews) {
+			vkDestroyImageView(m_LogicalDevice, imageView, nullptr);
+		}
+
+		vkDestroySwapchainKHR(m_LogicalDevice, swapChain.swapChain, nullptr);
 	}
 
 	void GraphicsDevice::WaitIdle() {
@@ -1027,16 +1049,18 @@ namespace Engine::Graphics {
 				assert(result == VK_SUCCESS);
 			}
 
-			{
-				VkCommandBufferAllocateInfo allocInfo = {};
-				allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-				allocInfo.commandPool = m_CommandPool;
-				allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-				allocInfo.commandBufferCount = 1;
+			CreateCommandBuffer(m_LogicalDevice, m_CommandPool, commandBuffers[i]);
+		}
+	}
 
-				VkResult result = vkAllocateCommandBuffers(m_LogicalDevice, &allocInfo, &commandBuffers[i]);
-				assert(result == VK_SUCCESS);
-			}
+	void GraphicsDevice::DestroyCommandBuffer(VkCommandBuffer& commandBuffer) {
+		vkFreeCommandBuffers(m_LogicalDevice, m_CommandPool, 1, nullptr);
+	}
+
+	void GraphicsDevice::RecreateCommandBuffers() {
+		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+			DestroyCommandBuffer(commandBuffers[i]);
+			CreateCommandBuffer(m_LogicalDevice, m_CommandPool, commandBuffers[i]);
 		}
 	}
 
@@ -1067,7 +1091,7 @@ namespace Engine::Graphics {
 		return &commandBuffers[currentFrame];
 	}
 
-	void GraphicsDevice::EndFrame(const VkDevice& logicalDevice, const VkCommandBuffer& commandBuffer, const SwapChain& swapChain) {
+	void GraphicsDevice::EndFrame(const VkCommandBuffer& commandBuffer, const SwapChain& swapChain) {
 
 		VkResult result = vkEndCommandBuffer(commandBuffer);
 		assert(result == VK_SUCCESS);
@@ -1091,7 +1115,7 @@ namespace Engine::Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
-	void GraphicsDevice::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkFramebuffer& framebuffer, const VkExtent2D renderArea) {
+	void GraphicsDevice::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea) {
 		std::array<VkClearValue, 2> clearValues{};
 		clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
 		clearValues[1].depthStencil = { 1.0f, 0 };
@@ -1164,7 +1188,7 @@ namespace Engine::Graphics {
 		currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
 	}
 
-	void GraphicsDevice::CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView&> attachmentViews, VkExtent2D& framebufferExtent) {
+	void GraphicsDevice::CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView>& attachmentViews, VkExtent2D& framebufferExtent) {
 		std::vector<VkImageView> attachments(attachmentViews.size());
 
 		for (int i = 0; i < attachmentViews.size(); i++) {
@@ -1361,13 +1385,6 @@ namespace Engine::Graphics {
 		Engine::Graphics::CreateImageView(m_LogicalDevice, renderTarget);
 	}
 
-	void GraphicsDevice::CreateBuffer(GPUBuffer& buffer, size_t bufferSize, VkBufferUsageFlags usage) {
-		buffer.Description.BufferSize = bufferSize;
-		buffer.Description.Usage = usage;
-
-		Engine::Graphics::CreateBuffer(m_LogicalDevice, buffer);
-	}
-
 	GraphicsDevice& GraphicsDevice::AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty) {
 		buffer.Description.MemoryProperty = memoryProperty;
 
@@ -1529,4 +1546,44 @@ namespace Engine::Graphics {
 
 		assert(result == VK_SUCCESS);
 	}
+
+	void GraphicsDevice::DestroyRenderPass(VkRenderPass& renderPass) {
+		vkDestroyRenderPass(m_LogicalDevice, renderPass, nullptr);
+	}
+
+	void GraphicsDevice::RecreateDefaultRenderPass(VkRenderPass& renderPass, SwapChain& swapChain) {
+		DestroyRenderPass(renderPass);
+		RecreateDefaultRenderPass(renderPass, swapChain);
+	}
+
+	void GraphicsDevice::DestroyFramebuffer() {
+		vkDestroyFramebuffer(m_LogicalDevice, framebuffer, nullptr);
+	}
+
+
+	void GraphicsDevice::CreateUI(Window& window, VkRenderPass& renderPass) {
+		m_UI = std::make_unique<class UI>(
+			*window.GetHandle(),
+			m_VulkanInstance,
+			m_PhysicalDevice,
+			m_LogicalDevice,
+			renderPass,
+			FRAMES_IN_FLIGHT	
+		);
+	}
+
+	void GraphicsDevice::BeginUIFrame() {
+		if (!m_UI)
+			return;
+
+		m_UI->BeginFrame();
+	}
+
+	void GraphicsDevice::EndUIFrame(const VkCommandBuffer& commandBuffer) {
+		if (!m_UI)
+			return;
+
+		m_UI->EndFrame(commandBuffer);
+	}
+
 }
