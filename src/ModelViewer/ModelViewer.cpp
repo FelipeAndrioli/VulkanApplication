@@ -16,6 +16,9 @@
 #include "../RenderPass.h"
 #include "../Settings.h"
 
+#include "../Graphics.h"
+#include "../GraphicsDevice.h"
+
 #include "../Assets/Camera.h"
 #include "../Assets/Scene.h"
 #include "../Assets/Object.h"
@@ -31,7 +34,7 @@ public:
 	ModelViewer() {};
 	ModelViewer(Engine::Settings& settings) : m_Settings(settings) {};
 
-	virtual void StartUp(Engine::VulkanEngine& vulkanEngine) override;
+	virtual void StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) override;
 	virtual void CleanUp() override;
 	virtual void Update(float d, Engine::InputSystem::Input& input) override;
 	virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) override;
@@ -42,7 +45,7 @@ public:
 	void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline);
 private:
 	Assets::Camera* m_Camera = nullptr;
-	std::unique_ptr<struct Assets::Texture> m_Skybox;
+	std::unique_ptr<Texture> m_Skybox;
 
 	Engine::Settings m_Settings = {};
 
@@ -52,17 +55,17 @@ private:
 	Engine::ApplicationCore::SceneGPUData m_SceneGPUData;
 
 	std::vector<Assets::Material> m_Materials;
-	std::vector<Assets::Texture> m_Textures;
+	std::vector<Texture> m_Textures;
 
-	std::unique_ptr<Engine::Buffer> m_GPUDataBuffer[Engine::MAX_FRAMES_IN_FLIGHT];
-	std::unique_ptr<Engine::Buffer> m_SceneGeometryBuffer;
+	GPUBuffer m_GPUDataBuffer[Engine::Graphics::FRAMES_IN_FLIGHT];
+	GPUBuffer m_SceneGeometryBuffer;
 
 	std::unique_ptr<Engine::DescriptorPool> m_DescriptorPool;
 
 	std::unique_ptr<Engine::DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
 	std::unique_ptr<Engine::DescriptorSetLayout> m_GlobalDescriptorSetLayout;
 
-	std::unique_ptr<Engine::DescriptorSets> m_GlobalDescriptorSets[Engine::MAX_FRAMES_IN_FLIGHT];
+	std::unique_ptr<Engine::DescriptorSets> m_GlobalDescriptorSets[Engine::Graphics::FRAMES_IN_FLIGHT];
 	
 	std::unique_ptr<Engine::PipelineLayout> m_MainPipelineLayout;
 
@@ -82,7 +85,7 @@ private:
 	uint32_t m_ScreenHeight = 0;
 };
 
-void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
+void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 
 	m_ScreenWidth = m_Settings.Width;
 	m_ScreenHeight = m_Settings.Height;
@@ -106,7 +109,7 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	m_Model.Transformations.rotation.y = 45.0f;
 	m_Model.Transformations.scaleHandler = 0.2f;
 
-	Engine::Utils::ModelLoader::LoadModelAndMaterials(m_Model, m_Materials, m_Textures, vulkanEngine);
+	ModelLoader::LoadModelAndMaterials(m_Model, m_Materials, m_Textures);
 
 	std::vector<std::string> cubeTextures = {
 		"./Textures/right.jpg",
@@ -118,7 +121,7 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 	};
 
 	//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
-	m_Skybox = std::make_unique<Assets::Texture>(Engine::Utils::TextureLoader::LoadCubemapTexture(cubeTextures, vulkanEngine));
+	m_Skybox = std::make_unique<Texture>(TextureLoader::LoadCubemapTexture(cubeTextures));
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
@@ -133,7 +136,15 @@ void ModelViewer::StartUp(Engine::VulkanEngine& vulkanEngine) {
 		meshMaterialData.push_back(material.MaterialData);
 	}
 
-	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+	BufferDescription bufferDesc = {};
+	bufferDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	bufferDesc.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	bufferDesc.Chunks.push_back({ sizeof(Engine::ApplicationCore::ObjectGPUData), objectBufferSize });
+	bufferDesc.Chunks.push_back({sizeof(Assets::MeshMaterialData), materialsBufferSize});
+	bufferDesc.Chunks.push_back({sizeof(Engine::ApplicationCore::SceneGPUData), sceneBufferSize});
+
+	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
+		gfxDevice.CreateBuffer(bufferDesc, m_GPUDataBuffer[i], nullptr, static_cast<size_t>(gpuBufferSize));
 		m_GPUDataBuffer[i] = std::make_unique<class Engine::Buffer>(vulkanEngine, gpuBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		m_GPUDataBuffer[i]->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
