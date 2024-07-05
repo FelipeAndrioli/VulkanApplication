@@ -2,12 +2,11 @@
 
 namespace Engine {
 
-	ApplicationCore::ApplicationCore(Settings &settings) {
+	ApplicationCore::ApplicationCore(Settings& settings) {
 
 		m_Window.reset(new class Window(settings));
 		m_Input.reset(new class InputSystem::Input());
 
-		//m_Window->Render = std::bind(&Application::Draw, this);
 		m_Window->OnKeyPress = std::bind(&InputSystem::Input::ProcessKey, m_Input.get(), std::placeholders::_1, std::placeholders::_2,
 			std::placeholders::_3, std::placeholders::_4);
 		m_Window->OnResize = std::bind(&ApplicationCore::Resize, this, std::placeholders::_1, std::placeholders::_2);
@@ -15,11 +14,17 @@ namespace Engine {
 		m_Window->OnCursorMove = std::bind(&InputSystem::Input::ProcessCursorMove, m_Input.get(), std::placeholders::_1, std::placeholders::_2);
 		m_Window->OnCursorOnScreen = std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
 
-		//m_VulkanEngine = std::make_unique<class VulkanEngine>(*m_Window.get());
-		graphicsDevice = std::make_unique<Engine::Graphics::GraphicsDevice>(*m_Window.get());
-		bool success = graphicsDevice->CreateSwapChain(*m_Window.get(), swapChain);
+		m_GraphicsDevice = std::make_unique<Engine::Graphics::GraphicsDevice>(*m_Window.get());
+		bool success = m_GraphicsDevice->CreateSwapChain(*m_Window.get(), m_SwapChain);
 
 		assert(success);
+
+		m_GraphicsDevice->CreateRenderTarget(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height, m_SwapChain.swapChainImageFormat);
+		m_GraphicsDevice->CreateDepthBuffer(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
+		m_GraphicsDevice->CreateDefaultRenderPass(m_DefaultRenderPass, m_SwapChain.swapChainImageFormat, m_DepthBuffer.Description.Format);
+
+		std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[0] };
+		m_GraphicsDevice->CreateFramebuffer(m_DefaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent);
 	}
 	
 	ApplicationCore::~ApplicationCore() {
@@ -33,7 +38,7 @@ namespace Engine {
 			glfwPollEvents();
 		}
 
-		graphicsDevice->WaitIdle();
+		m_GraphicsDevice->WaitIdle();
 		TerminateApplication(scene);
 	}
 
@@ -58,22 +63,23 @@ namespace Engine {
 		
 		scene.Update(timestep.GetMilliseconds(), *m_Input.get());
 
-		VkCommandBuffer* commandBuffer = m_VulkanEngine->BeginFrame(m_CurrentFrame, m_ImageIndex);
+		VkCommandBuffer* commandBuffer = m_GraphicsDevice->BeginFrame(m_SwapChain);
 
 		if (commandBuffer == nullptr)
 			return true;
 
-		m_VulkanEngine->BeginRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle(), *commandBuffer, m_VulkanEngine->GetFramebuffer(m_ImageIndex));
-		m_VulkanEngine->BeginUIFrame();
+		//m_VulkanEngine->BeginRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle(), *commandBuffer, m_VulkanEngine->GetFramebuffer(m_ImageIndex));
+		m_GraphicsDevice->BeginRenderPass(m_DefaultRenderPass, *commandBuffer, m_SwapChain.swapChainExtent);
+		m_GraphicsDevice->BeginUIFrame();
 
 		scene.RenderScene(m_CurrentFrame, *commandBuffer);
 		RenderCoreUI();
 		scene.RenderUI();
 
-		m_VulkanEngine->EndUIFrame(*commandBuffer);
-		m_VulkanEngine->EndRenderPass(*commandBuffer);
-		m_VulkanEngine->EndFrame(*commandBuffer, m_CurrentFrame, m_ImageIndex);
-		m_VulkanEngine->PresentFrame(m_CurrentFrame, m_ImageIndex);
+		m_GraphicsDevice->EndUIFrame(*commandBuffer);
+		m_GraphicsDevice->EndRenderPass(*commandBuffer);
+		m_GraphicsDevice->EndFrame(*commandBuffer, m_SwapChain);
+		m_GraphicsDevice->PresentFrame(m_SwapChain);
 
 		m_LastFrameTime = m_CurrentFrameTime;
 
@@ -90,14 +96,31 @@ namespace Engine {
 	void ApplicationCore::TerminateApplication(IScene& scene) {
 		scene.CleanUp();
 
+		m_GraphicsDevice->DestroyRenderPass(m_DefaultRenderPass);
+		m_GraphicsDevice->DestroyImage(m_RenderTarget);
+		m_GraphicsDevice->DestroyImage(m_DepthBuffer);
+
 		m_Input.reset();
 		m_Window.reset();
-		m_VulkanEngine.reset();
+		m_GraphicsDevice.reset();
 	}
 
 	void ApplicationCore::Resize(int width, int height) {
 		std::cout << "width - " << width << " height - " << height << '\n';
-		m_VulkanEngine->Resize();
+
+		m_GraphicsDevice->RecreateSwapChain(*m_Window.get(), m_SwapChain);
+		m_GraphicsDevice->ResizeImage(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
+		m_GraphicsDevice->ResizeImage(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
+
+		// this might cause problem, need to test
+		m_GraphicsDevice->RecreateDefaultRenderPass(m_DefaultRenderPass, m_SwapChain);
+
+		m_GraphicsDevice->DestroyFramebuffer();
+		std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[0] };
+		m_GraphicsDevice->CreateFramebuffer(m_DefaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent);
+
+		m_GraphicsDevice->RecreateCommandBuffers();
+
 		m_ResizeApplication = true;
 	}
 }

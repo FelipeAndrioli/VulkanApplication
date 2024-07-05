@@ -3,17 +3,16 @@
 #include <glm.hpp>
 
 #include "VulkanHeader.h"
-#include "Vulkan.h"
 #include "Window.h"
 #include "Pipeline.h"
 #include "PipelineLayout.h"
 #include "DescriptorSets.h"
-#include "Buffer.h"
 #include "RenderPass.h"
 #include "UI.h"
 #include "Settings.h"
 
 #include "GraphicsDevice.h"
+#include "Graphics.h"
 
 #include "Input/Input.h"
 #include "Assets/Object.h"
@@ -24,7 +23,7 @@ namespace Engine {
 
 		class IScene {
 		public:
-			virtual void StartUp(Engine::VulkanEngine& vulkanEngine) = 0;
+			virtual void StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) = 0;
 			virtual void CleanUp() = 0;
 			virtual bool IsDone(Engine::InputSystem::Input& input) = 0;
 			virtual void Update(float d, Engine::InputSystem::Input& input) = 0;
@@ -73,9 +72,13 @@ namespace Engine {
 		SceneGPUData m_SceneGPUData = {};
 		std::unique_ptr<Window> m_Window;
 		std::unique_ptr<InputSystem::Input> m_Input;
-		std::unique_ptr<Engine::VulkanEngine> m_VulkanEngine;
 
-		Engine::Graphics::SwapChain swapChain;
-		std::unique_ptr<Engine::Graphics::GraphicsDevice> graphicsDevice;
+		Engine::Graphics::SwapChain m_SwapChain;
+		std::unique_ptr<Engine::Graphics::GraphicsDevice> m_GraphicsDevice;
+
+		Graphics::GPUImage m_RenderTarget = {};
+		Graphics::GPUImage m_DepthBuffer = {};
+
+		VkRenderPass m_DefaultRenderPass;
 	};
 }
