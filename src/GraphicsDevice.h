@@ -144,13 +144,14 @@ namespace Engine::Graphics {
 		void CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat format);
 
 		template <class T>
-		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize);
-		template <class T>
-		void CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, T* initialData, size_t dataSize);
+		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize, size_t offset);
+
+		void CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, size_t bufferSize);
+		void WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0);
+
 		template <class T>
 		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, T* initialData, size_t dataSize);
 
-		void CreateBuffer(GPUBuffer& buffer, size_t bufferSize, VkBufferUsageFlags usage);
 		GraphicsDevice& CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
 		GraphicsDevice& AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
 		GraphicsDevice& UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, VkDeviceSize dataSize);
@@ -168,6 +169,8 @@ namespace Engine::Graphics {
 		void CreateUI(Window& window, VkRenderPass& renderPass);
 		void BeginUIFrame();
 		void EndUIFrame(const VkCommandBuffer& commandBuffer);
+		
+		void CreateDescriptorPool();
 
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
@@ -191,6 +194,9 @@ namespace Engine::Graphics {
 		VkCommandBuffer commandBuffers[FRAMES_IN_FLIGHT];
 
 		VkFramebuffer framebuffer;
+
+		VkDescriptorPool descriptorPool;
+		uint32_t poolSize;
 		
 		std::unique_ptr<class UI> m_UI;
 	};

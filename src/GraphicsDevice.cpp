@@ -941,7 +941,7 @@ namespace Engine::Graphics {
 	void CreateBuffer(VkDevice& logicalDevice, GPUBuffer& buffer) {
 		VkBufferCreateInfo bufferInfo{};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = buffer.Description.BufferSize == 0 ? 256 : buffer.Description.BufferSize;
+		bufferInfo.size = buffer.Description.BufferSize;
 		bufferInfo.usage = buffer.Description.Usage;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -1418,7 +1418,7 @@ namespace Engine::Graphics {
 	}
 
 	template <class T>
-	void GraphicsDevice::CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize) {
+	void GraphicsDevice::CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize, size_t offset) {
 		BufferDescription stagingDesc = {};
 		stagingDesc.BufferSize = dataSize;
 		stagingDesc.Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -1434,22 +1434,26 @@ namespace Engine::Graphics {
 		memcpy(stagingBuffer.MemoryMapped, data, dataSize);
 		vkUnmapMemory(m_LogicalDevice, stagingBuffer.Memory);
 
-		CopyBuffer(stagingBuffer, dstBuffer, dataSize, 0, 0);
+		CopyBuffer(stagingBuffer, dstBuffer, dataSize, 0, offset);
 		DestroyBuffer(stagingBuffer);
 	}
 
-	template <class T>
-	void GraphicsDevice::CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, T* initialData, size_t dataSize) {
-		desc.BufferSize = dataSize;
+	void GraphicsDevice::CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, size_t bufferSize) {
+		desc.BufferSize = bufferSize;
 		buffer.Description = desc;
 
 		Engine::Graphics::CreateBuffer(m_LogicalDevice, buffer);
 		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, buffer);
+	}
 
-		if (initialData == nullptr)
+	// TODO: implement dynamic allocation/update/retrieval
+	void GraphicsDevice::WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0) {
+		if (data == nullptr)
 			return;
 
-		CopyDataFromStaging(buffer, initialData, dataSize);
+		size = std::min(buffer.Description.BufferSize, size);
+
+		CopyDataFromStaging(buffer, data, size, offset);
 	}
 
 	template <class T>
@@ -1586,4 +1590,26 @@ namespace Engine::Graphics {
 		m_UI->EndFrame(commandBuffer);
 	}
 
+	void GraphicsDevice::CreateDescriptorPool() {
+		VkDescriptorPoolSize poolSizes[2] = {};
+		uint32_t count = 0;
+
+		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSizes[0].descriptorCount = poolSize;
+		count++;
+		
+		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSizes[1].descriptorCount = poolSize;
+		count++;
+
+		VkDescriptorPoolCreateInfo poolCreateInfo = {};
+		poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolCreateInfo.poolSizeCount = count;
+		poolCreateInfo.maxSets = poolSize;
+		poolCreateInfo.pPoolSizes = poolSizes;
+
+		VkResult result = vkCreateDescriptorPool(m_LogicalDevice, &poolCreateInfo, nullptr, &descriptorPool);
+
+		assert(result == VK_SUCCESS);
+	}
 }
