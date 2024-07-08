@@ -136,29 +136,17 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 		meshMaterialData.push_back(material.MaterialData);
 	}
 
-	BufferDescription bufferDesc = {};
-	bufferDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	bufferDesc.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	bufferDesc.Chunks.push_back({ sizeof(Engine::ApplicationCore::ObjectGPUData), objectBufferSize });
-	bufferDesc.Chunks.push_back({sizeof(Assets::MeshMaterialData), materialsBufferSize});
-	bufferDesc.Chunks.push_back({sizeof(Engine::ApplicationCore::SceneGPUData), sceneBufferSize});
+	BufferDescription gpuDataBufferDesc = {};
+	gpuDataBufferDesc.BufferSize = gpuBufferSize;
+	gpuDataBufferDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	gpuDataBufferDesc.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	gpuDataBufferDesc.Chunks.push_back({ sizeof(Engine::ApplicationCore::ObjectGPUData), objectBufferSize });
+	gpuDataBufferDesc.Chunks.push_back({ sizeof(Assets::MeshMaterialData), materialsBufferSize });
+	gpuDataBufferDesc.Chunks.push_back({ sizeof(Engine::ApplicationCore::SceneGPUData), sceneBufferSize });
 
 	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
-		gfxDevice.CreateBuffer(bufferDesc, m_GPUDataBuffer[i], nullptr, static_cast<size_t>(gpuBufferSize));
-		m_GPUDataBuffer[i] = std::make_unique<class Engine::Buffer>(vulkanEngine, gpuBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		m_GPUDataBuffer[i]->AllocateMemory(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-		m_GPUDataBuffer[i]->NewChunk({sizeof(Engine::ApplicationCore::ObjectGPUData), objectBufferSize});
-		m_GPUDataBuffer[i]->NewChunk({sizeof(Assets::MeshMaterialData), materialsBufferSize});
-		m_GPUDataBuffer[i]->NewChunk({sizeof(Engine::ApplicationCore::SceneGPUData), sceneBufferSize});
-
-		Engine::BufferHelper::AppendData(
-			vulkanEngine,
-			meshMaterialData,
-			*m_GPUDataBuffer[i].get(),
-			0,
-			m_GPUDataBuffer[i]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
-		);
+		gfxDevice.CreateBuffer(gpuDataBufferDesc, m_GPUDataBuffer[i], gpuBufferSize);
+		gfxDevice.WriteBuffer(m_GPUDataBuffer[i], meshMaterialData.data(), m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize);
 	}
 	// GPU Data Buffer End
 
@@ -169,76 +157,30 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 		+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
 	*/
 
-	m_SceneGeometryBuffer = std::make_unique<class Engine::Buffer>(vulkanEngine, sceneGeometryBufferSize, 
-		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-	m_SceneGeometryBuffer->AllocateMemory(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-	//m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * p_ActiveScene->Indices.size() });
-	m_SceneGeometryBuffer->NewChunk({ sizeof(uint32_t), sizeof(uint32_t) * m_Model.IndicesAmount });
-	//m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size() });
-	m_SceneGeometryBuffer->NewChunk({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * m_Model.VerticesAmount });
+	BufferDescription sceneGeometryBufferDesc = {};
+	sceneGeometryBufferDesc.BufferSize = sceneGeometryBufferSize;
+	sceneGeometryBufferDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	sceneGeometryBufferDesc.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	sceneGeometryBufferDesc.Chunks.push_back({ sizeof(uint32_t), sizeof(uint32_t) * m_Model.IndicesAmount });
+	sceneGeometryBufferDesc.Chunks.push_back({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * m_Model.VerticesAmount });
 
 	size_t indexOffset = 0;
 
 	for (auto mesh : m_Model.Meshes) {
-
-		Engine::BufferHelper::AppendData(
-			vulkanEngine,
-			//p_ActiveScene->Indices,
-			mesh.Indices,
-			*m_SceneGeometryBuffer.get(),
-			0,
-			//0
-			indexOffset
-		);
-		
+		gfxDevice.WriteBuffer(m_SceneGeometryBuffer, mesh.Indices.data(), sizeof(uint32_t) * mesh.Indices.size(), indexOffset);
 		indexOffset += sizeof(uint32_t) * mesh.Indices.size();
 	}
 	
 	size_t vertexOffset = indexOffset;
 
 	for (auto mesh : m_Model.Meshes) {
-		Engine::BufferHelper::AppendData(
-			vulkanEngine,
-			mesh.Vertices,
-			*m_SceneGeometryBuffer.get(),
-			0,
-			//m_SceneGeometryBuffer->Chunks[INDEX_BUFFER_INDEX].ChunkSize
-			vertexOffset
-		);
-
+		gfxDevice.WriteBuffer(m_SceneGeometryBuffer, mesh.Vertices.data(), sizeof(Assets::Vertex) * mesh.Vertices.size(), vertexOffset);
 		vertexOffset += sizeof(Assets::Vertex) * mesh.Vertices.size();
 	}
-
-	/*
-	Engine::BufferHelper::AppendData(
-		vulkanEngine,
-		//p_ActiveScene->Indices,
-		p_ActiveScene->Indices,
-		*m_SceneGeometryBuffer.get(),
-		0,
-		0
-	);
-
-	Engine::BufferHelper::AppendData(
-		vulkanEngine,
-		p_ActiveScene->Vertices,
-		*m_SceneGeometryBuffer.get(),
-		0,
-		m_SceneGeometryBuffer->Chunks[INDEX_BUFFER_INDEX].ChunkSize
-	);
-	*/
 	// Scene Geometry Buffer End
 
-	Engine::DescriptorPoolBuilder descriptorPoolBuilder = {};
-	m_DescriptorPool = descriptorPoolBuilder.AddDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-		.AddDescriptorCount(10)
-		.AddBinding()
-		.AddDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-		.AddDescriptorCount(10)
-		.AddBinding()
-		.SetMaxSets(50)
-		.Build(vulkanEngine.GetLogicalDevice().GetHandle());
+	// TODO: remove descriptor pool creation from here
+	gfxDevice.CreateDescriptorPool();
 
 	Engine::DescriptorSetLayoutBuilder descriptorLayoutBuilder = {};
 	m_ObjectGPUDataDescriptorSetLayout = descriptorLayoutBuilder.NewBinding(0)
