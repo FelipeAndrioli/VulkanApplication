@@ -1612,4 +1612,113 @@ namespace Engine::Graphics {
 
 		assert(result == VK_SUCCESS);
 	}
+
+	void GraphicsDevice::CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout) {
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = desc.SetLayouts.size();
+		pipelineLayoutInfo.pSetLayouts = desc.SetLayouts.data();
+		pipelineLayoutInfo.pushConstantRangeCount = desc.PushConstantRanges.size();
+		pipelineLayoutInfo.pPushConstantRanges = desc.PushConstantRanges.data();
+
+		VkResult result = vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout);
+
+		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::CreateDescriptorSetLayout(DescriptorSetLayoutDesc desc, DescriptorSetLayout& descriptorSetLayout) {
+
+		descriptorSetLayout.Description = desc;
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = desc.Bindings.size();
+		layoutInfo.pBindings = desc.Bindings.data();
+	
+		VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &layoutInfo, nullptr, &descriptorSetLayout.Handle);
+
+		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::CreateDescriptorSet(VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet) {
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &descriptorSetLayout;
+
+		VkResult result = vkAllocateDescriptorSets(m_LogicalDevice, &allocInfo, &descriptorSet);
+
+		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, 
+		const VkBuffer& buffer, const size_t bufferSize, const size_t bufferOffset) {
+		
+		VkDescriptorBufferInfo bufferInfo = {};
+		bufferInfo.buffer = buffer;
+		bufferInfo.offset = bufferOffset;
+		bufferInfo.range = bufferSize == 0 ? 256 : bufferSize;
+
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = binding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = binding.descriptorType;
+		descriptorWrite.descriptorCount = binding.descriptorCount;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		descriptorWrite.pImageInfo = nullptr;
+		descriptorWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr);
+	}
+
+	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures) {
+
+		if (textures.size() == 0)
+			return;
+
+		std::vector<VkDescriptorImageInfo> imageInfo;
+		VkWriteDescriptorSet descriptorWrite = {};
+
+		for (auto& texture : textures) {
+			VkDescriptorImageInfo newImageInfo = {};
+			newImageInfo.imageLayout = texture.ImageLayout;
+			newImageInfo.imageView = texture.ImageView;
+			newImageInfo.sampler = texture.ImageSampler;
+
+			imageInfo.push_back(newImageInfo);
+		}
+
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = binding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = binding.descriptorType;
+		descriptorWrite.descriptorCount = static_cast<uint32_t>(imageInfo.size());
+		descriptorWrite.pImageInfo = imageInfo.data();
+		
+		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr); 
+	}
+
+	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture) {
+
+		VkDescriptorImageInfo newImageInfo = {};
+		newImageInfo.imageLayout = texture.ImageLayout;
+		newImageInfo.imageView = texture.ImageView;
+		newImageInfo.sampler = texture.ImageSampler;
+
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = binding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = binding.descriptorType;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pImageInfo = &newImageInfo;
+		
+		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr); 
+	}
+
 }

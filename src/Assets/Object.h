@@ -6,7 +6,7 @@
 
 #include <gtc/matrix_transform.hpp>
 
-#include "../Common.h"
+#include "../Graphics.h"
 
 namespace Engine {
 	class Buffer;
@@ -58,7 +58,8 @@ namespace Assets {
 
 		Transform Transformations = {};
 
-		std::unique_ptr<class Engine::DescriptorSets> DescriptorSets[Engine::MAX_FRAMES_IN_FLIGHT];
+		//std::unique_ptr<class Engine::DescriptorSets> DescriptorSets[Engine::MAX_FRAMES_IN_FLIGHT];
+		//VkDescriptorSet DescriptorSets[FRAMES_IN_FLIGHT];
 
 		uint32_t IndicesAmount = 0;
 		uint32_t VerticesAmount = 0;

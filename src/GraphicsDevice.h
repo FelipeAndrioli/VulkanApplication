@@ -171,6 +171,14 @@ namespace Engine::Graphics {
 		void EndUIFrame(const VkCommandBuffer& commandBuffer);
 		
 		void CreateDescriptorPool();
+		void CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout);
+		void CreateDescriptorSetLayout(DescriptorSetLayoutDesc desc, DescriptorSetLayout& descriptorSetLayout);
+		void CreateDescriptorSet(VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
+
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet,
+			const VkBuffer& buffer, const size_t bufferSize, const size_t bufferOffset);
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture);
 
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;

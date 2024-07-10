@@ -59,6 +59,9 @@ private:
 
 	GPUBuffer m_GPUDataBuffer[Engine::Graphics::FRAMES_IN_FLIGHT];
 	GPUBuffer m_SceneGeometryBuffer;
+		
+	VkDescriptorSet ModelDescriptorSets[FRAMES_IN_FLIGHT];
+	VkDescriptorSet GlobalDescriptorSets[FRAMES_IN_FLIGHT];
 
 	std::unique_ptr<Engine::DescriptorPool> m_DescriptorPool;
 
@@ -170,7 +173,7 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 		gfxDevice.WriteBuffer(m_SceneGeometryBuffer, mesh.Indices.data(), sizeof(uint32_t) * mesh.Indices.size(), indexOffset);
 		indexOffset += sizeof(uint32_t) * mesh.Indices.size();
 	}
-	
+
 	size_t vertexOffset = indexOffset;
 
 	for (auto mesh : m_Model.Meshes) {
@@ -182,52 +185,69 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 	// TODO: remove descriptor pool creation from here
 	gfxDevice.CreateDescriptorPool();
 
-	Engine::DescriptorSetLayoutBuilder descriptorLayoutBuilder = {};
-	m_ObjectGPUDataDescriptorSetLayout = descriptorLayoutBuilder.NewBinding(0)
-		.SetDescriptorCount(1)
-		.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-		.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
-		.Add()
-		.Build(vulkanEngine.GetLogicalDevice().GetHandle());
+	DescriptorSetLayout m_ObjectGPUDataDescSetLayout;
 
-	m_GlobalDescriptorSetLayout = descriptorLayoutBuilder.NewBinding(0)
-		.SetDescriptorCount(1)
-		.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-		.SetStage(VK_SHADER_STAGE_VERTEX_BIT)
-		.Add()
-		.NewBinding(1)
-		.SetDescriptorCount(1)
-		.SetType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-		.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
-		.Add()
-		.NewBinding(2)
-		.SetDescriptorCount(static_cast<uint32_t>(m_Textures.size()))
-		.SetType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-		.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
-		.Add()
-		.NewBinding(3)
-		.SetDescriptorCount(1)
-		.SetType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-		.SetStage(VK_SHADER_STAGE_FRAGMENT_BIT)
-		.Add()
-		.Build(vulkanEngine.GetLogicalDevice().GetHandle());
+	{
+		DescriptorSetLayoutDesc desc = {};
+		
+		VkDescriptorSetLayoutBinding binding0 = {};
+		binding0.binding = 0;
+		binding0.descriptorCount = 1;
+		binding0.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		binding0.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+		desc.Bindings.push_back(binding0);
+
+		gfxDevice.CreateDescriptorSetLayout(desc, m_ObjectGPUDataDescSetLayout);
+	}
+
+	DescriptorSetLayout m_GlobalDescSetLayout;
+
+	{
+		DescriptorSetLayoutDesc desc = {};
+		
+		VkDescriptorSetLayoutBinding binding0 = {};
+		binding0.binding = 0;
+		binding0.descriptorCount = 1;
+		binding0.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		binding0.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+		VkDescriptorSetLayoutBinding binding1 = {};
+		binding1.binding = 1;
+		binding1.descriptorCount = 1;
+		binding1.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		binding1.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutBinding binding2 = {};
+		binding2.binding = 2;
+		binding2.descriptorCount = m_Textures.size();
+		binding2.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		binding2.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutBinding binding3 = {};
+		binding3.binding = 3;
+		binding3.descriptorCount = 1;
+		binding3.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		binding3.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		desc.Bindings.push_back(binding0);
+		desc.Bindings.push_back(binding1);
+		desc.Bindings.push_back(binding2);
+		desc.Bindings.push_back(binding3);
+
+		gfxDevice.CreateDescriptorSetLayout(desc, m_GlobalDescSetLayout);
+	}
 
 	// Renderable Objects Descriptor Sets Begin
-	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0]->Chunks[OBJECT_BUFFER_INDEX].DataSize;
+	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
 
-	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		m_Model.DescriptorSets[i] = std::make_unique<class Engine::DescriptorSets>(
-			vulkanEngine.GetLogicalDevice().GetHandle(),
-			m_DescriptorPool->GetHandle(),
-			*m_ObjectGPUDataDescriptorSetLayout.get(),
-			0,
-			1
-		);
-		m_Model.DescriptorSets[i]->WriteDescriptorUniformBuffer(
-			vulkanEngine.GetLogicalDevice().GetHandle(),
-			m_ObjectGPUDataDescriptorSetLayout->GetDescriptorBindings()[0],
-			m_GPUDataBuffer[i]->GetHandle(),
-			m_GPUDataBuffer[i]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize,
+	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+		gfxDevice.CreateDescriptorSet(m_ObjectGPUDataDescSetLayout.Handle, ModelDescriptorSets[i]);
+		gfxDevice.WriteDescriptor(
+			m_ObjectGPUDataDescSetLayout.Description.Bindings[0], 
+			ModelDescriptorSets[i], 
+			m_GPUDataBuffer[i].Handle, 
+			m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize, 
 			objectBufferOffset
 		);
 	}
@@ -235,29 +255,25 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 
 	// Global Descriptor Sets Begin
 	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		m_GlobalDescriptorSets[i] = std::make_unique<Engine::DescriptorSets>(
-			vulkanEngine.GetLogicalDevice().GetHandle(),
-			m_DescriptorPool->GetHandle(),
-			*m_GlobalDescriptorSetLayout.get(),
-			1,
-			1
+		gfxDevice.CreateDescriptorSet(m_GlobalDescSetLayout.Handle, GlobalDescriptorSets[i]);
+		gfxDevice.WriteDescriptor(
+			m_GlobalDescSetLayout.Description.Bindings[0],
+			GlobalDescriptorSets[i],
+			m_GPUDataBuffer[i].Handle,
+			m_GPUDataBuffer[i].Description.Chunks[SCENE_BUFFER_INDEX].ChunkSize,
+			m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer[i].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
 		);
-		m_GlobalDescriptorSets[i]->WriteDescriptorUniformBuffer(
-			vulkanEngine.GetLogicalDevice().GetHandle(),
-			m_GlobalDescriptorSetLayout->GetDescriptorBindings()[0],
-			m_GPUDataBuffer[i]->GetHandle(),
-			m_GPUDataBuffer[i]->Chunks[SCENE_BUFFER_INDEX].ChunkSize,
-			m_GPUDataBuffer[i]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer[i]->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
+
+		gfxDevice.WriteDescriptor(
+			m_GlobalDescSetLayout.Description.Bindings[1],
+			GlobalDescriptorSets[i],
+			m_GPUDataBuffer[i].Handle,
+			m_GPUDataBuffer[i].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
+			m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize
 		);
-		m_GlobalDescriptorSets[i]->WriteDescriptorUniformBuffer(
-			vulkanEngine.GetLogicalDevice().GetHandle(),
-			m_GlobalDescriptorSetLayout->GetDescriptorBindings()[1],
-			m_GPUDataBuffer[i]->GetHandle(),
-			m_GPUDataBuffer[i]->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
-			m_GPUDataBuffer[i]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize
-		);
-		m_GlobalDescriptorSets[i]->WriteDescriptorImages(vulkanEngine.GetLogicalDevice().GetHandle(), m_GlobalDescriptorSetLayout->GetDescriptorBindings()[2], m_Textures);
-		m_GlobalDescriptorSets[i]->WriteDescriptorImage(vulkanEngine.GetLogicalDevice().GetHandle(), m_GlobalDescriptorSetLayout->GetDescriptorBindings()[3], *m_Skybox.get());
+
+		gfxDevice.WriteDescriptor(m_GlobalDescSetLayout.Description.Bindings[1], GlobalDescriptorSets[i], m_Textures);
+		gfxDevice.WriteDescriptor(m_GlobalDescSetLayout.Description.Bindings[2], GlobalDescriptorSets[i], *m_Skybox.get());
 	}
 	// Global Descriptor Sets End
 
@@ -379,13 +395,13 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		commandBuffer,
 		0,
 		1,
-		&m_SceneGeometryBuffer->GetHandle(),
+		&m_SceneGeometryBuffer.Handle,
 		offsets
 	);
 
 	vkCmdBindIndexBuffer(
 		commandBuffer,
-		m_SceneGeometryBuffer->GetHandle(),
+		m_SceneGeometryBuffer.Handle,
 		0,
 		VK_INDEX_TYPE_UINT32
 	);

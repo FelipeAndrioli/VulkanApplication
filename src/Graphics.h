@@ -52,22 +52,22 @@ namespace Engine::Graphics {
 	struct Texture : public GPUImage {
 
 		enum TextureType {
-			AMBIENT				= 0,
-			DIFFUSE				= 1,
-			SPECULAR			= 2,
+			AMBIENT = 0,
+			DIFFUSE = 1,
+			SPECULAR = 2,
 			SPECULAR_HIGHTLIGHT = 3,
-			BUMP				= 4,
-			DISPLACEMENT		= 5,
-			ALPHA				= 6,
-			REFLECTION			= 7,
-			ROUGHNESS			= 8,
-			METALLIC			= 9,
-			SHEEN				= 10,
-			EMISSIVE			= 11,
-			NORMAL				= 12,
-			CUBEMAP_SINGLE		= 13,
-			CUBEMAP_MULTI		= 14,
-			UNKNOWN				= 99
+			BUMP = 4,
+			DISPLACEMENT = 5,
+			ALPHA = 6,
+			REFLECTION = 7,
+			ROUGHNESS = 8,
+			METALLIC = 9,
+			SHEEN = 10,
+			EMISSIVE = 11,
+			NORMAL = 12,
+			CUBEMAP_SINGLE = 13,
+			CUBEMAP_MULTI = 14,
+			UNKNOWN = 99
 		} Type = TextureType::UNKNOWN;
 
 		std::string Name = "";
@@ -93,5 +93,19 @@ namespace Engine::Graphics {
 		void* MemoryMapped;
 
 		BufferDescription Description = {};
+	};
+
+	struct PipelineLayoutDesc {
+		std::vector<VkDescriptorSetLayout> SetLayouts;
+		std::vector<VkPushConstantRange> PushConstantRanges;
+	};
+
+	struct DescriptorSetLayoutDesc {
+		std::vector<VkDescriptorSetLayoutBinding> Bindings;
+	};
+
+	struct DescriptorSetLayout {
+		VkDescriptorSetLayout Handle;
+		DescriptorSetLayoutDesc Description;
 	};
 }
