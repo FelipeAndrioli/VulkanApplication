@@ -21,10 +21,9 @@ namespace Engine {
 
 		m_GraphicsDevice->CreateRenderTarget(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height, m_SwapChain.swapChainImageFormat);
 		m_GraphicsDevice->CreateDepthBuffer(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
-		m_GraphicsDevice->CreateDefaultRenderPass(m_DefaultRenderPass, m_SwapChain.swapChainImageFormat, m_DepthBuffer.Description.Format);
 
 		std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[0] };
-		m_GraphicsDevice->CreateFramebuffer(m_DefaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent);
+		m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->defaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent);
 	}
 	
 	ApplicationCore::~ApplicationCore() {
