@@ -35,7 +35,7 @@ public:
 	ModelViewer(Engine::Settings& settings) : m_Settings(settings) {};
 
 	virtual void StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) override;
-	virtual void CleanUp() override;
+	virtual void CleanUp(Engine::Graphics::GraphicsDevice& gfxDevice) override;
 	virtual void Update(float d, Engine::InputSystem::Input& input) override;
 	virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) override;
 	virtual void RenderUI() override;
@@ -45,7 +45,6 @@ public:
 	void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline);
 private:
 	Assets::Camera* m_Camera = nullptr;
-	std::unique_ptr<Texture> m_Skybox;
 
 	Engine::Settings m_Settings = {};
 
@@ -56,6 +55,7 @@ private:
 
 	std::vector<Assets::Material> m_Materials;
 	std::vector<Texture> m_Textures;
+	Texture m_Skybox;
 
 	GPUBuffer m_GPUDataBuffer[Engine::Graphics::FRAMES_IN_FLIGHT];
 	GPUBuffer m_SceneGeometryBuffer;
@@ -63,19 +63,10 @@ private:
 	VkDescriptorSet ModelDescriptorSets[FRAMES_IN_FLIGHT];
 	VkDescriptorSet GlobalDescriptorSets[FRAMES_IN_FLIGHT];
 
-	std::unique_ptr<Engine::DescriptorPool> m_DescriptorPool;
-
-	std::unique_ptr<Engine::DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
-	std::unique_ptr<Engine::DescriptorSetLayout> m_GlobalDescriptorSetLayout;
-
-	std::unique_ptr<Engine::DescriptorSets> m_GlobalDescriptorSets[Engine::Graphics::FRAMES_IN_FLIGHT];
-	
-	std::unique_ptr<Engine::PipelineLayout> m_MainPipelineLayout;
-
-	std::unique_ptr<Engine::GraphicsPipeline> m_TexturedPipeline;
-	std::unique_ptr<Engine::GraphicsPipeline> m_WireframePipeline;
-	std::unique_ptr<Engine::GraphicsPipeline> m_ColoredPipeline;
-	std::unique_ptr<Engine::GraphicsPipeline> m_SkyboxPipeline;
+	PipelineState m_TexturedPipeline;
+	PipelineState m_WireframePipeline;
+	PipelineState m_ColoredPipeline;
+	PipelineState m_SkyboxPipeline;
 
 	static const int OBJECT_BUFFER_INDEX = 0;
 	static const int MATERIAL_BUFFER_INDEX = 1;
@@ -124,7 +115,7 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 	};
 
 	//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
-	m_Skybox = std::make_unique<Texture>(TextureLoader::LoadCubemapTexture(cubeTextures));
+	m_Skybox = TextureLoader::LoadCubemapTexture(cubeTextures);
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
@@ -185,66 +176,78 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 	// TODO: remove descriptor pool creation from here
 	gfxDevice.CreateDescriptorPool();
 
-	DescriptorSetLayout m_ObjectGPUDataDescSetLayout;
+	Shader defaultVertexShader = {};
+	Shader texturedFragShader = {};
+	Shader wireframeFragShader = {};
+	Shader coloredFragShader = {};
+	Shader skyboxVertexShader = {};
+	Shader skyboxFragShader = {};
 
-	{
-		DescriptorSetLayoutDesc desc = {};
-		
-		VkDescriptorSetLayoutBinding binding0 = {};
-		binding0.binding = 0;
-		binding0.descriptorCount = 1;
-		binding0.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		binding0.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	gfxDevice.LoadShader(VK_SHADER_STAGE_VERTEX_BIT, defaultVertexShader, "./Shaders/default_vert.spv");
+	gfxDevice.LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, texturedFragShader, "./Shaders/textured_frag.spv");
+	gfxDevice.LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, wireframeFragShader, "./Shaders/wireframe_frag.spv");
+	gfxDevice.LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, coloredFragShader, "./Shaders/colored_frag.spv");
+	gfxDevice.LoadShader(VK_SHADER_STAGE_VERTEX_BIT, skyboxVertexShader, "./Shaders/skybox_vert.spv");
+	gfxDevice.LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, skyboxFragShader, "./Shaders/skybox_frag.spv");
 
-		desc.Bindings.push_back(binding0);
+	PipelineStateDescription psoDesc = {};
+	psoDesc.Name = "Texture Pipeline";
+	psoDesc.vertexShader = &defaultVertexShader;
+	psoDesc.fragmentShader = &texturedFragShader;
+	psoDesc.cullMode = VK_CULL_MODE_BACK_BIT;
+	psoDesc.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	psoDesc.polygonMode = VK_POLYGON_MODE_FILL;
+	psoDesc.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	psoDesc.pipelineExtent = { m_ScreenWidth, m_ScreenHeight };
 
-		gfxDevice.CreateDescriptorSetLayout(desc, m_ObjectGPUDataDescSetLayout);
-	}
+	InputLayout modelInputLayout = {
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT }
+		}
+	};
 
-	DescriptorSetLayout m_GlobalDescSetLayout;
+	psoDesc.psoInputLayout.push_back(modelInputLayout);
 
-	{
-		DescriptorSetLayoutDesc desc = {};
-		
-		VkDescriptorSetLayoutBinding binding0 = {};
-		binding0.binding = 0;
-		binding0.descriptorCount = 1;
-		binding0.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		binding0.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	InputLayout sceneInputLayout = {
+		.pushConstants = {
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) }
+		},
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },
+			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }
+		}
+	};
 
-		VkDescriptorSetLayoutBinding binding1 = {};
-		binding1.binding = 1;
-		binding1.descriptorCount = 1;
-		binding1.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		binding1.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	psoDesc.psoInputLayout.push_back(sceneInputLayout);
 
-		VkDescriptorSetLayoutBinding binding2 = {};
-		binding2.binding = 2;
-		binding2.descriptorCount = m_Textures.size();
-		binding2.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		binding2.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	gfxDevice.CreatePipelineState(psoDesc, m_TexturedPipeline);
 
-		VkDescriptorSetLayoutBinding binding3 = {};
-		binding3.binding = 3;
-		binding3.descriptorCount = 1;
-		binding3.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		binding3.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	psoDesc.fragmentShader = &coloredFragShader;
 
-		desc.Bindings.push_back(binding0);
-		desc.Bindings.push_back(binding1);
-		desc.Bindings.push_back(binding2);
-		desc.Bindings.push_back(binding3);
+	gfxDevice.CreatePipelineState(psoDesc, m_ColoredPipeline);
 
-		gfxDevice.CreateDescriptorSetLayout(desc, m_GlobalDescSetLayout);
-	}
+	psoDesc.fragmentShader = &wireframeFragShader;
+	psoDesc.polygonMode = VK_POLYGON_MODE_LINE;
+	psoDesc.lineWidth = 3.0f;
+	
+	gfxDevice.CreatePipelineState(psoDesc, m_WireframePipeline);
+
+	psoDesc.lineWidth = 1.0f;
+	psoDesc.vertexShader = &skyboxVertexShader;
+	psoDesc.fragmentShader = &skyboxFragShader;
+	psoDesc.polygonMode = VK_POLYGON_MODE_FILL;
+
+	gfxDevice.CreatePipelineState(psoDesc, m_SkyboxPipeline);
 
 	// Renderable Objects Descriptor Sets Begin
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
 
 	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-		gfxDevice.CreateDescriptorSet(m_ObjectGPUDataDescSetLayout.Handle, ModelDescriptorSets[i]);
+		gfxDevice.CreateDescriptorSet(modelInputLayout, ModelDescriptorSets[i]);
 		gfxDevice.WriteDescriptor(
-			m_ObjectGPUDataDescSetLayout.Description.Bindings[0], 
+			modelInputLayout.bindings[0],
 			ModelDescriptorSets[i], 
 			m_GPUDataBuffer[i].Handle, 
 			m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize, 
@@ -255,9 +258,9 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 
 	// Global Descriptor Sets Begin
 	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		gfxDevice.CreateDescriptorSet(m_GlobalDescSetLayout.Handle, GlobalDescriptorSets[i]);
+		gfxDevice.CreateDescriptorSet(sceneInputLayout, GlobalDescriptorSets[i]);
 		gfxDevice.WriteDescriptor(
-			m_GlobalDescSetLayout.Description.Bindings[0],
+			sceneInputLayout.bindings[0],
 			GlobalDescriptorSets[i],
 			m_GPUDataBuffer[i].Handle,
 			m_GPUDataBuffer[i].Description.Chunks[SCENE_BUFFER_INDEX].ChunkSize,
@@ -265,115 +268,43 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 		);
 
 		gfxDevice.WriteDescriptor(
-			m_GlobalDescSetLayout.Description.Bindings[1],
+			sceneInputLayout.bindings[1],
 			GlobalDescriptorSets[i],
 			m_GPUDataBuffer[i].Handle,
 			m_GPUDataBuffer[i].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
 			m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize
 		);
 
-		gfxDevice.WriteDescriptor(m_GlobalDescSetLayout.Description.Bindings[1], GlobalDescriptorSets[i], m_Textures);
-		gfxDevice.WriteDescriptor(m_GlobalDescSetLayout.Description.Bindings[2], GlobalDescriptorSets[i], *m_Skybox.get());
+		gfxDevice.WriteDescriptor(sceneInputLayout.bindings[2], GlobalDescriptorSets[i], m_Textures);
+		gfxDevice.WriteDescriptor(sceneInputLayout.bindings[3], GlobalDescriptorSets[i], m_Skybox);
 	}
 	// Global Descriptor Sets End
-
-	// Create pipeline layouts start
-	Engine::PipelineLayoutBuilder pipelineLayoutBuilder = Engine::PipelineLayoutBuilder();
-
-	VkPushConstantRange mainPipelinePushConstant = { VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) };
-
-	m_MainPipelineLayout = pipelineLayoutBuilder.AddDescriptorSetLayout(m_ObjectGPUDataDescriptorSetLayout->GetHandle())
-		.AddDescriptorSetLayout(m_GlobalDescriptorSetLayout->GetHandle())
-		.AddPushConstant(mainPipelinePushConstant)
-		.BuildPipelineLayout(vulkanEngine.GetLogicalDevice().GetHandle());
-	// Create pipeline layouts end 
-
-	// Create pipelines start
-	Engine::PipelineBuilder pipelineBuilder = Engine::PipelineBuilder();
-
-	std::string shadersPath = "./Shaders/";
-	std::string defaultVert = shadersPath + "default_vert.spv";
-	//std::string defaultVert = shadersPath + "sinewave_vert.spv";
-	std::string texturedFrag = shadersPath + "textured_frag.spv";
-	std::string wireframeFrag = shadersPath + "wireframe_frag.spv";
-	std::string untexturedFrag = shadersPath + "colored_frag.spv";
-	std::string skyboxVert = shadersPath + "skybox_vert.spv";
-	std::string skyboxFrag = shadersPath + "skybox_frag.spv";
-
-	std::cout << defaultVert << '\n';
-	std::cout << texturedFrag << '\n';
-	std::cout << wireframeFrag << '\n';
-	std::cout << untexturedFrag << '\n';
-	std::cout << skyboxVert << '\n';
-	std::cout << skyboxFrag << '\n';
-
-	Assets::VertexShader defaultVertexShader = Assets::VertexShader("Default Vertex Shader", defaultVert);
-	Assets::FragmentShader texturedFragmentShader = Assets::FragmentShader("Textured Fragment Shader", texturedFrag);
-	Assets::FragmentShader wireframeFragShader = Assets::FragmentShader("Wireframe Fragment Shader", wireframeFrag);
-	Assets::FragmentShader coloredFragShader = Assets::FragmentShader("Colored Fragment Shader", untexturedFrag);
-
-	Assets::VertexShader skyboxVertexShader = Assets::VertexShader("Skybox Vertex Shader", skyboxVert);
-	Assets::FragmentShader skyboxFragmentShader = Assets::FragmentShader("Skybox Fragment Shader", skyboxFrag);
-
-	m_TexturedPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
-		.AddFragmentShader(texturedFragmentShader)
-		.AddRenderPass(vulkanEngine.GetDefaultRenderPass().GetHandle())
-		.AddPipelineLayout(*m_MainPipelineLayout)
-		.BuildGraphicsPipeline(vulkanEngine);
-
-	wireframeFragShader.PolygonMode = Assets::FragmentShader::Polygon::LINE;
-	wireframeFragShader.LineWidth = 3.0f;
-
-	m_WireframePipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
-		.AddFragmentShader(wireframeFragShader)
-		.AddRenderPass(vulkanEngine.GetDefaultRenderPass().GetHandle())
-		.AddPipelineLayout(*m_MainPipelineLayout)
-		.BuildGraphicsPipeline(vulkanEngine);
-
-	m_ColoredPipeline = pipelineBuilder.AddVertexShader(defaultVertexShader)
-		.AddFragmentShader(coloredFragShader)
-		.AddRenderPass(vulkanEngine.GetDefaultRenderPass().GetHandle())
-		.AddPipelineLayout(*m_MainPipelineLayout)
-		.BuildGraphicsPipeline(vulkanEngine);
-
-	m_SkyboxPipeline = pipelineBuilder.AddVertexShader(skyboxVertexShader)
-		.AddFragmentShader(skyboxFragmentShader)
-		.AddRenderPass(vulkanEngine.GetDefaultRenderPass().GetHandle())
-		.AddPipelineLayout(*m_MainPipelineLayout)
-		.BuildGraphicsPipeline(vulkanEngine);
-	// Create pipelines end 
-
-	m_Model.SetGraphicsPipeline(m_TexturedPipeline.get());
 }
 
-void ModelViewer::CleanUp() {
-	delete m_Camera;
-
+void ModelViewer::CleanUp(GraphicsDevice& gfxDevice) {
 	m_Model.ResetResources();
 
-	m_ObjectGPUDataDescriptorSetLayout.reset();
-	m_GlobalDescriptorSetLayout.reset();
+	gfxDevice.DestroyPipeline(m_TexturedPipeline);
+	gfxDevice.DestroyPipeline(m_WireframePipeline);
+	gfxDevice.DestroyPipeline(m_ColoredPipeline);
+	gfxDevice.DestroyPipeline(m_SkyboxPipeline);
 
+	gfxDevice.DestroyBuffer(m_SceneGeometryBuffer);
 
-	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		m_GlobalDescriptorSets[i].reset();
-		m_GPUDataBuffer[i].reset();
+	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
+		gfxDevice.DestroyBuffer(m_GPUDataBuffer[i]);
 	}
 
-	m_SceneGeometryBuffer.reset();
-	
-	m_MainPipelineLayout.reset();
+	gfxDevice.DestroyTexture(m_Skybox);
 
-	m_TexturedPipeline.reset();
-	m_WireframePipeline.reset();
-	m_ColoredPipeline.reset();
-	m_SkyboxPipeline.reset();
+	for (auto texture : m_Textures) {
+		gfxDevice.DestroyTexture(texture);
+	}
 
-	m_Skybox.reset();
-	m_Materials.clear();
 	m_Textures.clear();
-	
-	m_DescriptorPool.reset();
+	m_Materials.clear();
+
+	delete m_Camera;
 }
 
 void ModelViewer::Update(float d, Engine::InputSystem::Input& input) {
