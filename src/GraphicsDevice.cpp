@@ -1,6 +1,8 @@
 #include "GraphicsDevice.h"
 
 #include "UI.h"
+#include <string>
+#include <fstream>
 
 namespace Engine::Graphics {
 	VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface) {
@@ -988,6 +990,11 @@ namespace Engine::Graphics {
 		CreateDebugMessenger(m_VulkanInstance, m_DebugMessenger);
 		CreateCommandPool(m_LogicalDevice, m_CommandPool, m_QueueFamilyIndices.graphicsFamily.value());
 		CreateFramesResources();
+
+		SwapChainSupportDetails swapChainSupportDetails = QuerySwapChainSupportDetails(m_PhysicalDevice, m_Surface);
+		VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupportDetails.formats);
+
+		CreateDefaultRenderPass(defaultRenderPass, surfaceFormat.format, FindDepthFormat(m_PhysicalDevice));
 	}
 
 	GraphicsDevice::~GraphicsDevice() {
@@ -1471,6 +1478,12 @@ namespace Engine::Graphics {
 		Engine::Graphics::CreateImageSampler(m_PhysicalDevice, m_LogicalDevice, texture);
 	}
 
+	void GraphicsDevice::DestroyTexture(Texture& texture) {
+		vkDestroyImageView(m_LogicalDevice, texture.ImageView, nullptr);
+		vkDestroySampler(m_LogicalDevice, texture.ImageSampler, nullptr);
+		vkDestroyImage(m_LogicalDevice, texture.Image, nullptr);
+	}
+
 	void GraphicsDevice::CreateDefaultRenderPass(VkRenderPass& renderPass, VkFormat swapChainImageFormat, VkFormat depthBufferImageFormat) {
 		VkAttachmentDescription colorAttachment{};
 		colorAttachment.format = swapChainImageFormat;
@@ -1626,17 +1639,24 @@ namespace Engine::Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
-	void GraphicsDevice::CreateDescriptorSetLayout(DescriptorSetLayoutDesc desc, DescriptorSetLayout& descriptorSetLayout) {
+	void GraphicsDevice::CreateDescriptorSet(InputLayout& inputLayout, VkDescriptorSet& descriptorSet) {
+		VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+		
+		VkDescriptorSetLayoutCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		createInfo.bindingCount = inputLayout.bindings.size();
+		createInfo.pBindings = inputLayout.bindings.data();
 
-		descriptorSetLayout.Description = desc;
+		VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &createInfo, nullptr, &layout);
+		assert(result == VK_SUCCESS);
 
-		VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layoutInfo.bindingCount = desc.Bindings.size();
-		layoutInfo.pBindings = desc.Bindings.data();
-	
-		VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &layoutInfo, nullptr, &descriptorSetLayout.Handle);
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &layout;
 
+		result = vkAllocateDescriptorSets(m_LogicalDevice, &allocInfo, &descriptorSet);
 		assert(result == VK_SUCCESS);
 	}
 
@@ -1721,4 +1741,282 @@ namespace Engine::Graphics {
 		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr); 
 	}
 
+	std::vector<char> GraphicsDevice::ReadFile(const std::string& filename) {
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+		if (!file.is_open()) {
+			throw std::runtime_error("Failed to open file!");
+		}
+
+		size_t fileSize = (size_t)file.tellg();
+		std::vector<char> buffer(fileSize);
+
+		file.seekg(0);
+		file.read(buffer.data(), fileSize);
+
+		file.close();
+
+		return buffer;
+
+	}
+
+	void GraphicsDevice::LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename) {
+		auto shaderCode = ReadFile(filename);
+
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = shaderCode.size();
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(shaderCode.data());
+
+		VkResult result = vkCreateShaderModule(m_LogicalDevice, &createInfo, nullptr, &shader.shaderModule);
+		assert(result == VK_SUCCESS);
+
+		shader.shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shader.shaderStageInfo.stage = shaderStage;
+		shader.shaderStageInfo.module = shader.shaderModule;
+		shader.shaderStageInfo.pName = "main";
+	}
+
+	void GraphicsDevice::CreateRenderPass(VkFormat colorImageFormat, VkFormat depthFormat, VkRenderPass& renderPass) {
+		VkAttachmentDescription colorAttachment{};
+		colorAttachment.format = colorImageFormat;
+		colorAttachment.samples = m_MsaaSamples;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentDescription depthAttachment{};
+		depthAttachment.format = depthFormat;
+		depthAttachment.samples = m_MsaaSamples;
+		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentDescription colorAttachmentResolve{};
+		colorAttachmentResolve.format = colorImageFormat;
+		colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
+		colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		VkAttachmentReference colorAttachmentRef{};
+		colorAttachmentRef.attachment = 0;
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentReference depthAttachmentReference{};
+		depthAttachmentReference.attachment = 1;
+		depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentReference colorAttachmentResolveRef{};
+		colorAttachmentResolveRef.attachment = 2;
+		colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDependency dependency{};
+		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass = 0;
+		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.srcAccessMask = 0;
+		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		VkSubpassDescription subpass{};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+		subpass.pDepthStencilAttachment = &depthAttachmentReference;
+		subpass.pResolveAttachments = &colorAttachmentResolveRef;
+	
+		std::array<VkAttachmentDescription, 3> attachments = { colorAttachment, depthAttachment, colorAttachmentResolve };
+
+		VkRenderPassCreateInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		renderPassInfo.pAttachments = attachments.data();
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpass;
+		renderPassInfo.dependencyCount = 1;
+		renderPassInfo.pDependencies = &dependency;
+
+		VkResult result = vkCreateRenderPass(m_LogicalDevice, &renderPassInfo, nullptr, &renderPass);
+		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso) {
+		CreatePipelineState(desc, pso, defaultRenderPass);
+	}
+
+	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, VkRenderPass& renderPass) {
+
+		if (desc.vertexShader != nullptr) {
+			auto bindingDescription = desc.vertexShader->BindingDescription;
+			auto attributeDescriptions = desc.vertexShader->AttributeDescriptions;
+
+			VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+			vertexInputInfo.vertexBindingDescriptionCount = 1;
+			vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+			vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+			pso.pipelineInfo.pVertexInputState = &vertexInputInfo;
+		}
+
+		pso.inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		pso.inputAssembly.topology = desc.topology;
+		pso.inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+		VkExtent2D swapChainExtent = desc.pipelineExtent;
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)desc.pipelineExtent.width;
+		viewport.height = (float)desc.pipelineExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = swapChainExtent;
+
+		pso.viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		pso.viewportState.viewportCount = 1;
+		pso.viewportState.pViewports = &viewport;
+		pso.viewportState.scissorCount = 1;
+		pso.viewportState.pScissors = &scissor;
+
+		pso.rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		pso.rasterizer.depthClampEnable = VK_FALSE;
+		pso.rasterizer.rasterizerDiscardEnable = VK_FALSE;
+		pso.rasterizer.polygonMode = desc.polygonMode;
+		pso.rasterizer.lineWidth = desc.lineWidth;
+		pso.rasterizer.cullMode = desc.cullMode;
+		pso.rasterizer.frontFace = desc.frontFace;
+		pso.rasterizer.depthBiasEnable = VK_FALSE;
+		pso.rasterizer.depthBiasConstantFactor = 0.0f;
+		pso.rasterizer.depthBiasClamp = 0.0f;
+		pso.rasterizer.depthBiasSlopeFactor = 0.0f;
+
+		pso.multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		pso.multisampling.sampleShadingEnable = VK_FALSE;
+		pso.multisampling.rasterizationSamples = m_MsaaSamples;
+		pso.multisampling.minSampleShading = 1.0f;
+		pso.multisampling.pSampleMask = nullptr;
+		pso.multisampling.alphaToCoverageEnable = VK_FALSE;
+		pso.multisampling.alphaToOneEnable = VK_FALSE;
+
+		VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+			| VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_FALSE;
+
+		VkPipelineColorBlendStateCreateInfo colorBlending = {};
+		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.logicOp = VK_LOGIC_OP_COPY;
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments = &colorBlendAttachment;
+		colorBlending.blendConstants[0] = 0.0f;
+		colorBlending.blendConstants[1] = 0.0f;
+		colorBlending.blendConstants[2] = 0.0f;
+		colorBlending.blendConstants[3] = 0.0f;
+
+		std::vector<VkDynamicState> dynamicStates = {
+			VK_DYNAMIC_STATE_VIEWPORT,
+			VK_DYNAMIC_STATE_SCISSOR
+		};
+
+		VkPipelineDynamicStateCreateInfo dynamicState = {};
+		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+		dynamicState.pDynamicStates = dynamicStates.data();
+
+		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+
+		if (desc.vertexShader != nullptr)
+			shaderStages.push_back(desc.vertexShader->shaderStageInfo);
+		if (desc.fragmentShader != nullptr)
+			shaderStages.push_back(desc.fragmentShader->shaderStageInfo);
+		if (desc.computeShader != nullptr)
+			shaderStages.push_back(desc.computeShader->shaderStageInfo);
+
+		for (auto stage : shaderStages) {
+			stage.pNext = nullptr;
+			stage.pSpecializationInfo = nullptr;
+		}
+
+		pso.depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		pso.depthStencil.depthTestEnable = VK_TRUE;
+		pso.depthStencil.depthWriteEnable = VK_TRUE;
+		pso.depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+		pso.depthStencil.depthBoundsTestEnable = VK_FALSE;
+		pso.depthStencil.minDepthBounds = 0.0f;
+		pso.depthStencil.maxDepthBounds = 1.0f;
+		pso.depthStencil.stencilTestEnable = VK_FALSE;
+		pso.depthStencil.front = {};
+		pso.depthStencil.back = {};
+
+		for (auto inputLayout : desc.psoInputLayout) {
+			VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.bindingCount = inputLayout.bindings.size();
+			layoutInfo.pBindings = inputLayout.bindings.data();
+		
+			VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &layoutInfo, nullptr, &layout);
+			assert(result == VK_SUCCESS);
+
+			pso.layoutBindings.insert(pso.layoutBindings.end(), inputLayout.bindings.begin(), inputLayout.bindings.end());
+			pso.pushConstants.insert(pso.pushConstants.end(), inputLayout.pushConstants.begin(), inputLayout.pushConstants.end());
+
+			pso.descriptorSetLayout.push_back(layout);
+		}
+
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(pso.descriptorSetLayout.size());
+		pipelineLayoutInfo.pSetLayouts = pso.descriptorSetLayout.data();
+		pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pso.pushConstants.size());
+		pipelineLayoutInfo.pPushConstantRanges = pso.pushConstants.data();
+
+		VkResult result = vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &pso.pipelineLayout);
+		assert(result == VK_SUCCESS);
+
+		pso.pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pso.pipelineInfo.stageCount = shaderStages.size();
+		pso.pipelineInfo.pStages = shaderStages.data();
+		pso.pipelineInfo.pInputAssemblyState = &pso.inputAssembly;
+		pso.pipelineInfo.pViewportState = &pso.viewportState;
+		pso.pipelineInfo.pRasterizationState = &pso.rasterizer;
+		pso.pipelineInfo.pMultisampleState = &pso.multisampling;
+		pso.pipelineInfo.pDepthStencilState = &pso.depthStencil;
+		pso.pipelineInfo.pColorBlendState = &colorBlending;
+		pso.pipelineInfo.pDynamicState = &dynamicState;
+		pso.pipelineInfo.layout = pso.pipelineLayout;
+		pso.pipelineInfo.renderPass = renderPass;		// this should be changed to render pass info in the future
+		pso.pipelineInfo.subpass = 0;
+		pso.pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		//pipelineInfo.basePipelineIndex = -1;
+
+		VkResult result = vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pso.pipelineInfo, nullptr, &pso.pipeline);
+		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::DestroyPipeline(PipelineState& pso) {
+		vkDestroyPipelineLayout(m_LogicalDevice, pso.pipelineLayout, nullptr);
+
+		for (auto descriptorSetLayout : pso.descriptorSetLayout) {
+			vkDestroyDescriptorSetLayout(m_LogicalDevice, descriptorSetLayout, nullptr);
+		}
+
+		vkDestroyPipeline(m_LogicalDevice, pso.pipeline, nullptr);
+	}
 }

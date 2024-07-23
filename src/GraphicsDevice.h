@@ -87,6 +87,63 @@ namespace Engine::Graphics {
 		uint32_t imageIndex;
 	};
 
+	struct Shader {
+		std::string filename;
+		VkShaderStageFlagBits stage;
+		VkShaderModule shaderModule = VK_NULL_HANDLE;
+		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+		VkPipelineShaderStageCreateInfo shaderStageInfo;
+
+		VkVertexInputBindingDescription BindingDescription = Assets::Vertex::getBindingDescription();
+		std::array<VkVertexInputAttributeDescription, 3> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+	};
+
+	struct InputLayout {
+		std::vector<VkPushConstantRange> pushConstants;
+		std::vector<VkDescriptorSetLayoutBinding> bindings;
+	};
+
+	struct PipelineStateDescription {
+		const Shader* vertexShader = nullptr;
+		const Shader* fragmentShader = nullptr;
+		const Shader* computeShader = nullptr;
+
+		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
+		VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
+		VkFrontFace frontFace = VK_FRONT_FACE_CLOCKWISE;
+		VkExtent2D pipelineExtent = {};
+
+		float lineWidth = 1.0f;
+
+		std::vector<InputLayout> psoInputLayout;
+
+		std::string Name;
+	};
+
+	struct PipelineState {
+		VkPipeline pipeline = VK_NULL_HANDLE;
+		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+
+		std::vector<VkDescriptorSetLayout> descriptorSetLayout;
+		std::vector<VkPushConstantRange> pushConstants;
+		std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
+		std::vector<VkImageViewType> imageViewTypes;
+
+		VkPushConstantRange pushConstants = {};
+
+		VkGraphicsPipelineCreateInfo pipelineInfo = {};
+		VkPipelineMultisampleStateCreateInfo multisampling = {};
+		VkPipelineShaderStageCreateInfo shaderStages = {};
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+		VkPipelineRasterizationStateCreateInfo rasterizer = {};
+		VkPipelineRasterizationDepthClipStateCreateInfoEXT depthClip = {};
+		VkPipelineViewportStateCreateInfo viewportState = {};
+		VkPipelineDepthStencilStateCreateInfo depthStencil = {};
+		VkSampleMask sampleMask = {};
+		VkPipelineTessellationStateCreateInfo tessellationInfo = {};
+	};
+
 	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 	void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 	void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
@@ -151,6 +208,7 @@ namespace Engine::Graphics {
 
 		template <class T>
 		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, T* initialData, size_t dataSize);
+		void DestroyTexture(Texture& texture);
 
 		GraphicsDevice& CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
 		GraphicsDevice& AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
@@ -172,7 +230,7 @@ namespace Engine::Graphics {
 		
 		void CreateDescriptorPool();
 		void CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout);
-		void CreateDescriptorSetLayout(DescriptorSetLayoutDesc desc, DescriptorSetLayout& descriptorSetLayout);
+		void CreateDescriptorSet(InputLayout& inputLayout, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
 
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet,
@@ -180,12 +238,20 @@ namespace Engine::Graphics {
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture);
 
+		std::vector<char> ReadFile(const std::string& filename);
+		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
+		void CreateRenderPass(VkFormat colorImageFormat, VkFormat depthFormat, VkRenderPass& renderPass);
+		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso);
+		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, VkRenderPass& renderPass);
+		void DestroyPipeline(PipelineState& pso);
+
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
 		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
 		VkCommandPool m_CommandPool = VK_NULL_HANDLE;
+		VkRenderPass defaultRenderPass = VK_NULL_HANDLE;
 
 		QueueFamilyIndices m_QueueFamilyIndices;
 		VkSampleCountFlagBits m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -205,6 +271,7 @@ namespace Engine::Graphics {
 
 		VkDescriptorPool descriptorPool;
 		uint32_t poolSize;
+
 		
 		std::unique_ptr<class UI> m_UI;
 	};
