@@ -99,13 +99,4 @@ namespace Engine::Graphics {
 		std::vector<VkDescriptorSetLayout> SetLayouts;
 		std::vector<VkPushConstantRange> PushConstantRanges;
 	};
-
-	struct DescriptorSetLayoutDesc {
-		std::vector<VkDescriptorSetLayoutBinding> Bindings;
-	};
-
-	struct DescriptorSetLayout {
-		VkDescriptorSetLayout Handle;
-		DescriptorSetLayoutDesc Description;
-	};
 }
