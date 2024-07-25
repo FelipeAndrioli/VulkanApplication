@@ -207,8 +207,7 @@ namespace Engine::Graphics {
 		void UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, size_t dataSize);
 		void WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0);
 
-		template <class T>
-		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, T* initialData, size_t dataSize);
+		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, void* initialData, size_t dataSize);
 		void DestroyTexture(Texture& texture);
 
 		GraphicsDevice& CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
@@ -272,9 +271,6 @@ namespace Engine::Graphics {
 
 		VkDescriptorPool descriptorPool;
 		uint32_t poolSize;
-
-		
-		std::unique_ptr<class UI> m_UI;
 
 	private:
 		bool isDeviceSuitable(VkPhysicalDevice& device, VkSurfaceKHR& surface);

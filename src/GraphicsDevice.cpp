@@ -1458,8 +1458,7 @@ namespace Engine::Graphics {
 		vkUnmapMemory(m_LogicalDevice, buffer.Memory);
 	}
 
-	template <class T>
-	void GraphicsDevice::CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, T* initialData, size_t dataSize) {
+	void GraphicsDevice::CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, void* initialData, size_t dataSize) {
 		desc.MsaaSamples = m_MsaaSamples;
 
 		texture.Description = desc;
