@@ -8,10 +8,11 @@
 
 #include "../Graphics.h"
 #include "../GraphicsDevice.h"
+#include "../Assets/Object.h"
 
 using namespace Engine::Graphics;
 
 namespace ModelLoader {
-	static void LoadModelAndMaterials(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials, std::vector<Texture>& loadedTextures);
-	static void LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials);
+	extern void LoadModelAndMaterials(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials, std::vector<Texture>& loadedTextures);
+	extern void LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials);
 }

@@ -26,17 +26,35 @@
 constexpr auto UNEXISTENT = -1;
 
 namespace ModelLoader {
+	
+	int GetTextureIndex(std::vector<Texture>& loadedTextures, std::string textureName) {
+		if (loadedTextures.size() == 0) 
+			return UNEXISTENT;
 
-	void ProcessNode(Assets::Object& object, const aiNode* node, const aiScene* scene) {
-		for (size_t i = 0; i < node->mNumMeshes; i++) {
-			const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-			//object.Meshes.push_back(ProcessMesh(mesh, scene));
-			object.AddMesh(ProcessMesh(mesh, scene));
+		for (int i = 0; i < loadedTextures.size(); i++) {
+			if (loadedTextures[i].Name == textureName) {
+				return i;
+			}
 		}
 
-		for (size_t i = 0; i < node->mNumChildren; i++) {
-			ProcessNode(object, node->mChildren[i], scene);
+		return UNEXISTENT;
+	}
+
+	int GetMaterialIndex(std::vector<Assets::Material>& sceneMaterials, std::string materialName) {
+		if (sceneMaterials.size() == 0)
+			return UNEXISTENT;
+
+		for (int i = 0; i < sceneMaterials.size(); i++) {
+			if (sceneMaterials[i].Name == materialName)
+				return i;
 		}
+
+		return UNEXISTENT;
+	}
+
+	bool fileExists(const std::string& path) {
+		struct stat buffer;
+		return (stat(path.c_str(), &buffer) == 0);
 	}
 
 	Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
@@ -78,55 +96,15 @@ namespace ModelLoader {
 		return newMesh;
 	}
 
-	static void ProcessMaterials(
-		Assets::Object& object,
-		const aiScene* scene, 
-		std::vector<Assets::Material>& sceneMaterials,
-		std::vector<Texture>& loadedTextures) {
+	void ProcessNode(Assets::Object& object, const aiNode* node, const aiScene* scene) {
+		for (size_t i = 0; i < node->mNumMeshes; i++) {
+			const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+			//object.Meshes.push_back(ProcessMesh(mesh, scene));
+			object.AddMesh(ProcessMesh(mesh, scene));
+		}
 
-		for (size_t i = 0; i < scene->mNumMaterials; i++) {
-			aiMaterial* material = scene->mMaterials[i];
-
-			aiString materialName;
-			aiColor3D diffuseColor;
-			aiColor3D specularColor;
-			aiColor3D ambientColor;
-			aiColor3D emissiveColor;
-			aiColor3D transparentColor;
-			float opacity;
-			float shininess;
-			float shininessStrength;
-
-			material->Get(AI_MATKEY_NAME, materialName);
-			material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
-			material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
-			material->Get(AI_MATKEY_COLOR_AMBIENT, ambientColor);
-			material->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor);
-			material->Get(AI_MATKEY_COLOR_TRANSPARENT, transparentColor);
-			material->Get(AI_MATKEY_OPACITY, opacity);
-			material->Get(AI_MATKEY_SHININESS, shininess);
-			material->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength);
-
-			if (GetMaterialIndex(sceneMaterials, materialName.C_Str()) == UNEXISTENT) {
-				Assets::Material newMaterial = {};
-				newMaterial.Name = materialName.C_Str();
-				newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
-				newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
-				newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, 1.0f);
-				newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, 1.0f);
-				newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, 1.0f);
-				newMaterial.MaterialData.Opacity = opacity;
-				newMaterial.MaterialData.Shininess = shininess;
-				newMaterial.MaterialData.ShininessStrength = shininessStrength;
-
-				sceneMaterials.push_back(newMaterial);
-			}
-
-			LoadTextures(object, material, aiTextureType_AMBIENT, Texture::TextureType::AMBIENT, sceneMaterials, loadedTextures);
-			LoadTextures(object, material, aiTextureType_DIFFUSE, Texture::TextureType::DIFFUSE, sceneMaterials, loadedTextures);
-			LoadTextures(object, material, aiTextureType_SPECULAR, Texture::TextureType::SPECULAR, sceneMaterials, loadedTextures);
-			LoadTextures(object, material, aiTextureType_NORMALS, Texture::TextureType::NORMAL, sceneMaterials, loadedTextures);
-			LoadTextures(object, material, aiTextureType_HEIGHT, Texture::TextureType::BUMP, sceneMaterials, loadedTextures);
+		for (size_t i = 0; i < node->mNumChildren; i++) {
+			ProcessNode(object, node->mChildren[i], scene);
 		}
 	}
 
@@ -139,68 +117,6 @@ namespace ModelLoader {
 
 			mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
 		}
-	}
-
-	void LoadTextures(
-		Assets::Object& object, 
-		aiMaterial* material, 
-		aiTextureType textureType, 
-		Texture::TextureType customTextureType,
-		std::vector<Assets::Material>& sceneMaterials,
-		std::vector<Texture>& loadedTextures
-	) {
-		
-		if (material == nullptr)
-			return;
-
-		for (size_t i = 0; i < material->GetTextureCount(textureType); i++) {
-			aiString util;
-
-			material->GetTexture(textureType, i, &util);
-
-			ProcessTexture(
-				sceneMaterials, 
-				loadedTextures, 
-				customTextureType, 
-				util.C_Str(), 
-				object.MaterialPath, 
-				material->GetName().C_Str(), 
-				object.FlipTexturesVertically, 
-				object.GenerateMipMaps
-			);
-
-			object.Textured = true;
-		}
-	}
-
-	void ProcessTexture(
-		std::vector<Assets::Material>& sceneMaterials,
-		std::vector<Texture>& loadedTextures,
-		Texture::TextureType textureType,
-		std::string textureName,
-		std::string basePath,
-		std::string materialName,
-		bool flipTexturesVertically,
-		bool generateMipMaps
-	) {
-		std::string texName = textureName;
-		std::string path = basePath;
-
-		if (textureName == "" || !fileExists(basePath + textureName)) {
-			std::cout << "File: " << basePath + textureName << " doesn't exists! Loading custom texture!" << '\n';
-			texName = "error_texture.jpg";
-			path = "./Textures/";
-		}
-
-		ValidateAndInsertTexture(
-			loadedTextures, 
-			textureType, 
-			texName, 
-			path, 
-			flipTexturesVertically,
-			generateMipMaps
-		);
-		LoadTextureToMaterial(sceneMaterials, loadedTextures, textureType, texName, materialName);
 	}
 
 	void ValidateAndInsertTexture(
@@ -264,39 +180,123 @@ namespace ModelLoader {
 		};
 	}
 
-	int GetTextureIndex(std::vector<Texture>& loadedTextures, std::string textureName) {
-		if (loadedTextures.size() == 0) 
-			return UNEXISTENT;
-
-		for (int i = 0; i < loadedTextures.size(); i++) {
-			if (loadedTextures[i].Name == textureName) {
-				return i;
-			}
-		}
-
-		return UNEXISTENT;
-	}
-
-	int GetMaterialIndex(std::vector<Assets::Material>& sceneMaterials, std::string materialName) {
-		if (sceneMaterials.size() == 0)
-			return UNEXISTENT;
-
-		for (int i = 0; i < sceneMaterials.size(); i++) {
-			if (sceneMaterials[i].Name == materialName)
-				return i;
-		}
-
-		return UNEXISTENT;
-	}
-
-	bool fileExists(const std::string& path) {
-		struct stat buffer;
-		return (stat(path.c_str(), &buffer) == 0);
-	}
-
 	void LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials) {
 		LinkMeshesToMaterials(object.Meshes, sceneMaterials);
 		object.Textured = false;
+	}
+
+	void ProcessTexture(
+		std::vector<Assets::Material>& sceneMaterials,
+		std::vector<Texture>& loadedTextures,
+		Texture::TextureType textureType,
+		std::string textureName,
+		std::string basePath,
+		std::string materialName,
+		bool flipTexturesVertically,
+		bool generateMipMaps
+	) {
+		std::string texName = textureName;
+		std::string path = basePath;
+
+		if (textureName == "" || !fileExists(basePath + textureName)) {
+			std::cout << "File: " << basePath + textureName << " doesn't exists! Loading custom texture!" << '\n';
+			texName = "error_texture.jpg";
+			path = "./Textures/";
+		}
+
+		ValidateAndInsertTexture(
+			loadedTextures, 
+			textureType, 
+			texName, 
+			path, 
+			flipTexturesVertically,
+			generateMipMaps
+		);
+		LoadTextureToMaterial(sceneMaterials, loadedTextures, textureType, texName, materialName);
+	}
+
+	void LoadTextures(
+		Assets::Object& object, 
+		aiMaterial* material, 
+		aiTextureType textureType, 
+		Texture::TextureType customTextureType,
+		std::vector<Assets::Material>& sceneMaterials,
+		std::vector<Texture>& loadedTextures
+	) {
+		
+		if (material == nullptr)
+			return;
+
+		for (size_t i = 0; i < material->GetTextureCount(textureType); i++) {
+			aiString util;
+
+			material->GetTexture(textureType, i, &util);
+
+			ProcessTexture(
+				sceneMaterials, 
+				loadedTextures, 
+				customTextureType, 
+				util.C_Str(), 
+				object.MaterialPath, 
+				material->GetName().C_Str(), 
+				object.FlipTexturesVertically, 
+				object.GenerateMipMaps
+			);
+
+			object.Textured = true;
+		}
+	}
+
+	static void ProcessMaterials(
+		Assets::Object& object,
+		const aiScene* scene, 
+		std::vector<Assets::Material>& sceneMaterials,
+		std::vector<Texture>& loadedTextures) {
+
+		for (size_t i = 0; i < scene->mNumMaterials; i++) {
+			aiMaterial* material = scene->mMaterials[i];
+
+			aiString materialName;
+			aiColor3D diffuseColor;
+			aiColor3D specularColor;
+			aiColor3D ambientColor;
+			aiColor3D emissiveColor;
+			aiColor3D transparentColor;
+			float opacity;
+			float shininess;
+			float shininessStrength;
+
+			material->Get(AI_MATKEY_NAME, materialName);
+			material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+			material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
+			material->Get(AI_MATKEY_COLOR_AMBIENT, ambientColor);
+			material->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor);
+			material->Get(AI_MATKEY_COLOR_TRANSPARENT, transparentColor);
+			material->Get(AI_MATKEY_OPACITY, opacity);
+			material->Get(AI_MATKEY_SHININESS, shininess);
+			material->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength);
+
+			if (GetMaterialIndex(sceneMaterials, materialName.C_Str()) == UNEXISTENT) {
+				Assets::Material newMaterial = {};
+				newMaterial.Name = materialName.C_Str();
+				newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
+				newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
+				newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, 1.0f);
+				newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, 1.0f);
+				newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, 1.0f);
+				newMaterial.MaterialData.Opacity = opacity;
+				newMaterial.MaterialData.Shininess = shininess;
+				newMaterial.MaterialData.ShininessStrength = shininessStrength;
+
+				sceneMaterials.push_back(newMaterial);
+			}
+
+			LoadTextures(object, material, aiTextureType_AMBIENT, Texture::TextureType::AMBIENT, sceneMaterials, loadedTextures);
+			LoadTextures(object, material, aiTextureType_DIFFUSE, Texture::TextureType::DIFFUSE, sceneMaterials, loadedTextures);
+			LoadTextures(object, material, aiTextureType_SPECULAR, Texture::TextureType::SPECULAR, sceneMaterials, loadedTextures);
+			LoadTextures(object, material, aiTextureType_NORMALS, Texture::TextureType::NORMAL, sceneMaterials, loadedTextures);
+			LoadTextures(object, material, aiTextureType_HEIGHT, Texture::TextureType::BUMP, sceneMaterials, loadedTextures);
+		}
 	}
 
 	void LoadModelAndMaterials(
