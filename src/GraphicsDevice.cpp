@@ -1347,7 +1347,7 @@ namespace Engine::Graphics {
 
 		ImageDescription depthDesc = {};
 		depthDesc.Width = width;
-		depthDesc.Width = height;
+		depthDesc.Height = height;
 		depthDesc.MipLevels = 1;
 		depthDesc.MsaaSamples = m_MsaaSamples;
 		depthDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
