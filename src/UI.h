@@ -8,25 +8,13 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
-#include "VulkanHeader.h"
+#include "Vulkan.h"
 
 namespace Engine {
-	class CommandBuffer;
-	class Instance;
-	class PhysicalDevice;
-	class LogicalDevice;
-	class RenderPass;
 
 	class UI {
 	public:
-		UI(
-			GLFWwindow& window, 
-			Instance& instance, 
-			PhysicalDevice& physicalDevice, 
-			LogicalDevice& logicalDevice,
-			RenderPass& renderPass, 
-			const int minImageCount
-		);
+		UI(GLFWwindow& window);
 		~UI() {};
 
 		void BeginFrame();
