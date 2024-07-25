@@ -39,8 +39,6 @@ namespace Engine::Graphics {
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 	VkSampleCountFlagBits GetMaxSampleCount(VkPhysicalDeviceProperties deviceProperties);
 
-	std::vector<VkPhysicalDevice> m_AvailablePhysicalDevices;
-
 #ifndef NDEBUG
 	const bool c_EnableValidationLayers = true;
 #else
@@ -130,8 +128,6 @@ namespace Engine::Graphics {
 		std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 		std::vector<VkImageViewType> imageViewTypes;
 
-		VkPushConstantRange pushConstants = {};
-
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
 		VkPipelineMultisampleStateCreateInfo multisampling = {};
 		VkPipelineShaderStageCreateInfo shaderStages = {};
@@ -171,8 +167,12 @@ namespace Engine::Graphics {
 		void CreateFramesResources();
 		void BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer);
 		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
+		void BeginDefaultRenderPass(VkCommandBuffer& commandBuffer, const VkExtent2D renderArea);
 		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea);
 		void EndRenderPass(VkCommandBuffer& commandBuffer);
+
+		VkCommandBuffer BeginSingleTimeCommandBuffer();
+		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer);
 
 		VkCommandBuffer* BeginFrame(SwapChain& swapChain);
 		void EndFrame(const VkCommandBuffer& commandBuffer, const SwapChain& swapChain);
@@ -204,6 +204,7 @@ namespace Engine::Graphics {
 		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize, size_t offset);
 
 		void CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, size_t bufferSize);
+		void UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, size_t dataSize);
 		void WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0);
 
 		template <class T>
@@ -212,10 +213,9 @@ namespace Engine::Graphics {
 
 		GraphicsDevice& CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
 		GraphicsDevice& AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
-		GraphicsDevice& UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, VkDeviceSize dataSize);
-		GraphicsDevice& DestroyBuffer(GPUBuffer& buffer);
+		void DestroyBuffer(GPUBuffer& buffer);
 	
-		void CreateDefaultRenderPass(VkRenderPass& renderPass, VkFormat swapChainImageFormat, VkFormat depthBufferImageFormat);
+		void CreateDefaultRenderPass(VkRenderPass& renderPass);
 		void CreateRenderPass(VkRenderPass& renderPass, std::vector<VkAttachmentDescription> attachments, std::vector<VkSubpassDescription> subpass, std::vector<VkSubpassDependency> dependencies);
 		void DestroyRenderPass(VkRenderPass& renderPass);
 		void RecreateDefaultRenderPass(VkRenderPass& renderPass, SwapChain& swapChain);
@@ -232,6 +232,7 @@ namespace Engine::Graphics {
 		void CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout);
 		void CreateDescriptorSet(InputLayout& inputLayout, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
+		void BindDescriptorSet(VkDescriptorSet& descriptorSet, const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout, uint32_t set, uint32_t setCount);
 
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet,
 			const VkBuffer& buffer, const size_t bufferSize, const size_t bufferOffset);
@@ -274,6 +275,17 @@ namespace Engine::Graphics {
 
 		
 		std::unique_ptr<class UI> m_UI;
+
+	private:
+		bool isDeviceSuitable(VkPhysicalDevice& device, VkSurfaceKHR& surface);
+		SwapChainSupportDetails QuerySwapChainSupportDetails(VkPhysicalDevice& device, VkSurfaceKHR& surface);
+		std::vector<const char*> GetRequiredExtensions();
+		void CheckRequiredExtensions(uint32_t glfwExtensionCount, const char** glfwExtensions, std::vector<VkExtensionProperties> vulkanSupportedExtensions);
+		void CreateInstance(VkInstance& instance);
+		VkFormat FindSupportedFormat(VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+		VkFormat FindDepthFormat(VkPhysicalDevice& physicalDevice);
+		void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
+		VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
 	};
 
 	inline GraphicsDevice*& GetDevice() {

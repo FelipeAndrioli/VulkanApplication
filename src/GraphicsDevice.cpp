@@ -5,24 +5,26 @@
 #include <fstream>
 
 namespace Engine::Graphics {
-	VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface) {
+	VkPhysicalDevice GraphicsDevice::CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface) {
 
 		assert(instance != VK_NULL_HANDLE);
 		assert(surface != VK_NULL_HANDLE);
 
 		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	
+		std::vector<VkPhysicalDevice> physicalDevicesAvailable;
 
 		uint32_t deviceCount = 0;
 		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
-		assert(deviceCount != 0, "A GPU with Vulkan support is required!");
+		assert(deviceCount != 0 && "A GPU with Vulkan support is required!");
 
-		m_AvailablePhysicalDevices.resize(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, m_AvailablePhysicalDevices.data());
+		physicalDevicesAvailable.resize(deviceCount);
+		vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevicesAvailable.data());
 
 		std::cout << "Available Devices:" << '\n';
 
-		for (const auto& device : m_AvailablePhysicalDevices) {
+		for (const auto& device : physicalDevicesAvailable) {
 			VkPhysicalDeviceFeatures device_features;
 			VkPhysicalDeviceProperties device_properties;
 
@@ -32,7 +34,7 @@ namespace Engine::Graphics {
 			std::cout << '\t' << device_properties.deviceName << '\n';
 		}
 
-		for (const auto& device : m_AvailablePhysicalDevices) {
+		for (auto& device : physicalDevicesAvailable) {
 			if (!isDeviceSuitable(device, surface))
 				continue;
 
@@ -82,7 +84,7 @@ namespace Engine::Graphics {
 		return indices;
 	}
 
-	bool isDeviceSuitable(VkPhysicalDevice& device, VkSurfaceKHR& surface) {
+	bool GraphicsDevice::isDeviceSuitable(VkPhysicalDevice& device, VkSurfaceKHR& surface) {
 		QueueFamilyIndices indices = FindQueueFamilies(device, surface);
 
 		bool extensionsSupported = checkDeviceExtensionSupport(device);
@@ -137,17 +139,17 @@ namespace Engine::Graphics {
 	}
 
 	void CreateSurface(VkInstance& instance, GLFWwindow& window, VkSurfaceKHR& surface) {
-		assert(instance != VK_NULL_HANDLE, "Instance must not be VK_NULL_HANDLE");
-		assert(surface == VK_NULL_HANDLE, "Surface must be VK_NULL_HANDLE");
+		assert(instance != VK_NULL_HANDLE && "Instance must not be VK_NULL_HANDLE");
+		assert(surface == VK_NULL_HANDLE && "Surface must be VK_NULL_HANDLE");
 
 		VkResult result = glfwCreateWindowSurface(instance, &window, nullptr, &surface);
 
 		assert(result == VK_SUCCESS);
 	}
 
-	void CreateInstance(VkInstance& instance) {
+	void GraphicsDevice::CreateInstance(VkInstance& instance) {
 
-		assert(instance == VK_NULL_HANDLE, "Instance must be VK_NULL_HANDLE!");
+		assert(instance == VK_NULL_HANDLE && "Instance must be VK_NULL_HANDLE!");
 
 		if (c_EnableValidationLayers && !checkValidationLayerSupport()) {
 			throw std::runtime_error("Validation layers requested, but not available!");
@@ -165,7 +167,7 @@ namespace Engine::Graphics {
 		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		createInfo.pApplicationInfo = &appInfo;
 
-		auto glfwExtensions = getRequiredExtensions();
+		auto glfwExtensions = GetRequiredExtensions();
 
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(glfwExtensions.size());
 		createInfo.ppEnabledExtensionNames = glfwExtensions.data();
@@ -196,7 +198,7 @@ namespace Engine::Graphics {
 			std::cout << '\t' << extension.extensionName << '\n';
 		}
 
-		checkRequiredExtensions(static_cast<uint32_t>(glfwExtensions.size()), glfwExtensions.data(),
+		CheckRequiredExtensions(static_cast<uint32_t>(glfwExtensions.size()), glfwExtensions.data(),
 			extensions);
 	}
 
@@ -225,7 +227,7 @@ namespace Engine::Graphics {
 		return true;
 	}
 
-	void checkRequiredExtensions(uint32_t glfwExtensionCount, const char** glfwExtensions, 
+	void GraphicsDevice::CheckRequiredExtensions(uint32_t glfwExtensionCount, const char** glfwExtensions, 
 		std::vector<VkExtensionProperties> vulkanSupportedExtensions) {
 
 		bool found = false;
@@ -248,7 +250,7 @@ namespace Engine::Graphics {
 		}
 	}
 
-	std::vector<const char*> getRequiredExtensions() {
+	std::vector<const char*> GraphicsDevice::GetRequiredExtensions() {
 		uint32_t glfwExtensionCount = 0;
 		const char** glfwExtensions;
 		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -263,8 +265,8 @@ namespace Engine::Graphics {
 	}
 
 	void CreateLogicalDevice(QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice) {
-		assert(logicalDevice == VK_NULL_HANDLE, "Logical device must be VK_NULL_HANDLE");
-		assert(physicalDevice != VK_NULL_HANDLE, "Physical device must not be VK_NULL_HANDLE");
+		assert(logicalDevice == VK_NULL_HANDLE && "Logical device must be VK_NULL_HANDLE");
+		assert(physicalDevice != VK_NULL_HANDLE && "Physical device must not be VK_NULL_HANDLE");
 
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
@@ -328,10 +330,6 @@ namespace Engine::Graphics {
 		vkGetDeviceQueue(logicalDevice, queueFamilyIndex, 0, &queue);
 	}
 
-	void WaitIdle(VkDevice& logicalDevice) {
-		vkDeviceWaitIdle(logicalDevice);
-	}
-
 	VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -390,7 +388,7 @@ namespace Engine::Graphics {
 		}
 	}
 
-	SwapChainSupportDetails QuerySwapChainSupportDetails(VkPhysicalDevice& device, VkSurfaceKHR& surface) {
+	SwapChainSupportDetails GraphicsDevice::QuerySwapChainSupportDetails(VkPhysicalDevice& device, VkSurfaceKHR& surface) {
 		SwapChainSupportDetails details;
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
@@ -446,7 +444,15 @@ namespace Engine::Graphics {
 		}
 	}
 
-	void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent) {
+	bool GraphicsDevice::CreateSwapChain(Window& window, SwapChain& swapChain) {
+		CreateSwapChainInternal(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
+		CreateSwapChainImageViews(m_LogicalDevice, swapChain);
+		CreateSwapChainSemaphores(m_LogicalDevice, swapChain);
+
+		return true;
+	}
+
+	void GraphicsDevice::CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent) {
 		SwapChainSupportDetails swapChainSupport = QuerySwapChainSupportDetails(physicalDevice, surface);
 
 		VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -533,10 +539,6 @@ namespace Engine::Graphics {
 		}
 	}
 
-	void WaitIdle(VkDevice& logicalDevice) {
-		vkDeviceWaitIdle(logicalDevice);
-	}
-
 	void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain) {
 
 		swapChain.imageAvailableSemaphores.clear();
@@ -552,12 +554,6 @@ namespace Engine::Graphics {
 			result = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &swapChain.renderFinishedSemaphores.emplace_back());
 			assert(result == VK_SUCCESS);
 		}
-	}
-
-	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent) {
-		CreateSwapChainInternal(physicalDevice, logicalDevice, surface, swapChain, currentExtent);
-		CreateSwapChainImageViews(logicalDevice, swapChain);
-		CreateSwapChainSemaphores(logicalDevice, swapChain);
 	}
 
 	void CreateCommandPool(VkDevice& logicalDevice, VkCommandPool& commandPool, uint32_t queueFamilyIndex) {
@@ -910,7 +906,7 @@ namespace Engine::Graphics {
 		vkFreeMemory(logicalDevice, image.Memory, nullptr);
 	}
 
-	VkFormat FindDepthFormat(VkPhysicalDevice& physicalDevice) {
+	VkFormat GraphicsDevice::FindDepthFormat(VkPhysicalDevice& physicalDevice) {
 		return FindSupportedFormat(physicalDevice,
 			{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
 			VK_IMAGE_TILING_OPTIMAL,
@@ -918,7 +914,7 @@ namespace Engine::Graphics {
 		);
 	}
 
-	VkFormat FindSupportedFormat(VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling,
+	VkFormat GraphicsDevice::FindSupportedFormat(VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling,
 		VkFormatFeatureFlags features) {
 
 		for (VkFormat format : candidates) {
@@ -965,10 +961,6 @@ namespace Engine::Graphics {
 		EndSingleTimeCommandBuffer(logicalDevice, queue, commandBuffer, commandPool);
 	}
 
-	void UpdateBuffer() {
-
-	}
-
 	GraphicsDevice::GraphicsDevice(Window& window) {
 		CreateInstance(m_VulkanInstance);
 		CreateSurface(m_VulkanInstance, *window.GetHandle(), m_Surface);
@@ -991,10 +983,7 @@ namespace Engine::Graphics {
 		CreateCommandPool(m_LogicalDevice, m_CommandPool, m_QueueFamilyIndices.graphicsFamily.value());
 		CreateFramesResources();
 
-		SwapChainSupportDetails swapChainSupportDetails = QuerySwapChainSupportDetails(m_PhysicalDevice, m_Surface);
-		VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupportDetails.formats);
-
-		CreateDefaultRenderPass(defaultRenderPass, surfaceFormat.format, FindDepthFormat(m_PhysicalDevice));
+		CreateDefaultRenderPass(defaultRenderPass);
 	}
 
 	GraphicsDevice::~GraphicsDevice() {
@@ -1010,12 +999,6 @@ namespace Engine::Graphics {
 		vkDestroyDevice(m_LogicalDevice, nullptr);
 		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
 		vkDestroyInstance(m_VulkanInstance, nullptr);
-	}
-
-	bool GraphicsDevice::CreateSwapChain(Window& window, SwapChain& swapChain) {
-		Engine::Graphics::CreateSwapChain(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
-
-		return true;
 	}
 
 	void GraphicsDevice::RecreateSwapChain(Window& window, SwapChain& swapChain) {
@@ -1043,7 +1026,7 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::WaitIdle() {
-		Engine::Graphics::WaitIdle(m_LogicalDevice);
+		vkDeviceWaitIdle(m_LogicalDevice);
 	}
 
 	void GraphicsDevice::CreateFramesResources() {
@@ -1071,9 +1054,15 @@ namespace Engine::Graphics {
 		}
 	}
 
-	VkCommandBuffer* GraphicsDevice::BeginFrame(SwapChain& swapChain) {
-		VkResult result;
+	VkCommandBuffer GraphicsDevice::BeginSingleTimeCommandBuffer() {
+		return Graphics::BeginSingleTimeCommandBuffer(m_LogicalDevice, m_CommandPool);
+	}
 
+	void GraphicsDevice::EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer) {
+		Graphics::EndSingleTimeCommandBuffer(m_LogicalDevice, m_GraphicsQueue, commandBuffer, m_CommandPool);
+	}
+
+	VkCommandBuffer* GraphicsDevice::BeginFrame(SwapChain& swapChain) {
 		vkWaitForFences(m_LogicalDevice, 1, &frameFences[currentFrame], VK_TRUE, UINT64_MAX);
 		
 		VkResult result = vkAcquireNextImageKHR(
@@ -1120,6 +1109,10 @@ namespace Engine::Graphics {
 
 		result = vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, frameFences[currentFrame]);
 		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::BeginDefaultRenderPass(VkCommandBuffer& commandBuffer, const VkExtent2D renderArea) {
+		BeginRenderPass(defaultRenderPass, commandBuffer, renderArea);
 	}
 
 	void GraphicsDevice::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea) {
@@ -1293,17 +1286,23 @@ namespace Engine::Graphics {
 
 	template <class T>
 	GraphicsDevice& GraphicsDevice::UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize) {
-		assert(imageSize != 0);
+		assert(dataSize != 0);
+
+		BufferDescription stagingDesc = {};
+		stagingDesc.BufferSize = dataSize;
+		stagingDesc.Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		stagingDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		GPUBuffer stagingBuffer = {};
+		stagingBuffer.Description = stagingDesc;
 
-		CreateBuffer(stagingBuffer, dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-		AllocateMemory(stagingBuffer, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		CreateBuffer(stagingDesc, stagingBuffer, dataSize);
+		AllocateMemory(stagingBuffer, stagingDesc.MemoryProperty);
 		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, 0, nullptr);
 		memcpy(stagingBuffer.MemoryMapped, data, dataSize);
 		vkUnmapMemory(m_LogicalDevice, stagingBuffer.Memory);
 
-		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(m_LogicalDevice, m_CommandPool);
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer();
 
 		const VkBufferImageCopy region = {
 			.bufferOffset = 0,
@@ -1315,20 +1314,20 @@ namespace Engine::Graphics {
 				.baseArrayLayer = 0,
 				.layerCount = dstImage.Description.LayerCount 
 			},
-			.imageOffset = VkOffset3D {
+			.imageOffset = {
 				.x = 0,
 				.y = 0,
 				.z = 0
 			},
 			.imageExtent = VkExtent3D {
-				.width = dstImage.Description.width,
-				.height = dstImage.Description.height,
+				.width = dstImage.Description.Width,
+				.height = dstImage.Description.Height,
 				.depth = 1
 			}
 		};
 
 		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.Handle, dstImage.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-		EndSingleTimeCommandBuffer(m_LogicalDevice, m_GraphicsQueue, commandBuffer, m_CommandPool);
+		EndSingleTimeCommandBuffer(commandBuffer);
 		DestroyBuffer(stagingBuffer);
 
 		return *this;
@@ -1411,15 +1410,7 @@ namespace Engine::Graphics {
 		return *this;
 	}
 
-	GraphicsDevice& GraphicsDevice::UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, VkDeviceSize dataSize) {
-		vkMapMemory(m_LogicalDevice, buffer.Memory, offset, dataSize, 0, &buffer.MemoryMapped);
-		memcpy(buffer.MemoryMapped, data, dataSize);
-		vkUnmapMemory(m_LogicalDevice, buffer.Memory);
-
-		return *this;
-	}
-
-	GraphicsDevice& GraphicsDevice::DestroyBuffer(GPUBuffer& buffer) {
+	void GraphicsDevice::DestroyBuffer(GPUBuffer& buffer) {
 		vkDestroyBuffer(m_LogicalDevice, buffer.Handle, nullptr);
 		vkFreeMemory(m_LogicalDevice, buffer.Memory, nullptr);
 	}
@@ -1429,15 +1420,15 @@ namespace Engine::Graphics {
 		BufferDescription stagingDesc = {};
 		stagingDesc.BufferSize = dataSize;
 		stagingDesc.Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		stagingDesc.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		stagingDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		GPUBuffer stagingBuffer = {};
-		stagingBuffer.Description = desc;
+		stagingBuffer.Description = stagingDesc;
 
 		Engine::Graphics::CreateBuffer(m_LogicalDevice, stagingBuffer);
 		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, stagingBuffer);
 
-		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, stagingBuffer.Description.Usage, stagingBuffer.MemoryMapped);
+		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, stagingBuffer.Description.Usage, &stagingBuffer.MemoryMapped);
 		memcpy(stagingBuffer.MemoryMapped, data, dataSize);
 		vkUnmapMemory(m_LogicalDevice, stagingBuffer.Memory);
 
@@ -1454,13 +1445,17 @@ namespace Engine::Graphics {
 	}
 
 	// TODO: implement dynamic allocation/update/retrieval
-	void GraphicsDevice::WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0) {
+	void GraphicsDevice::WriteBuffer(GPUBuffer& buffer, const void* data, size_t size, size_t offset) {
 		if (data == nullptr)
 			return;
 
-		size = std::min(buffer.Description.BufferSize, size);
+		CopyDataFromStaging(buffer, data, std::min(buffer.Description.BufferSize, size), offset);
+	}
 
-		CopyDataFromStaging(buffer, data, size, offset);
+	void GraphicsDevice::UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, size_t dataSize) {
+		vkMapMemory(m_LogicalDevice, buffer.Memory, offset, dataSize, 0, &buffer.MemoryMapped);
+		memcpy(buffer.MemoryMapped, data, dataSize);
+		vkUnmapMemory(m_LogicalDevice, buffer.Memory);
 	}
 
 	template <class T>
@@ -1484,9 +1479,12 @@ namespace Engine::Graphics {
 		vkDestroyImage(m_LogicalDevice, texture.Image, nullptr);
 	}
 
-	void GraphicsDevice::CreateDefaultRenderPass(VkRenderPass& renderPass, VkFormat swapChainImageFormat, VkFormat depthBufferImageFormat) {
+	void GraphicsDevice::CreateDefaultRenderPass(VkRenderPass& renderPass) {
+		SwapChainSupportDetails swapChainSupportDetails = QuerySwapChainSupportDetails(m_PhysicalDevice, m_Surface);
+		VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupportDetails.formats);
+
 		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = swapChainImageFormat;
+		colorAttachment.format = surfaceFormat.format;
 		colorAttachment.samples = m_MsaaSamples;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1496,7 +1494,7 @@ namespace Engine::Graphics {
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		VkAttachmentDescription depthAttachment{};
-		depthAttachment.format = depthBufferImageFormat;
+		depthAttachment.format = FindDepthFormat(m_PhysicalDevice);
 		depthAttachment.samples = m_MsaaSamples;
 		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1506,7 +1504,7 @@ namespace Engine::Graphics {
 		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		VkAttachmentDescription colorAttachmentResolve{};
-		colorAttachmentResolve.format = swapChainImageFormat;
+		colorAttachmentResolve.format = surfaceFormat.format;
 		colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1570,37 +1568,11 @@ namespace Engine::Graphics {
 
 	void GraphicsDevice::RecreateDefaultRenderPass(VkRenderPass& renderPass, SwapChain& swapChain) {
 		DestroyRenderPass(renderPass);
-		RecreateDefaultRenderPass(renderPass, swapChain);
+		CreateDefaultRenderPass(renderPass);
 	}
 
 	void GraphicsDevice::DestroyFramebuffer() {
 		vkDestroyFramebuffer(m_LogicalDevice, framebuffer, nullptr);
-	}
-
-
-	void GraphicsDevice::CreateUI(Window& window, VkRenderPass& renderPass) {
-		m_UI = std::make_unique<class UI>(
-			*window.GetHandle(),
-			m_VulkanInstance,
-			m_PhysicalDevice,
-			m_LogicalDevice,
-			renderPass,
-			FRAMES_IN_FLIGHT	
-		);
-	}
-
-	void GraphicsDevice::BeginUIFrame() {
-		if (!m_UI)
-			return;
-
-		m_UI->BeginFrame();
-	}
-
-	void GraphicsDevice::EndUIFrame(const VkCommandBuffer& commandBuffer) {
-		if (!m_UI)
-			return;
-
-		m_UI->EndFrame(commandBuffer);
 	}
 
 	void GraphicsDevice::CreateDescriptorPool() {
@@ -1670,6 +1642,16 @@ namespace Engine::Graphics {
 		VkResult result = vkAllocateDescriptorSets(m_LogicalDevice, &allocInfo, &descriptorSet);
 
 		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::BindDescriptorSet(
+		VkDescriptorSet& descriptorSet, 
+		const VkCommandBuffer& commandBuffer, 
+		const VkPipelineLayout& pipelineLayout,
+		uint32_t set,
+		uint32_t setCount
+	) {
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, set, setCount, &descriptorSet, 0, nullptr);
 	}
 
 	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, 
@@ -1775,79 +1757,6 @@ namespace Engine::Graphics {
 		shader.shaderStageInfo.stage = shaderStage;
 		shader.shaderStageInfo.module = shader.shaderModule;
 		shader.shaderStageInfo.pName = "main";
-	}
-
-	void GraphicsDevice::CreateRenderPass(VkFormat colorImageFormat, VkFormat depthFormat, VkRenderPass& renderPass) {
-		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = colorImageFormat;
-		colorAttachment.samples = m_MsaaSamples;
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentDescription depthAttachment{};
-		depthAttachment.format = depthFormat;
-		depthAttachment.samples = m_MsaaSamples;
-		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentDescription colorAttachmentResolve{};
-		colorAttachmentResolve.format = colorImageFormat;
-		colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
-		colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-		VkAttachmentReference colorAttachmentRef{};
-		colorAttachmentRef.attachment = 0;
-		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentReference depthAttachmentReference{};
-		depthAttachmentReference.attachment = 1;
-		depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentReference colorAttachmentResolveRef{};
-		colorAttachmentResolveRef.attachment = 2;
-		colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDependency dependency{};
-		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		dependency.dstSubpass = 0;
-		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		dependency.srcAccessMask = 0;
-		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-		VkSubpassDescription subpass{};
-		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments = &colorAttachmentRef;
-		subpass.pDepthStencilAttachment = &depthAttachmentReference;
-		subpass.pResolveAttachments = &colorAttachmentResolveRef;
-	
-		std::array<VkAttachmentDescription, 3> attachments = { colorAttachment, depthAttachment, colorAttachmentResolve };
-
-		VkRenderPassCreateInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-		renderPassInfo.pAttachments = attachments.data();
-		renderPassInfo.subpassCount = 1;
-		renderPassInfo.pSubpasses = &subpass;
-		renderPassInfo.dependencyCount = 1;
-		renderPassInfo.pDependencies = &dependency;
-
-		VkResult result = vkCreateRenderPass(m_LogicalDevice, &renderPassInfo, nullptr, &renderPass);
-		assert(result == VK_SUCCESS);
 	}
 
 	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso) {
@@ -2006,7 +1915,7 @@ namespace Engine::Graphics {
 		pso.pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		//pipelineInfo.basePipelineIndex = -1;
 
-		VkResult result = vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pso.pipelineInfo, nullptr, &pso.pipeline);
+		result = vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pso.pipelineInfo, nullptr, &pso.pipeline);
 		assert(result == VK_SUCCESS);
 	}
 
