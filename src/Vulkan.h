@@ -84,4 +84,3 @@ namespace Engine {
 		void CreateSyncObjects();
 	};
 }
-

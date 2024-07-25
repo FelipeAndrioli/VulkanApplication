@@ -14,7 +14,7 @@ namespace Engine {
 		~PhysicalDevice();
 
 		inline VkPhysicalDevice& GetHandle() { return m_PhysicalDevice; };
-		inline std::vector<VkPhysicalDevice> GetAvailablePhysicalDevices() { return m_AvailablePhysicalDevices; };
+		inline std::vector<VkPhysicalDevice> GetAvailablePhysicalDevices() { return m_PhysicalDevicesAvailable; };
 		inline SwapChainSupportDetails GetSwapChainSupportDetails() { return QuerySwapChainSupportDetails(m_PhysicalDevice); }
 		inline QueueFamilyIndices& GetQueueFamilyIndices() { return m_QueueFamilyIndices; }
 		VkPhysicalDeviceLimits GetLimits();
@@ -26,7 +26,7 @@ namespace Engine {
 		SwapChainSupportDetails QuerySwapChainSupportDetails(VkPhysicalDevice device);
 		static VkSampleCountFlagBits GetMaxSampleCount(VkPhysicalDeviceProperties deviceProperties);
 	private:
-		std::vector<VkPhysicalDevice> m_AvailablePhysicalDevices;
+		std::vector<VkPhysicalDevice> m_PhysicalDevicesAvailable;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
 		SwapChainSupportDetails m_SwapChainSupportDetails;

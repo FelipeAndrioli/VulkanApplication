@@ -10,12 +10,12 @@ namespace Engine {
 			throw std::runtime_error("Failed to find GPUs with Vulkan support!");
 		}
 
-		m_AvailablePhysicalDevices.resize(deviceCount);
-		vkEnumeratePhysicalDevices(p_Instance, &deviceCount, m_AvailablePhysicalDevices.data());
+		m_PhysicalDevicesAvailable.resize(deviceCount);
+		vkEnumeratePhysicalDevices(p_Instance, &deviceCount, m_PhysicalDevicesAvailable.data());
 
 		std::cout << "Available Devices:" << '\n';
 
-		for (const auto& device : m_AvailablePhysicalDevices) {
+		for (const auto& device : m_PhysicalDevicesAvailable) {
 			VkPhysicalDeviceFeatures device_features;
 			VkPhysicalDeviceProperties device_properties;
 	
@@ -25,7 +25,7 @@ namespace Engine {
 			std::cout << '\t' << device_properties.deviceName << '\n';
 		}
 		
-		for (const auto& device : m_AvailablePhysicalDevices) {
+		for (const auto& device : m_PhysicalDevicesAvailable) {
 			if (!isDeviceSuitable(device))
 				continue;
 				
