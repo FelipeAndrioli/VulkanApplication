@@ -9,7 +9,7 @@
 using namespace Engine::Graphics;
 
 namespace TextureLoader {
-	static Texture LoadTexture(const char* texturePath, Texture::TextureType textureType, bool flipTextureVertically, bool generateMipMaps);
-	static Texture LoadCubemapTexture(const char* texturePath);
-	static Texture LoadCubemapTexture(std::vector<std::string> texturePaths);
+	extern Texture LoadTexture(const char* texturePath, Texture::TextureType textureType, bool flipTextureVertically, bool generateMipMaps);
+	extern Texture LoadCubemapTexture(const char* texturePath);
+	extern Texture LoadCubemapTexture(std::vector<std::string> texturePaths);
 }

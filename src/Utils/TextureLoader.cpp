@@ -13,7 +13,7 @@
 using namespace Engine::Utils;
 
 namespace TextureLoader {
-	 Texture TextureLoader::LoadTexture(const char* texturePath, Texture::TextureType textureType, bool flipTextureVertically, bool generateMipMaps) {
+	 Texture LoadTexture(const char* texturePath, Texture::TextureType textureType, bool flipTextureVertically, bool generateMipMaps) {
 
 		Texture texture = {};
 
@@ -36,9 +36,9 @@ namespace TextureLoader {
 		}
 
 		ImageDescription desc = {
-			.Width = texWidth,
-			.Height = texHeight,
-			.MipLevels = mipLevels,
+			.Width = static_cast<uint32_t>(texWidth),
+			.Height = static_cast<uint32_t>(texHeight),
+			.MipLevels = static_cast<uint32_t>(mipLevels),
 			.LayerCount = 1,
 			.Format = VK_FORMAT_R8G8B8A8_SRGB,
 			.Tiling = VK_IMAGE_TILING_OPTIMAL,
@@ -93,7 +93,7 @@ namespace TextureLoader {
 		}
 	}
 
-	Texture TextureLoader::LoadCubemapTexture(const char* texturePath) {
+	Texture LoadCubemapTexture(const char* texturePath) {
 		Texture texture = {};
 		const uint32_t mipLevels = 1;
 
@@ -132,10 +132,10 @@ namespace TextureLoader {
 		VkDeviceSize imageSize = layerSize * layerCount;
 
 		ImageDescription desc = {
-			.Width = width,
-			.Height = height,
-			.MipLevels = mipLevels,
-			.LayerCount = layerCount,
+			.Width = static_cast<uint32_t>(width),
+			.Height = static_cast<uint32_t>(height),
+			.MipLevels = static_cast<uint32_t>(mipLevels),
+			.LayerCount = static_cast<uint32_t>(layerCount),
 			.Format = texFormat,
 			.Tiling = VK_IMAGE_TILING_OPTIMAL,
 			.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
@@ -152,7 +152,7 @@ namespace TextureLoader {
 		return texture;
 	}
 
-	Texture TextureLoader::LoadCubemapTexture(std::vector<std::string> texturePaths) {
+	Texture LoadCubemapTexture(std::vector<std::string> texturePaths) {
 		/* - Correct order to load
 		right
 		left
@@ -197,10 +197,10 @@ namespace TextureLoader {
 		Texture texture = {};
 
 		ImageDescription desc = {
-			.Width = width,
-			.Height = height,
-			.MipLevels = mipLevels,
-			.LayerCount = layerCount,
+			.Width = static_cast<uint32_t>(width),
+			.Height = static_cast<uint32_t>(height),
+			.MipLevels = static_cast<uint32_t>(mipLevels),
+			.LayerCount = static_cast<uint32_t>(layerCount),
 			.Format = VK_FORMAT_R8G8B8A8_SRGB,
 			.Tiling = VK_IMAGE_TILING_OPTIMAL,
 			.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
