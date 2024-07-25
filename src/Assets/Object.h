@@ -39,8 +39,8 @@ namespace Assets {
 		void ResetResources();
 		void AddMeshes(std::vector<Assets::Mesh> meshes);
 		void AddMesh(Assets::Mesh mesh);
-		void SetGraphicsPipeline(Engine::GraphicsPipeline* graphicsPipeline) { m_GraphicsPipeline = graphicsPipeline; }
-		Engine::GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline; }
+		//void SetGraphicsPipeline(Engine::GraphicsPipeline* graphicsPipeline) { m_GraphicsPipeline = graphicsPipeline; }
+		//Engine::GraphicsPipeline* GetGraphicsPipeline() { return m_GraphicsPipeline; }
 
 	public:
 		std::string ID = "";
@@ -64,6 +64,6 @@ namespace Assets {
 		uint32_t IndicesAmount = 0;
 		uint32_t VerticesAmount = 0;
 	private:
-		Engine::GraphicsPipeline* m_GraphicsPipeline = nullptr;
+		//Engine::GraphicsPipeline* m_GraphicsPipeline = nullptr;
 	};
 }
