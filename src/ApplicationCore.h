@@ -4,10 +4,6 @@
 
 #include "VulkanHeader.h"
 #include "Window.h"
-#include "Pipeline.h"
-#include "PipelineLayout.h"
-#include "DescriptorSets.h"
-#include "RenderPass.h"
 #include "UI.h"
 #include "Settings.h"
 
@@ -79,5 +75,6 @@ namespace Engine {
 		Graphics::GPUImage m_RenderTarget = {};
 		Graphics::GPUImage m_DepthBuffer = {};
 
+		std::unique_ptr<Engine::UI> m_UI;
 	};
 }
