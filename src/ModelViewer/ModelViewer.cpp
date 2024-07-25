@@ -5,15 +5,6 @@
 #include <gtc/type_ptr.hpp>
 
 #include "../ApplicationCore.h"
-#include "../Input/Input.h"
-#include "../BufferHelper.h"
-#include "../Buffer.h"
-#include "../DescriptorPool.h"
-#include "../DescriptorSetLayout.h"
-#include "../DescriptorSets.h"
-#include "../Pipeline.h"
-#include "../PipelineLayout.h"
-#include "../RenderPass.h"
 #include "../Settings.h"
 
 #include "../Graphics.h"
@@ -42,7 +33,7 @@ public:
 	virtual bool IsDone(Engine::InputSystem::Input& input) override;
 	virtual void Resize(uint32_t width, uint32_t height) override;
 
-	void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline);
+	void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const PipelineState& pso);
 private:
 	Assets::Camera* m_Camera = nullptr;
 
@@ -319,6 +310,8 @@ void RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphi
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+	GraphicsDevice* gfxDevice = GetDevice();
+
 	//VkDeviceSize offsets[] = { p_ActiveScene->VertexOffset };
 	VkDeviceSize offsets[] = { sizeof(uint32_t) * m_Model.IndicesAmount };
 
@@ -340,40 +333,47 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	m_SceneGPUData.view = m_Camera->ViewMatrix;
 	m_SceneGPUData.proj = m_Camera->ProjectionMatrix;
 
-	VkDeviceSize sceneBufferOffset = m_GPUDataBuffer[currentFrame]->Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer[currentFrame]->Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
-	m_GPUDataBuffer[currentFrame]->Update(sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
+	VkDeviceSize sceneBufferOffset = m_GPUDataBuffer[currentFrame].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize 
+		+ m_GPUDataBuffer[currentFrame].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
 
-	m_GlobalDescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
+	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
+	//m_GPUDataBuffer[currentFrame]->Update(sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
 
-	Render(currentFrame, commandBuffer, m_TexturedPipeline->GetHandle());
-	Render(currentFrame, commandBuffer, m_ColoredPipeline->GetHandle());
+	gfxDevice->BindDescriptorSet(GlobalDescriptorSets[currentFrame], commandBuffer, m_TexturedPipeline.pipelineLayout, 1, 1);
+	//m_GlobalDescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
+
+	Render(currentFrame, commandBuffer, m_TexturedPipeline);
+	//Render(currentFrame, commandBuffer, m_ColoredPipeline.pipeline);
 
 	if (m_Settings.wireframeEnabled)
-		Render(currentFrame, commandBuffer, m_WireframePipeline->GetHandle());
+		Render(currentFrame, commandBuffer, m_WireframePipeline);
 
-	if (m_Settings.renderSkybox && m_Skybox)
-		RenderSkybox(commandBuffer, m_SkyboxPipeline->GetHandle());
+	if (m_Settings.renderSkybox)
+		RenderSkybox(commandBuffer, m_SkyboxPipeline.pipeline);
 }
 
-void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline) {
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const PipelineState& pso) {
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pso.pipeline);
 
-	if (m_Model.GetGraphicsPipeline()->GetHandle() != graphicsPipeline && graphicsPipeline != m_WireframePipeline->GetHandle())
-		return;
+	GraphicsDevice* gfxDevice = GetDevice();
 
-	m_Model.DescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
+	gfxDevice->BindDescriptorSet(ModelDescriptorSets[currentFrame], commandBuffer, pso.pipelineLayout, 0, 1);
+	//m_Model.DescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
 
 	Engine::ApplicationCore::ObjectGPUData objectGPUData = Engine::ApplicationCore::ObjectGPUData();
 	objectGPUData.model = m_Model.GetModelMatrix();
 
 	//VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame]->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-	m_GPUDataBuffer[currentFrame]->Update(objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
+	//VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame]->Chunks[OBJECT_BUFFER_INDEX].DataSize;
+	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
+	
+	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
+	//m_GPUDataBuffer[currentFrame]->Update(objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
 
 	for (const auto& mesh : m_Model.Meshes) {
 		vkCmdPushConstants(
 			commandBuffer,
-			m_MainPipelineLayout->GetHandle(),
+			pso.pipelineLayout,
 			VK_SHADER_STAGE_FRAGMENT_BIT,
 			0,
 			sizeof(int),
