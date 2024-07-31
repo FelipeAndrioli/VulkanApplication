@@ -15,6 +15,8 @@ namespace Engine {
 		m_Window->OnCursorOnScreen = std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
 
 		m_GraphicsDevice = std::make_unique<Engine::Graphics::GraphicsDevice>(*m_Window.get());
+		Graphics::GetDevice() = m_GraphicsDevice.get();
+
 		bool success = m_GraphicsDevice->CreateSwapChain(*m_Window.get(), m_SwapChain);
 
 		assert(success);
