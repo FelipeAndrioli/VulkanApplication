@@ -579,13 +579,12 @@ namespace Engine::Graphics {
 	}
 
 	void BeginCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer) {
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = commandPool;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = 1;
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.pInheritanceInfo = nullptr;
 
-		VkResult result = vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
+		VkResult result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
 		assert(result == VK_SUCCESS);
 	}
@@ -653,7 +652,7 @@ namespace Engine::Graphics {
 		return memRequirements;
 	}
 
-	void CreateImage(VkDevice& logicalDevice, GPUImage& image) {
+	void GraphicsDevice::CreateImage(GPUImage& image) {
 		VkImageCreateInfo imageCreateInfo{};
 		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageCreateInfo.imageType = image.Description.ImageType;
@@ -674,9 +673,11 @@ namespace Engine::Graphics {
 		imageCreateInfo.samples = image.Description.MsaaSamples;
 		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		VkResult result = vkCreateImage(logicalDevice, &imageCreateInfo, nullptr, &image.Image);
+		VkResult result = vkCreateImage(m_LogicalDevice, &imageCreateInfo, nullptr, &image.Image);
 
 		assert(result == VK_SUCCESS);
+
+		AllocateMemory(image, image.Description.MemoryProperty);
 	}
 
 	void CreateImageView(VkDevice& logicalDevice, GPUImage& image) {
@@ -731,20 +732,9 @@ namespace Engine::Graphics {
 			throw std::invalid_argument("Unsupported layout transition!");
 		}
 
-		vkCmdPipelineBarrier(
-			commandBuffer,
-			sourceStage,  
-			dstStage, 
-			0,
-			0,
-			nullptr,
-			0,
-			nullptr,
-			1,
-			&barrier
-		);
+		vkCmdPipelineBarrier(commandBuffer, sourceStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, graphicsQueue, commandBuffer, commandPool);
+		EndSingleTimeCommandBuffer(logicalDevice, graphicsQueue, commandBuffer, commandPool);
 
 		image.ImageLayout = newLayout;
 	}
@@ -757,7 +747,7 @@ namespace Engine::Graphics {
 			throw std::runtime_error("Texture image format does not support linear blitting!");
 		}
 
-		VkCommandBuffer commandBuffer = CommandBuffer::BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(logicalDevice, commandPool);
 
 		VkImageMemoryBarrier barrier = {};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -816,7 +806,7 @@ namespace Engine::Graphics {
 
 		vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);		
 
-		CommandBuffer::EndSingleTimeCommandBuffer(logicalDevice, queue, commandBuffer, commandPool);
+		EndSingleTimeCommandBuffer(logicalDevice, queue, commandBuffer, commandPool);
 		
 		image.ImageLayout = barrier.newLayout;
 	}
@@ -967,11 +957,11 @@ namespace Engine::Graphics {
 		m_PhysicalDevice = CreatePhysicalDevice(m_VulkanInstance, m_Surface);
 
 		m_PhysicalDeviceProperties = GetDeviceProperties(m_PhysicalDevice);
+		m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
 
 		std::cout << "Selected device: " << m_PhysicalDeviceProperties.deviceName << '\n';
 		std::cout << "MSAA Samples: " << m_MsaaSamples << '\n';
 
-		m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
 		m_QueueFamilyIndices = FindQueueFamilies(m_PhysicalDevice, m_Surface);
 
 		CreateLogicalDevice(m_QueueFamilyIndices, m_PhysicalDevice, m_LogicalDevice);
@@ -1034,6 +1024,7 @@ namespace Engine::Graphics {
 			{
 				VkFenceCreateInfo fenceCreateInfo = {};
 				fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+				fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 				VkResult result = vkCreateFence(m_LogicalDevice, &fenceCreateInfo, nullptr, &frameFences[i]);
 				assert(result == VK_SUCCESS);
@@ -1063,6 +1054,7 @@ namespace Engine::Graphics {
 	}
 
 	VkCommandBuffer* GraphicsDevice::BeginFrame(SwapChain& swapChain) {
+
 		vkWaitForFences(m_LogicalDevice, 1, &frameFences[currentFrame], VK_TRUE, UINT64_MAX);
 		
 		VkResult result = vkAcquireNextImageKHR(
@@ -1131,6 +1123,22 @@ namespace Engine::Graphics {
 		renderPassBeginInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = renderArea.width;
+		viewport.height = renderArea.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = renderArea;
+
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 	}
 
 	void GraphicsDevice::EndRenderPass(VkCommandBuffer& commandBuffer) {
@@ -1161,7 +1169,6 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::PresentFrame(const SwapChain& swapChain) {
-		VkResult result;
 
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1175,13 +1182,14 @@ namespace Engine::Graphics {
 		presentInfo.pImageIndices = &swapChain.imageIndex;
 		presentInfo.pResults = nullptr;
 
-		result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
+		VkResult result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 			currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
 			return;
-		} else {
-			assert(0);
+		}
+		else if (result != VK_SUCCESS) {
+			throw std::runtime_error("Failed to present swap chain image!");
 		}
 
 		// using modulo operator to ensure that the frame index loops around after every FRAMES_IN_FLIGHT enqueued frames
@@ -1217,7 +1225,7 @@ namespace Engine::Graphics {
 	}
 
 	GraphicsDevice& GraphicsDevice::RecreateImage(GPUImage& image) {
-		Engine::Graphics::CreateImage(m_LogicalDevice, image);
+		CreateImage(image);
 
 		return *this;
 	}
@@ -1297,8 +1305,8 @@ namespace Engine::Graphics {
 		stagingBuffer.Description = stagingDesc;
 
 		CreateBuffer(stagingDesc, stagingBuffer, dataSize);
-		AllocateMemory(stagingBuffer, stagingDesc.MemoryProperty);
-		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, 0, nullptr);
+		//AllocateMemory(stagingBuffer, stagingDesc.MemoryProperty);
+		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, 0, &stagingBuffer.MemoryMapped);
 		memcpy(stagingBuffer.MemoryMapped, data, dataSize);
 		vkUnmapMemory(m_LogicalDevice, stagingBuffer.Memory);
 
@@ -1308,9 +1316,10 @@ namespace Engine::Graphics {
 			.bufferOffset = 0,
 			.bufferRowLength = 0,
 			.bufferImageHeight = 0,
-			.imageSubresource = VkImageSubresourceLayers {
+			.imageSubresource = {
 				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-				.mipLevel = dstImage.Description.MipLevels,
+				//.mipLevel = dstImage.Description.MipLevels,
+				.mipLevel = 0,
 				.baseArrayLayer = 0,
 				.layerCount = dstImage.Description.LayerCount 
 			},
@@ -1319,7 +1328,7 @@ namespace Engine::Graphics {
 				.y = 0,
 				.z = 0
 			},
-			.imageExtent = VkExtent3D {
+			.imageExtent = {
 				.width = dstImage.Description.Width,
 				.height = dstImage.Description.Height,
 				.depth = 1
@@ -1362,8 +1371,8 @@ namespace Engine::Graphics {
 
 		depthBuffer.Description = depthDesc;
 
-		Engine::Graphics::CreateImage(m_LogicalDevice, depthBuffer);
-		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, depthBuffer);
+		CreateImage(depthBuffer);
+		//Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, depthBuffer);
 		Engine::Graphics::CreateImageView(m_LogicalDevice, depthBuffer);
 	}
 
@@ -1386,8 +1395,8 @@ namespace Engine::Graphics {
 
 		renderTarget.Description = renderTargetDesc;
 
-		Engine::Graphics::CreateImage(m_LogicalDevice, renderTarget);
-		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, renderTarget);
+		CreateImage(renderTarget);
+		//Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, renderTarget);
 		Engine::Graphics::CreateImageView(m_LogicalDevice, renderTarget);
 	}
 
@@ -1428,7 +1437,7 @@ namespace Engine::Graphics {
 		Engine::Graphics::CreateBuffer(m_LogicalDevice, stagingBuffer);
 		Engine::Graphics::AllocateMemory(m_PhysicalDevice, m_LogicalDevice, stagingBuffer);
 
-		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, stagingBuffer.Description.Usage, &stagingBuffer.MemoryMapped);
+		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, 0, &stagingBuffer.MemoryMapped);
 		memcpy(stagingBuffer.MemoryMapped, data, dataSize);
 		vkUnmapMemory(m_LogicalDevice, stagingBuffer.Memory);
 
@@ -1459,16 +1468,14 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, void* initialData, size_t dataSize) {
-		desc.MsaaSamples = m_MsaaSamples;
-
 		texture.Description = desc;
 
-		Engine::Graphics::CreateImage(m_LogicalDevice, texture);
+		CreateImage(texture);
 		Engine::Graphics::CreateImageView(m_LogicalDevice, texture);
 		Engine::Graphics::TransitionImageLayout(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		UploadDataToImage(texture, initialData, dataSize);
 		Engine::Graphics::GenerateImageMipMaps(m_PhysicalDevice, m_LogicalDevice, m_CommandPool, m_GraphicsQueue, texture);
-		Engine::Graphics::TransitionImageLayout(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		//Engine::Graphics::TransitionImageLayout(m_LogicalDevice, m_CommandPool, m_GraphicsQueue, texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		Engine::Graphics::CreateImageSampler(m_PhysicalDevice, m_LogicalDevice, texture);
 	}
 

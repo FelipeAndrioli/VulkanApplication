@@ -270,7 +270,7 @@ namespace Engine::Graphics {
 		VkFramebuffer framebuffer;
 
 		VkDescriptorPool descriptorPool;
-		uint32_t poolSize;
+		uint32_t poolSize = 256;
 
 	private:
 		bool isDeviceSuitable(VkPhysicalDevice& device, VkSurfaceKHR& surface);
@@ -282,6 +282,7 @@ namespace Engine::Graphics {
 		VkFormat FindDepthFormat(VkPhysicalDevice& physicalDevice);
 		void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 		VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
+		void CreateImage(GPUImage& image);
 	};
 
 	inline GraphicsDevice*& GetDevice() {
