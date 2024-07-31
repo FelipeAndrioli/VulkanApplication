@@ -106,7 +106,7 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 	};
 
 	//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
-	m_Skybox = TextureLoader::LoadCubemapTexture(cubeTextures);
+	//m_Skybox = TextureLoader::LoadCubemapTexture(cubeTextures);
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
@@ -149,6 +149,8 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 	sceneGeometryBufferDesc.Chunks.push_back({ sizeof(uint32_t), sizeof(uint32_t) * m_Model.IndicesAmount });
 	sceneGeometryBufferDesc.Chunks.push_back({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * m_Model.VerticesAmount });
 
+	gfxDevice.CreateBuffer(sceneGeometryBufferDesc, m_SceneGeometryBuffer, sceneGeometryBufferSize);
+	
 	size_t indexOffset = 0;
 
 	for (auto mesh : m_Model.Meshes) {
@@ -267,7 +269,7 @@ void ModelViewer::StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) {
 		);
 
 		gfxDevice.WriteDescriptor(sceneInputLayout.bindings[2], GlobalDescriptorSets[i], m_Textures);
-		gfxDevice.WriteDescriptor(sceneInputLayout.bindings[3], GlobalDescriptorSets[i], m_Skybox);
+		//gfxDevice.WriteDescriptor(sceneInputLayout.bindings[3], GlobalDescriptorSets[i], m_Skybox);
 	}
 	// Global Descriptor Sets End
 }
@@ -348,8 +350,8 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	if (m_Settings.wireframeEnabled)
 		Render(currentFrame, commandBuffer, m_WireframePipeline);
 
-	if (m_Settings.renderSkybox)
-		RenderSkybox(commandBuffer, m_SkyboxPipeline.pipeline);
+	//if (m_Settings.renderSkybox)
+		//RenderSkybox(commandBuffer, m_SkyboxPipeline.pipeline);
 }
 
 void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const PipelineState& pso) {
