@@ -46,6 +46,7 @@ namespace TextureLoader {
 			.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
 			.ViewType = VK_IMAGE_VIEW_TYPE_2D,
+			.MsaaSamples = VK_SAMPLE_COUNT_1_BIT,
 			.ImageType = VK_IMAGE_TYPE_2D,
 			.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT
 		};
