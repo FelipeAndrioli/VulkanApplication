@@ -24,8 +24,12 @@ namespace Engine {
 		m_GraphicsDevice->CreateRenderTarget(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height, m_SwapChain.swapChainImageFormat);
 		m_GraphicsDevice->CreateDepthBuffer(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
 
-		std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[0] };
-		m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->defaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent);
+		m_Framebuffers.resize(m_SwapChain.swapChainImageViews.size());
+
+		for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
+			std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
+			m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->defaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
+		}
 
 		m_UI = std::make_unique<Engine::UI>(*m_Window->GetHandle());
 	}
@@ -33,7 +37,7 @@ namespace Engine {
 	ApplicationCore::~ApplicationCore() {
 		m_UI.reset();
 		
-		m_GraphicsDevice->DestroyFramebuffer();
+		m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
 		m_GraphicsDevice->DestroyImage(m_DepthBuffer);
 		m_GraphicsDevice->DestroyImage(m_RenderTarget);
 		m_GraphicsDevice->DestroySwapChain(m_SwapChain);
@@ -82,7 +86,8 @@ namespace Engine {
 
 		//m_VulkanEngine->BeginRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle(), *commandBuffer, m_VulkanEngine->GetFramebuffer(m_ImageIndex));
 		//m_GraphicsDevice->BeginRenderPass(m_DefaultRenderPass, *commandBuffer, m_SwapChain.swapChainExtent);
-		m_GraphicsDevice->BeginDefaultRenderPass(*commandBuffer, m_SwapChain.swapChainExtent);
+		//m_GraphicsDevice->BeginRenderPass(*commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
+		m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->defaultRenderPass, *commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
 
 		if (m_UI) {
 			m_UI->BeginFrame();
@@ -134,9 +139,12 @@ namespace Engine {
 		// do we even need to recreate the render pass?
 		//m_GraphicsDevice->RecreateDefaultRenderPass(m_DefaultRenderPass, m_SwapChain);
 
-		m_GraphicsDevice->DestroyFramebuffer();
-		std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[0] };
-		m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->defaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent);
+		m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
+
+		for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
+			std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
+			m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->defaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
+		}
 
 		m_GraphicsDevice->RecreateCommandBuffers();
 

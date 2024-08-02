@@ -983,8 +983,6 @@ namespace Engine::Graphics {
 			DestroyCommandBuffer(commandBuffers[i]);
 		}
 
-		DestroyFramebuffer();
-
 		vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
 		vkDestroyDevice(m_LogicalDevice, nullptr);
 		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
@@ -1103,11 +1101,7 @@ namespace Engine::Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
-	void GraphicsDevice::BeginDefaultRenderPass(VkCommandBuffer& commandBuffer, const VkExtent2D renderArea) {
-		BeginRenderPass(defaultRenderPass, commandBuffer, renderArea);
-	}
-
-	void GraphicsDevice::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea) {
+	void GraphicsDevice::BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea, uint32_t imageIndex, const VkFramebuffer& framebuffer) {
 		std::array<VkClearValue, 2> clearValues{};
 		clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
 		clearValues[1].depthStencil = { 1.0f, 0 };
@@ -1196,32 +1190,26 @@ namespace Engine::Graphics {
 		currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
 	}
 
-	void GraphicsDevice::CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView>& attachmentViews, VkExtent2D& framebufferExtent) {
-		std::vector<VkImageView> attachments(attachmentViews.size());
+	void GraphicsDevice::CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer) {
+
+		std::vector<VkImageView> attachments;
 
 		for (int i = 0; i < attachmentViews.size(); i++) {
-			attachments[i] = attachmentViews[i];
+			attachments.push_back(attachmentViews[i]);
 		}
-
-		/*
-		std::array<VkImageView, 3> attachments = { 
-			m_RenderTarget->ImageView,
-			m_DepthBuffer->GetDepthBufferImageView(),
-			swapChain.swapChainImageViews[i]
-		};
-		*/
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = renderPass;
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = framebufferExtent.width;
-		framebufferInfo.height = framebufferExtent.height;
+		framebufferInfo.width = extent.width;
+		framebufferInfo.height = extent.height;
 		framebufferInfo.layers = 1;
 
 		VkResult result = vkCreateFramebuffer(m_LogicalDevice, &framebufferInfo, nullptr, &framebuffer);
 		assert(result == VK_SUCCESS);
+
 	}
 
 	GraphicsDevice& GraphicsDevice::RecreateImage(GPUImage& image) {
@@ -1577,8 +1565,10 @@ namespace Engine::Graphics {
 		CreateDefaultRenderPass(renderPass);
 	}
 
-	void GraphicsDevice::DestroyFramebuffer() {
-		vkDestroyFramebuffer(m_LogicalDevice, framebuffer, nullptr);
+	void GraphicsDevice::DestroyFramebuffer(std::vector<VkFramebuffer>& framebuffers) {
+		for (int i = 0; i < framebuffers.size(); i++) {
+			vkDestroyFramebuffer(m_LogicalDevice, framebuffers[i], nullptr);
+		}
 	}
 
 	void GraphicsDevice::CreateDescriptorPool() {

@@ -74,6 +74,7 @@ namespace Engine {
 
 		Graphics::GPUImage m_RenderTarget = {};
 		Graphics::GPUImage m_DepthBuffer = {};
+		std::vector<VkFramebuffer> m_Framebuffers;
 
 		std::unique_ptr<Engine::UI> m_UI;
 	};

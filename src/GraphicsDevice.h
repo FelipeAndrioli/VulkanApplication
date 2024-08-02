@@ -167,8 +167,7 @@ namespace Engine::Graphics {
 		void CreateFramesResources();
 		void BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer);
 		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
-		void BeginDefaultRenderPass(VkCommandBuffer& commandBuffer, const VkExtent2D renderArea);
-		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea);
+		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea, uint32_t imageIndex, const VkFramebuffer& framebuffer);
 		void EndRenderPass(VkCommandBuffer& commandBuffer);
 
 		VkCommandBuffer BeginSingleTimeCommandBuffer();
@@ -196,7 +195,7 @@ namespace Engine::Graphics {
 		template <class T>
 		GraphicsDevice& UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
 
-		void CreateFramebuffer(const VkRenderPass& renderPass, std::vector<VkImageView>& attachmentViews, VkExtent2D& framebufferExtent);
+		void CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer);
 		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
 		void CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat format);
 
@@ -218,7 +217,7 @@ namespace Engine::Graphics {
 		void CreateRenderPass(VkRenderPass& renderPass, std::vector<VkAttachmentDescription> attachments, std::vector<VkSubpassDescription> subpass, std::vector<VkSubpassDependency> dependencies);
 		void DestroyRenderPass(VkRenderPass& renderPass);
 		void RecreateDefaultRenderPass(VkRenderPass& renderPass, SwapChain& swapChain);
-		void DestroyFramebuffer();
+		void DestroyFramebuffer(std::vector<VkFramebuffer>& framebuffers);
 
 		void DestroyCommandBuffer(VkCommandBuffer& commandBuffer);
 		void RecreateCommandBuffers();
@@ -266,8 +265,6 @@ namespace Engine::Graphics {
 		uint32_t currentFrame = 0;
 
 		VkCommandBuffer commandBuffers[FRAMES_IN_FLIGHT];
-
-		VkFramebuffer framebuffer;
 
 		VkDescriptorPool descriptorPool;
 		uint32_t poolSize = 256;
