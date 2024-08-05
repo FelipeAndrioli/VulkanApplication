@@ -46,6 +46,19 @@ namespace Engine {
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
+	UI::~UI() {
+		std::cout << "Destroying UI" << '\n';
+
+		Engine::Graphics::GraphicsDevice* gfxDevice = Engine::Graphics::GetDevice();
+
+		ImGui_ImplVulkan_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+
+		vkDestroyDescriptorPool(gfxDevice->m_LogicalDevice, m_UIDescriptorPool, nullptr);
+		vkDestroyCommandPool(gfxDevice->m_LogicalDevice, m_UICommandPool, nullptr);
+	}
+
 	void UI::BeginFrame() {
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();

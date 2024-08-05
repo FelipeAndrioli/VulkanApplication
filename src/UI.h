@@ -15,7 +15,7 @@ namespace Engine {
 	class UI {
 	public:
 		UI(GLFWwindow& window);
-		~UI() {};
+		~UI();
 
 		void BeginFrame();
 		void EndFrame(const VkCommandBuffer& commandBuffer);
