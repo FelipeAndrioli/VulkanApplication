@@ -981,8 +981,10 @@ namespace Engine::Graphics {
 
 		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
 			DestroyCommandBuffer(commandBuffers[i]);
+			vkDestroyFence(m_LogicalDevice, frameFences[i], nullptr);
 		}
 
+		vkDestroyRenderPass(m_LogicalDevice, defaultRenderPass, nullptr);
 		vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
 		vkDestroyDevice(m_LogicalDevice, nullptr);
 		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
@@ -1010,6 +1012,14 @@ namespace Engine::Graphics {
 			vkDestroyImageView(m_LogicalDevice, imageView, nullptr);
 		}
 
+		for (auto semaphore : swapChain.imageAvailableSemaphores) {
+			vkDestroySemaphore(m_LogicalDevice, semaphore, nullptr);
+		}
+		
+		for (auto semaphore : swapChain.renderFinishedSemaphores) {
+			vkDestroySemaphore(m_LogicalDevice, semaphore, nullptr);
+		}
+
 		vkDestroySwapchainKHR(m_LogicalDevice, swapChain.swapChain, nullptr);
 	}
 
@@ -1033,7 +1043,7 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::DestroyCommandBuffer(VkCommandBuffer& commandBuffer) {
-		vkFreeCommandBuffers(m_LogicalDevice, m_CommandPool, 1, nullptr);
+		vkFreeCommandBuffers(m_LogicalDevice, m_CommandPool, 1, &commandBuffer);
 	}
 
 	void GraphicsDevice::RecreateCommandBuffers() {
@@ -1468,9 +1478,10 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::DestroyTexture(Texture& texture) {
-		vkDestroyImageView(m_LogicalDevice, texture.ImageView, nullptr);
 		vkDestroySampler(m_LogicalDevice, texture.ImageSampler, nullptr);
+		vkDestroyImageView(m_LogicalDevice, texture.ImageView, nullptr);
 		vkDestroyImage(m_LogicalDevice, texture.Image, nullptr);
+		vkFreeMemory(m_LogicalDevice, texture.Memory, nullptr);
 	}
 
 	void GraphicsDevice::CreateDefaultRenderPass(VkRenderPass& renderPass) {
@@ -1594,6 +1605,10 @@ namespace Engine::Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
+	void GraphicsDevice::DestroyDescriptorPool() {
+		vkDestroyDescriptorPool(m_LogicalDevice, descriptorPool, nullptr);
+	}
+
 	void GraphicsDevice::CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout) {
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1625,6 +1640,18 @@ namespace Engine::Graphics {
 		allocInfo.pSetLayouts = &layout;
 
 		result = vkAllocateDescriptorSets(m_LogicalDevice, &allocInfo, &descriptorSet);
+		assert(result == VK_SUCCESS);
+	}
+	
+	void GraphicsDevice::CreateDescriptorSet(std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkDescriptorSet& descriptorSet) {
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = descriptorSetLayouts.data();
+
+		VkResult result = vkAllocateDescriptorSets(m_LogicalDevice, &allocInfo, &descriptorSet);
+
 		assert(result == VK_SUCCESS);
 	}
 
@@ -1753,6 +1780,10 @@ namespace Engine::Graphics {
 		shader.shaderStageInfo.stage = shaderStage;
 		shader.shaderStageInfo.module = shader.shaderModule;
 		shader.shaderStageInfo.pName = "main";
+	}
+
+	void GraphicsDevice::DestroyShader(Shader& shader) {
+		vkDestroyShaderModule(m_LogicalDevice, shader.shaderModule, nullptr);
 	}
 
 	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso) {
@@ -1884,6 +1915,8 @@ namespace Engine::Graphics {
 
 			pso.descriptorSetLayout.push_back(layout);
 		}
+
+		CreateDescriptorSet(pso.descriptorSetLayout, pso.descriptorSet);
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

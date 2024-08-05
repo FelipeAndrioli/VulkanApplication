@@ -19,8 +19,8 @@ namespace Engine {
 
 		class IScene {
 		public:
-			virtual void StartUp(Engine::Graphics::GraphicsDevice& gfxDevice) = 0;
-			virtual void CleanUp(Engine::Graphics::GraphicsDevice& gfxDevice) = 0;
+			virtual void StartUp() = 0;
+			virtual void CleanUp() = 0;
 			virtual bool IsDone(Engine::InputSystem::Input& input) = 0;
 			virtual void Update(float d, Engine::InputSystem::Input& input) = 0;
 			virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) = 0;

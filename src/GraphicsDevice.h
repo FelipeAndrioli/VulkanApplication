@@ -128,6 +128,8 @@ namespace Engine::Graphics {
 		std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 		std::vector<VkImageViewType> imageViewTypes;
 
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
 		VkPipelineMultisampleStateCreateInfo multisampling = {};
 		VkPipelineShaderStageCreateInfo shaderStages = {};
@@ -227,8 +229,10 @@ namespace Engine::Graphics {
 		void EndUIFrame(const VkCommandBuffer& commandBuffer);
 		
 		void CreateDescriptorPool();
+		void DestroyDescriptorPool();
 		void CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout);
 		void CreateDescriptorSet(InputLayout& inputLayout, VkDescriptorSet& descriptorSet);
+		void CreateDescriptorSet(std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
 		void BindDescriptorSet(VkDescriptorSet& descriptorSet, const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout, uint32_t set, uint32_t setCount);
 
@@ -239,6 +243,7 @@ namespace Engine::Graphics {
 
 		std::vector<char> ReadFile(const std::string& filename);
 		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
+		void DestroyShader(Shader& shader);
 		void CreateRenderPass(VkFormat colorImageFormat, VkFormat depthFormat, VkRenderPass& renderPass);
 		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso);
 		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, VkRenderPass& renderPass);

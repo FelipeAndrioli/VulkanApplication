@@ -38,9 +38,12 @@ namespace Engine {
 		m_UI.reset();
 		
 		m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
+		m_Framebuffers.clear();
+
 		m_GraphicsDevice->DestroyImage(m_DepthBuffer);
 		m_GraphicsDevice->DestroyImage(m_RenderTarget);
 		m_GraphicsDevice->DestroySwapChain(m_SwapChain);
+		m_GraphicsDevice->DestroyDescriptorPool();
 		m_GraphicsDevice.reset();
 
 		m_Input.reset();
@@ -114,18 +117,11 @@ namespace Engine {
 	}
 
 	void ApplicationCore::InitializeApplication(IScene& scene) {
-		scene.StartUp(*m_GraphicsDevice.get());
+		scene.StartUp();
 	}
 
 	void ApplicationCore::TerminateApplication(IScene& scene) {
-		scene.CleanUp(*m_GraphicsDevice.get());
-
-		m_GraphicsDevice->DestroyImage(m_RenderTarget);
-		m_GraphicsDevice->DestroyImage(m_DepthBuffer);
-
-		m_Input.reset();
-		m_Window.reset();
-		m_GraphicsDevice.reset();
+		scene.CleanUp();
 	}
 
 	void ApplicationCore::Resize(int width, int height) {
