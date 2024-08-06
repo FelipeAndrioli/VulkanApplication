@@ -229,12 +229,14 @@ void ModelViewer::StartUp() {
 	
 	gfxDevice->CreatePipelineState(psoDesc, m_WireframePipeline);
 
+	/*
 	psoDesc.lineWidth = 1.0f;
 	psoDesc.vertexShader = &skyboxVertexShader;
 	psoDesc.fragmentShader = &skyboxFragShader;
 	psoDesc.polygonMode = VK_POLYGON_MODE_FILL;
 
 	gfxDevice->CreatePipelineState(psoDesc, m_SkyboxPipeline);
+	*/
 
 	// Renderable Objects Descriptor Sets Begin
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
@@ -291,7 +293,7 @@ void ModelViewer::CleanUp() {
 	gfxDevice->DestroyPipeline(m_TexturedPipeline);
 	gfxDevice->DestroyPipeline(m_WireframePipeline);
 	gfxDevice->DestroyPipeline(m_ColoredPipeline);
-	gfxDevice->DestroyPipeline(m_SkyboxPipeline);
+	//gfxDevice->DestroyPipeline(m_SkyboxPipeline);
 
 	gfxDevice->DestroyBuffer(m_SceneGeometryBuffer);
 
