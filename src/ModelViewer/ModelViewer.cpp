@@ -239,16 +239,8 @@ void ModelViewer::StartUp() {
 	// Renderable Objects Descriptor Sets Begin
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
 
-	gfxDevice->WriteDescriptor(
-		modelInputLayout.bindings[0],
-		m_TexturedPipeline.descriptorSet,
-		m_GPUDataBuffer[0].Handle,
-		m_GPUDataBuffer[0].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize,
-		objectBufferOffset
-	);
-
 	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->CreateDescriptorSet(modelInputLayout, ModelDescriptorSets[i]);
+		gfxDevice->CreateDescriptorSet(m_TexturedPipeline.descriptorSetLayout[0], ModelDescriptorSets[i]);
 		gfxDevice->WriteDescriptor(
 			modelInputLayout.bindings[0],
 			ModelDescriptorSets[i], 
@@ -261,7 +253,7 @@ void ModelViewer::StartUp() {
 
 	// Global Descriptor Sets Begin
 	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->CreateDescriptorSet(sceneInputLayout, GlobalDescriptorSets[i]);
+		gfxDevice->CreateDescriptorSet(m_TexturedPipeline.descriptorSetLayout[1], GlobalDescriptorSets[i]);
 		gfxDevice->WriteDescriptor(
 			sceneInputLayout.bindings[0],
 			GlobalDescriptorSets[i],
