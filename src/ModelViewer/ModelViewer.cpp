@@ -140,7 +140,7 @@ void ModelViewer::StartUp() {
 
 	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateBuffer(gpuDataBufferDesc, m_GPUDataBuffer[i], gpuBufferSize);
-		gfxDevice->WriteBuffer(m_GPUDataBuffer[i], meshMaterialData.data(), m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize);
+		gfxDevice->WriteBuffer(m_GPUDataBuffer[i], meshMaterialData.data(), m_GPUDataBuffer[i].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize, m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize);
 	}
 	// GPU Data Buffer End
 
@@ -190,7 +190,7 @@ void ModelViewer::StartUp() {
 	psoDesc.vertexShader = &defaultVertexShader;
 	psoDesc.fragmentShader = &texturedFragShader;
 	psoDesc.cullMode = VK_CULL_MODE_BACK_BIT;
-	psoDesc.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	psoDesc.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	psoDesc.polygonMode = VK_POLYGON_MODE_FILL;
 	psoDesc.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	psoDesc.pipelineExtent = { m_ScreenWidth, m_ScreenHeight };
