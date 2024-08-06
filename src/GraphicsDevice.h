@@ -128,8 +128,6 @@ namespace Engine::Graphics {
 		std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 		std::vector<VkImageViewType> imageViewTypes;
 
-		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
 		VkPipelineMultisampleStateCreateInfo multisampling = {};
 		VkPipelineShaderStageCreateInfo shaderStages = {};

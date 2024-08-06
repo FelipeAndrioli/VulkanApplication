@@ -1914,9 +1914,8 @@ namespace Engine::Graphics {
 			pso.pushConstants.insert(pso.pushConstants.end(), inputLayout.pushConstants.begin(), inputLayout.pushConstants.end());
 
 			pso.descriptorSetLayout.push_back(layout);
-		}
 
-		CreateDescriptorSet(pso.descriptorSetLayout, pso.descriptorSet);
+		}
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
