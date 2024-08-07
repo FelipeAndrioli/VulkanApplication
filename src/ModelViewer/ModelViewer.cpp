@@ -91,15 +91,25 @@ void ModelViewer::StartUp() {
 	m_Model.Transformations.scaleHandler = 0.2f;
 	*/
 
+	/*
 	m_Model.ID = "Sponza";
 	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/";
 	m_Model.Transformations.scaleHandler = 0.008f;
-
-	m_Model.FlipTexturesVertically = true;
+	
 	m_Model.Transformations.translation.x = -10.8f;
 	m_Model.Transformations.translation.y = -2.5f;
 	m_Model.Transformations.rotation.y = 45.0f;
+	*/
+
+	m_Model.ID = "Dragon";
+	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf";
+	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/";
+	m_Model.Transformations.scaleHandler = 20.0f;
+	m_Model.Transformations.translation.x = 0.0f;
+	m_Model.Transformations.translation.y = 0.0f;
+
+	m_Model.FlipTexturesVertically = true;
 
 	ModelLoader::LoadModelAndMaterials(m_Model, m_Materials, m_Textures);
 
