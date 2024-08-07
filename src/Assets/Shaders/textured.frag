@@ -54,5 +54,10 @@ layout (push_constant) uniform constant {
 
 void main() {
 	material_t current_material = materials[mesh_constant.material_index];
-	outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+	
+	if (current_material.diffuse_texture_index == -1) {
+		outColor = vec4(current_material.diffuse.x, current_material.diffuse.y, current_material.diffuse.z, 1.0f);
+	} else {
+		outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+	}
 }

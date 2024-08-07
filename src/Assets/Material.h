@@ -15,13 +15,13 @@ namespace Assets {
 		alignas(4) int Pad2 = 0;
 		alignas(4) int Illum = 0;
 
-		alignas(4) int AmbientTextureIndex = 0;
-		alignas(4) int DiffuseTextureIndex = 0;
-		alignas(4) int SpecularTextureIndex = 0;
-		alignas(4) int BumpTextureIndex = 0;
-		alignas(4) int RoughnessTextureIndex = 0;
-		alignas(4) int MetallicTextureIndex = 0;
-		alignas(4) int NormalTextureIndex = 0;
+		alignas(4) int AmbientTextureIndex = -1;
+		alignas(4) int DiffuseTextureIndex = -1;
+		alignas(4) int SpecularTextureIndex = -1;
+		alignas(4) int BumpTextureIndex = -1;
+		alignas(4) int RoughnessTextureIndex = -1;
+		alignas(4) int MetallicTextureIndex = -1;
+		alignas(4) int NormalTextureIndex = -1;
 
 		alignas(4) int ExtraScalar = 0;
 

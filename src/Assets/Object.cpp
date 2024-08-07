@@ -78,7 +78,7 @@ namespace Assets {
 			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
 
 			std::string s_label = "Scale Handler " + ID;
-			ImGui::SliderFloat(s_label.c_str(), &Transformations.scaleHandler, 0.0f, 2.0f);
+			ImGui::SliderFloat(s_label.c_str(), &Transformations.scaleHandler, 0.0f, 20.0f);
 
 			ImGui::Checkbox("Rotate", &m_Rotate);
 
