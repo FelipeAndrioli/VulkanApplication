@@ -686,7 +686,7 @@ namespace Engine::Graphics {
 		viewCreateInfo.image = image.Image;
 		viewCreateInfo.viewType = image.Description.ViewType;
 		viewCreateInfo.format = image.Description.Format;
-		viewCreateInfo.subresourceRange.aspectMask = image.Description.AspectFlags;
+		viewCreateInfo.subresourceRange.aspectMask = (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? VK_IMAGE_ASPECT_COLOR_BIT : image.Description.AspectFlags);
 		viewCreateInfo.subresourceRange.baseMipLevel = 0;
 		viewCreateInfo.subresourceRange.levelCount = image.Description.MipLevels;
 		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -756,7 +756,8 @@ namespace Engine::Graphics {
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
+		//barrier.subresourceRange.layerCount = 1;
+		barrier.subresourceRange.layerCount = image.Description.LayerCount;
 		barrier.subresourceRange.levelCount = 1;
 
 		int32_t mipWidth = image.Description.Width;

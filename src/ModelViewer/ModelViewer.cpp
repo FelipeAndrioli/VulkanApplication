@@ -89,9 +89,10 @@ void ModelViewer::StartUp() {
 	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/ship_pinnace_4k.gltf";
 	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/";
 	m_Model.Transformations.scaleHandler = 0.2f;
-	*/
+	m_Model.Transformations.translation.x = -10.8f;
+	m_Model.Transformations.translation.y = -2.5f;
+	m_Model.Transformations.rotation.y = 45.0f;
 
-	/*
 	m_Model.ID = "Sponza";
 	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
 	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/";
@@ -123,7 +124,7 @@ void ModelViewer::StartUp() {
 	};
 
 	//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
-	//m_Skybox = TextureLoader::LoadCubemapTexture(cubeTextures);
+	m_Skybox = TextureLoader::LoadCubemapTexture(cubeTextures);
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
@@ -229,24 +230,23 @@ void ModelViewer::StartUp() {
 
 	gfxDevice->CreatePipelineState(psoDesc, m_TexturedPipeline);
 
-	psoDesc.fragmentShader = &coloredFragShader;
 
-	gfxDevice->CreatePipelineState(psoDesc, m_ColoredPipeline);
-
+	psoDesc.Name = "Wireframe Pipeline";
 	psoDesc.fragmentShader = &wireframeFragShader;
 	psoDesc.polygonMode = VK_POLYGON_MODE_LINE;
 	psoDesc.lineWidth = 3.0f;
 	
 	gfxDevice->CreatePipelineState(psoDesc, m_WireframePipeline);
 
-	/*
+	//psoDesc.psoInputLayout.clear();
+	//psoDesc.psoInputLayout.push_back(sceneInputLayout);
+	psoDesc.Name = "Skybox Pipeline";
 	psoDesc.lineWidth = 1.0f;
 	psoDesc.vertexShader = &skyboxVertexShader;
 	psoDesc.fragmentShader = &skyboxFragShader;
 	psoDesc.polygonMode = VK_POLYGON_MODE_FILL;
 
 	gfxDevice->CreatePipelineState(psoDesc, m_SkyboxPipeline);
-	*/
 
 	// Renderable Objects Descriptor Sets Begin
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
@@ -283,7 +283,7 @@ void ModelViewer::StartUp() {
 		);
 
 		gfxDevice->WriteDescriptor(sceneInputLayout.bindings[2], GlobalDescriptorSets[i], m_Textures);
-		//gfxDevice.WriteDescriptor(sceneInputLayout.bindings[3], GlobalDescriptorSets[i], m_Skybox);
+		gfxDevice->WriteDescriptor(sceneInputLayout.bindings[3], GlobalDescriptorSets[i], m_Skybox);
 	}
 	// Global Descriptor Sets End
 }
@@ -303,7 +303,7 @@ void ModelViewer::CleanUp() {
 	gfxDevice->DestroyPipeline(m_TexturedPipeline);
 	gfxDevice->DestroyPipeline(m_WireframePipeline);
 	gfxDevice->DestroyPipeline(m_ColoredPipeline);
-	//gfxDevice->DestroyPipeline(m_SkyboxPipeline);
+	gfxDevice->DestroyPipeline(m_SkyboxPipeline);
 
 	gfxDevice->DestroyBuffer(m_SceneGeometryBuffer);
 
@@ -311,7 +311,7 @@ void ModelViewer::CleanUp() {
 		gfxDevice->DestroyBuffer(m_GPUDataBuffer[i]);
 	}
 
-	//gfxDevice.DestroyTexture(m_Skybox);
+	gfxDevice->DestroyTexture(m_Skybox);
 
 	for (auto texture : m_Textures) {
 		gfxDevice->DestroyTexture(texture);
@@ -367,14 +367,15 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	gfxDevice->BindDescriptorSet(GlobalDescriptorSets[currentFrame], commandBuffer, m_TexturedPipeline.pipelineLayout, 1, 1);
 	//m_GlobalDescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
 
+	
 	Render(currentFrame, commandBuffer, m_TexturedPipeline);
 	//Render(currentFrame, commandBuffer, m_ColoredPipeline.pipeline);
 
 	if (m_Settings.wireframeEnabled)
 		Render(currentFrame, commandBuffer, m_WireframePipeline);
 
-	//if (m_Settings.renderSkybox)
-		//RenderSkybox(commandBuffer, m_SkyboxPipeline.pipeline);
+	if (m_Settings.renderSkybox)
+		RenderSkybox(commandBuffer, m_SkyboxPipeline.pipeline);
 }
 
 void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const PipelineState& pso) {
