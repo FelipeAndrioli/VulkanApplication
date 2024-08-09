@@ -22,8 +22,13 @@
 
 class ModelViewer : public Engine::ApplicationCore::IScene {
 public:
-	ModelViewer() {};
-	ModelViewer(Engine::Settings& settings) : m_Settings(settings) {};
+	ModelViewer() {
+		settings.Title = "ModelViewer.exe";
+		settings.Width = 1600;
+		settings.Height = 900;
+		settings.uiEnabled = true;
+		settings.renderSkybox = true;
+	};
 
 	virtual void StartUp() override;
 	virtual void CleanUp() override;
@@ -36,8 +41,6 @@ public:
 	void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const PipelineState& pso);
 private:
 	Assets::Camera* m_Camera = nullptr;
-
-	Engine::Settings m_Settings = {};
 
 	// TODO: make it an array
 	Assets::Object m_Model = {};
@@ -79,8 +82,8 @@ private:
 
 void ModelViewer::StartUp() {
 
-	m_ScreenWidth = m_Settings.Width;
-	m_ScreenHeight = m_Settings.Height;
+	m_ScreenWidth = settings.Width;
+	m_ScreenHeight = settings.Height;
 
 	m_Camera = new Assets::Camera(glm::vec3(0.6f, 2.1f, 9.2f), 45.0f, -113.0f, -1.7f, m_ScreenWidth, m_ScreenHeight);
 
@@ -358,10 +361,10 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	
 	Render(currentFrame, commandBuffer, m_TexturedPipeline);
 
-	if (m_Settings.wireframeEnabled)
+	if (settings.wireframeEnabled)
 		Render(currentFrame, commandBuffer, m_WireframePipeline);
 
-	if (m_Settings.renderSkybox)
+	if (settings.renderSkybox)
 		RenderSkybox(commandBuffer, m_SkyboxPipeline.pipeline);
 }
 
@@ -402,8 +405,8 @@ void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& com
 
 void ModelViewer::RenderUI() {
 	ImGui::SeparatorText("Model Viewer");
-	ImGui::Checkbox("Enable Wireframe", &m_Settings.wireframeEnabled);
-	ImGui::Checkbox("Render SKybox", &m_Settings.renderSkybox);
+	ImGui::Checkbox("Enable Wireframe", &settings.wireframeEnabled);
+	ImGui::Checkbox("Render Skybox", &settings.renderSkybox);
 
 	m_Camera->OnUIRender();
 	m_Model.OnUIRender();
@@ -417,21 +420,4 @@ void ModelViewer::Resize(uint32_t width, uint32_t height) {
 	m_Camera->Resize(width, height);
 }
 
-int main() {
-
-	Engine::Settings settings = {};
-	settings.Title = "ModelViewer.exe";
-	settings.Width = 1600;
-	settings.Height = 900;
-	settings.uiEnabled = true;
-	settings.renderSkybox = true;
-
-	std::unique_ptr<Engine::ApplicationCore> app = std::make_unique<Engine::ApplicationCore>(settings);
-	ModelViewer modelViewer = ModelViewer(settings);
-
-	app->RunApplication(modelViewer);
-
-	app.reset();
-
-	return 0;
-}
+RUN_APPLICATION(ModelViewer)

@@ -13,6 +13,15 @@
 #include "Input/Input.h"
 #include "Assets/Object.h"
 
+#define RUN_APPLICATION(class_name)		\
+	int main(int argc, char* argv[]) {	\
+		Engine::ApplicationCore app;	\
+		class_name scene;				\
+		app.RunApplication(scene);		\
+										\
+		return 0;						\
+	}									
+
 namespace Engine {
 	class ApplicationCore {
 	public:
@@ -26,6 +35,9 @@ namespace Engine {
 			virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) = 0;
 			virtual void RenderUI() = 0;
 			virtual void Resize(uint32_t width, uint32_t height) = 0;
+
+		public:
+			Settings settings = {};
 		};
 
 		struct SceneGPUData {
@@ -43,7 +55,7 @@ namespace Engine {
 			glm::mat4 model = glm::mat4(1.0f);
 		};
 
-		ApplicationCore(Settings& settings);
+		ApplicationCore() {};
 		~ApplicationCore();
 
 		void RunApplication(IScene& scene);
@@ -52,6 +64,7 @@ namespace Engine {
 		void InitializeApplication(IScene& scene);
 		void TerminateApplication(IScene& scene);
 	private:
+		void InitializeResources(Settings& settings);
 		void Resize(int width, int height);
 	private:
 		float m_CurrentFrameTime = 0.0f;

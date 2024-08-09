@@ -2,8 +2,23 @@
 
 namespace Engine {
 
-	ApplicationCore::ApplicationCore(Settings& settings) {
+	ApplicationCore::~ApplicationCore() {
+		m_UI.reset();
+		
+		m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
+		m_Framebuffers.clear();
 
+		m_GraphicsDevice->DestroyImage(m_DepthBuffer);
+		m_GraphicsDevice->DestroyImage(m_RenderTarget);
+		m_GraphicsDevice->DestroySwapChain(m_SwapChain);
+		m_GraphicsDevice->DestroyDescriptorPool();
+		m_GraphicsDevice.reset();
+
+		m_Input.reset();
+		m_Window.reset();
+	}
+
+	void ApplicationCore::InitializeResources(Settings& settings) {
 		m_Window = std::make_unique<Window>(settings);
 		m_Input = std::make_unique<InputSystem::Input>();
 
@@ -34,23 +49,8 @@ namespace Engine {
 		m_UI = std::make_unique<Engine::UI>(*m_Window->GetHandle());
 	}
 
-	ApplicationCore::~ApplicationCore() {
-		m_UI.reset();
-		
-		m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
-		m_Framebuffers.clear();
-
-		m_GraphicsDevice->DestroyImage(m_DepthBuffer);
-		m_GraphicsDevice->DestroyImage(m_RenderTarget);
-		m_GraphicsDevice->DestroySwapChain(m_SwapChain);
-		m_GraphicsDevice->DestroyDescriptorPool();
-		m_GraphicsDevice.reset();
-
-		m_Input.reset();
-		m_Window.reset();
-	}
-
 	void ApplicationCore::RunApplication(IScene& scene) {
+		InitializeResources(scene.settings);
 		InitializeApplication(scene);
 
 		while (UpdateApplication(scene)) {
