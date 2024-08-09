@@ -312,10 +312,10 @@ void ModelViewer::CleanUp() {
 		gfxDevice->DestroyBuffer(m_GPUDataBuffer[i]);
 	}
 
-	gfxDevice->DestroyTexture(m_Skybox);
+	gfxDevice->DestroyImage(m_Skybox);
 
 	for (auto texture : m_Textures) {
-		gfxDevice->DestroyTexture(texture);
+		gfxDevice->DestroyImage(texture);
 	}
 
 	m_Textures.clear();

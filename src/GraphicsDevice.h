@@ -33,8 +33,6 @@ namespace Engine::Graphics {
 		}
 	};
 
-	VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
-	QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice& device, VkSurfaceKHR& surface);
 	bool isDeviceSuitable(const VkPhysicalDevice& device, const VkSurfaceKHR& surface);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 	VkSampleCountFlagBits GetMaxSampleCount(VkPhysicalDeviceProperties deviceProperties);
@@ -144,16 +142,10 @@ namespace Engine::Graphics {
 	void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 	void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
 	void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain);
-	void CreateCommandPool(VkDevice& logicalDevice, VkCommandPool& commandPool, uint32_t queueFamilyIndex);
 	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>&availableFormats);
 	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>&availablePresentModes);
 	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabilities, const VkExtent2D & extent);
-	void BeginCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);
-	void EndCommandBuffer(VkCommandBuffer& commandBuffer);
 
-	VkCommandBuffer BeginSingleTimeCommandBuffer(VkDevice& logicalDevice, VkCommandPool& commandPool);
-	void EndSingleTimeCommandBuffer(VkDevice& logicalDevice, VkQueue& queue, VkCommandBuffer& commandBuffer, VkCommandPool& commandPool);
-	
 	class GraphicsDevice {
 	public:
 		GraphicsDevice(Window& window);
@@ -169,31 +161,33 @@ namespace Engine::Graphics {
 		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
 		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea, uint32_t imageIndex, const VkFramebuffer& framebuffer);
 		void EndRenderPass(VkCommandBuffer& commandBuffer);
-
-		VkCommandBuffer BeginSingleTimeCommandBuffer();
-		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer);
+		
+		void BeginCommandBuffer(VkCommandBuffer& commandBuffer);
+		void EndCommandBuffer(VkCommandBuffer& commandBuffer);
 
 		VkCommandBuffer* BeginFrame(SwapChain& swapChain);
 		void EndFrame(const VkCommandBuffer& commandBuffer, const SwapChain& swapChain);
 		void PresentFrame(const SwapChain& swapChain);
 
-		GraphicsDevice& CreateImage(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageType imageType);
-		GraphicsDevice& CreateImageView(GPUImage& image, const VkImageViewType viewType, const VkImageAspectFlags aspectFlags, const uint32_t layerCount);
-		GraphicsDevice& RecreateImageView(GPUImage& image);
-		
-		GraphicsDevice& AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits memoryProperty);
-		GraphicsDevice& AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty);
+		VkCommandBuffer BeginSingleTimeCommandBuffer(VkCommandPool& commandPool);
+		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer, VkCommandPool& commandPool);
 
-		GraphicsDevice& TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
-		GraphicsDevice& GenerateMipMaps(GPUImage& image);
-		GraphicsDevice& CreateImageSampler(GPUImage& image);
-		GraphicsDevice& RecreateImage(GPUImage& image);
-		GraphicsDevice& ResizeImage(GPUImage& image, uint32_t width, uint32_t height);
-		GraphicsDevice& CopyBufferToImage(GPUImage& image, GPUBuffer& srcBuffer);
-		GraphicsDevice& DestroyImage(GPUImage& image);
+		void CreateImage(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageType imageType);
+		void CreateImageView(GPUImage& image);
+		void RecreateImageView(GPUImage& image);
+		
+		void AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits memoryProperty);
+		void AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty);
+
+		void TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
+		void GenerateMipMaps(GPUImage& image);
+		void CreateImageSampler(GPUImage& image);
+		void ResizeImage(GPUImage& image, uint32_t width, uint32_t height);
+		void CopyBufferToImage(GPUImage& image, GPUBuffer& srcBuffer);
+		void DestroyImage(GPUImage& image);
 
 		template <class T>
-		GraphicsDevice& UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
+		void UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer);
 		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
@@ -207,10 +201,9 @@ namespace Engine::Graphics {
 		void WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0);
 
 		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, void* initialData, size_t dataSize);
-		void DestroyTexture(Texture& texture);
 
-		GraphicsDevice& CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
-		GraphicsDevice& AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
+		void CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
+		void AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
 		void DestroyBuffer(GPUBuffer& buffer);
 	
 		void CreateDefaultRenderPass(VkRenderPass& renderPass);
@@ -273,15 +266,26 @@ namespace Engine::Graphics {
 		uint32_t poolSize = 256;
 
 	private:
+		VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
+		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice& device, VkSurfaceKHR& surface);
 		bool isDeviceSuitable(VkPhysicalDevice& device, VkSurfaceKHR& surface);
+		void CreateSurface(VkInstance& instance, GLFWwindow& window, VkSurfaceKHR& surface);
+		void CreateInstance(VkInstance& instance);
+		void CreateLogicalDevice(QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice);
+		void CreateQueue(VkDevice& logicalDevice, uint32_t queueFamilyIndex, VkQueue& queue);
+		void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
+		void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain);
+		
+		void CreateCommandPool(VkCommandPool& commandPool, uint32_t queueFamilyIndex);
+		void CreateCommandBuffer(VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);
+		
+
 		SwapChainSupportDetails QuerySwapChainSupportDetails(VkPhysicalDevice& device, VkSurfaceKHR& surface);
 		std::vector<const char*> GetRequiredExtensions();
 		void CheckRequiredExtensions(uint32_t glfwExtensionCount, const char** glfwExtensions, std::vector<VkExtensionProperties> vulkanSupportedExtensions);
-		void CreateInstance(VkInstance& instance);
 		VkFormat FindSupportedFormat(VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 		VkFormat FindDepthFormat(VkPhysicalDevice& physicalDevice);
 		void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
-		VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
 		void CreateImage(GPUImage& image);
 	};
 

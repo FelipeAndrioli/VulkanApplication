@@ -87,9 +87,6 @@ namespace Engine {
 		if (commandBuffer == nullptr)
 			return true;
 
-		//m_VulkanEngine->BeginRenderPass(m_VulkanEngine->GetDefaultRenderPass().GetHandle(), *commandBuffer, m_VulkanEngine->GetFramebuffer(m_ImageIndex));
-		//m_GraphicsDevice->BeginRenderPass(m_DefaultRenderPass, *commandBuffer, m_SwapChain.swapChainExtent);
-		//m_GraphicsDevice->BeginRenderPass(*commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
 		m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->defaultRenderPass, *commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
 
 		if (m_UI) {
@@ -128,12 +125,9 @@ namespace Engine {
 		std::cout << "width - " << width << " height - " << height << '\n';
 
 		m_GraphicsDevice->RecreateSwapChain(*m_Window.get(), m_SwapChain);
+
 		m_GraphicsDevice->ResizeImage(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
 		m_GraphicsDevice->ResizeImage(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
-
-		// this might cause problem, need to test
-		// do we even need to recreate the render pass?
-		//m_GraphicsDevice->RecreateDefaultRenderPass(m_DefaultRenderPass, m_SwapChain);
 
 		m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
 

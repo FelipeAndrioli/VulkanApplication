@@ -39,9 +39,9 @@ namespace Engine {
 		init_info.CheckVkResultFn = check_vk_result;
 		ImGui_ImplVulkan_Init(&init_info, gfxDevice->defaultRenderPass);
 
-		VkCommandBuffer commandBuffer = gfxDevice->BeginSingleTimeCommandBuffer();
+		VkCommandBuffer commandBuffer = gfxDevice->BeginSingleTimeCommandBuffer(m_UICommandPool);
 		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-		gfxDevice->EndSingleTimeCommandBuffer(commandBuffer);
+		gfxDevice->EndSingleTimeCommandBuffer(commandBuffer, m_UICommandPool);
 
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
