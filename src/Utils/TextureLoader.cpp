@@ -133,8 +133,8 @@ namespace TextureLoader {
 		VkDeviceSize imageSize = layerSize * layerCount;
 
 		ImageDescription desc = {
-			.Width = static_cast<uint32_t>(width),
-			.Height = static_cast<uint32_t>(height),
+			.Width = static_cast<uint32_t>(cubemap.getWidth()),
+			.Height = static_cast<uint32_t>(cubemap.getHeight()),
 			.MipLevels = static_cast<uint32_t>(mipLevels),
 			.LayerCount = static_cast<uint32_t>(layerCount),
 			.Format = texFormat,

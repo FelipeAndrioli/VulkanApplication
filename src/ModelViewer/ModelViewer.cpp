@@ -124,7 +124,8 @@ void ModelViewer::StartUp() {
 	};
 
 	//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
-	m_Skybox = TextureLoader::LoadCubemapTexture(cubeTextures);
+	m_Skybox = TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr");
+	//m_Skybox = TextureLoader::LoadCubemapTexture(cubeTextures);
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
