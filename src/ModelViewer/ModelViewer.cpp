@@ -123,9 +123,7 @@ void ModelViewer::StartUp() {
 		"./Textures/back.jpg",
 	};
 
-	//m_Skybox = std::make_unique<struct Assets::Texture>(Utils::TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr", *m_VulkanEngine.get()));
 	m_Skybox = TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr");
-	//m_Skybox = TextureLoader::LoadCubemapTexture(cubeTextures);
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
@@ -158,10 +156,6 @@ void ModelViewer::StartUp() {
 
 	// Scene Geometry Buffer Begin
 	VkDeviceSize sceneGeometryBufferSize = sizeof(uint32_t) * m_Model.IndicesAmount + sizeof(Assets::Vertex) * m_Model.VerticesAmount;
-	/*
-	VkDeviceSize bufferSize = sizeof(uint32_t) * p_ActiveScene->Indices.size()
-		+ sizeof(Assets::Vertex) * p_ActiveScene->Vertices.size();
-	*/
 
 	BufferDescription sceneGeometryBufferDesc = {};
 	sceneGeometryBufferDesc.BufferSize = sceneGeometryBufferSize;
@@ -239,8 +233,6 @@ void ModelViewer::StartUp() {
 	
 	gfxDevice->CreatePipelineState(psoDesc, m_WireframePipeline);
 
-	//psoDesc.psoInputLayout.clear();
-	//psoDesc.psoInputLayout.push_back(sceneInputLayout);
 	psoDesc.Name = "Skybox Pipeline";
 	psoDesc.lineWidth = 1.0f;
 	psoDesc.vertexShader = &skyboxVertexShader;
@@ -338,7 +330,6 @@ void RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphi
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	GraphicsDevice* gfxDevice = GetDevice();
 
-	//VkDeviceSize offsets[] = { p_ActiveScene->VertexOffset };
 	VkDeviceSize offsets[] = { sizeof(uint32_t) * m_Model.IndicesAmount };
 
 	vkCmdBindVertexBuffers(
@@ -363,14 +354,9 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		+ m_GPUDataBuffer[currentFrame].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
 
 	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
-	//m_GPUDataBuffer[currentFrame]->Update(sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
-
 	gfxDevice->BindDescriptorSet(GlobalDescriptorSets[currentFrame], commandBuffer, m_TexturedPipeline.pipelineLayout, 1, 1);
-	//m_GlobalDescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
-
 	
 	Render(currentFrame, commandBuffer, m_TexturedPipeline);
-	//Render(currentFrame, commandBuffer, m_ColoredPipeline.pipeline);
 
 	if (m_Settings.wireframeEnabled)
 		Render(currentFrame, commandBuffer, m_WireframePipeline);
@@ -385,17 +371,13 @@ void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& com
 	GraphicsDevice* gfxDevice = GetDevice();
 
 	gfxDevice->BindDescriptorSet(ModelDescriptorSets[currentFrame], commandBuffer, pso.pipelineLayout, 0, 1);
-	//m_Model.DescriptorSets[currentFrame]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_MainPipelineLayout->GetHandle());
 
 	Engine::ApplicationCore::ObjectGPUData objectGPUData = Engine::ApplicationCore::ObjectGPUData();
 	objectGPUData.model = m_Model.GetModelMatrix();
 
-	//VkDeviceSize objectBufferOffset = i * m_GPUDataBuffer->Chunks[OBJECT_BUFFER_INDEX].DataSize;
-	//VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame]->Chunks[OBJECT_BUFFER_INDEX].DataSize;
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
 	
 	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
-	//m_GPUDataBuffer[currentFrame]->Update(objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
 
 	for (const auto& mesh : m_Model.Meshes) {
 		vkCmdPushConstants(
