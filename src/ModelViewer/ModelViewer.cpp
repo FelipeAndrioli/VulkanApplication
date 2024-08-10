@@ -182,9 +182,6 @@ void ModelViewer::StartUp() {
 	}
 	// Scene Geometry Buffer End
 
-	// TODO: remove descriptor pool creation from here
-	gfxDevice->CreateDescriptorPool();
-
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, defaultVertexShader, "./Shaders/default_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, texturedFragShader, "./Shaders/textured_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, wireframeFragShader, "./Shaders/wireframe_frag.spv");
@@ -225,7 +222,6 @@ void ModelViewer::StartUp() {
 	psoDesc.psoInputLayout.push_back(sceneInputLayout);
 
 	gfxDevice->CreatePipelineState(psoDesc, m_TexturedPipeline);
-
 
 	psoDesc.Name = "Wireframe Pipeline";
 	psoDesc.fragmentShader = &wireframeFragShader;
