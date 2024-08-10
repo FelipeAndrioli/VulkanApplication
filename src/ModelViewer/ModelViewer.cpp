@@ -55,15 +55,13 @@ private:
 	VkDescriptorSet ModelDescriptorSets[FRAMES_IN_FLIGHT];
 	VkDescriptorSet GlobalDescriptorSets[FRAMES_IN_FLIGHT];
 
-	PipelineState m_TexturedPipeline;
+	PipelineState m_ColorPipeline;
 	PipelineState m_WireframePipeline;
-	PipelineState m_ColoredPipeline;
 	PipelineState m_SkyboxPipeline;
 
 	Shader defaultVertexShader = {};
-	Shader texturedFragShader = {};
+	Shader colorFragShader = {};
 	Shader wireframeFragShader = {};
-	Shader coloredFragShader = {};
 	Shader skyboxVertexShader = {};
 	Shader skyboxFragShader = {};
 
@@ -72,7 +70,6 @@ private:
 	static const int SCENE_BUFFER_INDEX = 2;
 	static const int INDEX_BUFFER_INDEX = 0;			// :) 
 	static const int VERTEX_BUFFER_INDEX = 1;
-	const std::string DEFAULT_GRAPHICS_PIPELINE = "defaultPipeline";
 
 	uint32_t m_ScreenWidth = 0;
 	uint32_t m_ScreenHeight = 0;
@@ -93,6 +90,7 @@ void ModelViewer::StartUp() {
 	m_Model.Transformations.translation.x = -10.8f;
 	m_Model.Transformations.translation.y = -2.5f;
 	m_Model.Transformations.rotation.y = 45.0f;
+	*/
 
 	m_Model.ID = "Sponza";
 	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
@@ -102,14 +100,15 @@ void ModelViewer::StartUp() {
 	m_Model.Transformations.translation.x = -10.8f;
 	m_Model.Transformations.translation.y = -2.5f;
 	m_Model.Transformations.rotation.y = 45.0f;
-	*/
 
+	/*
 	m_Model.ID = "Dragon";
 	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf";
 	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/";
 	m_Model.Transformations.scaleHandler = 20.0f;
 	m_Model.Transformations.translation.x = 0.0f;
 	m_Model.Transformations.translation.y = 0.0f;
+	*/
 
 	m_Model.FlipTexturesVertically = true;
 
@@ -183,16 +182,15 @@ void ModelViewer::StartUp() {
 	// Scene Geometry Buffer End
 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, defaultVertexShader, "./Shaders/default_vert.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, texturedFragShader, "./Shaders/textured_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, colorFragShader, "./Shaders/color_ps.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, wireframeFragShader, "./Shaders/wireframe_frag.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, coloredFragShader, "./Shaders/colored_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, skyboxVertexShader, "./Shaders/skybox_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, skyboxFragShader, "./Shaders/skybox_frag.spv");
 
 	PipelineStateDescription psoDesc = {};
 	psoDesc.Name = "Texture Pipeline";
 	psoDesc.vertexShader = &defaultVertexShader;
-	psoDesc.fragmentShader = &texturedFragShader;
+	psoDesc.fragmentShader = &colorFragShader;
 	psoDesc.cullMode = VK_CULL_MODE_BACK_BIT;
 	psoDesc.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	psoDesc.polygonMode = VK_POLYGON_MODE_FILL;
@@ -221,7 +219,7 @@ void ModelViewer::StartUp() {
 
 	psoDesc.psoInputLayout.push_back(sceneInputLayout);
 
-	gfxDevice->CreatePipelineState(psoDesc, m_TexturedPipeline);
+	gfxDevice->CreatePipelineState(psoDesc, m_ColorPipeline);
 
 	psoDesc.Name = "Wireframe Pipeline";
 	psoDesc.fragmentShader = &wireframeFragShader;
@@ -242,7 +240,7 @@ void ModelViewer::StartUp() {
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
 
 	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->CreateDescriptorSet(m_TexturedPipeline.descriptorSetLayout[0], ModelDescriptorSets[i]);
+		gfxDevice->CreateDescriptorSet(m_ColorPipeline.descriptorSetLayout[0], ModelDescriptorSets[i]);
 		gfxDevice->WriteDescriptor(
 			modelInputLayout.bindings[0],
 			ModelDescriptorSets[i], 
@@ -255,7 +253,7 @@ void ModelViewer::StartUp() {
 
 	// Global Descriptor Sets Begin
 	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->CreateDescriptorSet(m_TexturedPipeline.descriptorSetLayout[1], GlobalDescriptorSets[i]);
+		gfxDevice->CreateDescriptorSet(m_ColorPipeline.descriptorSetLayout[1], GlobalDescriptorSets[i]);
 		gfxDevice->WriteDescriptor(
 			sceneInputLayout.bindings[0],
 			GlobalDescriptorSets[i],
@@ -284,15 +282,13 @@ void ModelViewer::CleanUp() {
 	m_Model.ResetResources();
 
 	gfxDevice->DestroyShader(defaultVertexShader);
-	gfxDevice->DestroyShader(texturedFragShader);
+	gfxDevice->DestroyShader(colorFragShader);
 	gfxDevice->DestroyShader(wireframeFragShader);
-	gfxDevice->DestroyShader(coloredFragShader);
 	gfxDevice->DestroyShader(skyboxVertexShader);
 	gfxDevice->DestroyShader(skyboxFragShader);
 
-	gfxDevice->DestroyPipeline(m_TexturedPipeline);
+	gfxDevice->DestroyPipeline(m_ColorPipeline);
 	gfxDevice->DestroyPipeline(m_WireframePipeline);
-	gfxDevice->DestroyPipeline(m_ColoredPipeline);
 	gfxDevice->DestroyPipeline(m_SkyboxPipeline);
 
 	gfxDevice->DestroyBuffer(m_SceneGeometryBuffer);
@@ -351,9 +347,9 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		+ m_GPUDataBuffer[currentFrame].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
 
 	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::Application::SceneGPUData));
-	gfxDevice->BindDescriptorSet(GlobalDescriptorSets[currentFrame], commandBuffer, m_TexturedPipeline.pipelineLayout, 1, 1);
+	gfxDevice->BindDescriptorSet(GlobalDescriptorSets[currentFrame], commandBuffer, m_ColorPipeline.pipelineLayout, 1, 1);
 	
-	Render(currentFrame, commandBuffer, m_TexturedPipeline);
+	Render(currentFrame, commandBuffer, m_ColorPipeline);
 
 	if (settings.wireframeEnabled)
 		Render(currentFrame, commandBuffer, m_WireframePipeline);
