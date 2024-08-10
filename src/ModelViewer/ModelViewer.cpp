@@ -4,23 +4,21 @@
 #include <glm.hpp>
 #include <gtc/type_ptr.hpp>
 
-#include "../ApplicationCore.h"
+#include "../Application.h"
 #include "../Settings.h"
 
 #include "../Graphics.h"
 #include "../GraphicsDevice.h"
 
 #include "../Assets/Camera.h"
-#include "../Assets/Scene.h"
 #include "../Assets/Object.h"
-#include "../Assets/Shader.h"
-#include "../Assets/Pipeline.h"
 #include "../Assets/Material.h"
+#include "../Assets/Mesh.h"
 #include "../Assets/Utils/MeshGenerator.h"
 #include "../Utils/ModelLoader.h"
 #include "../Utils/TextureLoader.h"
 
-class ModelViewer : public Engine::ApplicationCore::IScene {
+class ModelViewer : public Engine::Application::IScene {
 public:
 	ModelViewer() {
 		settings.Title = "ModelViewer.exe";
@@ -45,7 +43,7 @@ private:
 	// TODO: make it an array
 	Assets::Object m_Model = {};
 		
-	Engine::ApplicationCore::SceneGPUData m_SceneGPUData;
+	Engine::Application::SceneGPUData m_SceneGPUData;
 
 	std::vector<Assets::Material> m_Materials;
 	std::vector<Texture> m_Textures;
@@ -130,9 +128,9 @@ void ModelViewer::StartUp() {
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
-	VkDeviceSize objectBufferSize = sizeof(Engine::ApplicationCore::ObjectGPUData) * 1; // TODO: make it an array
+	VkDeviceSize objectBufferSize = sizeof(Engine::Application::ObjectGPUData) * 1; // TODO: make it an array
 	VkDeviceSize materialsBufferSize = sizeof(Assets::MeshMaterialData) * m_Materials.size();
-	VkDeviceSize sceneBufferSize = sizeof(Engine::ApplicationCore::SceneGPUData);
+	VkDeviceSize sceneBufferSize = sizeof(Engine::Application::SceneGPUData);
 	VkDeviceSize gpuBufferSize = objectBufferSize + materialsBufferSize + sceneBufferSize;
 
 	std::vector<Assets::MeshMaterialData> meshMaterialData;
@@ -145,9 +143,9 @@ void ModelViewer::StartUp() {
 	gpuDataBufferDesc.BufferSize = gpuBufferSize;
 	gpuDataBufferDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	gpuDataBufferDesc.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	gpuDataBufferDesc.Chunks.push_back({ sizeof(Engine::ApplicationCore::ObjectGPUData), objectBufferSize });
+	gpuDataBufferDesc.Chunks.push_back({ sizeof(Engine::Application::ObjectGPUData), objectBufferSize });
 	gpuDataBufferDesc.Chunks.push_back({ sizeof(Assets::MeshMaterialData), materialsBufferSize });
-	gpuDataBufferDesc.Chunks.push_back({ sizeof(Engine::ApplicationCore::SceneGPUData), sceneBufferSize });
+	gpuDataBufferDesc.Chunks.push_back({ sizeof(Engine::Application::SceneGPUData), sceneBufferSize });
 
 	GraphicsDevice* gfxDevice = GetDevice();
 
@@ -260,7 +258,7 @@ void ModelViewer::StartUp() {
 	// Renderable Objects Descriptor Sets End 
 
 	// Global Descriptor Sets Begin
-	for (int i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_TexturedPipeline.descriptorSetLayout[1], GlobalDescriptorSets[i]);
 		gfxDevice->WriteDescriptor(
 			sceneInputLayout.bindings[0],
@@ -356,7 +354,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	VkDeviceSize sceneBufferOffset = m_GPUDataBuffer[currentFrame].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize 
 		+ m_GPUDataBuffer[currentFrame].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
 
-	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::ApplicationCore::SceneGPUData));
+	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::Application::SceneGPUData));
 	gfxDevice->BindDescriptorSet(GlobalDescriptorSets[currentFrame], commandBuffer, m_TexturedPipeline.pipelineLayout, 1, 1);
 	
 	Render(currentFrame, commandBuffer, m_TexturedPipeline);
@@ -375,12 +373,12 @@ void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& com
 
 	gfxDevice->BindDescriptorSet(ModelDescriptorSets[currentFrame], commandBuffer, pso.pipelineLayout, 0, 1);
 
-	Engine::ApplicationCore::ObjectGPUData objectGPUData = Engine::ApplicationCore::ObjectGPUData();
+	Engine::Application::ObjectGPUData objectGPUData = Engine::Application::ObjectGPUData();
 	objectGPUData.model = m_Model.GetModelMatrix();
 
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
 	
-	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], objectBufferOffset, &objectGPUData, sizeof(Engine::ApplicationCore::ObjectGPUData));
+	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], objectBufferOffset, &objectGPUData, sizeof(Engine::Application::ObjectGPUData));
 
 	for (const auto& mesh : m_Model.Meshes) {
 		vkCmdPushConstants(

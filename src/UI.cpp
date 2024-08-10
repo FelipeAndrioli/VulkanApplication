@@ -71,17 +71,6 @@ namespace Engine {
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 	}
 
-	void UI::Shutdown(LogicalDevice& logicalDevice) {
-		std::cout << "Destroying UI" << '\n';
-
-		ImGui_ImplVulkan_Shutdown();
-		ImGui_ImplGlfw_Shutdown();
-		ImGui::DestroyContext();
-
-		vkDestroyDescriptorPool(logicalDevice.GetHandle(), m_UIDescriptorPool, nullptr);
-		vkDestroyCommandPool(logicalDevice.GetHandle(), m_UICommandPool, nullptr);
-	}
-
 	void UI::createUIDescriptorPool(VkDevice &r_LogicalDevice) {
 		VkDescriptorPoolSize pool_sizes[] = {
 			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },

@@ -13,7 +13,7 @@
 #include "VulkanHeader.h"
 #include "Window.h"
 #include "Graphics.h"
-#include "DeviceMemory.h"
+#include "Assets/Mesh.h"
 
 namespace Engine::Graphics {
 	const int FRAMES_IN_FLIGHT = 2;
