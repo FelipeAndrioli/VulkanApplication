@@ -90,15 +90,12 @@ namespace Engine {
 
 		m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->defaultRenderPass, *commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
 
+		scene.RenderScene(m_CurrentFrame, *commandBuffer);
+
 		if (m_UI) {
 			m_UI->BeginFrame();
-		}
-
-		scene.RenderScene(m_CurrentFrame, *commandBuffer);
-		RenderCoreUI();
-		scene.RenderUI();
-
-		if (m_UI) {
+			RenderCoreUI();
+			scene.RenderUI();
 			m_UI->EndFrame(*commandBuffer);
 		}
 
