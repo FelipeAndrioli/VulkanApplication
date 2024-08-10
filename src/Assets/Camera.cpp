@@ -13,7 +13,7 @@ namespace Assets {
 
 	void Camera::OnUpdate(float t, const Engine::InputSystem::Input& input) {
 
-		if (!input.Mouse.LeftButtonPressed) {
+		if (!input.Mouse.RightButtonPressed) {
 			m_LastX = input.Mouse.x;
 			m_LastY = input.Mouse.y;
 			return;
