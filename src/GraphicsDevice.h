@@ -76,11 +76,11 @@ namespace Engine::Graphics {
 		std::vector<VkSemaphore> imageAvailableSemaphores;
 		std::vector<VkSemaphore> renderFinishedSemaphores;
 
-		VkFormat swapChainImageFormat;
+		VkFormat swapChainImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 
-		VkExtent2D swapChainExtent;
+		VkExtent2D swapChainExtent = { 0, 0 };
 
-		uint32_t imageIndex;
+		uint32_t imageIndex = 0;
 	};
 
 	struct Shader {

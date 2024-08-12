@@ -881,8 +881,8 @@ namespace Engine::Graphics {
 		VkViewport viewport = {};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = renderArea.width;
-		viewport.height = renderArea.height;
+		viewport.width = static_cast<float>(renderArea.width);
+		viewport.height = static_cast<float>(renderArea.height);
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
@@ -1512,9 +1512,9 @@ namespace Engine::Graphics {
 	void GraphicsDevice::CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout) {
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = desc.SetLayouts.size();
+		pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(desc.SetLayouts.size());
 		pipelineLayoutInfo.pSetLayouts = desc.SetLayouts.data();
-		pipelineLayoutInfo.pushConstantRangeCount = desc.PushConstantRanges.size();
+		pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(desc.PushConstantRanges.size());
 		pipelineLayoutInfo.pPushConstantRanges = desc.PushConstantRanges.data();
 
 		VkResult result = vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout);
@@ -1527,7 +1527,7 @@ namespace Engine::Graphics {
 		
 		VkDescriptorSetLayoutCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		createInfo.bindingCount = inputLayout.bindings.size();
+		createInfo.bindingCount = static_cast<uint32_t>(inputLayout.bindings.size());
 		createInfo.pBindings = inputLayout.bindings.data();
 
 		VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &createInfo, nullptr, &layout);
@@ -1804,7 +1804,7 @@ namespace Engine::Graphics {
 
 			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
 			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			layoutInfo.bindingCount = inputLayout.bindings.size();
+			layoutInfo.bindingCount = static_cast<uint32_t>(inputLayout.bindings.size());
 			layoutInfo.pBindings = inputLayout.bindings.data();
 		
 			VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &layoutInfo, nullptr, &layout);
@@ -1828,7 +1828,7 @@ namespace Engine::Graphics {
 		assert(result == VK_SUCCESS);
 
 		pso.pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pso.pipelineInfo.stageCount = shaderStages.size();
+		pso.pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 		pso.pipelineInfo.pStages = shaderStages.data();
 		pso.pipelineInfo.pInputAssemblyState = &pso.inputAssembly;
 		pso.pipelineInfo.pViewportState = &pso.viewportState;

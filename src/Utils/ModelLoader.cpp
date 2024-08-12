@@ -227,7 +227,7 @@ namespace ModelLoader {
 		if (material == nullptr)
 			return;
 
-		for (size_t i = 0; i < material->GetTextureCount(textureType); i++) {
+		for (uint32_t i = 0; i < material->GetTextureCount(textureType); i++) {
 			aiString util;
 
 			material->GetTexture(textureType, i, &util);

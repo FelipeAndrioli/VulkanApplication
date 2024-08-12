@@ -43,20 +43,20 @@ private:
 
 	// TODO: make it an array
 	Assets::Object m_Model = {};
-		
-	Engine::Application::SceneGPUData m_SceneGPUData;
+
+	Engine::Application::SceneGPUData m_SceneGPUData = {};
 
 	std::vector<Assets::Material> m_Materials;
 	std::vector<Texture> m_Textures;
 
 	GPUBuffer m_GPUDataBuffer[Engine::Graphics::FRAMES_IN_FLIGHT];
-	GPUBuffer m_SceneGeometryBuffer;
-		
+	GPUBuffer m_SceneGeometryBuffer = {};
+
 	VkDescriptorSet ModelDescriptorSets[FRAMES_IN_FLIGHT];
 	VkDescriptorSet GlobalDescriptorSets[FRAMES_IN_FLIGHT];
 
-	PipelineState m_ColorPipeline;
-	PipelineState m_WireframePipeline;
+	PipelineState m_ColorPipeline = {};
+	PipelineState m_WireframePipeline = {};
 
 	Shader defaultVertexShader = {};
 	Shader colorFragShader = {};
