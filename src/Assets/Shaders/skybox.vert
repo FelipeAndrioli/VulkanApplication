@@ -1,11 +1,13 @@
 #version 450
 
+/*
 layout (std140, set = 0, binding = 0) uniform ObjectGPUData {
 	vec4 extra[12];
 	mat4 model;
 } objectGPUData;
+*/
 
-layout (std140, set = 1, binding = 0) uniform SceneGPUData {
+layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float time;
 	float extra_s_1;
 	float extra_s_2;

@@ -9,6 +9,7 @@
 
 #include "../Graphics.h"
 #include "../GraphicsDevice.h"
+#include "../Renderer.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Object.h"
@@ -47,7 +48,6 @@ private:
 
 	std::vector<Assets::Material> m_Materials;
 	std::vector<Texture> m_Textures;
-	Texture m_Skybox;
 
 	GPUBuffer m_GPUDataBuffer[Engine::Graphics::FRAMES_IN_FLIGHT];
 	GPUBuffer m_SceneGeometryBuffer;
@@ -57,7 +57,6 @@ private:
 
 	PipelineState m_ColorPipeline;
 	PipelineState m_WireframePipeline;
-	PipelineState m_SkyboxPipeline;
 
 	Shader defaultVertexShader = {};
 	Shader colorFragShader = {};
@@ -82,6 +81,7 @@ void ModelViewer::StartUp() {
 
 	m_Camera = new Assets::Camera(glm::vec3(0.6f, 2.1f, 9.2f), 45.0f, -113.0f, -1.7f, m_ScreenWidth, m_ScreenHeight);
 
+	Renderer::Init();
 	/*
 	m_Model.ID = "Ship";
 	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/ship_pinnace_4k.gltf";
@@ -112,17 +112,6 @@ void ModelViewer::StartUp() {
 	m_Model.FlipTexturesVertically = true;
 
 	ModelLoader::LoadModelAndMaterials(m_Model, m_Materials, m_Textures);
-
-	std::vector<std::string> cubeTextures = {
-		"./Textures/right.jpg",
-		"./Textures/left.jpg",
-		"./Textures/top.jpg",
-		"./Textures/bottom.jpg",
-		"./Textures/front.jpg",
-		"./Textures/back.jpg",
-	};
-
-	m_Skybox = TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr");
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
@@ -183,8 +172,8 @@ void ModelViewer::StartUp() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, defaultVertexShader, "./Shaders/default_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, colorFragShader, "./Shaders/color_ps.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, wireframeFragShader, "./Shaders/wireframe_frag.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, skyboxVertexShader, "./Shaders/skybox_vert.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, skyboxFragShader, "./Shaders/skybox_frag.spv");
+	//gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, skyboxVertexShader, "./Shaders/skybox_vert.spv");
+	//gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, skyboxFragShader, "./Shaders/skybox_frag.spv");
 
 	PipelineStateDescription psoDesc = {};
 	psoDesc.Name = "Texture Pipeline";
@@ -212,7 +201,7 @@ void ModelViewer::StartUp() {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
 			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
-			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }
+			//{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }
 		}
 	};
 
@@ -226,14 +215,6 @@ void ModelViewer::StartUp() {
 	psoDesc.lineWidth = 3.0f;
 	
 	gfxDevice->CreatePipelineState(psoDesc, m_WireframePipeline);
-
-	psoDesc.Name = "Skybox Pipeline";
-	psoDesc.lineWidth = 1.0f;
-	psoDesc.vertexShader = &skyboxVertexShader;
-	psoDesc.fragmentShader = &skyboxFragShader;
-	psoDesc.polygonMode = VK_POLYGON_MODE_FILL;
-
-	gfxDevice->CreatePipelineState(psoDesc, m_SkyboxPipeline);
 
 	// Renderable Objects Descriptor Sets Begin
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
@@ -270,7 +251,6 @@ void ModelViewer::StartUp() {
 		);
 
 		gfxDevice->WriteDescriptor(sceneInputLayout.bindings[2], GlobalDescriptorSets[i], m_Textures);
-		gfxDevice->WriteDescriptor(sceneInputLayout.bindings[3], GlobalDescriptorSets[i], m_Skybox);
 	}
 	// Global Descriptor Sets End
 }
@@ -288,15 +268,13 @@ void ModelViewer::CleanUp() {
 
 	gfxDevice->DestroyPipeline(m_ColorPipeline);
 	gfxDevice->DestroyPipeline(m_WireframePipeline);
-	gfxDevice->DestroyPipeline(m_SkyboxPipeline);
+	Renderer::Destroy();
 
 	gfxDevice->DestroyBuffer(m_SceneGeometryBuffer);
 
 	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->DestroyBuffer(m_GPUDataBuffer[i]);
 	}
-
-	gfxDevice->DestroyImage(m_Skybox);
 
 	for (auto texture : m_Textures) {
 		gfxDevice->DestroyImage(texture);
@@ -311,12 +289,6 @@ void ModelViewer::CleanUp() {
 void ModelViewer::Update(float d, Engine::InputSystem::Input& input) {
 	m_Camera->OnUpdate(d, input);
 	m_Model.OnUpdate(d);
-}
-
-void RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline) {
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-	vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -347,14 +319,17 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::Application::SceneGPUData));
 	gfxDevice->BindDescriptorSet(GlobalDescriptorSets[currentFrame], commandBuffer, m_ColorPipeline.pipelineLayout, 1, 1);
-	
+
+	// g_Renderer->Render(m_SceneGeometryBuffer);
+	// g_Renderer->RenderWireFrame(m_SceneGeometryBuffer);
+
 	Render(currentFrame, commandBuffer, m_ColorPipeline);
 
 	if (settings.wireframeEnabled)
 		Render(currentFrame, commandBuffer, m_WireframePipeline);
 
 	if (settings.renderSkybox)
-		RenderSkybox(commandBuffer, m_SkyboxPipeline.pipeline);
+		Renderer::RenderSkybox(commandBuffer, *m_Camera);
 }
 
 void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, const PipelineState& pso) {
