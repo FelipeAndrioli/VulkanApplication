@@ -240,6 +240,8 @@ namespace Engine::Graphics {
 		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, VkRenderPass& renderPass);
 		void DestroyPipeline(PipelineState& pso);
 
+		void SetSwapChainExtent(VkExtent2D newExtent) { m_SwapChainExtent = newExtent; }
+
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
@@ -264,6 +266,8 @@ namespace Engine::Graphics {
 
 		VkDescriptorPool descriptorPool;
 		uint32_t poolSize = 256;
+
+		VkExtent2D m_SwapChainExtent = { 0, 0 };
 
 	private:
 		VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);

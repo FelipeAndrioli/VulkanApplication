@@ -2,6 +2,9 @@
 
 #include "VulkanHeader.h"
 
+#include <string> 
+#include <vector>
+
 namespace Engine::Graphics {
 
 	struct Viewport {

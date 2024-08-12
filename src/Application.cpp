@@ -36,6 +36,7 @@ namespace Engine {
 
 		assert(success);
 
+		m_GraphicsDevice->SetSwapChainExtent(m_SwapChain.swapChainExtent);
 		m_GraphicsDevice->CreateDescriptorPool();
 		m_GraphicsDevice->CreateRenderTarget(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height, m_SwapChain.swapChainImageFormat);
 		m_GraphicsDevice->CreateDepthBuffer(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
@@ -123,6 +124,7 @@ namespace Engine {
 		std::cout << "width - " << width << " height - " << height << '\n';
 
 		m_GraphicsDevice->RecreateSwapChain(*m_Window.get(), m_SwapChain);
+		m_GraphicsDevice->SetSwapChainExtent(m_SwapChain.swapChainExtent);
 
 		m_GraphicsDevice->ResizeImage(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
 		m_GraphicsDevice->ResizeImage(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
