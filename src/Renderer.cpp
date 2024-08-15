@@ -2,6 +2,7 @@
 #include "Graphics.h"
 #include "GraphicsDevice.h"
 #include "TextureLoader.h"
+#include "Application.h"
 
 #include <vector>
 #include <string>
@@ -10,14 +11,32 @@ namespace Renderer {
 	bool m_Initialized = false;
 
 	Engine::Graphics::Texture m_Skybox;
-	Engine::Graphics::Shader m_SkyboxVertexShader;
-	Engine::Graphics::Shader m_SkyboxFragShader;
-	Engine::Graphics::GPUBuffer m_SkyboxBuffer;
-	Engine::Graphics::PipelineState m_SkyboxPSO;
+
+	Engine::Graphics::Shader m_SkyboxVertexShader = {};
+	Engine::Graphics::Shader m_SkyboxFragShader = {};
+	Engine::Graphics::Shader m_DefaultVertShader = {};
+	Engine::Graphics::Shader m_ColorFragShader = {};
+
+	Engine::Graphics::GPUBuffer m_SkyboxBuffer = {};
+	Engine::Graphics::GPUBuffer m_SceneGeometryBuffer = {};
+	Engine::Graphics::GPUBuffer m_GPUDataBuffer[Engine::Graphics::FRAMES_IN_FLIGHT] = {};
+
+	Engine::Graphics::PipelineState m_SkyboxPSO = {};
+	Engine::Graphics::PipelineState m_ColorPSO = {};
+	Engine::Graphics::PipelineState m_WireframePSO = {};
 
 	VkDescriptorSet m_SkyboxDescriptor;
 
 	SceneGPUData m_SkyboxGPUData = {};
+
+	std::vector<Assets::Material> m_Materials;
+	std::vector<Texture> m_Textures;
+
+	static const int OBJECT_BUFFER_INDEX = 0;
+	static const int MATERIAL_BUFFER_INDEX = 1;
+	static const int SCENE_BUFFER_INDEX = 2;
+	static const int INDEX_BUFFER_INDEX = 0;			// :) 
+	static const int VERTEX_BUFFER_INDEX = 1;
 }
 
 void Renderer::Init() {
@@ -26,6 +45,7 @@ void Renderer::Init() {
 
 	Engine::Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
+	// Skybox PSO
 	std::vector<std::string> cubeTextures = {
 		"./Textures/right.jpg",
 		"./Textures/left.jpg",
@@ -70,6 +90,11 @@ void Renderer::Init() {
 	gfxDevice->CreateDescriptorSet(m_SkyboxPSO.descriptorSetLayout[0], m_SkyboxDescriptor);
 	gfxDevice->WriteDescriptor(skyboxInputLayout.bindings[0], m_SkyboxDescriptor, m_SkyboxBuffer.Handle, sizeof(Renderer::SceneGPUData), 0);
 	gfxDevice->WriteDescriptor(skyboxInputLayout.bindings[1], m_SkyboxDescriptor, m_Skybox);
+	// Skybox PSO
+
+	// Color PSO
+	//gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_DefaultVertShader, "./Shaders/default_vert.spv");
+	//gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_ColorFragShader, "./Shaders/color_ps.spv");
 
 	m_Initialized = true;
 }
@@ -97,4 +122,12 @@ void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer, const Assets::
 	gfxDevice->BindDescriptorSet(m_SkyboxDescriptor, commandBuffer, m_SkyboxPSO.pipelineLayout, 0, 1);
 
 	vkCmdDraw(commandBuffer, 36, 1, 0, 0);
+}
+
+void Renderer::RenderMeshes(const VkCommandBuffer& commandBuffer) {
+
+}
+
+void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer) {
+
 }

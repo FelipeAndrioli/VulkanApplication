@@ -33,10 +33,6 @@ namespace Engine::Graphics {
 		}
 	};
 
-	bool isDeviceSuitable(const VkPhysicalDevice& device, const VkSurfaceKHR& surface);
-	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-	VkSampleCountFlagBits GetMaxSampleCount(VkPhysicalDeviceProperties deviceProperties);
-
 #ifndef NDEBUG
 	const bool c_EnableValidationLayers = true;
 #else
@@ -46,15 +42,6 @@ namespace Engine::Graphics {
 	const std::vector<const char*> c_ValidationLayers = {
 		"VK_LAYER_KHRONOS_validation"
 	};
-
-	void CreateInstance(VkInstance& instance);
-	bool checkValidationLayerSupport();
-
-	void CreateSurface(VkInstance& instance, GLFWwindow& window, VkSurfaceKHR& surface);
-
-	void CreateLogicalDevice(QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice);
-	void CreateQueue(VkDevice& logicalDevice, uint32_t queueFamilyIndex, VkQueue& queue);
-	void WaitIdle(VkDevice& logicalDevice);
 
 	VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
@@ -137,14 +124,6 @@ namespace Engine::Graphics {
 		VkSampleMask sampleMask = {};
 		VkPipelineTessellationStateCreateInfo tessellationInfo = {};
 	};
-
-	void CreateSwapChain(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
-	void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
-	void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
-	void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain);
-	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>&availableFormats);
-	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>&availablePresentModes);
-	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabilities, const VkExtent2D & extent);
 
 	class GraphicsDevice {
 	public:
@@ -242,6 +221,7 @@ namespace Engine::Graphics {
 
 		void SetSwapChainExtent(VkExtent2D newExtent) { m_SwapChainExtent = newExtent; }
 
+	public:
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
@@ -258,14 +238,14 @@ namespace Engine::Graphics {
 		VkQueue m_PresentQueue;
 		VkQueue m_ComputeQueue;
 
-		VkFence frameFences[FRAMES_IN_FLIGHT];
+		VkFence m_FrameFences[FRAMES_IN_FLIGHT];
 
-		uint32_t currentFrame = 0;
+		uint32_t m_CurrentFrame = 0;
 
-		VkCommandBuffer commandBuffers[FRAMES_IN_FLIGHT];
+		VkCommandBuffer m_CommandBuffers[FRAMES_IN_FLIGHT];
 
-		VkDescriptorPool descriptorPool;
-		uint32_t poolSize = 256;
+		VkDescriptorPool m_DescriptorPool;
+		uint32_t m_PoolSize = 256;
 
 		VkExtent2D m_SwapChainExtent = { 0, 0 };
 
@@ -286,6 +266,7 @@ namespace Engine::Graphics {
 
 		SwapChainSupportDetails QuerySwapChainSupportDetails(VkPhysicalDevice& device, VkSurfaceKHR& surface);
 		std::vector<const char*> GetRequiredExtensions();
+		bool CheckValidationLayerSupport();
 		void CheckRequiredExtensions(uint32_t glfwExtensionCount, const char** glfwExtensions, std::vector<VkExtensionProperties> vulkanSupportedExtensions);
 		VkFormat FindSupportedFormat(VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 		VkFormat FindDepthFormat(VkPhysicalDevice& physicalDevice);

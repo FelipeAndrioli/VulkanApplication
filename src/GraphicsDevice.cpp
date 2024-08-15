@@ -151,7 +151,7 @@ namespace Engine::Graphics {
 
 		assert(instance == VK_NULL_HANDLE && "Instance must be VK_NULL_HANDLE!");
 
-		if (c_EnableValidationLayers && !checkValidationLayerSupport()) {
+		if (c_EnableValidationLayers && !CheckValidationLayerSupport()) {
 			throw std::runtime_error("Validation layers requested, but not available!");
 		}
 
@@ -202,7 +202,7 @@ namespace Engine::Graphics {
 			extensions);
 	}
 
-	bool checkValidationLayerSupport() {
+	bool GraphicsDevice::CheckValidationLayerSupport() {
 		uint32_t layerCount;
 		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
@@ -738,8 +738,8 @@ namespace Engine::Graphics {
 		DestroyDebugUtilsMessengerEXT(m_VulkanInstance, m_DebugMessenger, nullptr);
 
 		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-			DestroyCommandBuffer(commandBuffers[i]);
-			vkDestroyFence(m_LogicalDevice, frameFences[i], nullptr);
+			DestroyCommandBuffer(m_CommandBuffers[i]);
+			vkDestroyFence(m_LogicalDevice, m_FrameFences[i], nullptr);
 		}
 
 		vkDestroyRenderPass(m_LogicalDevice, defaultRenderPass, nullptr);
@@ -792,11 +792,11 @@ namespace Engine::Graphics {
 				fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 				fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-				VkResult result = vkCreateFence(m_LogicalDevice, &fenceCreateInfo, nullptr, &frameFences[i]);
+				VkResult result = vkCreateFence(m_LogicalDevice, &fenceCreateInfo, nullptr, &m_FrameFences[i]);
 				assert(result == VK_SUCCESS);
 			}
 
-			CreateCommandBuffer(m_CommandPool, commandBuffers[i]);
+			CreateCommandBuffer(m_CommandPool, m_CommandBuffers[i]);
 		}
 	}
 
@@ -806,20 +806,20 @@ namespace Engine::Graphics {
 
 	void GraphicsDevice::RecreateCommandBuffers() {
 		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-			DestroyCommandBuffer(commandBuffers[i]);
-			CreateCommandBuffer(m_CommandPool, commandBuffers[i]);
+			DestroyCommandBuffer(m_CommandBuffers[i]);
+			CreateCommandBuffer(m_CommandPool, m_CommandBuffers[i]);
 		}
 	}
 
 	VkCommandBuffer* GraphicsDevice::BeginFrame(SwapChain& swapChain) {
 
-		vkWaitForFences(m_LogicalDevice, 1, &frameFences[currentFrame], VK_TRUE, UINT64_MAX);
+		vkWaitForFences(m_LogicalDevice, 1, &m_FrameFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
 		
 		VkResult result = vkAcquireNextImageKHR(
 			m_LogicalDevice, 
 			swapChain.swapChain, 
 			UINT64_MAX,
-			swapChain.imageAvailableSemaphores[currentFrame],
+			swapChain.imageAvailableSemaphores[m_CurrentFrame],
 			VK_NULL_HANDLE, 
 			&swapChain.imageIndex
 		);
@@ -830,11 +830,11 @@ namespace Engine::Graphics {
 			throw std::runtime_error("Failed to acquire swap chain image!");
 		}
 
-		vkResetFences(m_LogicalDevice, 1, &frameFences[currentFrame]);
+		vkResetFences(m_LogicalDevice, 1, &m_FrameFences[m_CurrentFrame]);
 
-		BeginCommandBuffer(commandBuffers[currentFrame]);
+		BeginCommandBuffer(m_CommandBuffers[m_CurrentFrame]);
 
-		return &commandBuffers[currentFrame];
+		return &m_CommandBuffers[m_CurrentFrame];
 	}
 
 	void GraphicsDevice::EndFrame(const VkCommandBuffer& commandBuffer, const SwapChain& swapChain) {
@@ -849,15 +849,15 @@ namespace Engine::Graphics {
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &swapChain.imageAvailableSemaphores[currentFrame];
+		submitInfo.pWaitSemaphores = &swapChain.imageAvailableSemaphores[m_CurrentFrame];
 
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
 		submitInfo.pCommandBuffers = cmdBuffers.data();
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &swapChain.renderFinishedSemaphores[currentFrame];
+		submitInfo.pSignalSemaphores = &swapChain.renderFinishedSemaphores[m_CurrentFrame];
 
-		result = vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, frameFences[currentFrame]);
+		result = vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_FrameFences[m_CurrentFrame]);
 		assert(result == VK_SUCCESS);
 	}
 
@@ -927,7 +927,7 @@ namespace Engine::Graphics {
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &swapChain.renderFinishedSemaphores[currentFrame];
+		presentInfo.pWaitSemaphores = &swapChain.renderFinishedSemaphores[m_CurrentFrame];
 		
 		VkSwapchainKHR swapChains[] = { swapChain.swapChain };
 		presentInfo.swapchainCount = 1;
@@ -938,7 +938,7 @@ namespace Engine::Graphics {
 		VkResult result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-			currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
+			m_CurrentFrame = (m_CurrentFrame + 1) % FRAMES_IN_FLIGHT;
 			return;
 		}
 		else if (result != VK_SUCCESS) {
@@ -946,7 +946,7 @@ namespace Engine::Graphics {
 		}
 
 		// using modulo operator to ensure that the frame index loops around after every FRAMES_IN_FLIGHT enqueued frames
-		currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
+		m_CurrentFrame = (m_CurrentFrame + 1) % FRAMES_IN_FLIGHT;
 	}
 
 	void GraphicsDevice::CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer) {
@@ -1487,26 +1487,26 @@ namespace Engine::Graphics {
 		uint32_t count = 0;
 
 		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSizes[0].descriptorCount = poolSize;
+		poolSizes[0].descriptorCount = m_PoolSize;
 		count++;
 		
 		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSizes[1].descriptorCount = poolSize;
+		poolSizes[1].descriptorCount = m_PoolSize;
 		count++;
 
 		VkDescriptorPoolCreateInfo poolCreateInfo = {};
 		poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolCreateInfo.poolSizeCount = count;
-		poolCreateInfo.maxSets = poolSize;
+		poolCreateInfo.maxSets = m_PoolSize;
 		poolCreateInfo.pPoolSizes = poolSizes;
 
-		VkResult result = vkCreateDescriptorPool(m_LogicalDevice, &poolCreateInfo, nullptr, &descriptorPool);
+		VkResult result = vkCreateDescriptorPool(m_LogicalDevice, &poolCreateInfo, nullptr, &m_DescriptorPool);
 
 		assert(result == VK_SUCCESS);
 	}
 
 	void GraphicsDevice::DestroyDescriptorPool() {
-		vkDestroyDescriptorPool(m_LogicalDevice, descriptorPool, nullptr);
+		vkDestroyDescriptorPool(m_LogicalDevice, m_DescriptorPool, nullptr);
 	}
 
 	void GraphicsDevice::CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout) {
@@ -1535,7 +1535,7 @@ namespace Engine::Graphics {
 
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorPool = m_DescriptorPool;
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = &layout;
 
@@ -1546,7 +1546,7 @@ namespace Engine::Graphics {
 	void GraphicsDevice::CreateDescriptorSet(std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkDescriptorSet& descriptorSet) {
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorPool = m_DescriptorPool;
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = descriptorSetLayouts.data();
 
@@ -1558,7 +1558,7 @@ namespace Engine::Graphics {
 	void GraphicsDevice::CreateDescriptorSet(VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet) {
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorPool = m_DescriptorPool;
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = &descriptorSetLayout;
 

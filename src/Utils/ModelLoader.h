@@ -1,18 +1,16 @@
 #pragma once
 
 #include <iostream>
-#include <vector>
-#include <map>
-#include <unordered_map>
 #include <memory>
+#include <string>
+#include <vector>
 
+#include "../Assets/Model.h"
+#include "../Assets/Material.h"
 #include "../Graphics.h"
-#include "../GraphicsDevice.h"
-#include "../Assets/Object.h"
 
-using namespace Engine::Graphics;
+namespace Renderer {
 
-namespace ModelLoader {
-	extern void LoadModelAndMaterials(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials, std::vector<Texture>& loadedTextures);
-	extern void LoadCustomModel(Assets::Object& object, std::vector<Assets::Material>& sceneMaterials);
+	void CompileMesh(Model& model, std::vector<Assets::Material>& materials);
+	std::shared_ptr<Model> LoadModel(const std::string& path, std::vector<Assets::Material>& materials, std::vector<Engine::Graphics::Texture>& textures);
 }

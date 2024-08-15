@@ -12,7 +12,7 @@
 #include "../Renderer.h"
 
 #include "../Assets/Camera.h"
-#include "../Assets/Object.h"
+#include "../Assets/Model.h"
 #include "../Assets/Material.h"
 #include "../Assets/Mesh.h"
 #include "../Assets/Utils/MeshGenerator.h"
@@ -41,8 +41,7 @@ public:
 private:
 	Assets::Camera* m_Camera = nullptr;
 
-	// TODO: make it an array
-	Assets::Object m_Model = {};
+	std::shared_ptr<Model> m_Model;
 
 	Engine::Application::SceneGPUData m_SceneGPUData = {};
 
@@ -67,8 +66,6 @@ private:
 	static const int OBJECT_BUFFER_INDEX = 0;
 	static const int MATERIAL_BUFFER_INDEX = 1;
 	static const int SCENE_BUFFER_INDEX = 2;
-	static const int INDEX_BUFFER_INDEX = 0;			// :) 
-	static const int VERTEX_BUFFER_INDEX = 1;
 
 	uint32_t m_ScreenWidth = 0;
 	uint32_t m_ScreenHeight = 0;
@@ -82,36 +79,27 @@ void ModelViewer::StartUp() {
 	m_Camera = new Assets::Camera(glm::vec3(0.6f, 2.1f, 9.2f), 45.0f, -113.0f, -1.7f, m_ScreenWidth, m_ScreenHeight);
 
 	Renderer::Init();
-	/*
-	m_Model.ID = "Ship";
-	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/ship_pinnace_4k.gltf";
-	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/ship_pinnace_4k.gltf/";
-	m_Model.Transformations.scaleHandler = 0.2f;
-	m_Model.Transformations.translation.x = -10.8f;
-	m_Model.Transformations.translation.y = -2.5f;
-	m_Model.Transformations.rotation.y = 45.0f;
-	*/
+
+	m_Model = Renderer::LoadModel(
+		"C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf",
+		m_Materials, m_Textures);
+	m_Model->Name = "Dragon";
+	m_Model->Transformations.scaleHandler = 20.0f;
+	m_Model->Transformations.translation.x = 0.0f;
+	m_Model->Transformations.translation.y = 0.0f;
 
 	/*
-	m_Model.ID = "Sponza";
-	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj";
-	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/";
-	m_Model.Transformations.scaleHandler = 0.008f;
-	m_Model.Transformations.translation.x = -10.8f;
-	m_Model.Transformations.translation.y = -2.5f;
-	m_Model.Transformations.rotation.y = 45.0f;
+	m_Model = Renderer::LoadModel(
+		"C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj",
+		m_Materials, m_Textures);
+
+	m_Model->Name = "Sponza";
+	m_Model->Transformations.scaleHandler = 0.008f;
+	m_Model->Transformations.translation.x = -10.8f;
+	m_Model->Transformations.translation.y = -2.5f;
+	m_Model->Transformations.rotation.y = 45.0f;
+	m_Model->FlipTexturesVertically = true;
 	*/
-
-	m_Model.ID = "Dragon";
-	m_Model.ModelPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf";
-	m_Model.MaterialPath = "C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/";
-	m_Model.Transformations.scaleHandler = 20.0f;
-	m_Model.Transformations.translation.x = 0.0f;
-	m_Model.Transformations.translation.y = 0.0f;
-
-	m_Model.FlipTexturesVertically = true;
-
-	ModelLoader::LoadModelAndMaterials(m_Model, m_Materials, m_Textures);
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
@@ -142,38 +130,9 @@ void ModelViewer::StartUp() {
 	}
 	// GPU Data Buffer End
 
-	// Scene Geometry Buffer Begin
-	VkDeviceSize sceneGeometryBufferSize = sizeof(uint32_t) * m_Model.IndicesAmount + sizeof(Assets::Vertex) * m_Model.VerticesAmount;
-
-	BufferDescription sceneGeometryBufferDesc = {};
-	sceneGeometryBufferDesc.BufferSize = sceneGeometryBufferSize;
-	sceneGeometryBufferDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	sceneGeometryBufferDesc.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	sceneGeometryBufferDesc.Chunks.push_back({ sizeof(uint32_t), sizeof(uint32_t) * m_Model.IndicesAmount });
-	sceneGeometryBufferDesc.Chunks.push_back({ sizeof(Assets::Vertex), sizeof(Assets::Vertex) * m_Model.VerticesAmount });
-
-	gfxDevice->CreateBuffer(sceneGeometryBufferDesc, m_SceneGeometryBuffer, sceneGeometryBufferSize);
-	
-	size_t indexOffset = 0;
-
-	for (auto mesh : m_Model.Meshes) {
-		gfxDevice->WriteBuffer(m_SceneGeometryBuffer, mesh.Indices.data(), sizeof(uint32_t) * mesh.Indices.size(), indexOffset);
-		indexOffset += sizeof(uint32_t) * mesh.Indices.size();
-	}
-
-	size_t vertexOffset = indexOffset;
-
-	for (auto mesh : m_Model.Meshes) {
-		gfxDevice->WriteBuffer(m_SceneGeometryBuffer, mesh.Vertices.data(), sizeof(Assets::Vertex) * mesh.Vertices.size(), vertexOffset);
-		vertexOffset += sizeof(Assets::Vertex) * mesh.Vertices.size();
-	}
-	// Scene Geometry Buffer End
-
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, defaultVertexShader, "./Shaders/default_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, colorFragShader, "./Shaders/color_ps.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, wireframeFragShader, "./Shaders/wireframe_frag.spv");
-	//gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, skyboxVertexShader, "./Shaders/skybox_vert.spv");
-	//gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, skyboxFragShader, "./Shaders/skybox_frag.spv");
 
 	PipelineStateDescription psoDesc = {};
 	psoDesc.Name = "Texture Pipeline";
@@ -201,7 +160,6 @@ void ModelViewer::StartUp() {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
 			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
-			//{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }
 		}
 	};
 
@@ -258,13 +216,9 @@ void ModelViewer::StartUp() {
 void ModelViewer::CleanUp() {
 	GraphicsDevice* gfxDevice = GetDevice();
 
-	m_Model.ResetResources();
-
 	gfxDevice->DestroyShader(defaultVertexShader);
 	gfxDevice->DestroyShader(colorFragShader);
 	gfxDevice->DestroyShader(wireframeFragShader);
-	gfxDevice->DestroyShader(skyboxVertexShader);
-	gfxDevice->DestroyShader(skyboxFragShader);
 
 	gfxDevice->DestroyPipeline(m_ColorPipeline);
 	gfxDevice->DestroyPipeline(m_WireframePipeline);
@@ -288,28 +242,16 @@ void ModelViewer::CleanUp() {
 
 void ModelViewer::Update(float d, Engine::InputSystem::Input& input) {
 	m_Camera->OnUpdate(d, input);
-	m_Model.OnUpdate(d);
+	m_Model->OnUpdate(d);
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	GraphicsDevice* gfxDevice = GetDevice();
 
-	VkDeviceSize offsets[] = { sizeof(uint32_t) * m_Model.IndicesAmount };
+	VkDeviceSize offsets[] = { sizeof(uint32_t) * m_Model->TotalIndices };
 
-	vkCmdBindVertexBuffers(
-		commandBuffer,
-		0,
-		1,
-		&m_SceneGeometryBuffer.Handle,
-		offsets
-	);
-
-	vkCmdBindIndexBuffer(
-		commandBuffer,
-		m_SceneGeometryBuffer.Handle,
-		0,
-		VK_INDEX_TYPE_UINT32
-	);
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_Model->DataBuffer.Handle, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, m_Model->DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
 	m_SceneGPUData.view = m_Camera->ViewMatrix;
 	m_SceneGPUData.proj = m_Camera->ProjectionMatrix;
@@ -319,9 +261,6 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::Application::SceneGPUData));
 	gfxDevice->BindDescriptorSet(GlobalDescriptorSets[currentFrame], commandBuffer, m_ColorPipeline.pipelineLayout, 1, 1);
-
-	// g_Renderer->Render(m_SceneGeometryBuffer);
-	// g_Renderer->RenderWireFrame(m_SceneGeometryBuffer);
 
 	Render(currentFrame, commandBuffer, m_ColorPipeline);
 
@@ -340,13 +279,13 @@ void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& com
 	gfxDevice->BindDescriptorSet(ModelDescriptorSets[currentFrame], commandBuffer, pso.pipelineLayout, 0, 1);
 
 	Engine::Application::ObjectGPUData objectGPUData = Engine::Application::ObjectGPUData();
-	objectGPUData.model = m_Model.GetModelMatrix();
+	objectGPUData.model = m_Model->GetModelMatrix();
 
 	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
 	
 	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], objectBufferOffset, &objectGPUData, sizeof(Engine::Application::ObjectGPUData));
 
-	for (const auto& mesh : m_Model.Meshes) {
+	for (const auto& mesh : m_Model->Meshes) {
 		vkCmdPushConstants(
 			commandBuffer,
 			pso.pipelineLayout,
@@ -373,7 +312,7 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox("Render Skybox", &settings.renderSkybox);
 
 	m_Camera->OnUIRender();
-	m_Model.OnUIRender();
+	m_Model->OnUIRender();
 }
 
 bool ModelViewer::IsDone(Engine::InputSystem::Input& input) {

@@ -11,7 +11,6 @@
 #include "Graphics.h"
 
 #include "Input/Input.h"
-#include "Assets/Object.h"
 
 #define RUN_APPLICATION(class_name)		\
 	int main(int argc, char* argv[]) {	\
