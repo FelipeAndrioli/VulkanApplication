@@ -17,9 +17,7 @@ namespace Renderer {
 	Engine::Graphics::Shader m_DefaultVertShader = {};
 	Engine::Graphics::Shader m_ColorFragShader = {};
 
-	Engine::Graphics::GPUBuffer m_SkyboxBuffer = {};
-	Engine::Graphics::GPUBuffer m_SceneGeometryBuffer = {};
-	Engine::Graphics::GPUBuffer m_GPUDataBuffer[Engine::Graphics::FRAMES_IN_FLIGHT] = {};
+	Engine::Graphics::Buffer m_SkyboxBuffer = {};
 
 	Engine::Graphics::PipelineState m_SkyboxPSO = {};
 	Engine::Graphics::PipelineState m_ColorPSO = {};
@@ -31,12 +29,6 @@ namespace Renderer {
 
 	std::vector<Assets::Material> m_Materials;
 	std::vector<Texture> m_Textures;
-
-	static const int OBJECT_BUFFER_INDEX = 0;
-	static const int MATERIAL_BUFFER_INDEX = 1;
-	static const int SCENE_BUFFER_INDEX = 2;
-	static const int INDEX_BUFFER_INDEX = 0;			// :) 
-	static const int VERTEX_BUFFER_INDEX = 1;
 }
 
 void Renderer::Init() {
@@ -72,8 +64,8 @@ void Renderer::Init() {
 	bufferDesc.BufferSize = sizeof(Renderer::SceneGPUData);
 	bufferDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	gfxDevice->CreateBuffer(bufferDesc, m_SkyboxBuffer, sizeof(Renderer::SceneGPUData));
-	gfxDevice->WriteBuffer(m_SkyboxBuffer, &m_SkyboxGPUData, sizeof(Renderer::SceneGPUData), 0);
+	m_SkyboxBuffer = gfxDevice->CreateBuffer(sizeof(Renderer::SceneGPUData));
+	gfxDevice->WriteBuffer(m_SkyboxBuffer, &m_SkyboxGPUData);
 
 	PipelineStateDescription psoDesc = {};
 	psoDesc.Name = "Skybox PSO";
@@ -88,7 +80,7 @@ void Renderer::Init() {
 
 	gfxDevice->CreatePipelineState(psoDesc, m_SkyboxPSO);
 	gfxDevice->CreateDescriptorSet(m_SkyboxPSO.descriptorSetLayout[0], m_SkyboxDescriptor);
-	gfxDevice->WriteDescriptor(skyboxInputLayout.bindings[0], m_SkyboxDescriptor, m_SkyboxBuffer.Handle, sizeof(Renderer::SceneGPUData), 0);
+	gfxDevice->WriteDescriptor(skyboxInputLayout.bindings[0], m_SkyboxDescriptor, *m_SkyboxBuffer.Handle, m_SkyboxBuffer.Size, m_SkyboxBuffer.Offset);
 	gfxDevice->WriteDescriptor(skyboxInputLayout.bindings[1], m_SkyboxDescriptor, m_Skybox);
 	// Skybox PSO
 
@@ -104,7 +96,6 @@ void Renderer::Destroy() {
 	
 	m_Initialized = false;
 
-	gfxDevice->DestroyBuffer(m_SkyboxBuffer);
 	gfxDevice->DestroyImage(m_Skybox);
 	gfxDevice->DestroyShader(m_SkyboxVertexShader);
 	gfxDevice->DestroyShader(m_SkyboxFragShader);
@@ -118,7 +109,7 @@ void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer, const Assets::
 	m_SkyboxGPUData.proj = camera.ProjectionMatrix;
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_SkyboxPSO.pipeline);
-	gfxDevice->UpdateBuffer(m_SkyboxBuffer, 0, &m_SkyboxGPUData, sizeof(Renderer::SceneGPUData));
+	gfxDevice->UpdateBuffer(m_SkyboxBuffer, &m_SkyboxGPUData);
 	gfxDevice->BindDescriptorSet(m_SkyboxDescriptor, commandBuffer, m_SkyboxPSO.pipelineLayout, 0, 1);
 
 	vkCmdDraw(commandBuffer, 36, 1, 0, 0);

@@ -50,7 +50,7 @@ namespace Engine {
 		};
 
 		struct ObjectGPUData {
-			glm::vec4 extra[12];
+			glm::vec4 extra[12] = {};
 			glm::mat4 model = glm::mat4(1.0f);
 		};
 

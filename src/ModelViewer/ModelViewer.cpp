@@ -48,11 +48,12 @@ private:
 	std::vector<Assets::Material> m_Materials;
 	std::vector<Texture> m_Textures;
 
-	GPUBuffer m_GPUDataBuffer[Engine::Graphics::FRAMES_IN_FLIGHT];
-	GPUBuffer m_SceneGeometryBuffer = {};
+	Buffer modelBuffer[Engine::Graphics::FRAMES_IN_FLIGHT] = {};
+	Buffer materialsBuffer[Engine::Graphics::FRAMES_IN_FLIGHT] = {};
+	Buffer sceneBuffer[Engine::Graphics::FRAMES_IN_FLIGHT] = {};
 
-	VkDescriptorSet ModelDescriptorSets[FRAMES_IN_FLIGHT];
-	VkDescriptorSet GlobalDescriptorSets[FRAMES_IN_FLIGHT];
+	VkDescriptorSet ModelDescriptorSets[FRAMES_IN_FLIGHT] = {};
+	VkDescriptorSet GlobalDescriptorSets[FRAMES_IN_FLIGHT] = {};
 
 	PipelineState m_ColorPipeline = {};
 	PipelineState m_WireframePipeline = {};
@@ -62,10 +63,6 @@ private:
 	Shader wireframeFragShader = {};
 	Shader skyboxVertexShader = {};
 	Shader skyboxFragShader = {};
-
-	static const int OBJECT_BUFFER_INDEX = 0;
-	static const int MATERIAL_BUFFER_INDEX = 1;
-	static const int SCENE_BUFFER_INDEX = 2;
 
 	uint32_t m_ScreenWidth = 0;
 	uint32_t m_ScreenHeight = 0;
@@ -103,10 +100,6 @@ void ModelViewer::StartUp() {
 
 	// Buffers initialization
 	// GPU Data Buffer Begin
-	VkDeviceSize objectBufferSize = sizeof(Engine::Application::ObjectGPUData) * 1; // TODO: make it an array
-	VkDeviceSize materialsBufferSize = sizeof(Assets::MeshMaterialData) * m_Materials.size();
-	VkDeviceSize sceneBufferSize = sizeof(Engine::Application::SceneGPUData);
-	VkDeviceSize gpuBufferSize = objectBufferSize + materialsBufferSize + sceneBufferSize;
 
 	std::vector<Assets::MeshMaterialData> meshMaterialData;
 
@@ -114,19 +107,15 @@ void ModelViewer::StartUp() {
 		meshMaterialData.push_back(material.MaterialData);
 	}
 
-	BufferDescription gpuDataBufferDesc = {};
-	gpuDataBufferDesc.BufferSize = gpuBufferSize;
-	gpuDataBufferDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	gpuDataBufferDesc.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	gpuDataBufferDesc.Chunks.push_back({ sizeof(Engine::Application::ObjectGPUData), objectBufferSize });
-	gpuDataBufferDesc.Chunks.push_back({ sizeof(Assets::MeshMaterialData), materialsBufferSize });
-	gpuDataBufferDesc.Chunks.push_back({ sizeof(Engine::Application::SceneGPUData), sceneBufferSize });
-
 	GraphicsDevice* gfxDevice = GetDevice();
 
 	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->CreateBuffer(gpuDataBufferDesc, m_GPUDataBuffer[i], gpuBufferSize);
-		gfxDevice->WriteBuffer(m_GPUDataBuffer[i], meshMaterialData.data(), m_GPUDataBuffer[i].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize, m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize);
+		modelBuffer[i] = gfxDevice->CreateBuffer(sizeof(Engine::Application::ObjectGPUData));
+
+		materialsBuffer[i] = gfxDevice->CreateBuffer(sizeof(Assets::MeshMaterialData) * m_Materials.size());
+		gfxDevice->WriteBuffer(materialsBuffer[i], meshMaterialData.data());
+
+		sceneBuffer[i] = gfxDevice->CreateBuffer(sizeof(Engine::Application::SceneGPUData));
 	}
 	// GPU Data Buffer End
 
@@ -175,37 +164,35 @@ void ModelViewer::StartUp() {
 	gfxDevice->CreatePipelineState(psoDesc, m_WireframePipeline);
 
 	// Renderable Objects Descriptor Sets Begin
-	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[0].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
-
 	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_ColorPipeline.descriptorSetLayout[0], ModelDescriptorSets[i]);
 		gfxDevice->WriteDescriptor(
 			modelInputLayout.bindings[0],
 			ModelDescriptorSets[i], 
-			m_GPUDataBuffer[i].Handle, 
-			m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize, 
-			objectBufferOffset
+			*modelBuffer[i].Handle,
+			modelBuffer[i].Size,
+			modelBuffer[i].Offset
 		);
 	}
 	// Renderable Objects Descriptor Sets End 
 
-	// Global Descriptor Sets Begin
+	// Global Descriptor Sets Begina
 	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_ColorPipeline.descriptorSetLayout[1], GlobalDescriptorSets[i]);
+
 		gfxDevice->WriteDescriptor(
 			sceneInputLayout.bindings[0],
 			GlobalDescriptorSets[i],
-			m_GPUDataBuffer[i].Handle,
-			m_GPUDataBuffer[i].Description.Chunks[SCENE_BUFFER_INDEX].ChunkSize,
-			m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize + m_GPUDataBuffer[i].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize
+			*sceneBuffer[i].Handle,
+			sceneBuffer[i].Size,
+			sceneBuffer[i].Offset
 		);
-
 		gfxDevice->WriteDescriptor(
 			sceneInputLayout.bindings[1],
 			GlobalDescriptorSets[i],
-			m_GPUDataBuffer[i].Handle,
-			m_GPUDataBuffer[i].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize,
-			m_GPUDataBuffer[i].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize
+			*materialsBuffer[i].Handle,
+			materialsBuffer[i].Size,
+			materialsBuffer[i].Offset
 		);
 
 		gfxDevice->WriteDescriptor(sceneInputLayout.bindings[2], GlobalDescriptorSets[i], m_Textures);
@@ -223,12 +210,6 @@ void ModelViewer::CleanUp() {
 	gfxDevice->DestroyPipeline(m_ColorPipeline);
 	gfxDevice->DestroyPipeline(m_WireframePipeline);
 	Renderer::Destroy();
-
-	gfxDevice->DestroyBuffer(m_SceneGeometryBuffer);
-
-	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->DestroyBuffer(m_GPUDataBuffer[i]);
-	}
 
 	for (auto texture : m_Textures) {
 		gfxDevice->DestroyImage(texture);
@@ -256,10 +237,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	m_SceneGPUData.view = m_Camera->ViewMatrix;
 	m_SceneGPUData.proj = m_Camera->ProjectionMatrix;
 
-	VkDeviceSize sceneBufferOffset = m_GPUDataBuffer[currentFrame].Description.Chunks[OBJECT_BUFFER_INDEX].ChunkSize 
-		+ m_GPUDataBuffer[currentFrame].Description.Chunks[MATERIAL_BUFFER_INDEX].ChunkSize;
-
-	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], sceneBufferOffset, &m_SceneGPUData, sizeof(Engine::Application::SceneGPUData));
+	gfxDevice->UpdateBuffer(sceneBuffer[currentFrame], &m_SceneGPUData);
 	gfxDevice->BindDescriptorSet(GlobalDescriptorSets[currentFrame], commandBuffer, m_ColorPipeline.pipelineLayout, 1, 1);
 
 	Render(currentFrame, commandBuffer, m_ColorPipeline);
@@ -281,9 +259,7 @@ void ModelViewer::Render(const uint32_t currentFrame, const VkCommandBuffer& com
 	Engine::Application::ObjectGPUData objectGPUData = Engine::Application::ObjectGPUData();
 	objectGPUData.model = m_Model->GetModelMatrix();
 
-	VkDeviceSize objectBufferOffset = 0 * m_GPUDataBuffer[currentFrame].Description.Chunks[OBJECT_BUFFER_INDEX].DataSize;
-	
-	gfxDevice->UpdateBuffer(m_GPUDataBuffer[currentFrame], objectBufferOffset, &objectGPUData, sizeof(Engine::Application::ObjectGPUData));
+	gfxDevice->UpdateBuffer(modelBuffer[currentFrame], &objectGPUData);
 
 	for (const auto& mesh : m_Model->Meshes) {
 		vkCmdPushConstants(

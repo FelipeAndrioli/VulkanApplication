@@ -91,11 +91,17 @@ namespace Engine::Graphics {
 
 	struct GPUBuffer {
 		VkBuffer Handle = VK_NULL_HANDLE;
-
-		VkDeviceMemory Memory;
-		void* MemoryMapped;
+		VkDeviceMemory Memory = VK_NULL_HANDLE;
+		void* MemoryMapped = nullptr;
 
 		BufferDescription Description = {};
+	};
+
+	struct Buffer {
+		size_t Size = 0;
+		size_t Offset = 0;
+
+		VkBuffer* Handle = nullptr;
 	};
 
 	struct PipelineLayoutDesc {

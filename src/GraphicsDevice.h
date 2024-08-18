@@ -13,6 +13,8 @@
 #include "VulkanHeader.h"
 #include "Window.h"
 #include "Graphics.h"
+#include "BufferManager.h"
+
 #include "Assets/Mesh.h"
 
 namespace Engine::Graphics {
@@ -176,8 +178,11 @@ namespace Engine::Graphics {
 		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize, size_t offset);
 
 		void CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, size_t bufferSize);
+		Buffer CreateBuffer(size_t size);
 		void UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, size_t dataSize);
+		void UpdateBuffer(Buffer& buffer, void* data);
 		void WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0);
+		void WriteBuffer(const Buffer& buffer, void* data);
 
 		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, void* initialData, size_t dataSize);
 
@@ -197,13 +202,18 @@ namespace Engine::Graphics {
 		void CreateUI(Window& window, VkRenderPass& renderPass);
 		void BeginUIFrame();
 		void EndUIFrame(const VkCommandBuffer& commandBuffer);
-		
+	
+		void CreateDescriptorPool(const VkDescriptorPool& descriptorPool, const VkDescriptorPoolSize& poolSizes);
 		void CreateDescriptorPool();
 		void DestroyDescriptorPool();
+		void DestroyDescriptorPool(VkDescriptorPool& descriptorPool);
 		void CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout);
+		void CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const VkDescriptorSetLayoutCreateInfo& layoutInfo);
+		void DestroyDescriptorSetLayout(VkDescriptorSetLayout& layout);
 		void CreateDescriptorSet(InputLayout& inputLayout, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
+		void CreateDescriptorSet(VkDescriptorPool& descriptorPool, VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
 		void BindDescriptorSet(VkDescriptorSet& descriptorSet, const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout, uint32_t set, uint32_t setCount);
 
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet,
@@ -248,7 +258,8 @@ namespace Engine::Graphics {
 		uint32_t m_PoolSize = 256;
 
 		VkExtent2D m_SwapChainExtent = { 0, 0 };
-
+		
+		std::unique_ptr<class BufferManager> m_BufferManager;
 	private:
 		VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice& device, VkSurfaceKHR& surface);

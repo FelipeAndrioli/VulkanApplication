@@ -732,10 +732,14 @@ namespace Engine::Graphics {
 		CreateFramesResources();
 
 		CreateDefaultRenderPass(defaultRenderPass);
+
+		m_BufferManager = std::make_unique<BufferManager>();
 	}
 
 	GraphicsDevice::~GraphicsDevice() {
 		DestroyDebugUtilsMessengerEXT(m_VulkanInstance, m_DebugMessenger, nullptr);
+
+		m_BufferManager.reset();
 
 		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
 			DestroyCommandBuffer(m_CommandBuffers[i]);
@@ -1316,7 +1320,7 @@ namespace Engine::Graphics {
 	void GraphicsDevice::AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk) {
 		buffer.Description.Chunks.push_back(newChunk);
 	}
-
+	
 	void GraphicsDevice::DestroyBuffer(GPUBuffer& buffer) {
 		vkDestroyBuffer(m_LogicalDevice, buffer.Handle, nullptr);
 		vkFreeMemory(m_LogicalDevice, buffer.Memory, nullptr);
@@ -1359,6 +1363,10 @@ namespace Engine::Graphics {
 		AllocateMemory(buffer, buffer.Description.MemoryProperty);
 	}
 
+	Buffer GraphicsDevice::CreateBuffer(size_t size) {
+		return m_BufferManager->SubAllocateBuffer(size);
+	}
+
 	// TODO: implement dynamic allocation/update/retrieval
 	void GraphicsDevice::WriteBuffer(GPUBuffer& buffer, const void* data, size_t size, size_t offset) {
 		if (data == nullptr)
@@ -1367,10 +1375,18 @@ namespace Engine::Graphics {
 		CopyDataFromStaging(buffer, data, std::min(buffer.Description.BufferSize, size), offset);
 	}
 
+	void GraphicsDevice::WriteBuffer(const Buffer& buffer, void* data) {
+		m_BufferManager->WriteBuffer(buffer, data);
+	}
+
 	void GraphicsDevice::UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, size_t dataSize) {
 		vkMapMemory(m_LogicalDevice, buffer.Memory, offset, dataSize, 0, &buffer.MemoryMapped);
 		memcpy(buffer.MemoryMapped, data, dataSize);
 		vkUnmapMemory(m_LogicalDevice, buffer.Memory);
+	}
+
+	void GraphicsDevice::UpdateBuffer(Buffer& buffer, void* data) {
+		m_BufferManager->UpdateBuffer(buffer, data);
 	}
 
 	void GraphicsDevice::CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, void* initialData, size_t dataSize) {
@@ -1482,6 +1498,19 @@ namespace Engine::Graphics {
 		}
 	}
 
+	void GraphicsDevice::CreateDescriptorPool(const VkDescriptorPool& descriptorPool, const VkDescriptorPoolSize& poolSizes) {
+		VkDescriptorPoolCreateInfo poolCreateInfo = {};
+		poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolCreateInfo.poolSizeCount = 1;
+		poolCreateInfo.maxSets = 1;
+		poolCreateInfo.pPoolSizes = &poolSizes;
+		poolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+
+		VkResult result = vkCreateDescriptorPool(m_LogicalDevice, &poolCreateInfo, nullptr, &m_DescriptorPool);
+
+		assert(result == VK_SUCCESS);
+	}
+
 	void GraphicsDevice::CreateDescriptorPool() {
 		VkDescriptorPoolSize poolSizes[2] = {};
 		uint32_t count = 0;
@@ -1505,6 +1534,10 @@ namespace Engine::Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
+	void GraphicsDevice::DestroyDescriptorPool(VkDescriptorPool& descriptorPool) {
+		vkDestroyDescriptorPool(m_LogicalDevice, descriptorPool, nullptr);
+	}
+
 	void GraphicsDevice::DestroyDescriptorPool() {
 		vkDestroyDescriptorPool(m_LogicalDevice, m_DescriptorPool, nullptr);
 	}
@@ -1520,6 +1553,15 @@ namespace Engine::Graphics {
 		VkResult result = vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout);
 
 		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const VkDescriptorSetLayoutCreateInfo& layoutInfo) {
+		VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &layoutInfo, nullptr, &layout);
+		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::DestroyDescriptorSetLayout(VkDescriptorSetLayout& layout) {
+			vkDestroyDescriptorSetLayout(m_LogicalDevice, layout, nullptr);
 	}
 
 	void GraphicsDevice::CreateDescriptorSet(InputLayout& inputLayout, VkDescriptorSet& descriptorSet) {
@@ -1559,6 +1601,18 @@ namespace Engine::Graphics {
 		VkDescriptorSetAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocInfo.descriptorPool = m_DescriptorPool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &descriptorSetLayout;
+
+		VkResult result = vkAllocateDescriptorSets(m_LogicalDevice, &allocInfo, &descriptorSet);
+
+		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::CreateDescriptorSet(VkDescriptorPool& descriptorPool, VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet) {
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptorPool;
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = &descriptorSetLayout;
 
