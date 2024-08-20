@@ -63,6 +63,9 @@ namespace Engine {
 		void InitializeApplication(IScene& scene);
 		void TerminateApplication(IScene& scene);
 	private:
+		Engine::Graphics::Frame& GetCurrentFrame();
+		Engine::Graphics::Frame& GetLastFrame();
+
 		void InitializeResources(Settings& settings);
 		void Resize(int width, int height);
 	private:
@@ -74,18 +77,19 @@ namespace Engine {
 		bool m_Vsync = false;
 		bool m_ResizeApplication = false;
 
-		uint32_t m_CurrentFrame = 0;
-		uint32_t m_ImageIndex = 0;
-
 		SceneGPUData m_SceneGPUData = {};
+
 		std::unique_ptr<Window> m_Window;
 		std::unique_ptr<InputSystem::Input> m_Input;
 
 		Engine::Graphics::SwapChain m_SwapChain;
+		Engine::Graphics::Frame m_Frames[Engine::Graphics::FRAMES_IN_FLIGHT];
+
 		std::unique_ptr<Engine::Graphics::GraphicsDevice> m_GraphicsDevice;
 
 		Graphics::GPUImage m_RenderTarget = {};
 		Graphics::GPUImage m_DepthBuffer = {};
+
 		std::vector<VkFramebuffer> m_Framebuffers;
 
 		std::unique_ptr<Engine::UI> m_UI;

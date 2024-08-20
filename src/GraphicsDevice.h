@@ -62,8 +62,10 @@ namespace Engine::Graphics {
 
 		std::vector<VkImage> swapChainImages;
 		std::vector<VkImageView> swapChainImageViews;
+		/*
 		std::vector<VkSemaphore> imageAvailableSemaphores;
 		std::vector<VkSemaphore> renderFinishedSemaphores;
+		*/
 
 		VkFormat swapChainImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 
@@ -127,6 +129,16 @@ namespace Engine::Graphics {
 		VkPipelineTessellationStateCreateInfo tessellationInfo = {};
 	};
 
+	struct Frame {
+		VkFence renderFence;
+
+		VkSemaphore renderSemaphore;
+		VkSemaphore swapChainSemaphore;
+
+		VkCommandPool commandPool;
+		VkCommandBuffer commandBuffer;
+	};
+
 	class GraphicsDevice {
 	public:
 		GraphicsDevice(Window& window);
@@ -137,7 +149,8 @@ namespace Engine::Graphics {
 		void DestroySwapChain(SwapChain& swapChain);
 
 		void WaitIdle();
-		void CreateFramesResources();
+		void CreateFrameResources(Frame& frame);
+		void DestroyFrameResources(Frame& frame);
 		void BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer);
 		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
 		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea, uint32_t imageIndex, const VkFramebuffer& framebuffer);
@@ -146,9 +159,9 @@ namespace Engine::Graphics {
 		void BeginCommandBuffer(VkCommandBuffer& commandBuffer);
 		void EndCommandBuffer(VkCommandBuffer& commandBuffer);
 
-		VkCommandBuffer* BeginFrame(SwapChain& swapChain);
-		void EndFrame(const VkCommandBuffer& commandBuffer, const SwapChain& swapChain);
-		void PresentFrame(const SwapChain& swapChain);
+		bool BeginFrame(SwapChain& swapChain, Frame& frame);
+		void EndFrame(const SwapChain& swapChain, const Frame& frame);
+		void PresentFrame(const SwapChain& swapChain, const Frame& frame);
 
 		VkCommandBuffer BeginSingleTimeCommandBuffer(VkCommandPool& commandPool);
 		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer, VkCommandPool& commandPool);
@@ -196,9 +209,6 @@ namespace Engine::Graphics {
 		void RecreateDefaultRenderPass(VkRenderPass& renderPass, SwapChain& swapChain);
 		void DestroyFramebuffer(std::vector<VkFramebuffer>& framebuffers);
 
-		void DestroyCommandBuffer(VkCommandBuffer& commandBuffer);
-		void RecreateCommandBuffers();
-
 		void CreateUI(Window& window, VkRenderPass& renderPass);
 		void BeginUIFrame();
 		void EndUIFrame(const VkCommandBuffer& commandBuffer);
@@ -231,6 +241,8 @@ namespace Engine::Graphics {
 
 		void SetSwapChainExtent(VkExtent2D newExtent) { m_SwapChainExtent = newExtent; }
 
+		uint32_t GetCurrentFrameIndex() { return m_CurrentFrame; }
+
 	public:
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
@@ -248,13 +260,9 @@ namespace Engine::Graphics {
 		VkQueue m_PresentQueue;
 		VkQueue m_ComputeQueue;
 
-		VkFence m_FrameFences[FRAMES_IN_FLIGHT];
+		VkDescriptorPool m_DescriptorPool;
 
 		uint32_t m_CurrentFrame = 0;
-
-		VkCommandBuffer m_CommandBuffers[FRAMES_IN_FLIGHT];
-
-		VkDescriptorPool m_DescriptorPool;
 		uint32_t m_PoolSize = 256;
 
 		VkExtent2D m_SwapChainExtent = { 0, 0 };
@@ -269,7 +277,6 @@ namespace Engine::Graphics {
 		void CreateLogicalDevice(QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice);
 		void CreateQueue(VkDevice& logicalDevice, uint32_t queueFamilyIndex, VkQueue& queue);
 		void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
-		void CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain);
 		
 		void CreateCommandPool(VkCommandPool& commandPool, uint32_t queueFamilyIndex);
 		void CreateCommandBuffer(VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);

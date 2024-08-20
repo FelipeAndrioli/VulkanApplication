@@ -447,7 +447,6 @@ namespace Engine::Graphics {
 	bool GraphicsDevice::CreateSwapChain(Window& window, SwapChain& swapChain) {
 		CreateSwapChainInternal(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
 		CreateSwapChainImageViews(m_LogicalDevice, swapChain);
-		CreateSwapChainSemaphores(m_LogicalDevice, swapChain);
 
 		return true;
 	}
@@ -536,23 +535,6 @@ namespace Engine::Graphics {
 			if (vkCreateImageView(logicalDevice, &createInfo, nullptr, &swapChain.swapChainImageViews[i]) != VK_SUCCESS) {
 				throw std::runtime_error("Failed to create image views");
 			}
-		}
-	}
-
-	void GraphicsDevice::CreateSwapChainSemaphores(VkDevice& logicalDevice, SwapChain& swapChain) {
-
-		swapChain.imageAvailableSemaphores.clear();
-		swapChain.renderFinishedSemaphores.clear();
-
-		VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-		for (size_t i = 0; i < swapChain.swapChainImages.size(); i++) {
-			VkResult result = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &swapChain.imageAvailableSemaphores.emplace_back());
-			assert(result == VK_SUCCESS);
-
-			result = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &swapChain.renderFinishedSemaphores.emplace_back());
-			assert(result == VK_SUCCESS);
 		}
 	}
 
@@ -729,8 +711,6 @@ namespace Engine::Graphics {
 
 		CreateDebugMessenger(m_VulkanInstance, m_DebugMessenger);
 		CreateCommandPool(m_CommandPool, m_QueueFamilyIndices.graphicsFamily.value());
-		CreateFramesResources();
-
 		CreateDefaultRenderPass(defaultRenderPass);
 
 		m_BufferManager = std::make_unique<BufferManager>();
@@ -740,11 +720,6 @@ namespace Engine::Graphics {
 		DestroyDebugUtilsMessengerEXT(m_VulkanInstance, m_DebugMessenger, nullptr);
 
 		m_BufferManager.reset();
-
-		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-			DestroyCommandBuffer(m_CommandBuffers[i]);
-			vkDestroyFence(m_LogicalDevice, m_FrameFences[i], nullptr);
-		}
 
 		vkDestroyRenderPass(m_LogicalDevice, defaultRenderPass, nullptr);
 		vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
@@ -766,20 +741,11 @@ namespace Engine::Graphics {
 		DestroySwapChain(swapChain);
 		CreateSwapChainInternal(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
 		CreateSwapChainImageViews(m_LogicalDevice, swapChain);
-		CreateSwapChainSemaphores(m_LogicalDevice, swapChain);
 	}
 
 	void GraphicsDevice::DestroySwapChain(SwapChain& swapChain) {
 		for (auto imageView : swapChain.swapChainImageViews) {
 			vkDestroyImageView(m_LogicalDevice, imageView, nullptr);
-		}
-
-		for (auto semaphore : swapChain.imageAvailableSemaphores) {
-			vkDestroySemaphore(m_LogicalDevice, semaphore, nullptr);
-		}
-		
-		for (auto semaphore : swapChain.renderFinishedSemaphores) {
-			vkDestroySemaphore(m_LogicalDevice, semaphore, nullptr);
 		}
 
 		vkDestroySwapchainKHR(m_LogicalDevice, swapChain.swapChain, nullptr);
@@ -789,79 +755,82 @@ namespace Engine::Graphics {
 		vkDeviceWaitIdle(m_LogicalDevice);
 	}
 
-	void GraphicsDevice::CreateFramesResources() {
-		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-			{
-				VkFenceCreateInfo fenceCreateInfo = {};
-				fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-				fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	void GraphicsDevice::CreateFrameResources(Frame& frame) {
+		VkFenceCreateInfo fenceCreateInfo = {};
+		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-				VkResult result = vkCreateFence(m_LogicalDevice, &fenceCreateInfo, nullptr, &m_FrameFences[i]);
-				assert(result == VK_SUCCESS);
-			}
+		VkResult result = vkCreateFence(m_LogicalDevice, &fenceCreateInfo, nullptr, &frame.renderFence);
+		assert(result == VK_SUCCESS);
 
-			CreateCommandBuffer(m_CommandPool, m_CommandBuffers[i]);
-		}
+		VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		result = vkCreateSemaphore(m_LogicalDevice, &semaphoreCreateInfo, nullptr, &frame.renderSemaphore);
+		assert(result == VK_SUCCESS);
+
+		result = vkCreateSemaphore(m_LogicalDevice, &semaphoreCreateInfo, nullptr, &frame.swapChainSemaphore);
+		assert(result == VK_SUCCESS);
+
+		CreateCommandPool(frame.commandPool, m_QueueFamilyIndices.graphicsFamily.value());
+		CreateCommandBuffer(frame.commandPool, frame.commandBuffer);
 	}
 
-	void GraphicsDevice::DestroyCommandBuffer(VkCommandBuffer& commandBuffer) {
-		vkFreeCommandBuffers(m_LogicalDevice, m_CommandPool, 1, &commandBuffer);
+	void GraphicsDevice::DestroyFrameResources(Frame& frame) {
+		vkDestroyFence(m_LogicalDevice, frame.renderFence, nullptr);
+		vkDestroySemaphore(m_LogicalDevice, frame.renderSemaphore, nullptr);
+		vkDestroySemaphore(m_LogicalDevice, frame.swapChainSemaphore, nullptr);
+		vkFreeCommandBuffers(m_LogicalDevice, frame.commandPool, 1, &frame.commandBuffer);
+		vkDestroyCommandPool(m_LogicalDevice, frame.commandPool, nullptr);
 	}
 
-	void GraphicsDevice::RecreateCommandBuffers() {
-		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-			DestroyCommandBuffer(m_CommandBuffers[i]);
-			CreateCommandBuffer(m_CommandPool, m_CommandBuffers[i]);
-		}
-	}
+	bool GraphicsDevice::BeginFrame(SwapChain& swapChain, Frame& frame) {
 
-	VkCommandBuffer* GraphicsDevice::BeginFrame(SwapChain& swapChain) {
-
-		vkWaitForFences(m_LogicalDevice, 1, &m_FrameFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
+		vkWaitForFences(m_LogicalDevice, 1, &frame.renderFence, VK_TRUE, UINT64_MAX);
 		
 		VkResult result = vkAcquireNextImageKHR(
 			m_LogicalDevice, 
 			swapChain.swapChain, 
 			UINT64_MAX,
-			swapChain.imageAvailableSemaphores[m_CurrentFrame],
+			frame.swapChainSemaphore,
 			VK_NULL_HANDLE, 
 			&swapChain.imageIndex
 		);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-			return nullptr;
+			return false;
 		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 			throw std::runtime_error("Failed to acquire swap chain image!");
 		}
 
-		vkResetFences(m_LogicalDevice, 1, &m_FrameFences[m_CurrentFrame]);
+		vkResetFences(m_LogicalDevice, 1, &frame.renderFence);
 
-		BeginCommandBuffer(m_CommandBuffers[m_CurrentFrame]);
+		BeginCommandBuffer(frame.commandBuffer);
 
-		return &m_CommandBuffers[m_CurrentFrame];
+		return true;
 	}
 
-	void GraphicsDevice::EndFrame(const VkCommandBuffer& commandBuffer, const SwapChain& swapChain) {
+	void GraphicsDevice::EndFrame(const SwapChain& swapChain, const Frame& frame) {
 
-		VkResult result = vkEndCommandBuffer(commandBuffer);
+		VkResult result = vkEndCommandBuffer(frame.commandBuffer);
 		assert(result == VK_SUCCESS);
 
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-		std::vector<VkCommandBuffer> cmdBuffers = { commandBuffer };
+		std::vector<VkCommandBuffer> cmdBuffers = { frame.commandBuffer };
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &swapChain.imageAvailableSemaphores[m_CurrentFrame];
+		submitInfo.pWaitSemaphores = &frame.swapChainSemaphore;
 
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = static_cast<uint32_t>(cmdBuffers.size());
 		submitInfo.pCommandBuffers = cmdBuffers.data();
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &swapChain.renderFinishedSemaphores[m_CurrentFrame];
+		submitInfo.pSignalSemaphores = &frame.renderSemaphore;
 
-		result = vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_FrameFences[m_CurrentFrame]);
+		result = vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, frame.renderFence);
 		assert(result == VK_SUCCESS);
 	}
 
@@ -926,12 +895,12 @@ namespace Engine::Graphics {
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 	}
 
-	void GraphicsDevice::PresentFrame(const SwapChain& swapChain) {
+	void GraphicsDevice::PresentFrame(const SwapChain& swapChain, const Frame& frame) {
 
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &swapChain.renderFinishedSemaphores[m_CurrentFrame];
+		presentInfo.pWaitSemaphores = &frame.renderSemaphore;
 		
 		VkSwapchainKHR swapChains[] = { swapChain.swapChain };
 		presentInfo.swapchainCount = 1;
