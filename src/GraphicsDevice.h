@@ -82,7 +82,7 @@ namespace Engine::Graphics {
 		VkPipelineShaderStageCreateInfo shaderStageInfo;
 
 		VkVertexInputBindingDescription BindingDescription = Assets::Vertex::getBindingDescription();
-		std::array<VkVertexInputAttributeDescription, 3> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+		std::array<VkVertexInputAttributeDescription, 4> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
 	};
 
 	struct InputLayout {

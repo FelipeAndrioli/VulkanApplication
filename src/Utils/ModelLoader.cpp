@@ -74,6 +74,14 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 				};
 			}
 
+			if (mesh->HasNormals()) {
+				vertex.normal = {
+					mesh->mNormals[face.mIndices[j]].x,
+					mesh->mNormals[face.mIndices[j]].y,
+					mesh->mNormals[face.mIndices[j]].z
+				};
+			}
+
 			if (uniqueVertices.count(vertex) == 0) {
 				uniqueVertices[vertex] = static_cast<uint32_t>(newMesh.Vertices.size());
 				newMesh.Vertices.push_back(vertex);
