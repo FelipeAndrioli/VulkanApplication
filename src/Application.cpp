@@ -8,10 +8,6 @@ namespace Engine {
 		m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
 		m_Framebuffers.clear();
 
-		for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
-			m_GraphicsDevice->DestroyFrameResources(m_Frames[i]);
-		}
-		
 		m_GraphicsDevice->DestroyImage(m_DepthBuffer);
 		m_GraphicsDevice->DestroyImage(m_RenderTarget);
 		m_GraphicsDevice->DestroySwapChain(m_SwapChain);
@@ -20,14 +16,6 @@ namespace Engine {
 
 		m_Input.reset();
 		m_Window.reset();
-	}
-
-	Engine::Graphics::Frame& Application::GetCurrentFrame() {
-		return m_Frames[m_GraphicsDevice->GetCurrentFrameIndex() % Engine::Graphics::FRAMES_IN_FLIGHT];
-	}
-
-	Engine::Graphics::Frame& Application::GetLastFrame() {
-		return m_Frames[(m_GraphicsDevice->GetCurrentFrameIndex() - 1) % Engine::Graphics::FRAMES_IN_FLIGHT];
 	}
 
 	void Application::InitializeResources(Settings& settings) {
@@ -57,11 +45,7 @@ namespace Engine {
 
 		for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
 			std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
-			m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->defaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
-		}
-
-		for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
-			m_GraphicsDevice->CreateFrameResources(m_Frames[i]);
+			m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->GetDefaultRenderPass(), framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
 		}
 
 		m_UI = std::make_unique<Engine::UI>(*m_Window->GetHandle());
@@ -100,12 +84,12 @@ namespace Engine {
 		
 		scene.Update(timestep.GetMilliseconds(), *m_Input.get());
 
-		if (!m_GraphicsDevice->BeginFrame(m_SwapChain, GetCurrentFrame()))
+		if (!m_GraphicsDevice->BeginFrame(m_SwapChain, m_GraphicsDevice->GetCurrentFrame()))
 			return true;
 
-		Engine::Graphics::Frame& frame = GetCurrentFrame();
+		Engine::Graphics::Frame& frame = m_GraphicsDevice->GetCurrentFrame();
 
-		m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->defaultRenderPass, frame.commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
+		m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->GetDefaultRenderPass(), frame.commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
 
 		scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
 
@@ -149,7 +133,7 @@ namespace Engine {
 
 		for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
 			std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
-			m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->defaultRenderPass, framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
+			m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->GetDefaultRenderPass(), framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
 		}
 
 		m_ResizeApplication = true;
