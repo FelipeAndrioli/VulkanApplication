@@ -9,15 +9,9 @@
 #include <gtx/hash.hpp>
 
 #include "../VulkanHeader.h"
-#include "./Material.h"
-
-namespace Engine {
-	class Buffer;
-}
+#include "Material.h"
 
 namespace Assets {
-	struct Material;
-
 	struct Vertex {
 
 		glm::vec3 pos = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -59,8 +53,7 @@ namespace Assets {
 	};
 
 	struct Mesh {
-		std::string MaterialName = "Default";
-		Assets::Material CustomMeshMaterial = {};
+		std::string MaterialName = "";
 
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;
@@ -68,6 +61,8 @@ namespace Assets {
 		size_t MaterialIndex = 0;
 		size_t IndexOffset = 0;
 		size_t VertexOffset = 0;
+
+		Material CustomMeshMaterial = {};
 	};	
 }
 

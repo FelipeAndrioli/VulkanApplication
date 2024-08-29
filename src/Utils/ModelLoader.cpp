@@ -9,11 +9,11 @@
 #include <assimp/scene.h>
 
 #include "../../Assets/Mesh.h"
-#include "../../Assets/Material.h"
 #include "../../Assets/Model.h"
 
 #include "../Graphics.h"
 #include "../GraphicsDevice.h"
+#include "../ConstantBuffers.h"
 
 #include "./TextureLoader.h"
 
@@ -32,7 +32,7 @@ int GetTextureIndex(std::vector<Texture>& loadedTextures, std::string textureNam
 	return UNEXISTENT;
 }
 
-int GetMaterialIndex(std::vector<Assets::Material>& sceneMaterials, std::string materialName) {
+int GetMaterialIndex(std::vector<Material>& sceneMaterials, std::string materialName) {
 	if (sceneMaterials.size() == 0)
 		return UNEXISTENT;
 
@@ -99,7 +99,7 @@ void ProcessNode(Model& model, const aiNode* node, const aiScene* scene) {
 	}
 }
 
-void LinkMeshesToMaterials(std::vector<Assets::Mesh>& meshes, std::vector<Assets::Material>& sceneMaterials) {
+void LinkMeshesToMaterials(std::vector<Assets::Mesh>& meshes, std::vector<Material>& sceneMaterials) {
 	for (auto& mesh : meshes) {
 		if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
 			sceneMaterials.push_back(mesh.CustomMeshMaterial);
@@ -137,7 +137,7 @@ void ValidateAndInsertTexture(
 }
 
 void LoadTextureToMaterial(
-	std::vector<Assets::Material>& sceneMaterials,
+	std::vector<Material>& sceneMaterials,
 	std::vector<Texture>& loadedTextures,
 	Texture::TextureType textureType,
 	std::string textureName,
@@ -172,7 +172,7 @@ void LoadTextureToMaterial(
 }
 
 void ProcessTexture(
-	std::vector<Assets::Material>& sceneMaterials,
+	std::vector<Material>& sceneMaterials,
 	std::vector<Texture>& loadedTextures,
 	Texture::TextureType textureType,
 	std::string textureName,
@@ -206,7 +206,7 @@ void LoadTextures(
 	aiMaterial* material, 
 	aiTextureType textureType, 
 	Texture::TextureType customTextureType,
-	std::vector<Assets::Material>& sceneMaterials,
+	std::vector<Material>& sceneMaterials,
 	std::vector<Texture>& loadedTextures
 ) {
 	
@@ -234,7 +234,7 @@ void LoadTextures(
 static void ProcessMaterials(
 	Model& model,
 	const aiScene* scene, 
-	std::vector<Assets::Material>& sceneMaterials,
+	std::vector<Material>& sceneMaterials,
 	std::vector<Texture>& loadedTextures) {
 
 	for (size_t i = 0; i < scene->mNumMaterials; i++) {
@@ -261,7 +261,7 @@ static void ProcessMaterials(
 		material->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength);
 
 		if (GetMaterialIndex(sceneMaterials, materialName.C_Str()) == UNEXISTENT) {
-			Assets::Material newMaterial = {};
+			Material newMaterial = {};
 			newMaterial.Name = materialName.C_Str();
 			newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
 			newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
@@ -283,7 +283,7 @@ static void ProcessMaterials(
 	}
 }
 
-void Renderer::CompileMesh(Model& model, std::vector<Assets::Material>& materials) {
+void ModelLoader::CompileMesh(Model& model, std::vector<Material>& materials) {
 
 	std::vector<Assets::Vertex> vertices;
 	std::vector<uint32_t> indices;
@@ -319,7 +319,7 @@ void Renderer::CompileMesh(Model& model, std::vector<Assets::Material>& material
 	gfxDevice->WriteBuffer(model.DataBuffer, vertices.data(), sizeof(Assets::Vertex) * vertices.size(), sizeof(uint32_t) * indices.size());
 }
 
-std::shared_ptr<Model> Renderer::LoadModel(const std::string& path, std::vector<Assets::Material>& materials, std::vector<Engine::Graphics::Texture>& textures) {
+std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& path, std::vector<Material>& materials, std::vector<Engine::Graphics::Texture>& textures) {
 	
 	std::shared_ptr<Model> model = std::make_shared<Model>();
 	model->ModelPath = path.c_str();
