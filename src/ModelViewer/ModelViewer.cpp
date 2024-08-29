@@ -90,7 +90,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	if (settings.renderSkybox)
 		Renderer::RenderSkybox(commandBuffer);
 	if (settings.renderWireframe)
-		Renderer::RenderWireframe(commandBuffer);
+		Renderer::RenderWireframe(commandBuffer, *m_Model.get());
 }
 
 void ModelViewer::RenderUI() {

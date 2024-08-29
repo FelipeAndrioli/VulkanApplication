@@ -14,7 +14,7 @@ namespace Renderer {
 	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);
 	void RenderModel(const VkCommandBuffer& commandBuffer, Model& model);
-	void RenderWireframe(const VkCommandBuffer& commandBuffer);
+	void RenderWireframe(const VkCommandBuffer& commandBuffer, Model& model);
 
 	struct SceneGPUData {
 		float time = 0.0f;

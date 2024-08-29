@@ -20,6 +20,7 @@ namespace Renderer {
 	Engine::Graphics::Shader m_SkyboxFragShader = {};
 	Engine::Graphics::Shader m_DefaultVertShader = {};
 	Engine::Graphics::Shader m_ColorFragShader = {};
+	Engine::Graphics::Shader m_WireframeFragShader = {};
 
 	Engine::Graphics::Buffer m_SkyboxBuffer = {};
 	Engine::Graphics::Buffer m_GlobalDataBuffer = {};
@@ -73,6 +74,7 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "./Shaders/skybox_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_DefaultVertShader, "./Shaders/default_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_ColorFragShader, "./Shaders/color_ps.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_WireframeFragShader, "./Shaders/wireframe_frag.spv");
 
 	InputLayout globalInputLayout = {
 		.pushConstants = {
@@ -127,6 +129,18 @@ void Renderer::LoadResources() {
 
 	gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO);
 
+	PipelineStateDescription wireframePSODesc = {};
+	wireframePSODesc.Name = "Wireframe PSO";
+	wireframePSODesc.vertexShader = &m_DefaultVertShader;
+	wireframePSODesc.fragmentShader = &m_WireframeFragShader;
+	wireframePSODesc.lineWidth = 2.0f;
+	wireframePSODesc.polygonMode = VK_POLYGON_MODE_LINE;
+	wireframePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	wireframePSODesc.psoInputLayout.push_back(globalInputLayout);
+	wireframePSODesc.psoInputLayout.push_back(modelInputLayout);
+
+	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO);
+
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 
 	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
@@ -157,10 +171,12 @@ void Renderer::Destroy() {
 	gfxDevice->DestroyImage(m_Skybox);
 	gfxDevice->DestroyShader(m_DefaultVertShader);
 	gfxDevice->DestroyShader(m_ColorFragShader);
+	gfxDevice->DestroyShader(m_WireframeFragShader);
 	gfxDevice->DestroyShader(m_SkyboxVertexShader);
 	gfxDevice->DestroyShader(m_SkyboxFragShader);
 	gfxDevice->DestroyPipeline(m_ColorPSO);
 	gfxDevice->DestroyPipeline(m_SkyboxPSO);
+	gfxDevice->DestroyPipeline(m_WireframePSO);
 	
 	m_Initialized = false;
 }
@@ -220,6 +236,39 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Model& model) {
 	}
 }
 
-void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer) {
+void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Model& model) {
+	GraphicsDevice* gfxDevice = GetDevice();
 
+	VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };
+
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePSO.pipeline);
+
+	gfxDevice->BindDescriptorSet(m_ModelDescriptorSet, commandBuffer, m_WireframePSO.pipelineLayout, 1, 1);
+
+	ModelConstants modelConstant = {};
+	modelConstant.model = model.GetModelMatrix();
+
+	gfxDevice->UpdateBuffer(m_ModelBuffer, &modelConstant);
+
+	for (const auto& mesh : model.Meshes) {
+		vkCmdPushConstants(
+			commandBuffer,
+			m_WireframePSO.pipelineLayout,
+			VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(int),
+			&mesh.MaterialIndex
+		);
+
+		vkCmdDrawIndexed(
+			commandBuffer,
+			static_cast<uint32_t>(mesh.Indices.size()),
+			1,
+			static_cast<uint32_t>(mesh.IndexOffset),
+			static_cast<int32_t>(mesh.VertexOffset),
+			0
+		);
+	}
 }
