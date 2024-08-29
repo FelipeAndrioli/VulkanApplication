@@ -29,7 +29,11 @@ namespace Engine {
 		public:
 			virtual void StartUp() = 0;
 			virtual void CleanUp() = 0;
-			virtual bool IsDone(Engine::InputSystem::Input& input) = 0;
+			
+			virtual bool IsDone(Engine::InputSystem::Input& input) {
+				return input.Keys[GLFW_KEY_ESCAPE].IsPressed;
+			}
+
 			virtual void Update(float d, Engine::InputSystem::Input& input) = 0;
 			virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) = 0;
 			virtual void RenderUI() = 0;
@@ -37,21 +41,6 @@ namespace Engine {
 
 		public:
 			Settings settings = {};
-		};
-
-		struct SceneGPUData {
-			float time = 0.0f;
-			float extra_s_1 = 0.0f;
-			float extra_s_2 = 0.0f;
-			float extra_s_3 = 0.0f;
-			glm::vec4 extra[7];
-			glm::mat4 view = glm::mat4(1.0f);
-			glm::mat4 proj = glm::mat4(1.0f);
-		};
-
-		struct ObjectGPUData {
-			glm::vec4 extra[12] = {};
-			glm::mat4 model = glm::mat4(1.0f);
 		};
 
 		Application() {};
@@ -63,9 +52,6 @@ namespace Engine {
 		void InitializeApplication(IScene& scene);
 		void TerminateApplication(IScene& scene);
 	private:
-		Engine::Graphics::Frame& GetCurrentFrame();
-		Engine::Graphics::Frame& GetLastFrame();
-
 		void InitializeResources(Settings& settings);
 		void Resize(int width, int height);
 	private:
@@ -77,13 +63,10 @@ namespace Engine {
 		bool m_Vsync = false;
 		bool m_ResizeApplication = false;
 
-		SceneGPUData m_SceneGPUData = {};
-
 		std::unique_ptr<Window> m_Window;
 		std::unique_ptr<InputSystem::Input> m_Input;
 
 		Engine::Graphics::SwapChain m_SwapChain;
-		Engine::Graphics::Frame m_Frames[Engine::Graphics::FRAMES_IN_FLIGHT];
 
 		std::unique_ptr<Engine::Graphics::GraphicsDevice> m_GraphicsDevice;
 
