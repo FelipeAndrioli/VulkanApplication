@@ -42,11 +42,11 @@ struct material_t {
 	//float pad0;
 };
 
-layout (std140, set = 1, binding = 1) uniform material_uniform {
+layout (std140, set = 0, binding = 1) uniform material_uniform {
 	material_t materials[26];
 };
 
-layout (set = 1, binding = 2) uniform sampler2D texSampler[];
+layout (set = 0, binding = 2) uniform sampler2D texSampler[];
 
 layout (push_constant) uniform constant {
 	int material_index;
