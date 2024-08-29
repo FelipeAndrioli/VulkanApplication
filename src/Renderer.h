@@ -2,14 +2,18 @@
 
 #include "VulkanHeader.h"
 #include "Assets/Camera.h"
+#include "Assets/Model.h"
 
 namespace Renderer {
+	std::shared_ptr<Model> LoadModel(const std::string& path);
 
 	void Init();
+	void LoadResources();
 	void Destroy();
 
-	void RenderSkybox(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);
-	void RenderMeshes(const VkCommandBuffer& commandBuffer);
+	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);
+	void RenderSkybox(const VkCommandBuffer& commandBuffer);
+	void RenderModel(const VkCommandBuffer& commandBuffer, Model& model);
 	void RenderWireframe(const VkCommandBuffer& commandBuffer);
 
 	struct SceneGPUData {
