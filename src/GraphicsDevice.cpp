@@ -1,6 +1,8 @@
 #include "GraphicsDevice.h"
 
 #include "UI.h"
+#include "Utils/Helper.h"
+
 #include <string>
 #include <fstream>
 
@@ -711,9 +713,13 @@ namespace Engine::Graphics {
 
 		CreateDebugMessenger(m_VulkanInstance, m_DebugMessenger);
 		CreateCommandPool(m_CommandPool, m_QueueFamilyIndices.graphicsFamily.value());
-		CreateDefaultRenderPass(defaultRenderPass);
+		CreateDefaultRenderPass(m_DefaultRenderPass);
 
 		m_BufferManager = std::make_unique<BufferManager>();
+
+		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+			CreateFrameResources(m_Frames[i]);
+		}
 	}
 
 	GraphicsDevice::~GraphicsDevice() {
@@ -721,7 +727,11 @@ namespace Engine::Graphics {
 
 		m_BufferManager.reset();
 
-		vkDestroyRenderPass(m_LogicalDevice, defaultRenderPass, nullptr);
+		for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+			DestroyFrameResources(m_Frames[i]);
+		}
+
+		vkDestroyRenderPass(m_LogicalDevice, m_DefaultRenderPass, nullptr);
 		vkDestroyCommandPool(m_LogicalDevice, m_CommandPool, nullptr);
 		vkDestroyDevice(m_LogicalDevice, nullptr);
 		vkDestroySurfaceKHR(m_VulkanInstance, m_Surface, nullptr);
@@ -777,6 +787,8 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::DestroyFrameResources(Frame& frame) {
+		frame.descriptorSets.clear();
+
 		vkDestroyFence(m_LogicalDevice, frame.renderFence, nullptr);
 		vkDestroySemaphore(m_LogicalDevice, frame.renderSemaphore, nullptr);
 		vkDestroySemaphore(m_LogicalDevice, frame.swapChainSemaphore, nullptr);
@@ -1524,6 +1536,16 @@ namespace Engine::Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
+	void GraphicsDevice::CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const std::vector<VkDescriptorSetLayoutBinding> bindings) {
+		VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+		layoutInfo.pBindings = bindings.data();
+		
+		VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &layoutInfo, nullptr, &layout);
+		assert(result == VK_SUCCESS);
+	}
+
 	void GraphicsDevice::CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const VkDescriptorSetLayoutCreateInfo& layoutInfo) {
 		VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &layoutInfo, nullptr, &layout);
 		assert(result == VK_SUCCESS);
@@ -1531,27 +1553,6 @@ namespace Engine::Graphics {
 
 	void GraphicsDevice::DestroyDescriptorSetLayout(VkDescriptorSetLayout& layout) {
 			vkDestroyDescriptorSetLayout(m_LogicalDevice, layout, nullptr);
-	}
-
-	void GraphicsDevice::CreateDescriptorSet(InputLayout& inputLayout, VkDescriptorSet& descriptorSet) {
-		VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-		
-		VkDescriptorSetLayoutCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		createInfo.bindingCount = static_cast<uint32_t>(inputLayout.bindings.size());
-		createInfo.pBindings = inputLayout.bindings.data();
-
-		VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &createInfo, nullptr, &layout);
-		assert(result == VK_SUCCESS);
-
-		VkDescriptorSetAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = m_DescriptorPool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &layout;
-
-		result = vkAllocateDescriptorSets(m_LogicalDevice, &allocInfo, &descriptorSet);
-		assert(result == VK_SUCCESS);
 	}
 	
 	void GraphicsDevice::CreateDescriptorSet(std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkDescriptorSet& descriptorSet) {
@@ -1600,13 +1601,12 @@ namespace Engine::Graphics {
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, set, setCount, &descriptorSet, 0, nullptr);
 	}
 
-	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, 
-		const VkBuffer& buffer, const size_t bufferSize, const size_t bufferOffset) {
+	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const Buffer& buffer) {
 		
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = buffer;
-		bufferInfo.offset = bufferOffset;
-		bufferInfo.range = bufferSize == 0 ? 256 : bufferSize;
+		bufferInfo.buffer = *buffer.Handle;
+		bufferInfo.offset = buffer.Offset;
+		bufferInfo.range = buffer.Size;
 
 		VkWriteDescriptorSet descriptorWrite = {};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1710,7 +1710,7 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso) {
-		CreatePipelineState(desc, pso, defaultRenderPass);
+		CreatePipelineState(desc, pso, m_DefaultRenderPass);
 	}
 
 	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, VkRenderPass& renderPass) {
@@ -1721,10 +1721,16 @@ namespace Engine::Graphics {
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-			vertexInputInfo.vertexBindingDescriptionCount = 1;
-			vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-			vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-			vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+			if (desc.noVertex) {
+				vertexInputInfo.vertexBindingDescriptionCount = 0;
+			}
+			else {
+				vertexInputInfo.vertexBindingDescriptionCount = 1;
+				vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+				vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+				vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+			}
 			pso.pipelineInfo.pVertexInputState = &vertexInputInfo;
 		}
 
@@ -1825,19 +1831,27 @@ namespace Engine::Graphics {
 		for (auto inputLayout : desc.psoInputLayout) {
 			VkDescriptorSetLayout layout = VK_NULL_HANDLE;
 
-			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			layoutInfo.bindingCount = static_cast<uint32_t>(inputLayout.bindings.size());
-			layoutInfo.pBindings = inputLayout.bindings.data();
-		
-			VkResult result = vkCreateDescriptorSetLayout(m_LogicalDevice, &layoutInfo, nullptr, &layout);
-			assert(result == VK_SUCCESS);
+			CreateDescriptorSetLayout(layout, inputLayout.bindings);
 
 			pso.layoutBindings.insert(pso.layoutBindings.end(), inputLayout.bindings.begin(), inputLayout.bindings.end());
 			pso.pushConstants.insert(pso.pushConstants.end(), inputLayout.pushConstants.begin(), inputLayout.pushConstants.end());
 
 			pso.descriptorSetLayout.push_back(layout);
 
+			size_t binding_hash = 0;
+
+			for (const auto& binding : inputLayout.bindings) {
+				Helper::hash_combine(binding_hash, binding.binding);
+				Helper::hash_combine(binding_hash, binding.descriptorCount);
+				Helper::hash_combine(binding_hash, binding.descriptorType);
+				Helper::hash_combine(binding_hash, binding.stageFlags);
+			}	
+
+			if (m_Frames[0].descriptorSets.find(binding_hash) == m_Frames[0].descriptorSets.end()) {
+				for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+					CreateDescriptorSet(layout, m_Frames[i].descriptorSets[binding_hash]);
+				}
+			}
 		}
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -1878,5 +1892,17 @@ namespace Engine::Graphics {
 		}
 
 		vkDestroyPipeline(m_LogicalDevice, pso.pipeline, nullptr);
+	}
+
+	Frame& GraphicsDevice::GetCurrentFrame() {
+		return m_Frames[m_CurrentFrame % Engine::Graphics::FRAMES_IN_FLIGHT];
+	}
+
+	Frame& GraphicsDevice::GetLastFrame() {
+		return m_Frames[(m_CurrentFrame - 1) % Engine::Graphics::FRAMES_IN_FLIGHT];
+	}
+
+	Frame& GraphicsDevice::GetFrame(int i) {
+		return m_Frames[i];
 	}
 }

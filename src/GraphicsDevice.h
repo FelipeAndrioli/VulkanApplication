@@ -95,10 +95,12 @@ namespace Engine::Graphics {
 		const Shader* fragmentShader = nullptr;
 		const Shader* computeShader = nullptr;
 
+		bool noVertex = false;
+
 		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
 		VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
-		VkFrontFace frontFace = VK_FRONT_FACE_CLOCKWISE;
+		VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		VkExtent2D pipelineExtent = {};
 
 		float lineWidth = 1.0f;
@@ -137,6 +139,10 @@ namespace Engine::Graphics {
 
 		VkCommandPool commandPool;
 		VkCommandBuffer commandBuffer;
+
+		std::unordered_map<size_t, VkDescriptorSet> descriptorSets;
+
+		VkDescriptorSet globalDescriptorSet;
 	};
 
 	class GraphicsDevice {
@@ -218,16 +224,16 @@ namespace Engine::Graphics {
 		void DestroyDescriptorPool();
 		void DestroyDescriptorPool(VkDescriptorPool& descriptorPool);
 		void CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout);
+
+		void CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const std::vector<VkDescriptorSetLayoutBinding> bindings);
 		void CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const VkDescriptorSetLayoutCreateInfo& layoutInfo);
 		void DestroyDescriptorSetLayout(VkDescriptorSetLayout& layout);
-		void CreateDescriptorSet(InputLayout& inputLayout, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(VkDescriptorPool& descriptorPool, VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
 		void BindDescriptorSet(VkDescriptorSet& descriptorSet, const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout, uint32_t set, uint32_t setCount);
 
-		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet,
-			const VkBuffer& buffer, const size_t bufferSize, const size_t bufferOffset);
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const Buffer& buffer);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture);
 
@@ -240,9 +246,15 @@ namespace Engine::Graphics {
 		void DestroyPipeline(PipelineState& pso);
 
 		void SetSwapChainExtent(VkExtent2D newExtent) { m_SwapChainExtent = newExtent; }
+		VkExtent2D& GetSwapChainExtent() { return m_SwapChainExtent; }
 
 		uint32_t GetCurrentFrameIndex() { return m_CurrentFrame; }
 
+		Frame& GetCurrentFrame();
+		Frame& GetLastFrame();
+		Frame& GetFrame(int i);
+
+		VkRenderPass& GetDefaultRenderPass() { return m_DefaultRenderPass; }
 	public:
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
@@ -250,15 +262,16 @@ namespace Engine::Graphics {
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
 		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
 		VkCommandPool m_CommandPool = VK_NULL_HANDLE;
-		VkRenderPass defaultRenderPass = VK_NULL_HANDLE;
+		VkRenderPass m_DefaultRenderPass = VK_NULL_HANDLE;
 
 		QueueFamilyIndices m_QueueFamilyIndices;
 		VkSampleCountFlagBits m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-		VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
 
 		VkQueue m_GraphicsQueue;
 		VkQueue m_PresentQueue;
 		VkQueue m_ComputeQueue;
+	private:
+		VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
 
 		VkDescriptorPool m_DescriptorPool;
 
@@ -266,6 +279,8 @@ namespace Engine::Graphics {
 		uint32_t m_PoolSize = 256;
 
 		VkExtent2D m_SwapChainExtent = { 0, 0 };
+		
+		Frame m_Frames[FRAMES_IN_FLIGHT] = {};
 		
 		std::unique_ptr<class BufferManager> m_BufferManager;
 	private:
