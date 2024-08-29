@@ -37,7 +37,7 @@ namespace Engine {
 		init_info.MSAASamples = gfxDevice->m_MsaaSamples;
 		init_info.Allocator = nullptr;
 		init_info.CheckVkResultFn = check_vk_result;
-		ImGui_ImplVulkan_Init(&init_info, gfxDevice->defaultRenderPass);
+		ImGui_ImplVulkan_Init(&init_info, gfxDevice->GetDefaultRenderPass());
 
 		VkCommandBuffer commandBuffer = gfxDevice->BeginSingleTimeCommandBuffer(m_UICommandPool);
 		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
