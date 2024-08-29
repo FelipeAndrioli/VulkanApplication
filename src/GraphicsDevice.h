@@ -140,9 +140,7 @@ namespace Engine::Graphics {
 		VkCommandPool commandPool;
 		VkCommandBuffer commandBuffer;
 
-		std::unordered_map<size_t, VkDescriptorSet> descriptorSets;
-
-		VkDescriptorSet globalDescriptorSet;
+		VkDescriptorSet bindlessSet;
 	};
 
 	class GraphicsDevice {

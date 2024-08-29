@@ -787,8 +787,6 @@ namespace Engine::Graphics {
 	}
 
 	void GraphicsDevice::DestroyFrameResources(Frame& frame) {
-		frame.descriptorSets.clear();
-
 		vkDestroyFence(m_LogicalDevice, frame.renderFence, nullptr);
 		vkDestroySemaphore(m_LogicalDevice, frame.renderSemaphore, nullptr);
 		vkDestroySemaphore(m_LogicalDevice, frame.swapChainSemaphore, nullptr);
@@ -1838,6 +1836,7 @@ namespace Engine::Graphics {
 
 			pso.descriptorSetLayout.push_back(layout);
 
+			/*
 			size_t binding_hash = 0;
 
 			for (const auto& binding : inputLayout.bindings) {
@@ -1852,6 +1851,7 @@ namespace Engine::Graphics {
 					CreateDescriptorSet(layout, m_Frames[i].descriptorSets[binding_hash]);
 				}
 			}
+			*/
 		}
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};

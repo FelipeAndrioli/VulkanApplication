@@ -130,11 +130,11 @@ void Renderer::LoadResources() {
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 
 	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).globalDescriptorSet);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).globalDescriptorSet, m_GlobalDataBuffer);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).globalDescriptorSet, materialBuffer);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).globalDescriptorSet, m_Textures);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).globalDescriptorSet, m_Skybox);
+		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).bindlessSet);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, materialBuffer);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 	}
 
 	gfxDevice->CreateDescriptorSetLayout(m_ModelDescriptorSetLayout, modelInputLayout.bindings);
@@ -152,8 +152,6 @@ void Renderer::Destroy() {
 	m_Textures.clear();
 	m_Materials.clear();
 	
-	m_Initialized = false;
-
 	gfxDevice->DestroyDescriptorSetLayout(m_GlobalDescriptorSetLayout);
 	gfxDevice->DestroyDescriptorSetLayout(m_ModelDescriptorSetLayout);
 	gfxDevice->DestroyImage(m_Skybox);
@@ -163,6 +161,8 @@ void Renderer::Destroy() {
 	gfxDevice->DestroyShader(m_SkyboxFragShader);
 	gfxDevice->DestroyPipeline(m_ColorPSO);
 	gfxDevice->DestroyPipeline(m_SkyboxPSO);
+	
+	m_Initialized = false;
 }
 
 void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
@@ -180,7 +180,7 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	m_GlobalConstants.proj = camera.ProjectionMatrix;
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
-	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().globalDescriptorSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
+	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
 }
 
 void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Model& model) {
