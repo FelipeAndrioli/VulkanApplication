@@ -14,6 +14,7 @@
 #include "../Graphics.h"
 #include "../GraphicsDevice.h"
 #include "../ConstantBuffers.h"
+#include "./Helper.h"
 
 #include "./TextureLoader.h"
 
@@ -342,26 +343,8 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& path, std::vect
 	
 	std::shared_ptr<Model> model = std::make_shared<Model>();
 	model->ModelPath = path.c_str();
-
-	std::string temp = path;
-
-	int lastSlashIndex = 0;
-	int fileNameSize = 0;
-
-	for (size_t i = 0; i < temp.size(); i++) {
-		if (path[i] == '/') {
-			lastSlashIndex = i + 1;
-			fileNameSize = 0;
-		}
-
-		if (lastSlashIndex > 0)
-			fileNameSize++;
-	}
-
-	model->MaterialPath = temp.erase(lastSlashIndex, fileNameSize).c_str();
-
-	temp = path;
-	model->Name = temp.erase(0, lastSlashIndex).c_str();
+	model->MaterialPath = Helper::get_directory(path);
+	model->Name = Helper::get_filename(path);
 
 	const aiScene* scene = aiImportFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
 
