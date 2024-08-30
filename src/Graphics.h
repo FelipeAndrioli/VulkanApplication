@@ -5,7 +5,7 @@
 #include <string> 
 #include <vector>
 
-namespace Engine::Graphics {
+namespace Graphics {
 
 	struct Viewport {
 		float top_left_x = 0;

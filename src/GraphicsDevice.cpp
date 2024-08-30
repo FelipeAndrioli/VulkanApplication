@@ -6,7 +6,7 @@
 #include <string>
 #include <fstream>
 
-namespace Engine::Graphics {
+namespace Graphics {
 	VkPhysicalDevice GraphicsDevice::CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface) {
 
 		assert(instance != VK_NULL_HANDLE);
@@ -1895,11 +1895,11 @@ namespace Engine::Graphics {
 	}
 
 	Frame& GraphicsDevice::GetCurrentFrame() {
-		return m_Frames[m_CurrentFrame % Engine::Graphics::FRAMES_IN_FLIGHT];
+		return m_Frames[m_CurrentFrame % Graphics::FRAMES_IN_FLIGHT];
 	}
 
 	Frame& GraphicsDevice::GetLastFrame() {
-		return m_Frames[(m_CurrentFrame - 1) % Engine::Graphics::FRAMES_IN_FLIGHT];
+		return m_Frames[(m_CurrentFrame - 1) % Graphics::FRAMES_IN_FLIGHT];
 	}
 
 	Frame& GraphicsDevice::GetFrame(int i) {

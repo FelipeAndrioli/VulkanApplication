@@ -6,7 +6,10 @@
 #include "Application.h"
 #include "ConstantBuffers.h"
 #include "Helper.h"
+
 #include "../Assets/Material.h"
+#include "../Assets/Model.h"
+#include "../Assets/Camera.h"
 
 #include <vector>
 #include <string>
@@ -14,20 +17,20 @@
 namespace Renderer {
 	bool m_Initialized = false;
 
-	Engine::Graphics::Texture m_Skybox;
+	Graphics::Texture m_Skybox;
 
-	Engine::Graphics::Shader m_SkyboxVertexShader = {};
-	Engine::Graphics::Shader m_SkyboxFragShader = {};
-	Engine::Graphics::Shader m_DefaultVertShader = {};
-	Engine::Graphics::Shader m_ColorFragShader = {};
-	Engine::Graphics::Shader m_WireframeFragShader = {};
+	Graphics::Shader m_SkyboxVertexShader = {};
+	Graphics::Shader m_SkyboxFragShader = {};
+	Graphics::Shader m_DefaultVertShader = {};
+	Graphics::Shader m_ColorFragShader = {};
+	Graphics::Shader m_WireframeFragShader = {};
 
-	Engine::Graphics::Buffer m_SkyboxBuffer = {};
-	Engine::Graphics::Buffer m_GlobalDataBuffer = {};
+	Graphics::Buffer m_SkyboxBuffer = {};
+	Graphics::Buffer m_GlobalDataBuffer = {};
 
-	Engine::Graphics::PipelineState m_SkyboxPSO = {};
-	Engine::Graphics::PipelineState m_ColorPSO = {};
-	Engine::Graphics::PipelineState m_WireframePSO = {};
+	Graphics::PipelineState m_SkyboxPSO = {};
+	Graphics::PipelineState m_ColorPSO = {};
+	Graphics::PipelineState m_WireframePSO = {};
 	
 	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
 
@@ -37,7 +40,7 @@ namespace Renderer {
 	std::vector<Texture> m_Textures;
 }
 
-std::shared_ptr<Model> Renderer::LoadModel(const std::string& path) {
+std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
 	return ModelLoader::LoadModel(path, m_Materials, m_Textures);
 }
 
@@ -52,7 +55,7 @@ void Renderer::LoadResources() {
 	if (!m_Initialized)
 		return;
 
-	Engine::Graphics::GraphicsDevice* gfxDevice = GetDevice();
+	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
 	// Skybox PSO
 	std::vector<std::string> cubeTextures = {
@@ -138,7 +141,7 @@ void Renderer::LoadResources() {
 
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 
-	for (int i = 0; i < Engine::Graphics::FRAMES_IN_FLIGHT; i++) {
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).bindlessSet);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, materialBuffer);
@@ -148,7 +151,7 @@ void Renderer::LoadResources() {
 }
 
 void Renderer::Destroy() {
-	Engine::Graphics::GraphicsDevice* gfxDevice = GetDevice();
+	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
 	for (auto texture : m_Textures) {
 		gfxDevice->DestroyImage(texture);
@@ -172,7 +175,7 @@ void Renderer::Destroy() {
 }
 
 void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
-	Engine::Graphics::GraphicsDevice* gfxDevice = GetDevice();
+	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_SkyboxPSO.pipeline);
 
@@ -189,7 +192,7 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
 }
 
-void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Model& model) {
+void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
 	GraphicsDevice* gfxDevice = GetDevice();
 
 	VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };
@@ -226,7 +229,7 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Model& model) {
 	}
 }
 
-void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Model& model) {
+void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
 	GraphicsDevice* gfxDevice = GetDevice();
 
 	VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };

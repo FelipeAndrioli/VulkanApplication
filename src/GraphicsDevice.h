@@ -17,7 +17,7 @@
 
 #include "Assets/Mesh.h"
 
-namespace Engine::Graphics {
+namespace Graphics {
 	const int FRAMES_IN_FLIGHT = 2;
 	const int DEDICATED_GPU = 2;
 	const std::vector<const char*> c_DeviceExtensions = {

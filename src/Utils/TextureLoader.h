@@ -6,7 +6,7 @@
 #include "../GraphicsDevice.h"
 #include "../Graphics.h"
 
-using namespace Engine::Graphics;
+using namespace Graphics;
 
 namespace TextureLoader {
 	extern Texture LoadTexture(const char* texturePath, Texture::TextureType textureType, bool flipTextureVertically, bool generateMipMaps);

@@ -1,141 +1,138 @@
 #include "Application.h"
 
-namespace Engine {
+Application::~Application() {
+	m_UI.reset();
+	
+	m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
+	m_Framebuffers.clear();
 
-	Application::~Application() {
-		m_UI.reset();
-		
-		m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
-		m_Framebuffers.clear();
+	m_GraphicsDevice->DestroyImage(m_DepthBuffer);
+	m_GraphicsDevice->DestroyImage(m_RenderTarget);
+	m_GraphicsDevice->DestroySwapChain(m_SwapChain);
+	m_GraphicsDevice->DestroyDescriptorPool();
+	m_GraphicsDevice.reset();
 
-		m_GraphicsDevice->DestroyImage(m_DepthBuffer);
-		m_GraphicsDevice->DestroyImage(m_RenderTarget);
-		m_GraphicsDevice->DestroySwapChain(m_SwapChain);
-		m_GraphicsDevice->DestroyDescriptorPool();
-		m_GraphicsDevice.reset();
+	m_Input.reset();
+	m_Window.reset();
+}
 
-		m_Input.reset();
-		m_Window.reset();
+void Application::InitializeResources(Settings& settings) {
+	m_Window = std::make_unique<Window>(settings);
+	m_Input = std::make_unique<InputSystem::Input>();
+
+	m_Window->OnKeyPress = std::bind(&InputSystem::Input::ProcessKey, m_Input.get(), std::placeholders::_1, std::placeholders::_2,
+		std::placeholders::_3, std::placeholders::_4);
+	m_Window->OnResize = std::bind(&Application::Resize, this, std::placeholders::_1, std::placeholders::_2);
+	m_Window->OnMouseClick = std::bind(&InputSystem::Input::ProcessMouseClick, m_Input.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+	m_Window->OnCursorMove = std::bind(&InputSystem::Input::ProcessCursorMove, m_Input.get(), std::placeholders::_1, std::placeholders::_2);
+	m_Window->OnCursorOnScreen = std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
+
+	m_GraphicsDevice = std::make_unique<Graphics::GraphicsDevice>(*m_Window.get());
+	Graphics::GetDevice() = m_GraphicsDevice.get();
+
+	bool success = m_GraphicsDevice->CreateSwapChain(*m_Window.get(), m_SwapChain);
+
+	assert(success);
+
+	m_GraphicsDevice->SetSwapChainExtent(m_SwapChain.swapChainExtent);
+	m_GraphicsDevice->CreateDescriptorPool();
+	m_GraphicsDevice->CreateRenderTarget(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height, m_SwapChain.swapChainImageFormat);
+	m_GraphicsDevice->CreateDepthBuffer(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
+
+	m_Framebuffers.resize(m_SwapChain.swapChainImageViews.size());
+
+	for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
+		std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
+		m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->GetDefaultRenderPass(), framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
 	}
 
-	void Application::InitializeResources(Settings& settings) {
-		m_Window = std::make_unique<Window>(settings);
-		m_Input = std::make_unique<InputSystem::Input>();
+	m_UI = std::make_unique<UI>(*m_Window->GetHandle());
+}
 
-		m_Window->OnKeyPress = std::bind(&InputSystem::Input::ProcessKey, m_Input.get(), std::placeholders::_1, std::placeholders::_2,
-			std::placeholders::_3, std::placeholders::_4);
-		m_Window->OnResize = std::bind(&Application::Resize, this, std::placeholders::_1, std::placeholders::_2);
-		m_Window->OnMouseClick = std::bind(&InputSystem::Input::ProcessMouseClick, m_Input.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-		m_Window->OnCursorMove = std::bind(&InputSystem::Input::ProcessCursorMove, m_Input.get(), std::placeholders::_1, std::placeholders::_2);
-		m_Window->OnCursorOnScreen = std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
+void Application::RunApplication(IScene& scene) {
+	InitializeResources(scene.settings);
+	InitializeApplication(scene);
 
-		m_GraphicsDevice = std::make_unique<Engine::Graphics::GraphicsDevice>(*m_Window.get());
-		Graphics::GetDevice() = m_GraphicsDevice.get();
-
-		bool success = m_GraphicsDevice->CreateSwapChain(*m_Window.get(), m_SwapChain);
-
-		assert(success);
-
-		m_GraphicsDevice->SetSwapChainExtent(m_SwapChain.swapChainExtent);
-		m_GraphicsDevice->CreateDescriptorPool();
-		m_GraphicsDevice->CreateRenderTarget(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height, m_SwapChain.swapChainImageFormat);
-		m_GraphicsDevice->CreateDepthBuffer(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
-
-		m_Framebuffers.resize(m_SwapChain.swapChainImageViews.size());
-
-		for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
-			std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
-			m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->GetDefaultRenderPass(), framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
-		}
-
-		m_UI = std::make_unique<Engine::UI>(*m_Window->GetHandle());
+	while (UpdateApplication(scene)) {
+		glfwPollEvents();
 	}
 
-	void Application::RunApplication(IScene& scene) {
-		InitializeResources(scene.settings);
-		InitializeApplication(scene);
+	m_GraphicsDevice->WaitIdle();
+	TerminateApplication(scene);
+}
 
-		while (UpdateApplication(scene)) {
-			glfwPollEvents();
-		}
+void Application::RenderCoreUI() {
+	ImGui::Begin("Settings");
+	ImGui::SeparatorText("Application");
+	ImGui::Text("Last Frame: %f ms", m_Milliseconds);
+	ImGui::Text("Framerate: %.1f fps", m_FramesPerSecond);
+	ImGui::Checkbox("Limit Framerate", &m_Vsync);
+}
 
-		m_GraphicsDevice->WaitIdle();
-		TerminateApplication(scene);
+bool Application::UpdateApplication(IScene& scene) {
+	m_CurrentFrameTime = (float)glfwGetTime();
+	Timestep timestep = m_CurrentFrameTime - m_LastFrameTime;
+
+	if (m_ResizeApplication) {
+		m_ResizeApplication = false;
+		scene.Resize(m_Window->GetFramebufferSize().width, m_Window->GetFramebufferSize().height);
 	}
 
-	void Application::RenderCoreUI() {
-		ImGui::Begin("Settings");
-		ImGui::SeparatorText("Application");
-		ImGui::Text("Last Frame: %f ms", m_Milliseconds);
-		ImGui::Text("Framerate: %.1f fps", m_FramesPerSecond);
-		ImGui::Checkbox("Limit Framerate", &m_Vsync);
+	if (m_Vsync && timestep.GetSeconds() < (1 / 60.0f)) return true;
+	
+	scene.Update(timestep.GetMilliseconds(), *m_Input.get());
+
+	if (!m_GraphicsDevice->BeginFrame(m_SwapChain, m_GraphicsDevice->GetCurrentFrame()))
+		return true;
+
+	Graphics::Frame& frame = m_GraphicsDevice->GetCurrentFrame();
+
+	m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->GetDefaultRenderPass(), frame.commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
+
+	scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
+
+	if (m_UI) {
+		m_UI->BeginFrame();
+		RenderCoreUI();
+		scene.RenderUI();
+		m_UI->EndFrame(frame.commandBuffer);
 	}
 
-	bool Application::UpdateApplication(IScene& scene) {
-		m_CurrentFrameTime = (float)glfwGetTime();
-		Timestep timestep = m_CurrentFrameTime - m_LastFrameTime;
+	m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
+	m_GraphicsDevice->EndFrame(m_SwapChain, frame);
+	m_GraphicsDevice->PresentFrame(m_SwapChain, frame);
 
-		if (m_ResizeApplication) {
-			m_ResizeApplication = false;
-			scene.Resize(m_Window->GetFramebufferSize().width, m_Window->GetFramebufferSize().height);
-		}
+	m_LastFrameTime = m_CurrentFrameTime;
 
-		if (m_Vsync && timestep.GetSeconds() < (1 / 60.0f)) return true;
-		
-		scene.Update(timestep.GetMilliseconds(), *m_Input.get());
+	m_Milliseconds = timestep.GetMilliseconds();
+	m_FramesPerSecond = static_cast<float>(1 / timestep.GetSeconds());
 
-		if (!m_GraphicsDevice->BeginFrame(m_SwapChain, m_GraphicsDevice->GetCurrentFrame()))
-			return true;
+	return !scene.IsDone(*m_Input.get());
+}
 
-		Engine::Graphics::Frame& frame = m_GraphicsDevice->GetCurrentFrame();
+void Application::InitializeApplication(IScene& scene) {
+	scene.StartUp();
+}
 
-		m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->GetDefaultRenderPass(), frame.commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
+void Application::TerminateApplication(IScene& scene) {
+	scene.CleanUp();
+}
 
-		scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
+void Application::Resize(int width, int height) {
+	std::cout << "width - " << width << " height - " << height << '\n';
 
-		if (m_UI) {
-			m_UI->BeginFrame();
-			RenderCoreUI();
-			scene.RenderUI();
-			m_UI->EndFrame(frame.commandBuffer);
-		}
+	m_GraphicsDevice->RecreateSwapChain(*m_Window.get(), m_SwapChain);
+	m_GraphicsDevice->SetSwapChainExtent(m_SwapChain.swapChainExtent);
 
-		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
-		m_GraphicsDevice->EndFrame(m_SwapChain, frame);
-		m_GraphicsDevice->PresentFrame(m_SwapChain, frame);
+	m_GraphicsDevice->ResizeImage(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
+	m_GraphicsDevice->ResizeImage(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
 
-		m_LastFrameTime = m_CurrentFrameTime;
+	m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
 
-		m_Milliseconds = timestep.GetMilliseconds();
-		m_FramesPerSecond = static_cast<float>(1 / timestep.GetSeconds());
-
-		return !scene.IsDone(*m_Input.get());
+	for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
+		std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
+		m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->GetDefaultRenderPass(), framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
 	}
 
-	void Application::InitializeApplication(IScene& scene) {
-		scene.StartUp();
-	}
-
-	void Application::TerminateApplication(IScene& scene) {
-		scene.CleanUp();
-	}
-
-	void Application::Resize(int width, int height) {
-		std::cout << "width - " << width << " height - " << height << '\n';
-
-		m_GraphicsDevice->RecreateSwapChain(*m_Window.get(), m_SwapChain);
-		m_GraphicsDevice->SetSwapChainExtent(m_SwapChain.swapChainExtent);
-
-		m_GraphicsDevice->ResizeImage(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
-		m_GraphicsDevice->ResizeImage(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
-
-		m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
-
-		for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
-			std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
-			m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->GetDefaultRenderPass(), framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
-		}
-
-		m_ResizeApplication = true;
-	}
+	m_ResizeApplication = true;
 }

@@ -1,17 +1,19 @@
 #include "./Camera.h"
 
+#include "../Input/Input.h"
+
 namespace Assets {
-	Camera::Camera(glm::vec3 position, float fov, float yaw, float pitch, uint32_t width, uint32_t height) 
-		: Position(position), Fov(fov), Yaw(yaw), Pitch(pitch) {
+	void Camera::Init(glm::vec3 position, float fov, float yaw, float pitch, uint32_t width, uint32_t height) {
+		Position = position;
+		Fov = fov;
+		Yaw = yaw;
+		Pitch = pitch;
+
 		Resize(width, height);
 		UpdateCameraVectors();
 	}
 
-	Camera::~Camera() {
-
-	}
-
-	void Camera::OnUpdate(float t, const Engine::InputSystem::Input& input) {
+	void Camera::OnUpdate(float t, const InputSystem::Input& input) {
 
 		if (!input.Mouse.RightButtonPressed) {
 			m_LastX = input.Mouse.x;

@@ -10,7 +10,8 @@
 
 #include "../GraphicsDevice.h"
 #include "../Graphics.h"
-using namespace Engine::Utils;
+
+using namespace Utils;
 
 namespace TextureLoader {
 	 Texture LoadTexture(const char* texturePath, Texture::TextureType textureType, bool flipTextureVertically, bool generateMipMaps) {

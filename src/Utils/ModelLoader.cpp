@@ -8,8 +8,8 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
-#include "../../Assets/Mesh.h"
-#include "../../Assets/Model.h"
+#include "../Assets/Model.h"
+#include "../Assets/Mesh.h"
 
 #include "../Graphics.h"
 #include "../GraphicsDevice.h"
@@ -97,7 +97,7 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 	return newMesh;
 }
 
-void ProcessNode(Model& model, const aiNode* node, const aiScene* scene) {
+void ProcessNode(Assets::Model& model, const aiNode* node, const aiScene* scene) {
 	for (size_t i = 0; i < node->mNumMeshes; i++) {
 		const aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
 		model.Meshes.push_back(ProcessMesh(mesh, scene));
@@ -211,7 +211,7 @@ void ProcessTexture(
 }
 
 void LoadTextures(
-	Model& model, 
+	Assets::Model& model, 
 	aiMaterial* material, 
 	aiTextureType textureType, 
 	Texture::TextureType customTextureType,
@@ -241,7 +241,7 @@ void LoadTextures(
 }
 
 static void ProcessMaterials(
-	Model& model,
+	Assets::Model& model,
 	const aiScene* scene, 
 	std::vector<Material>& sceneMaterials,
 	std::vector<Texture>& loadedTextures) {
@@ -292,7 +292,7 @@ static void ProcessMaterials(
 	}
 }
 
-void ModelLoader::CompileMesh(Model& model, std::vector<Material>& materials) {
+void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& materials) {
 
 	std::vector<Assets::Vertex> vertices;
 	std::vector<uint32_t> indices;
@@ -339,9 +339,9 @@ void ModelLoader::CompileMesh(Model& model, std::vector<Material>& materials) {
 	gfxDevice->WriteDescriptor(modelInputLayout.bindings[0], model.ModelDescriptorSet, model.ModelBuffer);
 }
 
-std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& path, std::vector<Material>& materials, std::vector<Engine::Graphics::Texture>& textures) {
+std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, std::vector<Material>& materials, std::vector<Graphics::Texture>& textures) {
 	
-	std::shared_ptr<Model> model = std::make_shared<Model>();
+	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
 	model->ModelPath = path.c_str();
 	model->MaterialPath = Helper::get_directory(path);
 	model->Name = Helper::get_filename(path);

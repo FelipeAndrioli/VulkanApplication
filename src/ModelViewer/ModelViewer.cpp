@@ -6,20 +6,14 @@
 
 #include "../Application.h"
 #include "../Settings.h"
-#include "../ConstantBuffers.h"
 
-#include "../Graphics.h"
 #include "../GraphicsDevice.h"
 #include "../Renderer.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Model.h"
-#include "../Assets/Mesh.h"
-#include "../Assets/Utils/MeshGenerator.h"
-#include "../Utils/ModelLoader.h"
-#include "../Utils/TextureLoader.h"
 
-class ModelViewer : public Engine::Application::IScene {
+class ModelViewer : public Application::IScene {
 public:
 	ModelViewer() {
 		settings.Title = "ModelViewer.exe";
@@ -31,15 +25,15 @@ public:
 
 	virtual void StartUp() override;
 	virtual void CleanUp() override;
-	virtual void Update(float d, Engine::InputSystem::Input& input) override;
+	virtual void Update(float d, InputSystem::Input& input) override;
 	virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) override;
 	virtual void RenderUI() override;
 	virtual void Resize(uint32_t width, uint32_t height) override;
 private:
-	Assets::Camera* m_Camera = nullptr;
+	Assets::Camera m_Camera = {};
 
-	std::shared_ptr<Model> m_Dragon;
-	std::shared_ptr<Model> m_Duck;
+	std::shared_ptr<Assets::Model> m_Dragon;
+	std::shared_ptr<Assets::Model> m_Duck;
 
 	uint32_t m_ScreenWidth = 0;
 	uint32_t m_ScreenHeight = 0;
@@ -50,7 +44,13 @@ void ModelViewer::StartUp() {
 	m_ScreenWidth = settings.Width;
 	m_ScreenHeight = settings.Height;
 
-	m_Camera = new Assets::Camera(glm::vec3(0.6f, 2.1f, 9.2f), 45.0f, -113.0f, -1.7f, m_ScreenWidth, m_ScreenHeight);
+	glm::vec3 position = glm::vec3(0.6f, 2.1f, 9.2f);
+
+	float fov = 45.0f;
+	float yaw = -113.0f;
+	float pitch = -1.7f;
+
+	m_Camera.Init(position, fov, yaw, pitch, m_ScreenWidth, m_ScreenHeight);
 
 	Renderer::Init();
 
@@ -84,18 +84,16 @@ void ModelViewer::StartUp() {
 
 void ModelViewer::CleanUp() {
 	Renderer::Destroy();
-
-	delete m_Camera;
 }
 
-void ModelViewer::Update(float d, Engine::InputSystem::Input& input) {
-	m_Camera->OnUpdate(d, input);
+void ModelViewer::Update(float d, InputSystem::Input& input) {
+	m_Camera.OnUpdate(d, input);
 	m_Dragon->OnUpdate(d);
 	m_Duck->OnUpdate(d);
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
-	Renderer::UpdateGlobalDescriptors(commandBuffer, *m_Camera);
+	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
 	if (settings.renderDefault) {
 		Renderer::RenderModel(commandBuffer, *m_Dragon.get());
@@ -118,13 +116,13 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox("Render Wireframe", &settings.renderWireframe);
 	ImGui::Checkbox("Render Skybox", &settings.renderSkybox);
 
-	m_Camera->OnUIRender();
+	m_Camera.OnUIRender();
 	m_Dragon->OnUIRender();
 	m_Duck->OnUIRender();
 }
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {
-	m_Camera->Resize(width, height);
+	m_Camera.Resize(width, height);
 }
 
 RUN_APPLICATION(ModelViewer)
