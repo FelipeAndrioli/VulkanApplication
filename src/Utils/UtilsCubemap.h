@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include "Bitmap.h"
 
-namespace Engine::Utils {
+namespace Utils {
 
 	Bitmap convertEquirectangularMapToVerticalCross(const Bitmap& b);
 	Bitmap convertVerticalCrossToCubeMapFaces(const Bitmap& b);

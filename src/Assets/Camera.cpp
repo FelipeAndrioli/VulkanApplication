@@ -1,18 +1,21 @@
 #include "./Camera.h"
 
+#include "../Input/Input.h"
+
 namespace Assets {
-	Camera::Camera(glm::vec3 position, float fov, uint32_t width, uint32_t height) : Position(position), Fov(fov) {
+	void Camera::Init(glm::vec3 position, float fov, float yaw, float pitch, uint32_t width, uint32_t height) {
+		Position = position;
+		Fov = fov;
+		Yaw = yaw;
+		Pitch = pitch;
+
 		Resize(width, height);
 		UpdateCameraVectors();
 	}
 
-	Camera::~Camera() {
+	void Camera::OnUpdate(float t, const InputSystem::Input& input) {
 
-	}
-
-	void Camera::OnUpdate(float t, const Engine::InputSystem::Input& input) {
-
-		if (!input.Mouse.LeftButtonPressed) {
+		if (!input.Mouse.RightButtonPressed) {
 			m_LastX = input.Mouse.x;
 			m_LastY = input.Mouse.y;
 			return;
@@ -62,7 +65,7 @@ namespace Assets {
 	}
 
 	void Camera::OnUIRender() {
-		if (ImGui::TreeNode("Camera")) {
+		if (ImGui::TreeNode("Camera Settings")) {
 			ImGui::SliderFloat("Camera Near Clip", &Near, -1.0f, 20.0f);
 			ImGui::SliderFloat("Camera Far Clip", &Far, 10.0f, 1000.0f);
 			ImGui::SliderFloat("Camera Position X", &Position.x, -20.0f, 20.0f);

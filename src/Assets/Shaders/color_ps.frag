@@ -4,7 +4,8 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 layout (location = 0) in vec3 fragColor;
-layout (location = 1) in vec2 fragTexCoord;
+layout (location = 1) in vec3 fragNormal;
+layout (location = 2) in vec2 fragTexCoord;
 
 layout (location = 0) out vec4 outColor;
 
@@ -42,9 +43,11 @@ struct material_t {
 	//float pad0;
 };
 
-layout (std140, set = 1, binding = 1) uniform material_uniform {
+layout (std140, set = 0, binding = 1) uniform material_uniform {
 	material_t materials[26];
 };
+
+layout (set = 0, binding = 2) uniform sampler2D texSampler[];
 
 layout (push_constant) uniform constant {
 	int material_index;
@@ -52,5 +55,10 @@ layout (push_constant) uniform constant {
 
 void main() {
 	material_t current_material = materials[mesh_constant.material_index];
-	outColor = vec4(current_material.diffuse.xyz, 1.0f);
+
+	if (current_material.diffuse_texture_index == -1) {
+		outColor = vec4(current_material.diffuse.x, current_material.diffuse.y, current_material.diffuse.z, 1.0f);
+	} else {
+		outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+	}
 }

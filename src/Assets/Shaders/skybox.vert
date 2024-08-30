@@ -1,11 +1,6 @@
 #version 450
 
-layout (std140, set = 0, binding = 0) uniform ObjectGPUData {
-	vec4 extra[12];
-	mat4 model;
-} objectGPUData;
-
-layout (std140, set = 1, binding = 0) uniform SceneGPUData {
+layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float time;
 	float extra_s_1;
 	float extra_s_2;
@@ -32,17 +27,17 @@ const vec3 pos[8] = vec3[8](
 
 const int indices[36] = int[36](
 	// front
-	0, 1, 2, 2, 3, 0,
+	0, 2, 1, 3, 2, 0,
 	// right
-	1, 5, 6, 6, 2, 1,
+	1, 6, 5, 6, 1, 2,
 	// back
-	7, 6, 5, 5, 4, 7,
+	7, 5, 6, 5, 7, 4,
 	// left
-	4, 0, 3, 3, 7, 4,
+	4, 3, 0, 3, 4, 7,
 	// bottom
-	4, 5, 1, 1, 0, 4,
+	4, 1, 5, 1, 4, 0,
 	// top
-	3, 2, 6, 6, 7, 3
+	3, 6, 2, 6, 3, 7
 );
 
 void main() {

@@ -3,34 +3,13 @@
 #include <memory>
 #include <stdexcept>
 
-#include "../Vulkan.h"
-#include "../Image.h"
+#include "../GraphicsDevice.h"
+#include "../Graphics.h"
 
-#include "../Assets/Texture.h"
+using namespace Graphics;
 
-namespace Assets {
-	struct Texture;
-}
-
-namespace Engine {
-	class VulkanEngine;
-	class Image;
-
-	namespace Utils {
-		class TextureLoader {
-		public:
-			TextureLoader();
-			~TextureLoader();
-
-			static Assets::Texture LoadTexture(
-				const char* texturePath, 
-				VulkanEngine& vulkanEngine,
-				bool flipTextureVertically,
-				bool generateMipMaps
-			);
-
-			static Assets::Texture LoadCubemapTexture(const char* texturePath, VulkanEngine& vulkanEngine);
-			static Assets::Texture LoadCubemapTexture(std::vector<std::string> texturePaths, VulkanEngine& vulkanEngine);
-		};
-	}
+namespace TextureLoader {
+	extern Texture LoadTexture(const char* texturePath, Texture::TextureType textureType, bool flipTextureVertically, bool generateMipMaps);
+	extern Texture LoadCubemapTexture(const char* texturePath);
+	extern Texture LoadCubemapTexture(std::vector<std::string> texturePaths);
 }

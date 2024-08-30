@@ -1,118 +1,78 @@
 #pragma once
 
-#include <iostream>
-#include <vector>
-#include <map>
-#include <unordered_map>
-
 #include <glm.hpp>
 
+#include "VulkanHeader.h"
+#include "Window.h"
+#include "UI.h"
 #include "Settings.h"
-#include "Vulkan.h"
 
-namespace Assets {
-	class Scene;
-	class Object;
-	struct Material;
+#include "GraphicsDevice.h"
+#include "Graphics.h"
 
-	struct Texture;
-}
+#include "Input/Input.h"
 
-namespace Engine {
-	namespace InputSystem {
-		class Input;
-	}
+#define RUN_APPLICATION(class_name)		\
+	int main(int argc, char* argv[]) {	\
+		Application app;		\
+		class_name scene;				\
+		app.RunApplication(scene);		\
+										\
+		return 0;						\
+	}									
 
-	struct Settings;
+class Application {
+public:
 
-	struct ObjectGPUData {
-		glm::vec4 extra[12];
-		glm::mat4 model = glm::mat4(1.0f);
-	};
-
-	struct SceneGPUData {
-		float time = 0.0f;
-		float extra_s_1 = 0.0f;
-		float extra_s_2 = 0.0f;
-		float extra_s_3 = 0.0f;
-		glm::vec4 extra[7];
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-	};
-
-	class Application {
+	class IScene {
 	public:
-		Application(const Settings &settings = Settings());
-		~Application();
+		virtual void StartUp() = 0;
+		virtual void CleanUp() = 0;
+		
+		virtual bool IsDone(InputSystem::Input& input) {
+			return input.Keys[GLFW_KEY_ESCAPE].IsPressed;
+		}
 
-		void Init();
-		void SetActiveScene(Assets::Scene* scene);
-		void Run();
-	private:
-		void Update(float t);
-		void InitVulkan();
-		void Shutdown();
-		void Draw();
-		void DrawFrame(const VkCommandBuffer& commandBuffer);
-		void RenderScene(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline, const std::vector<Assets::Object*>& objects);
-		void DrawUI();
-		void ProcessResize(int width, int height);
-		void InitializeBuffers();
-		void InitializeDescriptors();
-		void CreatePipelineLayouts();
-		void CreateGraphicsPipelines();
-		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer);
-		void EndRenderPass(VkCommandBuffer& commandBuffer);
-		void RenderSkybox(const VkCommandBuffer& commandBuffer, const VkPipeline& graphicsPipeline);
-	private:
-		Settings m_Settings;
-		bool m_FramebufferResized = false;
-		uint32_t m_CurrentFrame = 0;
-		uint32_t m_ImageIndex = 0;
-		Assets::Scene* p_ActiveScene = nullptr;
+		virtual void Update(float d, InputSystem::Input& input) = 0;
+		virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) = 0;
+		virtual void RenderUI() = 0;
+		virtual void Resize(uint32_t width, uint32_t height) = 0;
 
-		std::unique_ptr<class Window> m_Window;
-		std::unique_ptr<class VulkanEngine> m_VulkanEngine;
-
-		std::unique_ptr<class InputSystem::Input> m_Input;
-		std::unique_ptr<class Buffer> m_ComputeUniformBuffers;
-		std::unique_ptr<class CommandBuffer> m_ComputeCommandBuffers;
-		std::unique_ptr<class Buffer> m_ShaderStorageBuffers;
-		std::unique_ptr<class DescriptorPool> m_DescriptorPool;
-
-		std::unique_ptr<class PipelineLayout> m_MainPipelineLayout;
-
-		std::unique_ptr<class GraphicsPipeline> m_TexturedPipeline;
-		std::unique_ptr<class GraphicsPipeline> m_WireframePipeline;
-		std::unique_ptr<class GraphicsPipeline> m_ColoredPipeline;
-		std::unique_ptr<class GraphicsPipeline> m_SkyboxPipeline;
-
-		std::vector<Assets::Material> m_Materials;
-		std::vector<Assets::Texture> m_LoadedTextures;
-		std::unique_ptr<struct Assets::Texture> m_Skybox;
-
-		std::unique_ptr<class DescriptorSetLayout> m_ObjectGPUDataDescriptorSetLayout;
-		std::unique_ptr<class DescriptorSetLayout> m_GlobalDescriptorSetLayout;
-
-		std::unique_ptr<class DescriptorSets> m_GlobalDescriptorSets;
-
-		/*	Scene Buffer Layout
-			[index obj1 | index obj2 | index obj3 | vertex obj1 | vertex obj2 | vertex obj3]
-		*/
-		std::unique_ptr<class Engine::Buffer> m_SceneGeometryBuffer;
-
-		/* GPUDataBuffer Layout
-		   [object 1 | object 2 | materials 1 | materials 2 | scene data]	
-		*/
-		std::unique_ptr<class Engine::Buffer> m_GPUDataBuffer;
-
-		SceneGPUData m_SceneGPUData;
-
-		static const int OBJECT_BUFFER_INDEX = 0;
-		static const int MATERIAL_BUFFER_INDEX = 1;
-		static const int SCENE_BUFFER_INDEX = 2;
-		static const int INDEX_BUFFER_INDEX = 0;			// :) 
-		static const int VERTEX_BUFFER_INDEX = 1;
-		const std::string DEFAULT_GRAPHICS_PIPELINE = "defaultPipeline";
+	public:
+		Settings settings = {};
 	};
-}
+
+	Application() {};
+	~Application();
+
+	void RunApplication(IScene& scene);
+	void RenderCoreUI();
+	bool UpdateApplication(IScene& scene);
+	void InitializeApplication(IScene& scene);
+	void TerminateApplication(IScene& scene);
+private:
+	void InitializeResources(Settings& settings);
+	void Resize(int width, int height);
+private:
+	float m_CurrentFrameTime = 0.0f;
+	float m_LastFrameTime = 0.0f;
+	float m_Milliseconds = 0.0f;
+	float m_FramesPerSecond = 0.0f;
+
+	bool m_Vsync = false;
+	bool m_ResizeApplication = false;
+
+	std::unique_ptr<Window> m_Window;
+	std::unique_ptr<InputSystem::Input> m_Input;
+
+	Graphics::SwapChain m_SwapChain;
+
+	std::unique_ptr<Graphics::GraphicsDevice> m_GraphicsDevice;
+
+	Graphics::GPUImage m_RenderTarget = {};
+	Graphics::GPUImage m_DepthBuffer = {};
+
+	std::vector<VkFramebuffer> m_Framebuffers;
+
+	std::unique_ptr<UI> m_UI;
+};

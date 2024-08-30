@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp> 
 
-namespace Engine::Utils {
+namespace Utils {
 
 	static constexpr float PI = 3.14159265359f;
 
