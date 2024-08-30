@@ -13,6 +13,8 @@ Model::~Model() {
 void Model::Destroy() {
 	Engine::Graphics::GraphicsDevice* gfxDevice = Engine::Graphics::GetDevice();
 
+	gfxDevice->DestroyDescriptorSetLayout(ModelDescriptorSetLayout);
+
 	Meshes.clear();
 	gfxDevice->DestroyBuffer(DataBuffer);
 }

@@ -24,16 +24,12 @@ namespace Renderer {
 
 	Engine::Graphics::Buffer m_SkyboxBuffer = {};
 	Engine::Graphics::Buffer m_GlobalDataBuffer = {};
-	Engine::Graphics::Buffer m_ModelBuffer = {};
 
 	Engine::Graphics::PipelineState m_SkyboxPSO = {};
 	Engine::Graphics::PipelineState m_ColorPSO = {};
 	Engine::Graphics::PipelineState m_WireframePSO = {};
-
-	VkDescriptorSetLayout m_ModelDescriptorSetLayout = VK_NULL_HANDLE;
+	
 	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
-
-	VkDescriptorSet m_ModelDescriptorSet = VK_NULL_HANDLE;
 
 	GlobalConstants m_GlobalConstants = {};
 
@@ -95,7 +91,6 @@ void Renderer::LoadResources() {
 	};
 
 	m_GlobalDataBuffer = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
-	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants));
 
 	gfxDevice->WriteBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
 
@@ -150,10 +145,6 @@ void Renderer::LoadResources() {
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 	}
-
-	gfxDevice->CreateDescriptorSetLayout(m_ModelDescriptorSetLayout, modelInputLayout.bindings);
-	gfxDevice->CreateDescriptorSet(m_ModelDescriptorSetLayout, m_ModelDescriptorSet);
-	gfxDevice->WriteDescriptor(modelInputLayout.bindings[0], m_ModelDescriptorSet, m_ModelBuffer);
 }
 
 void Renderer::Destroy() {
@@ -167,7 +158,6 @@ void Renderer::Destroy() {
 	m_Materials.clear();
 	
 	gfxDevice->DestroyDescriptorSetLayout(m_GlobalDescriptorSetLayout);
-	gfxDevice->DestroyDescriptorSetLayout(m_ModelDescriptorSetLayout);
 	gfxDevice->DestroyImage(m_Skybox);
 	gfxDevice->DestroyShader(m_DefaultVertShader);
 	gfxDevice->DestroyShader(m_ColorFragShader);
@@ -208,12 +198,12 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Model& model) {
 	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
 
-	gfxDevice->BindDescriptorSet(m_ModelDescriptorSet, commandBuffer, m_ColorPSO.pipelineLayout, 1, 1);
+	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorPSO.pipelineLayout, 1, 1);
 
 	ModelConstants modelConstant = {};
 	modelConstant.model = model.GetModelMatrix();
 
-	gfxDevice->UpdateBuffer(m_ModelBuffer, &modelConstant);
+	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
 
 	for (const auto& mesh : model.Meshes) {
 		vkCmdPushConstants(
@@ -245,12 +235,12 @@ void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Model& mode
 	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePSO.pipeline);
 
-	gfxDevice->BindDescriptorSet(m_ModelDescriptorSet, commandBuffer, m_WireframePSO.pipelineLayout, 1, 1);
+	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_WireframePSO.pipelineLayout, 1, 1);
 
 	ModelConstants modelConstant = {};
 	modelConstant.model = model.GetModelMatrix();
 
-	gfxDevice->UpdateBuffer(m_ModelBuffer, &modelConstant);
+	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
 
 	for (const auto& mesh : model.Meshes) {
 		vkCmdPushConstants(

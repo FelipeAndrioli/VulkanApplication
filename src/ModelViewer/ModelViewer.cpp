@@ -38,7 +38,8 @@ public:
 private:
 	Assets::Camera* m_Camera = nullptr;
 
-	std::shared_ptr<Model> m_Model;
+	std::shared_ptr<Model> m_Dragon;
+	std::shared_ptr<Model> m_Duck;
 
 	uint32_t m_ScreenWidth = 0;
 	uint32_t m_ScreenHeight = 0;
@@ -53,20 +54,29 @@ void ModelViewer::StartUp() {
 
 	Renderer::Init();
 
-	m_Model = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
-	m_Model->Name = "Dragon";
-	m_Model->Transformations.scaleHandler = 20.0f;
-	m_Model->Transformations.translation.x = 0.0f;
-	m_Model->Transformations.translation.y = 0.0f;
+	m_Dragon = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
+	m_Dragon->Name = "Dragon";
+	m_Dragon->Transformations.scaleHandler = 20.0f;
+	m_Dragon->Transformations.translation.x = 0.0f;
+	m_Dragon->Transformations.translation.y = 0.0f;
+
+	
+	m_Duck = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/rubber_duck/scene.gltf");
+	m_Duck->Name = "Duck";
+	m_Duck->Transformations.scaleHandler = 0.01f;
+	m_Duck->Transformations.translation.x = -400.0f;
+	m_Duck->Transformations.translation.y = 300.0f;
+	m_Duck->Transformations.translation.z = -138.0f;
+	m_Duck->Transformations.rotation.x = -100.0f;
 
 	/*
-	m_Model = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
-	m_Model->Name = "Sponza";
-	m_Model->Transformations.scaleHandler = 0.008f;
-	m_Model->Transformations.translation.x = -10.8f;
-	m_Model->Transformations.translation.y = -2.5f;
-	m_Model->Transformations.rotation.y = 45.0f;
-	m_Model->FlipTexturesVertically = true;
+	m_Dragon = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
+	m_Dragon->Name = "Sponza";
+	m_Dragon->Transformations.scaleHandler = 0.008f;
+	m_Dragon->Transformations.translation.x = -10.8f;
+	m_Dragon->Transformations.translation.y = -2.5f;
+	m_Dragon->Transformations.rotation.y = 45.0f;
+	m_Dragon->FlipTexturesVertically = true;
 	*/
 
 	Renderer::LoadResources();
@@ -80,17 +90,26 @@ void ModelViewer::CleanUp() {
 
 void ModelViewer::Update(float d, Engine::InputSystem::Input& input) {
 	m_Camera->OnUpdate(d, input);
-	m_Model->OnUpdate(d);
+	m_Dragon->OnUpdate(d);
+	m_Duck->OnUpdate(d);
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Renderer::UpdateGlobalDescriptors(commandBuffer, *m_Camera);
-	if (settings.renderDefault)
-		Renderer::RenderModel(commandBuffer, *m_Model.get());
-	if (settings.renderSkybox)
+
+	if (settings.renderDefault) {
+		Renderer::RenderModel(commandBuffer, *m_Dragon.get());
+		Renderer::RenderModel(commandBuffer, *m_Duck.get());
+	}
+
+	if (settings.renderWireframe) {
+		Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());
+		Renderer::RenderWireframe(commandBuffer, *m_Duck.get());
+	}
+
+	if (settings.renderSkybox) {
 		Renderer::RenderSkybox(commandBuffer);
-	if (settings.renderWireframe)
-		Renderer::RenderWireframe(commandBuffer, *m_Model.get());
+	}
 }
 
 void ModelViewer::RenderUI() {
@@ -100,7 +119,8 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox("Render Skybox", &settings.renderSkybox);
 
 	m_Camera->OnUIRender();
-	m_Model->OnUIRender();
+	m_Dragon->OnUIRender();
+	m_Duck->OnUIRender();
 }
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {

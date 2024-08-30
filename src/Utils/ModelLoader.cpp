@@ -325,6 +325,17 @@ void ModelLoader::CompileMesh(Model& model, std::vector<Material>& materials) {
 
 	gfxDevice->WriteBuffer(model.DataBuffer, indices.data(), sizeof(uint32_t) * indices.size(), 0);
 	gfxDevice->WriteBuffer(model.DataBuffer, vertices.data(), sizeof(Assets::Vertex) * vertices.size(), sizeof(uint32_t) * indices.size());
+
+	InputLayout modelInputLayout = {
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT }
+		}
+	};
+
+	model.ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants));
+	gfxDevice->CreateDescriptorSetLayout(model.ModelDescriptorSetLayout, modelInputLayout.bindings);
+	gfxDevice->CreateDescriptorSet(model.ModelDescriptorSetLayout, model.ModelDescriptorSet);
+	gfxDevice->WriteDescriptor(modelInputLayout.bindings[0], model.ModelDescriptorSet, model.ModelBuffer);
 }
 
 std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& path, std::vector<Material>& materials, std::vector<Engine::Graphics::Texture>& textures) {
@@ -332,7 +343,6 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& path, std::vect
 	std::shared_ptr<Model> model = std::make_shared<Model>();
 	model->ModelPath = path.c_str();
 
-	// remove extension
 	std::string temp = path;
 
 	int lastSlashIndex = 0;
@@ -349,7 +359,9 @@ std::shared_ptr<Model> ModelLoader::LoadModel(const std::string& path, std::vect
 	}
 
 	model->MaterialPath = temp.erase(lastSlashIndex, fileNameSize).c_str();
-	// remove extension
+
+	temp = path;
+	model->Name = temp.erase(0, lastSlashIndex).c_str();
 
 	const aiScene* scene = aiImportFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
 

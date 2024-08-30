@@ -40,10 +40,14 @@ public:
 	bool GenerateMipMaps = true;
 	bool Rotate = false;
 	
-	const char* ModelPath = nullptr;
-	const char* MaterialPath = nullptr;
+	std::string ModelPath;
+	std::string MaterialPath;
 	
 	Engine::Graphics::GPUBuffer DataBuffer = {};
+	Engine::Graphics::Buffer ModelBuffer = {};
+
+	VkDescriptorSetLayout ModelDescriptorSetLayout = VK_NULL_HANDLE;
+	VkDescriptorSet ModelDescriptorSet = VK_NULL_HANDLE;
 private:
 	Engine::Graphics::GPUBuffer m_MaterialBuffer = {};
 };
