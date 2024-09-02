@@ -1,5 +1,6 @@
 #include "ModelLoader.h"
 
+#include <fstream>
 #include <unordered_map>
 #include <cassert>
 
@@ -43,11 +44,6 @@ int GetMaterialIndex(std::vector<Material>& sceneMaterials, std::string material
 	}
 
 	return UNEXISTENT;
-}
-
-bool fileExists(const std::string& path) {
-	struct stat buffer;
-	return (stat(path.c_str(), &buffer) == 0);
 }
 
 Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
@@ -193,7 +189,7 @@ void ProcessTexture(
 	std::string texName = textureName;
 	std::string path = basePath;
 
-	if (textureName == "" || !fileExists(basePath + textureName)) {
+	if (textureName == "" || !Helper::file_exists(basePath + textureName)) {
 		std::cout << "File: " << basePath + textureName << " doesn't exists! Loading custom texture!" << '\n';
 		texName = "error_texture.jpg";
 		path = "./Textures/";
