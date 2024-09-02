@@ -1,5 +1,8 @@
 #include "Renderer.h"
 
+#include <vector>
+#include <string>
+
 #include "./Core/Graphics.h"
 #include "./Core/GraphicsDevice.h"
 #include "./Core/Application.h"
@@ -13,8 +16,7 @@
 #include "../Assets/Model.h"
 #include "../Assets/Camera.h"
 
-#include <vector>
-#include <string>
+#include "LightManager.h"
 
 namespace Renderer {
 	bool m_Initialized = false;
@@ -81,6 +83,8 @@ void Renderer::LoadResources() {
 	if (!m_Initialized)
 		return;
 
+	LightManager::Init();
+
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
 	// Skybox PSO
@@ -108,8 +112,9 @@ void Renderer::LoadResources() {
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
-			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
 		}
 	};
 
@@ -133,6 +138,7 @@ void Renderer::LoadResources() {
 
 	gfxDevice->WriteBuffer(materialBuffer, meshMaterialData.data());
 
+	std::cout << "Material Size: " << sizeof(MaterialData) << '\n';
 	PipelineStateDescription colorPSODesc = {};
 	colorPSODesc.Name = "Color Pipeline";
 	colorPSODesc.vertexShader = &m_DefaultVertShader;
@@ -171,8 +177,9 @@ void Renderer::LoadResources() {
 		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).bindlessSet);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, materialBuffer);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, LightManager::GetLightBuffer());
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[4], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 	}
 }
 

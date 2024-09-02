@@ -3,6 +3,9 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#define MAX_MATERIALS 26
+#define MAX_LIGHTS 5
+
 layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec3 fragNormal;
 layout (location = 2) in vec2 fragTexCoord;
@@ -43,17 +46,40 @@ struct material_t {
 	//float pad0;
 };
 
-layout (std140, set = 0, binding = 1) uniform material_uniform {
-	material_t materials[26];
+/*
+	Light Types
+
+	0 - Ambient Light
+*/
+
+struct light_t {
+	vec4 position;
+	vec4 color;		// w -> light intensity
+	vec4 extra[13];
+
+	int type;
+	int extra_0;
+	int extra_1;
+	int extra_2;
 };
 
-layout (set = 0, binding = 2) uniform sampler2D texSampler[];
+layout (std140, set = 0, binding = 1) uniform material_uniform {
+	material_t materials[MAX_MATERIALS];
+};
+
+layout (set = 0, binding = 2) uniform light_uniform {
+	light_t lights[MAX_LIGHTS];
+};
+
+layout (set = 0, binding = 3) uniform sampler2D texSampler[];
 
 layout (push_constant) uniform constant {
 	int material_index;
 } mesh_constant;
 
 void main() {
+	light_t light = lights[0];
+
 	material_t current_material = materials[mesh_constant.material_index];
 
 	if (current_material.diffuse_texture_index == -1) {
@@ -61,4 +87,7 @@ void main() {
 	} else {
 		outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
 	}
+
+
+	outColor *= (light.color * light.color.w);
 }
