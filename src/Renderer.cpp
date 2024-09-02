@@ -53,6 +53,30 @@ void Renderer::Init() {
 	m_Initialized = true;
 }
 
+void Renderer::Shutdown() {
+	Graphics::GraphicsDevice* gfxDevice = GetDevice();
+
+	for (auto texture : m_Textures) {
+		gfxDevice->DestroyImage(texture);
+	}
+
+	m_Textures.clear();
+	m_Materials.clear();
+	
+	gfxDevice->DestroyDescriptorSetLayout(m_GlobalDescriptorSetLayout);
+	gfxDevice->DestroyImage(m_Skybox);
+	gfxDevice->DestroyShader(m_DefaultVertShader);
+	gfxDevice->DestroyShader(m_ColorFragShader);
+	gfxDevice->DestroyShader(m_WireframeFragShader);
+	gfxDevice->DestroyShader(m_SkyboxVertexShader);
+	gfxDevice->DestroyShader(m_SkyboxFragShader);
+	gfxDevice->DestroyPipeline(m_ColorPSO);
+	gfxDevice->DestroyPipeline(m_SkyboxPSO);
+	gfxDevice->DestroyPipeline(m_WireframePSO);
+	
+	m_Initialized = false;
+}
+
 void Renderer::LoadResources() {
 	if (!m_Initialized)
 		return;
@@ -150,30 +174,6 @@ void Renderer::LoadResources() {
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 	}
-}
-
-void Renderer::Destroy() {
-	Graphics::GraphicsDevice* gfxDevice = GetDevice();
-
-	for (auto texture : m_Textures) {
-		gfxDevice->DestroyImage(texture);
-	}
-
-	m_Textures.clear();
-	m_Materials.clear();
-	
-	gfxDevice->DestroyDescriptorSetLayout(m_GlobalDescriptorSetLayout);
-	gfxDevice->DestroyImage(m_Skybox);
-	gfxDevice->DestroyShader(m_DefaultVertShader);
-	gfxDevice->DestroyShader(m_ColorFragShader);
-	gfxDevice->DestroyShader(m_WireframeFragShader);
-	gfxDevice->DestroyShader(m_SkyboxVertexShader);
-	gfxDevice->DestroyShader(m_SkyboxFragShader);
-	gfxDevice->DestroyPipeline(m_ColorPSO);
-	gfxDevice->DestroyPipeline(m_SkyboxPSO);
-	gfxDevice->DestroyPipeline(m_WireframePSO);
-	
-	m_Initialized = false;
 }
 
 void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {

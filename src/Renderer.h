@@ -15,8 +15,8 @@ namespace Renderer {
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
 	void Init();
+	void Shutdown();
 	void LoadResources();
-	void Destroy();
 
 	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);

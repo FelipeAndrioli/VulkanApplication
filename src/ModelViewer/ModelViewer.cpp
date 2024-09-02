@@ -83,7 +83,7 @@ void ModelViewer::StartUp() {
 }
 
 void ModelViewer::CleanUp() {
-	Renderer::Destroy();
+	Renderer::Shutdown();
 }
 
 void ModelViewer::Update(float d, InputSystem::Input& input) {
