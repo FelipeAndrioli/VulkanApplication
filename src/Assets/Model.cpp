@@ -2,8 +2,8 @@
 
 #include <iostream>
 
-#include "../GraphicsDevice.h"
-#include "../UI.h"
+#include "../Core/GraphicsDevice.h"
+#include "../Core/UI.h"
 
 namespace Assets {
 	Model::~Model() {

@@ -15,7 +15,7 @@
 #include "Graphics.h"
 #include "BufferManager.h"
 
-#include "Assets/Mesh.h"
+#include "../Assets/Mesh.h"
 
 namespace Graphics {
 	const int FRAMES_IN_FLIGHT = 2;

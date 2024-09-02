@@ -1,7 +1,7 @@
 #include "GraphicsDevice.h"
 
 #include "UI.h"
-#include "Utils/Helper.h"
+#include "../Utils/Helper.h"
 
 #include <string>
 #include <fstream>

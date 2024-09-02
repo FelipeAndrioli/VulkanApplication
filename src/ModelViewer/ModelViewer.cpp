@@ -4,14 +4,14 @@
 #include <glm.hpp>
 #include <gtc/type_ptr.hpp>
 
-#include "../Application.h"
-#include "../Settings.h"
-
-#include "../GraphicsDevice.h"
-#include "../Renderer.h"
+#include "../Core/Application.h"
+#include "../Core/GraphicsDevice.h"
+#include "../Core/Settings.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Model.h"
+
+#include "../Renderer.h"
 
 class ModelViewer : public Application::IScene {
 public:

@@ -1,11 +1,13 @@
 #include "Renderer.h"
-#include "Graphics.h"
-#include "GraphicsDevice.h"
-#include "TextureLoader.h"
-#include "ModelLoader.h"
-#include "Application.h"
-#include "ConstantBuffers.h"
-#include "Helper.h"
+
+#include "./Core/Graphics.h"
+#include "./Core/GraphicsDevice.h"
+#include "./Core/Application.h"
+#include "./Core/ConstantBuffers.h"
+
+#include "./Utils/TextureLoader.h"
+#include "./Utils/ModelLoader.h"
+#include "./Utils/Helper.h"
 
 #include "../Assets/Material.h"
 #include "../Assets/Model.h"

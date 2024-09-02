@@ -3,8 +3,8 @@
 #include <memory>
 #include <stdexcept>
 
-#include "../GraphicsDevice.h"
-#include "../Graphics.h"
+#include "../Core/GraphicsDevice.h"
+#include "../Core/Graphics.h"
 
 using namespace Graphics;
 

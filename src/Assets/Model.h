@@ -4,7 +4,7 @@
 
 #include "Mesh.h"
 
-#include "../Graphics.h"
+#include "../Core/Graphics.h"
 
 namespace Assets {
 	struct Transform {

@@ -8,7 +8,8 @@
 #include <glm.hpp>
 #include <gtx/hash.hpp>
 
-#include "../VulkanHeader.h"
+#include "../Core/VulkanHeader.h"
+
 #include "Material.h"
 
 namespace Assets {

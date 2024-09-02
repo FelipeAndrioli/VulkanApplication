@@ -1,6 +1,5 @@
 #include "ModelLoader.h"
 
-#include <fstream>
 #include <unordered_map>
 #include <cassert>
 
@@ -12,9 +11,10 @@
 #include "../Assets/Model.h"
 #include "../Assets/Mesh.h"
 
-#include "../Graphics.h"
-#include "../GraphicsDevice.h"
-#include "../ConstantBuffers.h"
+#include "../Core/Graphics.h"
+#include "../Core/GraphicsDevice.h"
+#include "../Core/ConstantBuffers.h"
+
 #include "./Helper.h"
 
 #include "./TextureLoader.h"
