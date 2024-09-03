@@ -230,7 +230,8 @@ void LoadTextures(
 			util.C_Str(), 
 			model.MaterialPath, 
 			material->GetName().C_Str(), 
-			model.FlipTexturesVertically, 
+			//model.FlipTexturesVertically, 
+			false,
 			model.GenerateMipMaps
 		);
 	}

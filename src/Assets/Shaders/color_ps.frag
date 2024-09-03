@@ -78,16 +78,20 @@ layout (push_constant) uniform constant {
 } mesh_constant;
 
 void main() {
-	light_t light = lights[0];
-
 	material_t current_material = materials[mesh_constant.material_index];
 
 	if (current_material.diffuse_texture_index == -1) {
-		outColor = vec4(current_material.diffuse.x, current_material.diffuse.y, current_material.diffuse.z, 1.0f);
+		outColor = vec4(current_material.diffuse.xyz, 1.0f);
 	} else {
 		outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
 	}
 
+	for (int i = 0; i < MAX_LIGHTS; i++) {
+		light_t light = lights[i];
+		
+		vec3 light_dir = light.position.xyz;
 
-	outColor *= (light.color * light.color.w);
+		outColor += (light.color * light.color.w);
+	}
+
 }

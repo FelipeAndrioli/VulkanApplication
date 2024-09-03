@@ -11,8 +11,12 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 } sceneGPUData;
 
 layout (std140, set = 1, binding = 0) uniform ObjectGPUData {
-	vec4 extra[12];
+	vec4 extra[11];
 	mat4 model;
+	int extra_scalar;
+	int extra_scalar1;
+	int extra_scalar2;
+	int flip_uv_vertically;
 } objectGPUData;
 
 layout (location = 0) in vec3 inPosition;
@@ -27,7 +31,13 @@ layout (location = 2) out vec2 fragTexCoord;
 void main() {
 	gl_Position = sceneGPUData.proj * sceneGPUData.view * objectGPUData.model * vec4(inPosition, 1.0f);
 	fragColor = inColor;
-	fragTexCoord = inTexCoord;
+
+	if (objectGPUData.flip_uv_vertically == 1) {
+		fragTexCoord = vec2(inTexCoord.x, inTexCoord.y * -1);
+	} else {
+		fragTexCoord = inTexCoord;
+	}
+
 	fragNormal = inNormal;
 }
 

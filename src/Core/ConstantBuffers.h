@@ -15,6 +15,11 @@ struct GlobalConstants {
 };
 
 struct ModelConstants {
-	glm::vec4 extra[12] = {};
+	glm::vec4 extra[11] = {};
 	glm::mat4 model = glm::mat4(1.0f);
+
+	alignas(4) int extraScalar = 0;
+	alignas(4) int extraScalar1 = 0;
+	alignas(4) int extraScalar2 = 0;
+	alignas(4) int flipUvVertically = 0;
 };

@@ -34,6 +34,7 @@ private:
 
 	std::shared_ptr<Assets::Model> m_Dragon;
 	std::shared_ptr<Assets::Model> m_Duck;
+	std::shared_ptr<Assets::Model> m_Backpack;
 
 	uint32_t m_ScreenWidth = 0;
 	uint32_t m_ScreenHeight = 0;
@@ -60,7 +61,14 @@ void ModelViewer::StartUp() {
 	m_Dragon->Transformations.translation.x = 0.0f;
 	m_Dragon->Transformations.translation.y = 0.0f;
 
-	
+	m_Backpack = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj");
+	m_Backpack->Name = "Backpack";
+	m_Backpack->Transformations.scaleHandler = 1.0f;
+	m_Backpack->Transformations.translation.x = -4.44f;
+	m_Backpack->Transformations.translation.y = 1.4f;
+	m_Backpack->FlipUvVertically = true;
+
+	/*
 	m_Duck = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/rubber_duck/scene.gltf");
 	m_Duck->Name = "Duck";
 	m_Duck->Transformations.scaleHandler = 0.01f;
@@ -68,6 +76,7 @@ void ModelViewer::StartUp() {
 	m_Duck->Transformations.translation.y = 300.0f;
 	m_Duck->Transformations.translation.z = -138.0f;
 	m_Duck->Transformations.rotation.x = -100.0f;
+	*/
 
 	/*
 	m_Dragon = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
@@ -89,7 +98,8 @@ void ModelViewer::CleanUp() {
 void ModelViewer::Update(float d, InputSystem::Input& input) {
 	m_Camera.OnUpdate(d, input);
 	m_Dragon->OnUpdate(d);
-	m_Duck->OnUpdate(d);
+	//m_Duck->OnUpdate(d);
+	m_Backpack->OnUpdate(d);
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -97,12 +107,14 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	if (settings.renderDefault) {
 		Renderer::RenderModel(commandBuffer, *m_Dragon.get());
-		Renderer::RenderModel(commandBuffer, *m_Duck.get());
+		//Renderer::RenderModel(commandBuffer, *m_Duck.get());
+		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
 	}
 
 	if (settings.renderWireframe) {
 		Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());
-		Renderer::RenderWireframe(commandBuffer, *m_Duck.get());
+		//Renderer::RenderWireframe(commandBuffer, *m_Duck.get());
+		Renderer::RenderWireframe(commandBuffer, *m_Backpack.get());
 	}
 
 	if (settings.renderSkybox) {
@@ -118,7 +130,10 @@ void ModelViewer::RenderUI() {
 
 	m_Camera.OnUIRender();
 	m_Dragon->OnUIRender();
-	m_Duck->OnUIRender();
+	//m_Duck->OnUIRender();
+	m_Backpack->OnUIRender();
+
+	Renderer::OnUIRender();
 }
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {

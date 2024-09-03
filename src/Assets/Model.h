@@ -37,7 +37,7 @@ namespace Assets {
 		size_t TotalVertices = 0;
 		size_t TotalIndices = 0;
 
-		bool FlipTexturesVertically = false;
+		bool FlipUvVertically = false;
 		bool GenerateMipMaps = true;
 		bool Rotate = false;
 

@@ -57,6 +57,7 @@ namespace Assets {
 			ImGui::SliderFloat(s_label.c_str(), &Transformations.scaleHandler, 0.0f, 20.0f);
 
 			ImGui::Checkbox("Rotate", &Rotate);
+			ImGui::Checkbox("Flip UV Vertically", &FlipUvVertically);
 
 			ImGui::TreePop();
 		}
