@@ -17,6 +17,7 @@ namespace Renderer {
 	void Init();
 	void Shutdown();
 	void LoadResources();
+	void OnUIRender();
 
 	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);

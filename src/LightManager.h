@@ -28,6 +28,8 @@ namespace LightManager {
 	void Shutdown();
 
 	void AddLight(LightData lightData);
+	void UpdateBuffer();
+	void OnUIRender();
 
 	Graphics::Buffer& GetLightBuffer();
 }

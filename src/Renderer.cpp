@@ -138,7 +138,6 @@ void Renderer::LoadResources() {
 
 	gfxDevice->WriteBuffer(materialBuffer, meshMaterialData.data());
 
-	std::cout << "Material Size: " << sizeof(MaterialData) << '\n';
 	PipelineStateDescription colorPSODesc = {};
 	colorPSODesc.Name = "Color Pipeline";
 	colorPSODesc.vertexShader = &m_DefaultVertShader;
@@ -183,6 +182,10 @@ void Renderer::LoadResources() {
 	}
 }
 
+void Renderer::OnUIRender() {
+	LightManager::OnUIRender();
+}
+
 void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
@@ -198,6 +201,9 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	m_GlobalConstants.proj = camera.ProjectionMatrix;
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
+
+	LightManager::UpdateBuffer();
+
 	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
 }
 
@@ -214,6 +220,7 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& 
 
 	ModelConstants modelConstant = {};
 	modelConstant.model = model.GetModelMatrix();
+	modelConstant.flipUvVertically = model.FlipUvVertically;
 
 	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
 

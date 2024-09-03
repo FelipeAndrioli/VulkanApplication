@@ -4,6 +4,7 @@
 
 #include "../Core/Graphics.h"
 #include "../Core/GraphicsDevice.h"
+#include "../Core/UI.h"
 
 namespace LightManager {
 	bool m_Initialized = false;
@@ -22,7 +23,7 @@ void LightManager::Init() {
 
 	LightData sunLight = {};
 	sunLight.Position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-	sunLight.Color= glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	sunLight.Color= glm::vec4(0.0f, 0.2f, 0.2f, 1.0f);
 	sunLight.Type = 1;
 
 	LightData sunLight1 = {};
@@ -46,12 +47,10 @@ void LightManager::Init() {
 	sunLight4.Type = 1;
 
 	AddLight(sunLight);
-	AddLight(sunLight1);
-	AddLight(sunLight2);
-	AddLight(sunLight3);
-	AddLight(sunLight4);
-
-	std::cout << m_Lights.size() << " loaded lights!" << '\n';
+	//AddLight(sunLight1);
+	//AddLight(sunLight2);
+	//AddLight(sunLight3);
+	//AddLight(sunLight4);
 
 	gfxDevice->WriteBuffer(m_LightBuffer, m_Lights.data());
 
@@ -70,6 +69,42 @@ void LightManager::AddLight(LightData lightData) {
 	}
 
 	m_Lights.push_back(lightData);
+}
+
+void LightManager::UpdateBuffer() {
+	if (!m_Initialized)
+		return;
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
+}
+
+void LightManager::OnUIRender() {
+	if (!m_Initialized)
+		return;
+
+	ImGui::SeparatorText("Light Manager");
+	
+	for (int i = 0; i < m_Lights.size(); i++) {
+		auto& light = m_Lights[i];
+
+		std::string light_id = "light_";
+		light_id += std::to_string(i);
+		
+		if (ImGui::TreeNode(light_id.c_str())) {
+			ImGui::SliderFloat("Position X", &light.Position.x, -20.0f, 20.0f);
+			ImGui::SliderFloat("Position Y", &light.Position.y, -20.0f, 20.0f);
+			ImGui::SliderFloat("Position Z", &light.Position.z, -20.0f, 20.0f);
+
+			ImGui::SliderFloat("Color R", &light.Color.r, 0.0f, 1.0f);
+			ImGui::SliderFloat("Color G", &light.Color.g, 0.0f, 1.0f);
+			ImGui::SliderFloat("Color B", &light.Color.b, 0.0f, 1.0f);
+			
+			ImGui::SliderFloat("Light Intensity", &light.Color.a, 0.0f, 1.0f);
+
+			ImGui::TreePop();
+		}
+	}
 }
 
 Graphics::Buffer& LightManager::GetLightBuffer() {
