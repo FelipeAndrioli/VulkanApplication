@@ -9,8 +9,9 @@
 layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec3 fragNormal;
 layout (location = 2) in vec2 fragTexCoord;
+layout (location = 3) in vec3 fragPos;
 
-layout (location = 0) out vec4 outColor;
+layout (location = 0) out vec4 out_color;
 
 struct material_t {
 	vec4 ambient;		// ignore w
@@ -58,7 +59,8 @@ struct light_t {
 	vec4 extra[13];
 
 	int type;
-	int extra_0;
+	float ambient_strength;
+
 	int extra_1;
 	int extra_2;
 };
@@ -80,18 +82,30 @@ layout (push_constant) uniform constant {
 void main() {
 	material_t current_material = materials[mesh_constant.material_index];
 
+	vec4 material_color = vec4(1.0);
+
 	if (current_material.diffuse_texture_index == -1) {
-		outColor = vec4(current_material.diffuse.xyz, 1.0f);
+		material_color = vec4(current_material.diffuse.xyz, 1.0);
 	} else {
-		outColor = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+		material_color = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
 	}
 
-	for (int i = 0; i < MAX_LIGHTS; i++) {
+	//for (int i = 0; i < MAX_LIGHTS; i++) {
+	for (int i = 0; i < 1; i++) {
 		light_t light = lights[i];
-		
-		vec3 light_dir = light.position.xyz;
 
-		outColor += (light.color * light.color.w);
+		float light_intensity = light.color.a;
+
+		vec3 normal = normalize(fragNormal);
+		vec3 light_dir = normalize(light.position.xyz - fragPos);
+
+		float diff = max(dot(light_dir, normal), 0.0);
+
+		vec3 ambient = vec3(light.ambient_strength);
+		vec3 diffuse = diff * light.color.rgb;
+
+		material_color *= vec4(ambient + diffuse, 1.0) * light_intensity;
 	}
 
+	out_color = material_color;
 }

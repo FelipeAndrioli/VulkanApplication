@@ -27,6 +27,7 @@ layout (location = 3) in vec2 inTexCoord;
 layout (location = 0) out vec3 fragColor;
 layout (location = 1) out vec3 fragNormal;
 layout (location = 2) out vec2 fragTexCoord;
+layout (location = 3) out vec3 fragPos;
 
 void main() {
 	gl_Position = sceneGPUData.proj * sceneGPUData.view * objectGPUData.model * vec4(inPosition, 1.0f);
@@ -39,5 +40,6 @@ void main() {
 	}
 
 	fragNormal = inNormal;
+	fragPos = vec3(objectGPUData.model * vec4(inPosition, 1.0f));
 }
 
