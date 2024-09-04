@@ -199,6 +199,7 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	
 	m_GlobalConstants.view = camera.ViewMatrix;
 	m_GlobalConstants.proj = camera.ProjectionMatrix;
+	m_GlobalConstants.cameraPosition = glm::vec4(camera.Position, 1.0f);
 	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer, &m_GlobalConstants);

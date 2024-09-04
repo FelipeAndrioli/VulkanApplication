@@ -5,7 +5,8 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float time;
 	float extra_s_2;
 	float extra_s_3;
-	vec4 extra[7];
+	vec4 camera_position;
+	vec4 extra[6];
 	mat4 view;
 	mat4 proj;
 } sceneGPUData;
