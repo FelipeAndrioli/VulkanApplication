@@ -29,9 +29,6 @@ layout (location = 0) out vec3 fragColor;
 layout (location = 1) out vec3 fragNormal;
 layout (location = 2) out vec2 fragTexCoord;
 layout (location = 3) out vec3 fragPos;
-layout (location = 4) out vec3 totals;
-
-// totals.x = total lights
 
 void main() {
 	gl_Position = sceneGPUData.proj * sceneGPUData.view * objectGPUData.model * vec4(inPosition, 1.0f);
@@ -45,8 +42,5 @@ void main() {
 
 	fragNormal = mat3(objectGPUData.normal_matrix) * inNormal;
 	fragPos = vec3(objectGPUData.model * vec4(inPosition, 1.0f));
-	totals.x = sceneGPUData.total_lights;
-	totals.y = 0.0;
-	totals.z = 0.0;
 }
 

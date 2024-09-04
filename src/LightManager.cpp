@@ -23,13 +23,13 @@ void LightManager::Init() {
 	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(LightData) * MAX_LIGHTS);
 
 	LightData sunLight = {};
-    sunLight.Position = glm::vec4(0.0f, 6.0f, 0.0f, 1.0f);
-	sunLight.Color= glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	sunLight.Type = 1;
-	sunLight.AmbientStrength = 0.4f;
+    sunLight.position = glm::vec4(0.0f, 6.0f, 0.0f, 1.0f);
+	sunLight.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	sunLight.type = 1;
+	sunLight.ambientStrength = 0.4f;
 
 	AddLight(sunLight);
-	
+
 	gfxDevice->WriteBuffer(m_LightBuffer, m_Lights.data());
 
 	m_Initialized = true;
@@ -70,17 +70,17 @@ void LightManager::OnUIRender() {
 		light_id += std::to_string(i);
 		
 		if (ImGui::TreeNode(light_id.c_str())) {
-			ImGui::SliderFloat("Position X", &light.Position.x, -20.0f, 20.0f);
-			ImGui::SliderFloat("Position Y", &light.Position.y, -20.0f, 20.0f);
-			ImGui::SliderFloat("Position Z", &light.Position.z, -20.0f, 20.0f);
+			ImGui::SliderFloat("Position X", &light.position.x, -20.0f, 20.0f);
+			ImGui::SliderFloat("Position Y", &light.position.y, -20.0f, 20.0f);
+			ImGui::SliderFloat("Position Z", &light.position.z, -20.0f, 20.0f);
 
-			ImGui::SliderFloat("Color R", &light.Color.r, 0.0f, 1.0f);
-			ImGui::SliderFloat("Color G", &light.Color.g, 0.0f, 1.0f);
-			ImGui::SliderFloat("Color B", &light.Color.b, 0.0f, 1.0f);
+			ImGui::SliderFloat("Color R", &light.color.r, 0.0f, 1.0f);
+			ImGui::SliderFloat("Color G", &light.color.g, 0.0f, 1.0f);
+			ImGui::SliderFloat("Color B", &light.color.b, 0.0f, 1.0f);
 			
-			ImGui::SliderFloat("Light Intensity", &light.Color.a, 0.0f, 1.0f);
+			ImGui::SliderFloat("Light Intensity", &light.color.a, 0.0f, 1.0f);
 
-			ImGui::SliderFloat("Ambient Strength R", &light.AmbientStrength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Ambient Strength R", &light.ambientStrength, 0.0f, 1.0f);
 
 			ImGui::TreePop();
 		}

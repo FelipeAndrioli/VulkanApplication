@@ -10,7 +10,6 @@ layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec3 fragNormal;
 layout (location = 2) in vec2 fragTexCoord;
 layout (location = 3) in vec3 fragPos;
-layout (location = 4) in vec3 totals;
 
 // totals.x = total lights
 
@@ -68,6 +67,16 @@ struct light_t {
 	int extra_2;
 };
 
+layout (std140, set = 0, binding = 0) uniform SceneGPUData {
+	int total_lights;
+	float time;
+	float extra_s_2;
+	float extra_s_3;
+	vec4 extra[7];
+	mat4 view;
+	mat4 proj;
+} sceneGPUData;
+
 layout (std140, set = 0, binding = 1) uniform material_uniform {
 	material_t materials[MAX_MATERIALS];
 };
@@ -93,8 +102,7 @@ void main() {
 		material_color = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
 	}
 
-	//for (int i = 0; i < MAX_LIGHTS; i++) {
-	for (int i = 0; i < 1; i++) {
+	for (int i = 0; i < sceneGPUData.total_lights; i++) {
 		light_t light = lights[i];
 
 		float light_intensity = light.color.a;
