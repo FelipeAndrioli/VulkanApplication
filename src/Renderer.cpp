@@ -199,6 +199,7 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	
 	m_GlobalConstants.view = camera.ViewMatrix;
 	m_GlobalConstants.proj = camera.ProjectionMatrix;
+	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
 
@@ -220,6 +221,7 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& 
 
 	ModelConstants modelConstant = {};
 	modelConstant.model = model.GetModelMatrix();
+	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
 	modelConstant.flipUvVertically = model.FlipUvVertically;
 
 	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);

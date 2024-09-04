@@ -1,8 +1,8 @@
 #version 450
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
+	int total_lights;
 	float time;
-	float extra_s_1;
 	float extra_s_2;
 	float extra_s_3;
 	vec4 extra[7];
@@ -11,8 +11,9 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 } sceneGPUData;
 
 layout (std140, set = 1, binding = 0) uniform ObjectGPUData {
-	vec4 extra[11];
+	vec4 extra[7];
 	mat4 model;
+	mat4 normal_matrix;
 	int extra_scalar;
 	int extra_scalar1;
 	int extra_scalar2;
@@ -28,6 +29,9 @@ layout (location = 0) out vec3 fragColor;
 layout (location = 1) out vec3 fragNormal;
 layout (location = 2) out vec2 fragTexCoord;
 layout (location = 3) out vec3 fragPos;
+layout (location = 4) out vec3 totals;
+
+// totals.x = total lights
 
 void main() {
 	gl_Position = sceneGPUData.proj * sceneGPUData.view * objectGPUData.model * vec4(inPosition, 1.0f);
@@ -39,7 +43,10 @@ void main() {
 		fragTexCoord = inTexCoord;
 	}
 
-	fragNormal = inNormal;
+	fragNormal = mat3(objectGPUData.normal_matrix) * inNormal;
 	fragPos = vec3(objectGPUData.model * vec4(inPosition, 1.0f));
+	totals.x = sceneGPUData.total_lights;
+	totals.y = 0.0;
+	totals.z = 0.0;
 }
 

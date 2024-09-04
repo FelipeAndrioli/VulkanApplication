@@ -5,18 +5,19 @@
 #include <glm.hpp>
 
 struct GlobalConstants {
-	float time = 0.0f;
-	float extra_s_1 = 0.0f;
-	float extra_s_2 = 0.0f;
-	float extra_s_3 = 0.0f;
+	alignas(4) int totalLights = 0;
+	alignas(4) float time = 0.0f;
+	alignas(4) float extra_s_2 = 0.0f;
+	alignas(4) float extra_s_3 = 0.0f;
 	glm::vec4 extra[7];
 	glm::mat4 view = glm::mat4(1.0f);
 	glm::mat4 proj = glm::mat4(1.0f);
 };
 
 struct ModelConstants {
-	glm::vec4 extra[11] = {};
+	glm::vec4 extra[7] = {};
 	glm::mat4 model = glm::mat4(1.0f);
+	glm::mat4 normalMatrix = glm::mat4(1.0f);
 
 	alignas(4) int extraScalar = 0;
 	alignas(4) int extraScalar1 = 0;

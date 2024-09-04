@@ -23,10 +23,10 @@ void LightManager::Init() {
 	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(LightData) * MAX_LIGHTS);
 
 	LightData sunLight = {};
-    sunLight.Position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-	sunLight.Color= glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+    sunLight.Position = glm::vec4(0.0f, 6.0f, 0.0f, 1.0f);
+	sunLight.Color= glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	sunLight.Type = 1;
-	sunLight.AmbientStrength = 0.1f;
+	sunLight.AmbientStrength = 0.4f;
 
 	AddLight(sunLight);
 	
@@ -85,6 +85,10 @@ void LightManager::OnUIRender() {
 			ImGui::TreePop();
 		}
 	}
+}
+
+int LightManager::GetTotalLights() {
+	return m_Lights.size();
 }
 
 Graphics::Buffer& LightManager::GetLightBuffer() {
