@@ -12,9 +12,9 @@ struct LightData {
 	glm::vec4 extra[13];
 
 	alignas(4) int type = 0;
+	alignas(4) int extra0 = 0;
 	alignas(4) float ambientStrength = 0.0f;
-	alignas(4) int extra1 = 0;
-	alignas(4) int extra2 = 0;
+	alignas(4) float specularStrength = 0.0f;
 };
 
 namespace Graphics {

@@ -27,6 +27,7 @@ void LightManager::Init() {
 	sunLight.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	sunLight.type = 1;
 	sunLight.ambientStrength = 0.4f;
+	sunLight.specularStrength = 0.5f;
 
 	AddLight(sunLight);
 
@@ -80,7 +81,8 @@ void LightManager::OnUIRender() {
 			
 			ImGui::SliderFloat("Light Intensity", &light.color.a, 0.0f, 1.0f);
 
-			ImGui::SliderFloat("Ambient Strength R", &light.ambientStrength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Ambient Strength", &light.ambientStrength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Specular Strength", &light.specularStrength, 0.0f, 1.0f);
 
 			ImGui::TreePop();
 		}

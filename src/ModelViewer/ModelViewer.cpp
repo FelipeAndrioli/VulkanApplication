@@ -33,7 +33,7 @@ private:
 	Assets::Camera m_Camera = {};
 
 	std::shared_ptr<Assets::Model> m_Dragon;
-	std::shared_ptr<Assets::Model> m_Duck;
+	std::shared_ptr<Assets::Model> m_Sponza;
 	std::shared_ptr<Assets::Model> m_Backpack;
 
 	uint32_t m_ScreenWidth = 0;
@@ -55,6 +55,7 @@ void ModelViewer::StartUp() {
 
 	Renderer::Init();
 
+	/*
 	m_Dragon = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
 	m_Dragon->Name = "Dragon";
 	m_Dragon->Transformations.scaleHandler = 20.0f;
@@ -67,26 +68,14 @@ void ModelViewer::StartUp() {
 	m_Backpack->Transformations.translation.x = -4.44f;
 	m_Backpack->Transformations.translation.y = 1.4f;
 	m_Backpack->FlipUvVertically = true;
-
-	/*
-	m_Duck = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/rubber_duck/scene.gltf");
-	m_Duck->Name = "Duck";
-	m_Duck->Transformations.scaleHandler = 0.01f;
-	m_Duck->Transformations.translation.x = -400.0f;
-	m_Duck->Transformations.translation.y = 300.0f;
-	m_Duck->Transformations.translation.z = -138.0f;
-	m_Duck->Transformations.rotation.x = -100.0f;
 	*/
 
-	/*
-	m_Dragon = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
-	m_Dragon->Name = "Sponza";
-	m_Dragon->Transformations.scaleHandler = 0.008f;
-	m_Dragon->Transformations.translation.x = -10.8f;
-	m_Dragon->Transformations.translation.y = -2.5f;
-	m_Dragon->Transformations.rotation.y = 45.0f;
-	m_Dragon->FlipTexturesVertically = true;
-	*/
+	m_Sponza = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
+	m_Sponza->Name = "Sponza";
+	m_Sponza->Transformations.scaleHandler = 0.008f;
+	m_Sponza->Transformations.translation.x = -10.8f;
+	m_Sponza->Transformations.translation.y = -2.5f;
+	m_Sponza->Transformations.rotation.y = 45.0f;
 
 	Renderer::LoadResources();
 }
@@ -97,24 +86,24 @@ void ModelViewer::CleanUp() {
 
 void ModelViewer::Update(float d, InputSystem::Input& input) {
 	m_Camera.OnUpdate(d, input);
-	m_Dragon->OnUpdate(d);
-	//m_Duck->OnUpdate(d);
-	m_Backpack->OnUpdate(d);
+	//m_Dragon->OnUpdate(d);
+	//m_Backpack->OnUpdate(d);
+	m_Sponza->OnUpdate(d);
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
 	if (settings.renderDefault) {
-		Renderer::RenderModel(commandBuffer, *m_Dragon.get());
-		//Renderer::RenderModel(commandBuffer, *m_Duck.get());
-		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
+		//Renderer::RenderModel(commandBuffer, *m_Dragon.get());
+		//Renderer::RenderModel(commandBuffer, *m_Backpack.get());
+		Renderer::RenderModel(commandBuffer, *m_Sponza.get());
 	}
 
 	if (settings.renderWireframe) {
-		Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());
-		//Renderer::RenderWireframe(commandBuffer, *m_Duck.get());
-		Renderer::RenderWireframe(commandBuffer, *m_Backpack.get());
+		//Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());
+		//Renderer::RenderWireframe(commandBuffer, *m_Backpack.get());
+		Renderer::RenderWireframe(commandBuffer, *m_Sponza.get());
 	}
 
 	if (settings.renderSkybox) {
@@ -129,9 +118,9 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox("Render Skybox", &settings.renderSkybox);
 
 	m_Camera.OnUIRender();
-	m_Dragon->OnUIRender();
-	//m_Duck->OnUIRender();
-	m_Backpack->OnUIRender();
+	//m_Dragon->OnUIRender();
+	//m_Backpack->OnUIRender();
+	m_Sponza->OnUIRender();
 
 	Renderer::OnUIRender();
 }

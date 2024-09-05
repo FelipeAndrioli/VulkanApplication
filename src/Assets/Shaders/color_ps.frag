@@ -61,10 +61,10 @@ struct light_t {
 	vec4 extra[13];
 
 	int type;
-	float ambient_strength;
+	int extra_0;
 
-	int extra_1;
-	int extra_2;
+	float ambient_strength;
+	float specular_strength;
 };
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
@@ -96,6 +96,7 @@ void main() {
 	material_t current_material = materials[mesh_constant.material_index];
 
 	vec4 material_color = vec4(1.0);
+	vec4 material_normal = vec4(1.0);
 
 	if (current_material.diffuse_texture_index == -1) {
 		material_color = vec4(current_material.diffuse.xyz, 1.0);
@@ -103,20 +104,32 @@ void main() {
 		material_color = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
 	}
 
+	if (current_material.normal_texture_index == -1) {
+		material_normal = vec4(normalize(fragNormal), 1.0);
+	} else {
+		material_normal = texture(texSampler[current_material.normal_texture_index], fragTexCoord);
+	}
+
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
 		light_t light = lights[i];
 
 		float light_intensity = light.color.a;
 
-		vec3 normal = normalize(fragNormal);
 		vec3 light_dir = normalize(light.position.xyz - fragPos);
 
-		float diff = max(dot(light_dir, normal), 0.0);
+		float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
 
 		vec3 ambient = vec3(light.ambient_strength);
 		vec3 diffuse = diff * light.color.rgb;
 
-		material_color *= vec4(ambient + diffuse, 1.0) * light_intensity;
+		vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
+		vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
+
+		float spec = pow(max(dot(view_dir, reflect_dir), 0.0), 32);
+
+		vec3 specular = spec * light.specular_strength * vec3(light.color);
+
+		material_color *= vec4(ambient + diffuse + specular, 1.0) * light_intensity;
 	}
 
 	out_color = material_color;
