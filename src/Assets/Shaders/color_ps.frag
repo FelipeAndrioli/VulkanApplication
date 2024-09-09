@@ -49,20 +49,16 @@ struct material_t {
 	//float pad0;
 };
 
-/*
-	Light Types
-
-	0 - Ambient Light
-*/
-
 struct light_t {
 	vec4 position;
 	vec4 color;		// w -> light intensity
-	vec4 extra[13];
+	vec4 extra[9];
+
+	mat4 model;
 
 	int type;
-	int extra_0;
 
+	float scale;
 	float ambient_strength;
 	float specular_strength;
 };

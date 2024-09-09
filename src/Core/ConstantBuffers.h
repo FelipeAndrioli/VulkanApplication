@@ -16,7 +16,8 @@ struct GlobalConstants {
 };
 
 struct ModelConstants {
-	glm::vec4 extra[7] = {};
+	glm::vec4 extra[6] = {};
+	glm::vec4 color = glm::vec4(1.0f);
 	glm::mat4 model = glm::mat4(1.0f);
 	glm::mat4 normalMatrix = glm::mat4(1.0f);
 

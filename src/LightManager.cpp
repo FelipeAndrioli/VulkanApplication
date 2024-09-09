@@ -1,10 +1,9 @@
 #include "LightManager.h"
 
-#include <vector>
-
-#include "../Core/Graphics.h"
-#include "../Core/GraphicsDevice.h"
 #include "../Core/UI.h"
+#include "../Core/ConstantBuffers.h"
+
+#include "./Renderer.h"
 
 namespace LightManager {
 	bool m_Initialized = false;
@@ -23,13 +22,23 @@ void LightManager::Init() {
 	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(LightData) * MAX_LIGHTS);
 
 	LightData sunLight = {};
-    sunLight.position = glm::vec4(0.0f, 6.0f, 0.0f, 1.0f);
+    sunLight.position = glm::vec4(0.0f, 6.0f, 15.0f, 1.0f);
 	sunLight.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	sunLight.type = 1;
 	sunLight.ambientStrength = 0.4f;
 	sunLight.specularStrength = 0.5f;
+	sunLight.scale = 0.5f;
 
+	LightData light2 = {};
+    light2.position = glm::vec4(-1.0f, 6.0f, 15.0f, 1.0f);
+	light2.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	light2.type = 1;
+	light2.ambientStrength = 0.4f;
+	light2.specularStrength = 0.5f;
+	light2.scale = 0.5f;
+	
 	AddLight(sunLight);
+	AddLight(light2);
 
 	gfxDevice->WriteBuffer(m_LightBuffer, m_Lights.data());
 
@@ -39,15 +48,17 @@ void LightManager::Init() {
 void LightManager::Shutdown() {
 	if (!m_Initialized)
 		return;
+
+	m_Lights.clear();
 }
 
-void LightManager::AddLight(LightData lightData) {
+void LightManager::AddLight(LightData& light) {
 	if (m_Lights.size() + 1 == MAX_LIGHTS) {
 		std::cout << "Max num of lights reached!" << '\n';
 		return;
 	}
 
-	m_Lights.push_back(lightData);
+	m_Lights.push_back(light);
 }
 
 void LightManager::UpdateBuffer() {
@@ -55,6 +66,16 @@ void LightManager::UpdateBuffer() {
 		return;
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	for (auto& light : m_Lights) {	
+		glm::mat4 model = glm::mat4(1.0f);
+
+		model = glm::scale(model, glm::vec3(light.scale, light.scale, light.scale));
+		model = glm::translate(model, glm::vec3(light.position));
+
+		light.model = model;
+	}
+
 	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
 }
 
@@ -83,6 +104,7 @@ void LightManager::OnUIRender() {
 
 			ImGui::SliderFloat("Ambient Strength", &light.ambientStrength, 0.0f, 1.0f);
 			ImGui::SliderFloat("Specular Strength", &light.specularStrength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Scale", &light.scale, 0.0f, 10.0f);
 
 			ImGui::TreePop();
 		}
@@ -95,4 +117,9 @@ int LightManager::GetTotalLights() {
 
 Graphics::Buffer& LightManager::GetLightBuffer() {
 	return m_LightBuffer;
+}
+
+
+std::vector<LightData>& LightManager::GetLights() {
+	return m_Lights;
 }

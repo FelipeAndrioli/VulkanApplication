@@ -28,6 +28,8 @@ namespace Renderer {
 	Graphics::Shader m_DefaultVertShader = {};
 	Graphics::Shader m_ColorFragShader = {};
 	Graphics::Shader m_WireframeFragShader = {};
+	Graphics::Shader m_LightSourceFragShader = {};
+	Graphics::Shader m_LightSourceVertShader = {};
 
 	Graphics::Buffer m_SkyboxBuffer = {};
 	Graphics::Buffer m_GlobalDataBuffer = {};
@@ -35,6 +37,7 @@ namespace Renderer {
 	Graphics::PipelineState m_SkyboxPSO = {};
 	Graphics::PipelineState m_ColorPSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
+	Graphics::PipelineState m_LightSourcePSO = {};
 	
 	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
 
@@ -72,10 +75,15 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyShader(m_WireframeFragShader);
 	gfxDevice->DestroyShader(m_SkyboxVertexShader);
 	gfxDevice->DestroyShader(m_SkyboxFragShader);
+	gfxDevice->DestroyShader(m_LightSourceFragShader);
+	gfxDevice->DestroyShader(m_LightSourceVertShader);
 	gfxDevice->DestroyPipeline(m_ColorPSO);
 	gfxDevice->DestroyPipeline(m_SkyboxPSO);
 	gfxDevice->DestroyPipeline(m_WireframePSO);
-	
+	gfxDevice->DestroyPipeline(m_LightSourcePSO);
+
+	LightManager::Shutdown();
+
 	m_Initialized = false;
 }
 
@@ -104,15 +112,18 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_DefaultVertShader, "./Shaders/default_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_ColorFragShader, "./Shaders/color_ps.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_WireframeFragShader, "./Shaders/wireframe_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertShader, "./Shaders/light_source_vert.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "./Shaders/light_source_frag.spv");
 
 	InputLayout globalInputLayout = {
 		.pushConstants = {
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) }
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) },				// material index (to be removed from here)
+			{ VK_SHADER_STAGE_VERTEX_BIT, sizeof(int), sizeof(int) }				// light source index (to be removed from here)
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
 			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
 			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
 		}
@@ -169,6 +180,16 @@ void Renderer::LoadResources() {
 	wireframePSODesc.psoInputLayout.push_back(modelInputLayout);
 
 	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO);
+
+	PipelineStateDescription lightSourcePSODesc = {};
+	lightSourcePSODesc.Name = "Light Source PSO";
+	lightSourcePSODesc.vertexShader = &m_LightSourceVertShader;
+	lightSourcePSODesc.fragmentShader = &m_LightSourceFragShader;
+	lightSourcePSODesc.noVertex = true;
+	lightSourcePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	lightSourcePSODesc.psoInputLayout.push_back(globalInputLayout);
+	
+	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO);
 
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 
@@ -282,5 +303,24 @@ void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Mod
 			static_cast<int32_t>(mesh.VertexOffset),
 			0
 		);
+	}
+}
+
+void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
+	Graphics::GraphicsDevice* gfxDevice = GetDevice();
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_LightSourcePSO.pipeline);
+
+	for (int i = 0; i < LightManager::GetLights().size(); i++) {	
+		vkCmdPushConstants(
+			commandBuffer, 
+			m_LightSourcePSO.pipelineLayout, 
+			VK_SHADER_STAGE_VERTEX_BIT,
+			sizeof(int),
+			sizeof(int),
+			&i
+		);
+
+		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
 }

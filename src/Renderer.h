@@ -11,6 +11,10 @@ namespace Assets {
 	class Model;
 }
 
+namespace Graphics {
+	struct PipelineState;
+}
+
 namespace Renderer {
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
@@ -23,4 +27,6 @@ namespace Renderer {
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);
 	void RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model);
+	void RenderLightSources(const VkCommandBuffer& commandBuffer);
+	void RenderCube(const VkCommandBuffer& commandBuffer, const Graphics::PipelineState& PSO);
 }
