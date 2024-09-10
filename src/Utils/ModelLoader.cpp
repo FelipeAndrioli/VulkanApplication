@@ -243,6 +243,8 @@ static void ProcessMaterials(
 	std::vector<Material>& sceneMaterials,
 	std::vector<Texture>& loadedTextures) {
 
+	int material_count = 0;
+
 	for (size_t i = 0; i < scene->mNumMaterials; i++) {
 		aiMaterial* material = scene->mMaterials[i];
 
@@ -278,7 +280,10 @@ static void ProcessMaterials(
 			newMaterial.MaterialData.Shininess = shininess;
 			newMaterial.MaterialData.ShininessStrength = shininessStrength;
 
+			std::cout << "Material " << materialName.C_Str() << " shininess: " << shininess << '\n';
 			sceneMaterials.push_back(newMaterial);
+
+			material_count++;
 		}
 
 		LoadTextures(model, material, aiTextureType_AMBIENT, Texture::TextureType::AMBIENT, sceneMaterials, loadedTextures);
@@ -287,6 +292,8 @@ static void ProcessMaterials(
 		LoadTextures(model, material, aiTextureType_NORMALS, Texture::TextureType::NORMAL, sceneMaterials, loadedTextures);
 		LoadTextures(model, material, aiTextureType_HEIGHT, Texture::TextureType::BUMP, sceneMaterials, loadedTextures);
 	}
+
+	std::cout << material_count << " materials loaded" << '\n';
 }
 
 void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& materials) {

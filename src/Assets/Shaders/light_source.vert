@@ -8,16 +8,20 @@
 
 struct light_t {
 	vec4 position;
-	vec4 color;		// w -> light intensity
-	vec4 extra[9];
-
+	vec4 color;
+	vec4 extra[8];
+	
 	mat4 model;
 
 	int type;
+	int extra_0;
+	int extra_1;
+	int extra_2;
 
 	float scale;
-	float ambient_strength;
-	float specular_strength;
+	float ambient;
+	float diffuse;
+	float specular;
 };
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {

@@ -45,11 +45,11 @@ void ModelViewer::StartUp() {
 	m_ScreenWidth = settings.Width;
 	m_ScreenHeight = settings.Height;
 
-	glm::vec3 position = glm::vec3(0.6f, 2.1f, 9.2f);
+	glm::vec3 position = glm::vec3(-5.7f, 3.1f, 4.8f);
 
 	float fov = 45.0f;
-	float yaw = -113.0f;
-	float pitch = -1.7f;
+	float yaw = -49.6f;
+	float pitch = -13.5f;
 
 	m_Camera.Init(position, fov, yaw, pitch, m_ScreenWidth, m_ScreenHeight);
 
@@ -57,25 +57,26 @@ void ModelViewer::StartUp() {
 
 	m_Dragon = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
 	m_Dragon->Name = "Dragon";
-	m_Dragon->Transformations.scaleHandler = 20.0f;
+	m_Dragon->Transformations.scaleHandler = 11.2f;
 	m_Dragon->Transformations.translation.x = 0.0f;
-	m_Dragon->Transformations.translation.y = 0.0f;
+	m_Dragon->Transformations.translation.y = -0.009f;
+	m_Dragon->Transformations.rotation.y = -46.9f;
 
 	m_Backpack = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj");
 	m_Backpack->Name = "Backpack";
-	m_Backpack->Transformations.scaleHandler = 1.0f;
-	m_Backpack->Transformations.translation.x = -4.44f;
-	m_Backpack->Transformations.translation.y = 1.4f;
+	m_Backpack->Transformations.scaleHandler = 0.3f;
+	m_Backpack->Transformations.translation.x = -8.9f;
+	m_Backpack->Transformations.translation.y = 4.4f;
+	m_Backpack->Transformations.translation.z = 7.5f;
 	m_Backpack->FlipUvVertically = true;
 
-	/*
 	m_Sponza = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
+	//m_Sponza = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/sponza/scene.gltf");
 	m_Sponza->Name = "Sponza";
 	m_Sponza->Transformations.scaleHandler = 0.008f;
 	m_Sponza->Transformations.translation.x = -10.8f;
 	m_Sponza->Transformations.translation.y = -2.5f;
 	m_Sponza->Transformations.rotation.y = 45.0f;
-	*/
 
 	Renderer::LoadResources();
 }
@@ -88,7 +89,7 @@ void ModelViewer::Update(float d, InputSystem::Input& input) {
 	m_Camera.OnUpdate(d, input);
 	m_Dragon->OnUpdate(d);
 	m_Backpack->OnUpdate(d);
-	//m_Sponza->OnUpdate(d);
+	m_Sponza->OnUpdate(d);
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -97,13 +98,13 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	if (settings.renderDefault) {
 		Renderer::RenderModel(commandBuffer, *m_Dragon.get());
 		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
-		//Renderer::RenderModel(commandBuffer, *m_Sponza.get());
+		Renderer::RenderModel(commandBuffer, *m_Sponza.get());
 	}
 
 	if (settings.renderWireframe) {
 		Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());
 		Renderer::RenderWireframe(commandBuffer, *m_Backpack.get());
-		//Renderer::RenderWireframe(commandBuffer, *m_Sponza.get());
+		Renderer::RenderWireframe(commandBuffer, *m_Sponza.get());
 	}
 
 	if (settings.renderLightSources) {
@@ -125,7 +126,7 @@ void ModelViewer::RenderUI() {
 	m_Camera.OnUIRender();
 	m_Dragon->OnUIRender();
 	m_Backpack->OnUIRender();
-	//m_Sponza->OnUIRender();
+	m_Sponza->OnUIRender();
 
 	Renderer::OnUIRender();
 }

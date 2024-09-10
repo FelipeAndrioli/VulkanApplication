@@ -3,7 +3,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-#define MAX_MATERIALS 26
+#define MAX_MATERIALS 50
 #define MAX_LIGHTS 5
 
 layout (location = 0) in vec3 fragColor;
@@ -51,16 +51,20 @@ struct material_t {
 
 struct light_t {
 	vec4 position;
-	vec4 color;		// w -> light intensity
-	vec4 extra[9];
-
+	vec4 color;
+	vec4 extra[8];
+	
 	mat4 model;
 
 	int type;
+	int extra_0;
+	int extra_1;
+	int extra_2;
 
 	float scale;
-	float ambient_strength;
-	float specular_strength;
+	float ambient;
+	float diffuse;
+	float specular;
 };
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
@@ -88,16 +92,43 @@ layout (push_constant) uniform constant {
 	int material_index;
 } mesh_constant;
 
+vec4 calc_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
+	vec3 light_dir = normalize(light.position.xyz - fragPos);
+
+	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
+
+	vec3 ambient = material_ambient.rgb * vec3(light.ambient);
+	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse);
+
+	vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
+	vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
+
+	float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
+
+	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
+
+	return vec4(ambient + diffuse + specular, 1.0) * light.color;
+}
+
 void main() {
 	material_t current_material = materials[mesh_constant.material_index];
 
-	vec4 material_color = vec4(1.0);
+	vec4 material_color = vec4(0.0);
+	vec4 material_ambient = vec4(1.0);
+	vec4 material_diffuse = vec4(1.0);
+	vec4 material_specular = vec4(1.0);
 	vec4 material_normal = vec4(1.0);
 
 	if (current_material.diffuse_texture_index == -1) {
-		material_color = vec4(current_material.diffuse.xyz, 1.0);
+		material_ambient = vec4(current_material.diffuse.xyz, 1.0);
 	} else {
-		material_color = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+		material_ambient = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+	}
+
+	if (current_material.diffuse_texture_index == -1) {
+		material_diffuse = vec4(current_material.diffuse.xyz, 1.0);
+	} else {
+		material_diffuse = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
 	}
 
 	if (current_material.normal_texture_index == -1) {
@@ -106,26 +137,14 @@ void main() {
 		material_normal = texture(texSampler[current_material.normal_texture_index], fragTexCoord);
 	}
 
+	if (current_material.specular_texture_index == -1) {
+		material_specular = vec4(current_material.specular.xyz, 1.0);
+	} else {
+		material_specular = texture(texSampler[current_material.specular_texture_index], fragTexCoord);
+	}
+
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
-		light_t light = lights[i];
-
-		float light_intensity = light.color.a;
-
-		vec3 light_dir = normalize(light.position.xyz - fragPos);
-
-		float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
-
-		vec3 ambient = vec3(light.ambient_strength);
-		vec3 diffuse = diff * light.color.rgb;
-
-		vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
-		vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
-
-		float spec = pow(max(dot(view_dir, reflect_dir), 0.0), 32);
-
-		vec3 specular = spec * light.specular_strength * vec3(light.color);
-
-		material_color *= vec4(ambient + diffuse + specular, 1.0) * light_intensity;
+		material_color += calc_light(lights[i], current_material, material_ambient, material_diffuse, material_specular, material_normal);
 	}
 
 	out_color = material_color;

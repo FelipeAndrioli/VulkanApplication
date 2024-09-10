@@ -22,20 +22,22 @@ void LightManager::Init() {
 	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(LightData) * MAX_LIGHTS);
 
 	LightData sunLight = {};
-    sunLight.position = glm::vec4(0.0f, 6.0f, 15.0f, 1.0f);
-	sunLight.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    sunLight.position = glm::vec4(-9.6f, 18.0f, 5.3f, 1.0f);
 	sunLight.type = 1;
-	sunLight.ambientStrength = 0.4f;
-	sunLight.specularStrength = 0.5f;
-	sunLight.scale = 0.5f;
+	sunLight.ambient = 0.1f;
+	sunLight.diffuse = 0.5f;
+	sunLight.specular = 0.5f;
+	sunLight.scale = 0.2f;
+	sunLight.color = glm::vec4(1.0f);
 
 	LightData light2 = {};
-    light2.position = glm::vec4(-1.0f, 6.0f, 15.0f, 1.0f);
-	light2.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    light2.position = glm::vec4(-21.4f, 17.4f, 15.0f, 1.0f);
 	light2.type = 1;
-	light2.ambientStrength = 0.4f;
-	light2.specularStrength = 0.5f;
-	light2.scale = 0.5f;
+	light2.ambient = 0.1f;
+	light2.diffuse = 0.5f;
+	light2.specular = 0.5f;
+	light2.scale = 0.2f;
+	light2.color = glm::vec4(1.0f);
 	
 	AddLight(sunLight);
 	AddLight(light2);
@@ -92,18 +94,18 @@ void LightManager::OnUIRender() {
 		light_id += std::to_string(i);
 		
 		if (ImGui::TreeNode(light_id.c_str())) {
-			ImGui::SliderFloat("Position X", &light.position.x, -20.0f, 20.0f);
-			ImGui::SliderFloat("Position Y", &light.position.y, -20.0f, 20.0f);
-			ImGui::SliderFloat("Position Z", &light.position.z, -20.0f, 20.0f);
+			ImGui::SliderFloat("Position X", &light.position.x, -50.0f, 50.0f);
+			ImGui::SliderFloat("Position Y", &light.position.y, -50.0f, 50.0f);
+			ImGui::SliderFloat("Position Z", &light.position.z, -50.0f, 50.0f);
 
-			ImGui::SliderFloat("Color R", &light.color.r, 0.0f, 1.0f);
-			ImGui::SliderFloat("Color G", &light.color.g, 0.0f, 1.0f);
-			ImGui::SliderFloat("Color B", &light.color.b, 0.0f, 1.0f);
-			
-			ImGui::SliderFloat("Light Intensity", &light.color.a, 0.0f, 1.0f);
+			ImGui::SliderFloat("Ambient", &light.ambient, 0.0f, 1.0f);
+			ImGui::SliderFloat("Diffuse", &light.diffuse, 0.0f, 1.0f);
+			ImGui::SliderFloat("Specular", &light.specular, 0.0f, 1.0f);
 
-			ImGui::SliderFloat("Ambient Strength", &light.ambientStrength, 0.0f, 1.0f);
-			ImGui::SliderFloat("Specular Strength", &light.specularStrength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Light Color R", &light.color.r, 0.0f, 1.0f);
+			ImGui::SliderFloat("Light Color G", &light.color.g, 0.0f, 1.0f);
+			ImGui::SliderFloat("Light Color B", &light.color.b, 0.0f, 1.0f);
+		
 			ImGui::SliderFloat("Scale", &light.scale, 0.0f, 10.0f);
 
 			ImGui::TreePop();
