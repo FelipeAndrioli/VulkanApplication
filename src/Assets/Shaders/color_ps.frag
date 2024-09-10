@@ -110,6 +110,18 @@ vec4 calc_light(light_t light, material_t current_material, vec4 material_ambien
 	return vec4(ambient + diffuse + specular, 1.0) * light.color;
 }
 
+float linearize_depth(float depth, float near, float far) {
+	float z = depth * 2.0 - 1.0; // back to NDC
+	return (2.0 * near * far) / (far + near - z * (far - near));
+}
+
+vec4 render_depth() {
+	float near = 0.1;
+	float far = 200.0;
+	float depth = linearize_depth(gl_FragCoord.z, near, far) / far;
+	return vec4(vec3(depth), 1.0);
+}
+
 void main() {
 	material_t current_material = materials[mesh_constant.material_index];
 
@@ -123,12 +135,18 @@ void main() {
 		material_ambient = vec4(current_material.diffuse.xyz, 1.0);
 	} else {
 		material_ambient = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+		if (material_ambient.a < 0.5) {
+			discard;
+		}
 	}
 
 	if (current_material.diffuse_texture_index == -1) {
 		material_diffuse = vec4(current_material.diffuse.xyz, 1.0);
 	} else {
 		material_diffuse = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+		if (material_diffuse.a < 0.5) {
+			discard;
+		}
 	}
 
 	if (current_material.normal_texture_index == -1) {
@@ -141,6 +159,9 @@ void main() {
 		material_specular = vec4(current_material.specular.xyz, 1.0);
 	} else {
 		material_specular = texture(texSampler[current_material.specular_texture_index], fragTexCoord);
+		if (material_specular.a < 0.5) {
+			discard;
+		}
 	}
 
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
