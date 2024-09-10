@@ -102,9 +102,7 @@ void LightManager::OnUIRender() {
 			ImGui::SliderFloat("Diffuse", &light.diffuse, 0.0f, 1.0f);
 			ImGui::SliderFloat("Specular", &light.specular, 0.0f, 1.0f);
 
-			ImGui::SliderFloat("Light Color R", &light.color.r, 0.0f, 1.0f);
-			ImGui::SliderFloat("Light Color G", &light.color.g, 0.0f, 1.0f);
-			ImGui::SliderFloat("Light Color B", &light.color.b, 0.0f, 1.0f);
+			ImGui::ColorPicker4("Color", (float*)&light.color);
 		
 			ImGui::SliderFloat("Scale", &light.scale, 0.0f, 10.0f);
 
