@@ -30,9 +30,9 @@ struct LightData {
 
 	alignas(4) LightType type = LightType::Undefined;
 	alignas(4) int extra_0 = 0;
-	alignas(4) int extra_1 = 0;
-	alignas(4) int extra_2 = 0;
 
+	alignas(4) float linearAttenuation = 0;
+	alignas(4) float quadraticAttenuation = 0;
 	alignas(4) float scale = 0.0f;
 	alignas(4) float ambient = 0.0f;
 	alignas(4) float diffuse = 0.0f;

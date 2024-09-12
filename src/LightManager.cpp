@@ -30,17 +30,19 @@ void LightManager::Init() {
 	sunLight.scale = 0.2f;
 	sunLight.color = glm::vec4(1.0f);
 
-	LightData light2 = {};
-    light2.position = glm::vec4(-21.4f, 17.4f, 15.0f, 1.0f);
-	light2.type = LightType::PointLight;
-	light2.ambient = 0.1f;
-	light2.diffuse = 0.5f;
-	light2.specular = 0.5f;
-	light2.scale = 0.2f;
-	light2.color = glm::vec4(1.0f);
+	LightData light = {};
+    light.position = glm::vec4(-21.4f, 17.4f, 15.0f, 1.0f);
+	light.type = LightType::PointLight;
+	light.linearAttenuation = 0.006f;
+	light.quadraticAttenuation = 0.007f;
+	light.ambient = 0.1f;
+	light.diffuse = 0.5f;
+	light.specular = 0.5f;
+	light.scale = 0.2f;
+	light.color = glm::vec4(1.0f);
 	
 	AddLight(sunLight);
-	//AddLight(light2);
+	AddLight(light);
 
 	gfxDevice->WriteBuffer(m_LightBuffer, m_Lights.data());
 
@@ -125,10 +127,13 @@ void LightManager::OnUIRender() {
 			ImGui::SliderFloat("Diffuse", &light.diffuse, 0.0f, 1.0f);
 			ImGui::SliderFloat("Specular", &light.specular, 0.0f, 1.0f);
 
-			ImGui::ColorPicker4("Color", (float*)&light.color);
-		
-			ImGui::SliderFloat("Scale", &light.scale, 0.0f, 10.0f);
+			if (light.type == LightType::PointLight) {
+				ImGui::SliderFloat("Linear Attenuation", &light.linearAttenuation, 0.0f, 2.0f);
+				ImGui::SliderFloat("Quadratic Attenuation", &light.quadraticAttenuation, 0.0f, 2.0f);
+			}
 
+			ImGui::ColorPicker4("Color", (float*)&light.color);
+			ImGui::SliderFloat("Scale", &light.scale, 0.0f, 10.0f);
 			ImGui::TreePop();
 		}
 	}

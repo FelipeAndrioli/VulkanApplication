@@ -16,8 +16,8 @@ struct light_t {
 
 	int type;
 	int extra_0;
-	int extra_1;
-	int extra_2;
+	float linear_attenuation;
+	float quadratic_attenuation;
 
 	float scale;
 	float ambient;
