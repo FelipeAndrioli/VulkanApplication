@@ -311,7 +311,13 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_LightSourcePSO.pipeline);
 
-	for (int i = 0; i < LightManager::GetLights().size(); i++) {	
+	for (int i = 0; i < LightManager::GetLights().size(); i++) {
+
+		LightData light = LightManager::GetLights().at(i);
+
+		if (light.type == LightType::Directional)
+			continue;
+
 		vkCmdPushConstants(
 			commandBuffer, 
 			m_LightSourcePSO.pipelineLayout, 

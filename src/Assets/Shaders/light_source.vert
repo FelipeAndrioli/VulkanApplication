@@ -8,8 +8,9 @@
 
 struct light_t {
 	vec4 position;
+	vec4 direction;
 	vec4 color;
-	vec4 extra[8];
+	vec4 extra[7];
 	
 	mat4 model;
 

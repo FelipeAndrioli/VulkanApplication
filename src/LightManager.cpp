@@ -22,17 +22,17 @@ void LightManager::Init() {
 	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(LightData) * MAX_LIGHTS);
 
 	LightData sunLight = {};
-    sunLight.position = glm::vec4(-9.6f, 18.0f, 5.3f, 1.0f);
-	sunLight.type = 1;
-	sunLight.ambient = 0.1f;
-	sunLight.diffuse = 0.5f;
-	sunLight.specular = 0.5f;
+	sunLight.direction = glm::vec4(0.0f, -1.0f, 0.0f, 1.0f);
+	sunLight.type = LightType::Directional;
+	sunLight.ambient = 0.2f;
+	sunLight.diffuse = 0.2f;
+	sunLight.specular = 0.0f;
 	sunLight.scale = 0.2f;
 	sunLight.color = glm::vec4(1.0f);
 
 	LightData light2 = {};
     light2.position = glm::vec4(-21.4f, 17.4f, 15.0f, 1.0f);
-	light2.type = 1;
+	light2.type = LightType::PointLight;
 	light2.ambient = 0.1f;
 	light2.diffuse = 0.5f;
 	light2.specular = 0.5f;
@@ -40,7 +40,7 @@ void LightManager::Init() {
 	light2.color = glm::vec4(1.0f);
 	
 	AddLight(sunLight);
-	AddLight(light2);
+	//AddLight(light2);
 
 	gfxDevice->WriteBuffer(m_LightBuffer, m_Lights.data());
 
@@ -92,11 +92,34 @@ void LightManager::OnUIRender() {
 
 		std::string light_id = "light_";
 		light_id += std::to_string(i);
+
+		std::string light_type = "";
+
+		switch (light.type) {
+			case LightType::Directional:
+				light_id += "_directional_light";
+				break;
+			case LightType::PointLight:
+				light_id += "_point_light";
+				break;
+			case LightType::SpotLight:
+				light_id += "_spot_light";
+				break;
+			default:
+				light_id += "_undefined";
+				break;
+		}
 		
 		if (ImGui::TreeNode(light_id.c_str())) {
-			ImGui::SliderFloat("Position X", &light.position.x, -50.0f, 50.0f);
-			ImGui::SliderFloat("Position Y", &light.position.y, -50.0f, 50.0f);
-			ImGui::SliderFloat("Position Z", &light.position.z, -50.0f, 50.0f);
+			if (light.type == LightType::Directional) {
+				ImGui::SliderFloat("Direction X", &light.direction.x, -50.0f, 50.0f);
+				ImGui::SliderFloat("Direction Y", &light.direction.y, -50.0f, 50.0f);
+				ImGui::SliderFloat("Direction Z", &light.direction.z, -50.0f, 50.0f);
+			} else {
+				ImGui::SliderFloat("Position X", &light.position.x, -50.0f, 50.0f);
+				ImGui::SliderFloat("Position Y", &light.position.y, -50.0f, 50.0f);
+				ImGui::SliderFloat("Position Z", &light.position.z, -50.0f, 50.0f);
+			}
 
 			ImGui::SliderFloat("Ambient", &light.ambient, 0.0f, 1.0f);
 			ImGui::SliderFloat("Diffuse", &light.diffuse, 0.0f, 1.0f);
