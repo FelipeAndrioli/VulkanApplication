@@ -95,24 +95,14 @@ void LightManager::OnUIRender() {
 		std::string light_id = "light_";
 		light_id += std::to_string(i);
 
-		std::string light_type = "";
-
-		switch (light.type) {
-			case LightType::Directional:
-				light_id += "_directional_light";
-				break;
-			case LightType::PointLight:
-				light_id += "_point_light";
-				break;
-			case LightType::SpotLight:
-				light_id += "_spot_light";
-				break;
-			default:
-				light_id += "_undefined";
-				break;
-		}
-		
 		if (ImGui::TreeNode(light_id.c_str())) {
+			static const char* lightTypes[] = { "Directional", "Point", "Spot" };
+			int selected = light.type;
+
+			if (ImGui::Combo("Light Type", &selected, lightTypes, IM_ARRAYSIZE(lightTypes))) {
+				light.type = static_cast<LightType>(selected);
+			}
+
 			if (light.type == LightType::Directional) {
 				ImGui::SliderFloat("Direction X", &light.direction.x, -50.0f, 50.0f);
 				ImGui::SliderFloat("Direction Y", &light.direction.y, -50.0f, 50.0f);
