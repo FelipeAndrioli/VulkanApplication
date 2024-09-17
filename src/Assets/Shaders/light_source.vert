@@ -15,7 +15,8 @@ struct light_t {
 	mat4 model;
 
 	int type;
-	int extra_0;
+	
+	float cut_off_angle;
 	float linear_attenuation;
 	float quadratic_attenuation;
 

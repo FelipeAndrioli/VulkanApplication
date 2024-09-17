@@ -330,3 +330,18 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
 }
+
+void Renderer::AddFlashLight(const Assets::Camera& camera) {
+	LightData flashLight = {};
+	flashLight.position = camera.Position;
+	flashLight.direction = camera.Front;
+	flashLight.type = LightType::SpotLight;
+	flashLight.linearAttenuation = 0.006f;
+	flashLight.quadraticAttenuation = 0.007f;
+	flashLight.ambient = 0.1f;
+	flashLight.diffuse = 0.7f;
+	flashLight.specular = 0.7f;
+	flashLight.color = glm::vec4(1.0f);
+
+	LightManager::AddLight(flashLight);
+}

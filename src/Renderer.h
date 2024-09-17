@@ -29,4 +29,5 @@ namespace Renderer {
 	void RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderLightSources(const VkCommandBuffer& commandBuffer);
 	void RenderCube(const VkCommandBuffer& commandBuffer, const Graphics::PipelineState& PSO);
+	void AddFlashLight(const Assets::Camera& camera);
 }

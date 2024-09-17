@@ -78,6 +78,7 @@ void LightManager::UpdateBuffer() {
 		model = glm::translate(model, glm::vec3(light.position));
 
 		light.model = model;
+		light.direction.w = glm::cos(glm::radians(light.cutOffAngle));
 	}
 
 	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
@@ -103,11 +104,13 @@ void LightManager::OnUIRender() {
 				light.type = static_cast<LightType>(selected);
 			}
 
-			if (light.type == LightType::Directional) {
+			if (light.type == LightType::Directional || light.type == LightType::SpotLight) {
 				ImGui::SliderFloat("Direction X", &light.direction.x, -50.0f, 50.0f);
 				ImGui::SliderFloat("Direction Y", &light.direction.y, -50.0f, 50.0f);
 				ImGui::SliderFloat("Direction Z", &light.direction.z, -50.0f, 50.0f);
-			} else {
+			} 
+
+			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {
 				ImGui::SliderFloat("Position X", &light.position.x, -50.0f, 50.0f);
 				ImGui::SliderFloat("Position Y", &light.position.y, -50.0f, 50.0f);
 				ImGui::SliderFloat("Position Z", &light.position.z, -50.0f, 50.0f);
@@ -117,7 +120,11 @@ void LightManager::OnUIRender() {
 			ImGui::SliderFloat("Diffuse", &light.diffuse, 0.0f, 1.0f);
 			ImGui::SliderFloat("Specular", &light.specular, 0.0f, 1.0f);
 
-			if (light.type == LightType::PointLight) {
+			if (light.type == LightType::SpotLight) {
+				ImGui::SliderFloat("Cut Off Angle", &light.cutOffAngle, 0.0f, 90.0f);
+			}
+
+			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {
 				ImGui::SliderFloat("Linear Attenuation", &light.linearAttenuation, 0.0f, 2.0f);
 				ImGui::SliderFloat("Quadratic Attenuation", &light.quadraticAttenuation, 0.0f, 2.0f);
 			}

@@ -67,8 +67,8 @@ struct light_t {
 	mat4 model;
 
 	int type;
-	int extra_0;
 	
+	float cut_off_angle;
 	float linear_attenuation;
 	float quadratic_attenuation;
 	float scale;
@@ -142,10 +142,6 @@ vec4 calc_point_light(light_t light, material_t current_material, vec4 material_
 	return vec4(ambient + diffuse + specular, 1.0) * light.color;
 }
 
-vec4 calc_spot_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
-	return vec4(1.0);
-}
-
 vec4 calc_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
 	vec3 light_dir = normalize(light.position.xyz - fragPos);
 
@@ -162,6 +158,19 @@ vec4 calc_light(light_t light, material_t current_material, vec4 material_ambien
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
 
 	return vec4(ambient + diffuse + specular, 1.0) * light.color;
+}
+
+vec4 calc_spot_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
+	vec3 light_dir = normalize(light.position.xyz - fragPos);
+
+	float theta = dot(light_dir, normalize(-light.direction.xyz));
+	float cutoff_angle = light.direction.w;
+
+	if (theta > cutoff_angle) {
+		return calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
+	} else {
+		return light.ambient * material_ambient;	// test with material_diffuse too
+	}
 }
 
 float linearize_depth(float depth, float near, float far) {
