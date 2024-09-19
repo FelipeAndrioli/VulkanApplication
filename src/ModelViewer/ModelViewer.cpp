@@ -45,7 +45,7 @@ void ModelViewer::StartUp() {
 	m_ScreenWidth = settings.Width;
 	m_ScreenHeight = settings.Height;
 
-	glm::vec3 position = glm::vec3(-5.7f, 3.1f, 4.8f);
+	glm::vec3 position = glm::vec3(-5.414f, -0.019f, 5.115f);
 
 	float fov = 45.0f;
 	float yaw = -49.6f;
@@ -58,24 +58,19 @@ void ModelViewer::StartUp() {
 	m_Dragon = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
 	m_Dragon->Name = "Dragon";
 	m_Dragon->Transformations.scaleHandler = 11.2f;
-	m_Dragon->Transformations.translation.x = 0.0f;
-	m_Dragon->Transformations.translation.y = -0.009f;
+	m_Dragon->Transformations.translation = glm::vec3(2.5f, -3.75f, -2.5f);
 	m_Dragon->Transformations.rotation.y = -46.9f;
 
 	m_Backpack = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj");
 	m_Backpack->Name = "Backpack";
 	m_Backpack->Transformations.scaleHandler = 0.3f;
-	m_Backpack->Transformations.translation.x = -8.9f;
-	m_Backpack->Transformations.translation.y = 4.4f;
-	m_Backpack->Transformations.translation.z = 7.5f;
+	m_Backpack->Transformations.translation = glm::vec3(0.0f, -3.75f, 0.0f);
 	m_Backpack->FlipUvVertically = true;
 
 	m_Sponza = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
 	//m_Sponza = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/sponza/scene.gltf");
 	m_Sponza->Name = "Sponza";
 	m_Sponza->Transformations.scaleHandler = 0.008f;
-	m_Sponza->Transformations.translation.x = -10.8f;
-	m_Sponza->Transformations.translation.y = -2.5f;
 	m_Sponza->Transformations.rotation.y = 45.0f;
 
 	Renderer::LoadResources();
