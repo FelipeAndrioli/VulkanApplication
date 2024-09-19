@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <cassert>
+#include <limits>
 
 #include <assimp/mesh.h>
 #include <assimp/cimport.h>
@@ -301,6 +302,16 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 	std::vector<Assets::Vertex> vertices;
 	std::vector<uint32_t> indices;
 
+	float min_x = std::numeric_limits<float>::max();
+	float max_x = std::numeric_limits<float>::min();
+
+	float min_y = std::numeric_limits<float>::max();
+	float max_y = std::numeric_limits<float>::min();
+	
+	float min_z = std::numeric_limits<float>::max();
+	float max_z = std::numeric_limits<float>::min();
+
+
 	for (auto& mesh : model.Meshes) {
 		if (GetMaterialIndex(materials, mesh.MaterialName) == UNEXISTENT) {
 			materials.push_back(mesh.CustomMeshMaterial);
@@ -314,7 +325,24 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 
 		indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
 		vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
+
+		for (const auto& vertex: mesh.Vertices) {
+			if (vertex.pos.x > max_x)
+				max_x = vertex.pos.x;
+			if (vertex.pos.x < min_x)
+				min_x = vertex.pos.x;
+			if (vertex.pos.y > max_y)
+				max_y = vertex.pos.y;
+			if (vertex.pos.y < min_y)
+				min_y = vertex.pos.y;
+			if (vertex.pos.z > max_z)
+				max_z = vertex.pos.z;
+			if (vertex.pos.z < min_z)
+				min_z = vertex.pos.z;	
+		}
 	}
+
+	model.PivotVector = glm::vec3((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2);
 
 	model.TotalVertices = vertices.size();
 	model.TotalIndices = indices.size();

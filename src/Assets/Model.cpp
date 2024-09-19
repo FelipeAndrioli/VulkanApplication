@@ -21,13 +21,17 @@ namespace Assets {
 	}
 
 	glm::mat4 Model::GetModelMatrix() {
-		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 toOrigin = glm::translate(glm::mat4(1.0f), -PivotVector);
+		glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(Transformations.scaleHandler));
 
-		model = glm::scale(model, glm::vec3(Transformations.scaleHandler, Transformations.scaleHandler, Transformations.scaleHandler));
-		model = glm::translate(model, Transformations.translation);
-		model = glm::rotate(model, glm::radians(Transformations.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(Transformations.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(Transformations.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		glm::mat4 rotation = glm::mat4(1.0f);
+		rotation = glm::rotate(rotation, glm::radians(Transformations.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		rotation = glm::rotate(rotation, glm::radians(Transformations.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		rotation = glm::rotate(rotation, glm::radians(Transformations.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+		glm::mat4 toPosition = glm::translate(glm::mat4(1.0f), Transformations.translation);
+
+		glm::mat4 model = toPosition * rotation * scale * toOrigin;
 
 		return model;
 	}

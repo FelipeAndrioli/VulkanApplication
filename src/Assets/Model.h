@@ -49,7 +49,7 @@ namespace Assets {
 
 		VkDescriptorSetLayout ModelDescriptorSetLayout = VK_NULL_HANDLE;
 		VkDescriptorSet ModelDescriptorSet = VK_NULL_HANDLE;
-	private:
-		Graphics::GPUBuffer m_MaterialBuffer = {};
+
+		glm::vec3 PivotVector = glm::vec3(1.0f);
 	};
 }
