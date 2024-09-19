@@ -31,7 +31,8 @@ void LightManager::Init() {
 	sunLight.color = glm::vec4(1.0f);
 
 	LightData light = {};
-    light.position = glm::vec4(-21.4f, 17.4f, 15.0f, 1.0f);
+    //light.position = glm::vec4(-21.4f, 17.4f, 15.0f, 0.0f);
+    light.position = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 	light.type = LightType::PointLight;
 	light.linearAttenuation = 0.006f;
 	light.quadraticAttenuation = 0.007f;
@@ -78,7 +79,7 @@ void LightManager::UpdateBuffer() {
 		model = glm::translate(model, glm::vec3(light.position));
 
 		light.model = model;
-		light.direction.w = glm::cos(glm::radians(light.cutOffAngle));
+		light.cutOffAngle = glm::cos(glm::radians(light.rawCutOffAngle));
 	}
 
 	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
@@ -105,9 +106,9 @@ void LightManager::OnUIRender() {
 			}
 
 			if (light.type == LightType::Directional || light.type == LightType::SpotLight) {
-				ImGui::SliderFloat("Direction X", &light.direction.x, -50.0f, 50.0f);
-				ImGui::SliderFloat("Direction Y", &light.direction.y, -50.0f, 50.0f);
-				ImGui::SliderFloat("Direction Z", &light.direction.z, -50.0f, 50.0f);
+				ImGui::SliderFloat("Direction X", &light.direction.x, -1.0f, 1.0f);
+				ImGui::SliderFloat("Direction Y", &light.direction.y, -1.0f, 1.0f);
+				ImGui::SliderFloat("Direction Z", &light.direction.z, -1.0f, 1.0f);
 			} 
 
 			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {
@@ -121,7 +122,7 @@ void LightManager::OnUIRender() {
 			ImGui::SliderFloat("Specular", &light.specular, 0.0f, 1.0f);
 
 			if (light.type == LightType::SpotLight) {
-				ImGui::SliderFloat("Cut Off Angle", &light.cutOffAngle, 0.0f, 90.0f);
+				ImGui::SliderFloat("Cut Off Angle", &light.rawCutOffAngle, 0.0f, 90.0f);
 			}
 
 			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {

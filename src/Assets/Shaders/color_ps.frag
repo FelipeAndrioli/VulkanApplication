@@ -62,13 +62,17 @@ struct light_t {
 	vec4 position;
 	vec4 direction;
 	vec4 color;
-	vec4 extra[7];
+	vec4 extra[6];
 	
 	mat4 model;
 
 	int type;
+	int extra_0;
+	int extra_1;
+	int extra_2;
 	
 	float cut_off_angle;
+	float raw_cut_off_angle;
 	float linear_attenuation;
 	float quadratic_attenuation;
 	float scale;
@@ -164,9 +168,8 @@ vec4 calc_spot_light(light_t light, material_t current_material, vec4 material_a
 	vec3 light_dir = normalize(light.position.xyz - fragPos);
 
 	float theta = dot(light_dir, normalize(-light.direction.xyz));
-	float cutoff_angle = light.direction.w;
 
-	if (theta > cutoff_angle) {
+	if (theta > light.cut_off_angle) {
 		return calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
 	} else {
 		return light.ambient * material_ambient;	// test with material_diffuse too

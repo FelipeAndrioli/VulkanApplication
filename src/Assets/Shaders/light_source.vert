@@ -10,16 +10,19 @@ struct light_t {
 	vec4 position;
 	vec4 direction;
 	vec4 color;
-	vec4 extra[7];
+	vec4 extra[6];
 	
 	mat4 model;
 
 	int type;
+	int extra_0;
+	int extra_1;
+	int extra_2;
 	
 	float cut_off_angle;
+	float raw_cut_off_angle;
 	float linear_attenuation;
 	float quadratic_attenuation;
-
 	float scale;
 	float ambient;
 	float diffuse;
