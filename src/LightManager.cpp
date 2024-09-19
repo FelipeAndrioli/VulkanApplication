@@ -73,12 +73,17 @@ void LightManager::UpdateBuffer() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	for (auto& light : m_Lights) {	
-		glm::mat4 model = glm::mat4(1.0f);
 
-		model = glm::scale(model, glm::vec3(light.scale, light.scale, light.scale));
-		model = glm::translate(model, glm::vec3(light.position));
+		// the light source cube has hardcoded vertices in vertex shader around 
+		// the origin (0, 0, 0), therefore the pivot vector can also be hardcoded
+		// to the origin.
 
-		light.model = model;
+		glm::mat4 toOrigin = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+		glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(light.scale));
+		glm::mat4 toPosition = glm::translate(glm::mat4(1.0f), glm::vec3(light.position));
+
+		light.model = toPosition * scale * toOrigin;
+
 		light.cutOffAngle = glm::cos(glm::radians(light.rawCutOffAngle));
 	}
 
