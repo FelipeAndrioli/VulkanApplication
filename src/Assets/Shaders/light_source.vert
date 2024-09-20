@@ -48,8 +48,10 @@ layout (push_constant) uniform constant {
 	layout(offset = 4) int light_index;
 } light_constant;
 
-layout (location = 0) out vec3 dir;
+layout (location = 0) out vec4 light_dir;
 layout (location = 1) out vec4 color;
+layout (location = 2) out vec4 frag_pos;
+layout (location = 3) out int light_type;
 
 // hardcoded cube
 const vec3 pos[8] = vec3[8](
@@ -85,8 +87,9 @@ void main() {
 	light_t light = lights[light_constant.light_index];
 
 	gl_Position = sceneGPUData.proj * sceneGPUData.view * light.model * vec4(pos[idx], 1.0);
-
-	dir = pos[idx].xyz;
+	frag_pos = light.model * vec4(pos[idx], 1.0);
+	light_dir = light.direction;
+	light_type = light.type;
 
 	color = light.color;
 }
