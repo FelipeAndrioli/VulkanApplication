@@ -85,6 +85,7 @@ void LightManager::UpdateBuffer() {
 		light.model = toPosition * scale * toOrigin;
 
 		light.cutOffAngle = glm::cos(glm::radians(light.rawCutOffAngle));
+		light.outerCutOffAngle = glm::cos(glm::radians(light.rawOuterCutOffAngle));
 	}
 
 	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
@@ -128,6 +129,7 @@ void LightManager::OnUIRender() {
 
 			if (light.type == LightType::SpotLight) {
 				ImGui::SliderFloat("Cut Off Angle", &light.rawCutOffAngle, 0.0f, 90.0f);
+				ImGui::SliderFloat("Outer Cut Off Angle", &light.rawOuterCutOffAngle, 0.0f, 90.0f);
 			}
 
 			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {

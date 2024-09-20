@@ -68,11 +68,11 @@ struct light_t {
 
 	int type;
 	int extra_0;
-	int extra_1;
-	int extra_2;
 	
+	float outer_cut_off_angle;
 	float cut_off_angle;
 	float raw_cut_off_angle;
+	float raw_outer_cut_off_angle;
 	float linear_attenuation;
 	float quadratic_attenuation;
 	float scale;
@@ -168,12 +168,12 @@ vec4 calc_spot_light(light_t light, material_t current_material, vec4 material_a
 	vec3 light_dir = normalize(light.position.xyz - fragPos);
 
 	float theta = dot(light_dir, normalize(-light.direction.xyz));
+	float epsilon = light.cut_off_angle - light.outer_cut_off_angle;
+	float intensity = clamp((theta - light.outer_cut_off_angle) / epsilon, 0.0, 1.0);
+	
+	vec4 result = calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
 
-	if (theta > light.cut_off_angle) {
-		return calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
-	} else {
-		return light.ambient * material_ambient;	// test with material_diffuse too
-	}
+	return result * intensity;
 }
 
 float linearize_depth(float depth, float near, float far) {
