@@ -11,8 +11,6 @@ layout (location = 1) in vec3 fragNormal;
 layout (location = 2) in vec2 fragTexCoord;
 layout (location = 3) in vec3 fragPos;
 
-// totals.x = total lights
-
 layout (location = 0) out vec4 out_color;
 
 struct material_t {
@@ -115,9 +113,14 @@ vec4 calc_directional_light(light_t light, material_t current_material, vec4 mat
 	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse);
 
 	vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
-	vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
 
-	float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
+	//Phong specular model
+	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
+	//float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
+	
+	//Blinn-Phong specular model
+	vec3 halfway_dir = normalize(light_dir + view_dir);
+	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
 
@@ -137,29 +140,16 @@ vec4 calc_point_light(light_t light, material_t current_material, vec4 material_
 	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse) * light_attenuation;
 
 	vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
-	vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
 
-	float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
+	// Phong specular model
+	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
+	//float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
+
+	// Blinn-Phong specular model
+	vec3 halfway_dir = normalize(light_dir + view_dir);
+	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular) * light_attenuation;
-
-	return vec4(ambient + diffuse + specular, 1.0) * light.color;
-}
-
-vec4 calc_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
-	vec3 light_dir = normalize(light.position.xyz - fragPos);
-
-	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
-
-	vec3 ambient = material_ambient.rgb * vec3(light.ambient);
-	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse);
-
-	vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
-	vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
-
-	float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
-
-	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
 
 	return vec4(ambient + diffuse + specular, 1.0) * light.color;
 }
@@ -189,14 +179,6 @@ vec4 render_depth() {
 }
 
 void main() {
-
-	// Next Up to finish #1 lighting update:
-	//	- Notes about basic lighting (phong)
-	//	- Notes about light casters
-	//	- Light casters implementation
-	//	- Notes about blinn phong lighting
-	//	- Blinn Phong lighting implementation
-	
 	material_t current_material = materials[mesh_constant.material_index];
 
 	vec4 material_color = vec4(0.0);
