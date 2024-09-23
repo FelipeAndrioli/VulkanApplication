@@ -112,33 +112,33 @@ void LightManager::OnUIRender() {
 			}
 
 			if (light.type == LightType::Directional || light.type == LightType::SpotLight) {
-				ImGui::SliderFloat("Direction X", &light.direction.x, -1.0f, 1.0f);
-				ImGui::SliderFloat("Direction Y", &light.direction.y, -1.0f, 1.0f);
-				ImGui::SliderFloat("Direction Z", &light.direction.z, -1.0f, 1.0f);
+				ImGui::DragFloat("Direction X", &light.direction.x, 0.002f, -1.0f, 1.0f, "%.03f");
+				ImGui::DragFloat("Direction Y", &light.direction.y, 0.002f, -1.0f, 1.0f, "%.03f");
+				ImGui::DragFloat("Direction Z", &light.direction.z, 0.002f, -1.0f, 1.0f, "%.03f");
 			} 
 
 			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {
-				ImGui::SliderFloat("Position X", &light.position.x, -50.0f, 50.0f);
-				ImGui::SliderFloat("Position Y", &light.position.y, -50.0f, 50.0f);
-				ImGui::SliderFloat("Position Z", &light.position.z, -50.0f, 50.0f);
+				ImGui::DragFloat("Position X", &light.position.x, 0.1f, -50.0f, 50.0f, "%0.3f");
+				ImGui::DragFloat("Position Y", &light.position.y, 0.1f, -50.0f, 50.0f, "%0.3f");
+				ImGui::DragFloat("Position Z", &light.position.z, 0.1f, -50.0f, 50.0f, "%0.3f");
 			}
 
-			ImGui::SliderFloat("Ambient", &light.ambient, 0.0f, 1.0f);
-			ImGui::SliderFloat("Diffuse", &light.diffuse, 0.0f, 1.0f);
-			ImGui::SliderFloat("Specular", &light.specular, 0.0f, 1.0f);
+			ImGui::DragFloat("Ambient", &light.ambient, 0.002f, 0.0f, 1.0f, "%0.3f");
+			ImGui::DragFloat("Diffuse", &light.diffuse, 0.002f, 0.0f, 1.0f, "%0.3f");
+			ImGui::DragFloat("Specular", &light.specular, 0.002f, 0.0f, 1.0f, "%0.3f");
 
 			if (light.type == LightType::SpotLight) {
-				ImGui::SliderFloat("Cut Off Angle", &light.rawCutOffAngle, 0.0f, 90.0f);
-				ImGui::SliderFloat("Outer Cut Off Angle", &light.rawOuterCutOffAngle, 0.0f, 90.0f);
+				ImGui::DragFloat("Cut Off Angle", &light.rawCutOffAngle, 0.002f, 0.0f, 90.0f, "%0.3f");
+				ImGui::DragFloat("Outer Cut Off Angle", &light.rawOuterCutOffAngle, 0.002f, 0.0f, 90.0f, "%0.3f");
 			}
 
 			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {
-				ImGui::SliderFloat("Linear Attenuation", &light.linearAttenuation, 0.0f, 2.0f);
-				ImGui::SliderFloat("Quadratic Attenuation", &light.quadraticAttenuation, 0.0f, 2.0f);
+				ImGui::DragFloat("Linear Attenuation", &light.linearAttenuation, 0.002f);
+				ImGui::DragFloat("Quadratic Attenuation", &light.quadraticAttenuation, 0.002f);
 			}
 
 			ImGui::ColorPicker4("Color", (float*)&light.color);
-			ImGui::SliderFloat("Scale", &light.scale, 0.0f, 10.0f);
+			ImGui::DragFloat("Scale", &light.scale, 0.002f);
 			ImGui::TreePop();
 		}
 	}

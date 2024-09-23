@@ -45,20 +45,20 @@ namespace Assets {
 			std::string t_label_y = "Translation y " + Name;
 			std::string t_label_z = "Translation z " + Name;
 
-			ImGui::SliderFloat(t_label_x.c_str(), &Transformations.translation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(t_label_y.c_str(), &Transformations.translation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(t_label_z.c_str(), &Transformations.translation.z, -200.0f, 200.0f);
+			ImGui::DragFloat(t_label_x.c_str(), &Transformations.translation.x, 0.002f);
+			ImGui::DragFloat(t_label_y.c_str(), &Transformations.translation.y, 0.002f);
+			ImGui::DragFloat(t_label_z.c_str(), &Transformations.translation.z, 0.002f);
 
 			std::string r_label_x = "Rotation x " + Name;
 			std::string r_label_y = "Rotation y " + Name;
 			std::string r_label_z = "Rotation z " + Name;
 
-			ImGui::SliderFloat(r_label_x.c_str(), &Transformations.rotation.x, -200.0f, 200.0f);
-			ImGui::SliderFloat(r_label_y.c_str(), &Transformations.rotation.y, -200.0f, 200.0f);
-			ImGui::SliderFloat(r_label_z.c_str(), &Transformations.rotation.z, -200.0f, 200.0f);
+			ImGui::DragFloat(r_label_x.c_str(), &Transformations.rotation.x, 0.002f);
+			ImGui::DragFloat(r_label_y.c_str(), &Transformations.rotation.y, 0.002f);
+			ImGui::DragFloat(r_label_z.c_str(), &Transformations.rotation.z, 0.002f);
 
 			std::string s_label = "Scale Handler " + Name;
-			ImGui::SliderFloat(s_label.c_str(), &Transformations.scaleHandler, 0.0f, 20.0f);
+			ImGui::DragFloat(s_label.c_str(), &Transformations.scaleHandler, 0.002f);
 
 			ImGui::Checkbox("Rotate", &Rotate);
 			ImGui::Checkbox("Flip UV Vertically", &FlipUvVertically);
