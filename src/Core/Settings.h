@@ -10,4 +10,5 @@ struct Settings {
 	bool renderWireframe = false;
 	bool renderSkybox = false;
 	bool renderDefault = true;
+	bool renderLightSources = true;
 };

@@ -10,7 +10,7 @@
 #include "GraphicsDevice.h"
 #include "Graphics.h"
 
-#include "Input/Input.h"
+#include "../Input/Input.h"
 
 #define RUN_APPLICATION(class_name)		\
 	int main(int argc, char* argv[]) {	\

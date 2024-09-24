@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <fstream>
 
 namespace Helper {
 
@@ -48,5 +49,10 @@ namespace Helper {
 
 
 		return temp.erase(0, lastSlashIndex).c_str();
+	}
+
+	bool inline file_exists(const std::string& path) {
+		std::ifstream f(path.c_str());
+		return f.good();
 	}
 }

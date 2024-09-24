@@ -8,8 +8,8 @@
 #include "./Bitmap.h"
 #include "./UtilsCubemap.h"
 
-#include "../GraphicsDevice.h"
-#include "../Graphics.h"
+#include "../Core/GraphicsDevice.h"
+#include "../Core/Graphics.h"
 
 using namespace Utils;
 

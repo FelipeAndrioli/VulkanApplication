@@ -1,7 +1,7 @@
 #include "GraphicsDevice.h"
 
 #include "UI.h"
-#include "Utils/Helper.h"
+#include "../Utils/Helper.h"
 
 #include <string>
 #include <fstream>
@@ -1712,26 +1712,7 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, VkRenderPass& renderPass) {
-
-		if (desc.vertexShader != nullptr) {
-			auto bindingDescription = desc.vertexShader->BindingDescription;
-			auto attributeDescriptions = desc.vertexShader->AttributeDescriptions;
-
-			VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-			if (desc.noVertex) {
-				vertexInputInfo.vertexBindingDescriptionCount = 0;
-			}
-			else {
-				vertexInputInfo.vertexBindingDescriptionCount = 1;
-				vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-				vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-				vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-			}
-			pso.pipelineInfo.pVertexInputState = &vertexInputInfo;
-		}
-
+	
 		pso.inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		pso.inputAssembly.topology = desc.topology;
 		pso.inputAssembly.primitiveRestartEnable = VK_FALSE;
@@ -1803,8 +1784,27 @@ namespace Graphics {
 
 		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
-		if (desc.vertexShader != nullptr)
+		auto bindingDescription = desc.vertexShader->BindingDescription;
+		auto attributeDescriptions = desc.vertexShader->AttributeDescriptions;
+
+		if (desc.vertexShader != nullptr) {
+
+			pso.vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+			if (desc.noVertex) {
+				pso.vertexInputInfo.vertexBindingDescriptionCount = 0;
+			}
+			else {
+				pso.vertexInputInfo.vertexBindingDescriptionCount = 1;
+				pso.vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+				pso.vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+				pso.vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+			}
+			pso.pipelineInfo.pVertexInputState = &pso.vertexInputInfo;
+			
 			shaderStages.push_back(desc.vertexShader->shaderStageInfo);
+		}
+
 		if (desc.fragmentShader != nullptr)
 			shaderStages.push_back(desc.fragmentShader->shaderStageInfo);
 		if (desc.computeShader != nullptr)

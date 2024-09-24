@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <cassert>
+#include <limits>
 
 #include <assimp/mesh.h>
 #include <assimp/cimport.h>
@@ -11,9 +12,10 @@
 #include "../Assets/Model.h"
 #include "../Assets/Mesh.h"
 
-#include "../Graphics.h"
-#include "../GraphicsDevice.h"
-#include "../ConstantBuffers.h"
+#include "../Core/Graphics.h"
+#include "../Core/GraphicsDevice.h"
+#include "../Core/ConstantBuffers.h"
+
 #include "./Helper.h"
 
 #include "./TextureLoader.h"
@@ -43,11 +45,6 @@ int GetMaterialIndex(std::vector<Material>& sceneMaterials, std::string material
 	}
 
 	return UNEXISTENT;
-}
-
-bool fileExists(const std::string& path) {
-	struct stat buffer;
-	return (stat(path.c_str(), &buffer) == 0);
 }
 
 Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
@@ -193,7 +190,7 @@ void ProcessTexture(
 	std::string texName = textureName;
 	std::string path = basePath;
 
-	if (textureName == "" || !fileExists(basePath + textureName)) {
+	if (textureName == "" || !Helper::file_exists(basePath + textureName)) {
 		std::cout << "File: " << basePath + textureName << " doesn't exists! Loading custom texture!" << '\n';
 		texName = "error_texture.jpg";
 		path = "./Textures/";
@@ -234,7 +231,8 @@ void LoadTextures(
 			util.C_Str(), 
 			model.MaterialPath, 
 			material->GetName().C_Str(), 
-			model.FlipTexturesVertically, 
+			//model.FlipTexturesVertically, 
+			false,
 			model.GenerateMipMaps
 		);
 	}
@@ -245,6 +243,8 @@ static void ProcessMaterials(
 	const aiScene* scene, 
 	std::vector<Material>& sceneMaterials,
 	std::vector<Texture>& loadedTextures) {
+
+	int material_count = 0;
 
 	for (size_t i = 0; i < scene->mNumMaterials; i++) {
 		aiMaterial* material = scene->mMaterials[i];
@@ -281,7 +281,10 @@ static void ProcessMaterials(
 			newMaterial.MaterialData.Shininess = shininess;
 			newMaterial.MaterialData.ShininessStrength = shininessStrength;
 
+			std::cout << "Material " << materialName.C_Str() << " shininess: " << shininess << '\n';
 			sceneMaterials.push_back(newMaterial);
+
+			material_count++;
 		}
 
 		LoadTextures(model, material, aiTextureType_AMBIENT, Texture::TextureType::AMBIENT, sceneMaterials, loadedTextures);
@@ -290,12 +293,24 @@ static void ProcessMaterials(
 		LoadTextures(model, material, aiTextureType_NORMALS, Texture::TextureType::NORMAL, sceneMaterials, loadedTextures);
 		LoadTextures(model, material, aiTextureType_HEIGHT, Texture::TextureType::BUMP, sceneMaterials, loadedTextures);
 	}
+
+	std::cout << material_count << " materials loaded" << '\n';
 }
 
 void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& materials) {
 
 	std::vector<Assets::Vertex> vertices;
 	std::vector<uint32_t> indices;
+
+	float min_x = std::numeric_limits<float>::max();
+	float max_x = std::numeric_limits<float>::min();
+
+	float min_y = std::numeric_limits<float>::max();
+	float max_y = std::numeric_limits<float>::min();
+	
+	float min_z = std::numeric_limits<float>::max();
+	float max_z = std::numeric_limits<float>::min();
+
 
 	for (auto& mesh : model.Meshes) {
 		if (GetMaterialIndex(materials, mesh.MaterialName) == UNEXISTENT) {
@@ -310,7 +325,24 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 
 		indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
 		vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
+
+		for (const auto& vertex: mesh.Vertices) {
+			if (vertex.pos.x > max_x)
+				max_x = vertex.pos.x;
+			if (vertex.pos.x < min_x)
+				min_x = vertex.pos.x;
+			if (vertex.pos.y > max_y)
+				max_y = vertex.pos.y;
+			if (vertex.pos.y < min_y)
+				min_y = vertex.pos.y;
+			if (vertex.pos.z > max_z)
+				max_z = vertex.pos.z;
+			if (vertex.pos.z < min_z)
+				min_z = vertex.pos.z;	
+		}
 	}
+
+	model.PivotVector = glm::vec3((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2);
 
 	model.TotalVertices = vertices.size();
 	model.TotalIndices = indices.size();

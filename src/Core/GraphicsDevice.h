@@ -15,7 +15,7 @@
 #include "Graphics.h"
 #include "BufferManager.h"
 
-#include "Assets/Mesh.h"
+#include "../Assets/Mesh.h"
 
 namespace Graphics {
 	const int FRAMES_IN_FLIGHT = 2;
@@ -62,10 +62,6 @@ namespace Graphics {
 
 		std::vector<VkImage> swapChainImages;
 		std::vector<VkImageView> swapChainImageViews;
-		/*
-		std::vector<VkSemaphore> imageAvailableSemaphores;
-		std::vector<VkSemaphore> renderFinishedSemaphores;
-		*/
 
 		VkFormat swapChainImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 
@@ -129,6 +125,7 @@ namespace Graphics {
 		VkPipelineDepthStencilStateCreateInfo depthStencil = {};
 		VkSampleMask sampleMask = {};
 		VkPipelineTessellationStateCreateInfo tessellationInfo = {};
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	};
 
 	struct Frame {

@@ -4,7 +4,7 @@
 
 #include "Mesh.h"
 
-#include "../Graphics.h"
+#include "../Core/Graphics.h"
 
 namespace Assets {
 	struct Transform {
@@ -37,7 +37,7 @@ namespace Assets {
 		size_t TotalVertices = 0;
 		size_t TotalIndices = 0;
 
-		bool FlipTexturesVertically = false;
+		bool FlipUvVertically = false;
 		bool GenerateMipMaps = true;
 		bool Rotate = false;
 
@@ -49,7 +49,7 @@ namespace Assets {
 
 		VkDescriptorSetLayout ModelDescriptorSetLayout = VK_NULL_HANDLE;
 		VkDescriptorSet ModelDescriptorSet = VK_NULL_HANDLE;
-	private:
-		Graphics::GPUBuffer m_MaterialBuffer = {};
+
+		glm::vec3 PivotVector = glm::vec3(1.0f);
 	};
 }

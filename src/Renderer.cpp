@@ -1,18 +1,22 @@
 #include "Renderer.h"
-#include "Graphics.h"
-#include "GraphicsDevice.h"
-#include "TextureLoader.h"
-#include "ModelLoader.h"
-#include "Application.h"
-#include "ConstantBuffers.h"
-#include "Helper.h"
+
+#include <vector>
+#include <string>
+
+#include "./Core/Graphics.h"
+#include "./Core/GraphicsDevice.h"
+#include "./Core/Application.h"
+#include "./Core/ConstantBuffers.h"
+
+#include "./Utils/TextureLoader.h"
+#include "./Utils/ModelLoader.h"
+#include "./Utils/Helper.h"
 
 #include "../Assets/Material.h"
 #include "../Assets/Model.h"
 #include "../Assets/Camera.h"
 
-#include <vector>
-#include <string>
+#include "LightManager.h"
 
 namespace Renderer {
 	bool m_Initialized = false;
@@ -24,6 +28,8 @@ namespace Renderer {
 	Graphics::Shader m_DefaultVertShader = {};
 	Graphics::Shader m_ColorFragShader = {};
 	Graphics::Shader m_WireframeFragShader = {};
+	Graphics::Shader m_LightSourceFragShader = {};
+	Graphics::Shader m_LightSourceVertShader = {};
 
 	Graphics::Buffer m_SkyboxBuffer = {};
 	Graphics::Buffer m_GlobalDataBuffer = {};
@@ -31,6 +37,7 @@ namespace Renderer {
 	Graphics::PipelineState m_SkyboxPSO = {};
 	Graphics::PipelineState m_ColorPSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
+	Graphics::PipelineState m_LightSourcePSO = {};
 	
 	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
 
@@ -51,9 +58,40 @@ void Renderer::Init() {
 	m_Initialized = true;
 }
 
+void Renderer::Shutdown() {
+	Graphics::GraphicsDevice* gfxDevice = GetDevice();
+
+	for (auto texture : m_Textures) {
+		gfxDevice->DestroyImage(texture);
+	}
+
+	m_Textures.clear();
+	m_Materials.clear();
+	
+	gfxDevice->DestroyDescriptorSetLayout(m_GlobalDescriptorSetLayout);
+	gfxDevice->DestroyImage(m_Skybox);
+	gfxDevice->DestroyShader(m_DefaultVertShader);
+	gfxDevice->DestroyShader(m_ColorFragShader);
+	gfxDevice->DestroyShader(m_WireframeFragShader);
+	gfxDevice->DestroyShader(m_SkyboxVertexShader);
+	gfxDevice->DestroyShader(m_SkyboxFragShader);
+	gfxDevice->DestroyShader(m_LightSourceFragShader);
+	gfxDevice->DestroyShader(m_LightSourceVertShader);
+	gfxDevice->DestroyPipeline(m_ColorPSO);
+	gfxDevice->DestroyPipeline(m_SkyboxPSO);
+	gfxDevice->DestroyPipeline(m_WireframePSO);
+	gfxDevice->DestroyPipeline(m_LightSourcePSO);
+
+	LightManager::Shutdown();
+
+	m_Initialized = false;
+}
+
 void Renderer::LoadResources() {
 	if (!m_Initialized)
 		return;
+
+	LightManager::Init();
 
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
@@ -74,16 +112,20 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_DefaultVertShader, "./Shaders/default_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_ColorFragShader, "./Shaders/color_ps.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_WireframeFragShader, "./Shaders/wireframe_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertShader, "./Shaders/light_source_vert.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "./Shaders/light_source_frag.spv");
 
 	InputLayout globalInputLayout = {
 		.pushConstants = {
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) }
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) },				// material index (to be removed from here)
+			{ VK_SHADER_STAGE_VERTEX_BIT, sizeof(int), sizeof(int) }				// light source index (to be removed from here)
 		},
 		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
-			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
+			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
 		}
 	};
 
@@ -139,39 +181,30 @@ void Renderer::LoadResources() {
 
 	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO);
 
+	PipelineStateDescription lightSourcePSODesc = {};
+	lightSourcePSODesc.Name = "Light Source PSO";
+	lightSourcePSODesc.vertexShader = &m_LightSourceVertShader;
+	lightSourcePSODesc.fragmentShader = &m_LightSourceFragShader;
+	lightSourcePSODesc.noVertex = true;
+	lightSourcePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	lightSourcePSODesc.psoInputLayout.push_back(globalInputLayout);
+	
+	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO);
+
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).bindlessSet);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, materialBuffer);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, LightManager::GetLightBuffer());
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[4], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 	}
 }
 
-void Renderer::Destroy() {
-	Graphics::GraphicsDevice* gfxDevice = GetDevice();
-
-	for (auto texture : m_Textures) {
-		gfxDevice->DestroyImage(texture);
-	}
-
-	m_Textures.clear();
-	m_Materials.clear();
-	
-	gfxDevice->DestroyDescriptorSetLayout(m_GlobalDescriptorSetLayout);
-	gfxDevice->DestroyImage(m_Skybox);
-	gfxDevice->DestroyShader(m_DefaultVertShader);
-	gfxDevice->DestroyShader(m_ColorFragShader);
-	gfxDevice->DestroyShader(m_WireframeFragShader);
-	gfxDevice->DestroyShader(m_SkyboxVertexShader);
-	gfxDevice->DestroyShader(m_SkyboxFragShader);
-	gfxDevice->DestroyPipeline(m_ColorPSO);
-	gfxDevice->DestroyPipeline(m_SkyboxPSO);
-	gfxDevice->DestroyPipeline(m_WireframePSO);
-	
-	m_Initialized = false;
+void Renderer::OnUIRender() {
+	LightManager::OnUIRender();
 }
 
 void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
@@ -187,8 +220,13 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	
 	m_GlobalConstants.view = camera.ViewMatrix;
 	m_GlobalConstants.proj = camera.ProjectionMatrix;
+	m_GlobalConstants.cameraPosition = glm::vec4(camera.Position, 1.0f);
+	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
+
+	LightManager::UpdateBuffer();
+
 	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
 }
 
@@ -205,6 +243,8 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& 
 
 	ModelConstants modelConstant = {};
 	modelConstant.model = model.GetModelMatrix();
+	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
+	modelConstant.flipUvVertically = model.FlipUvVertically;
 
 	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
 
@@ -263,5 +303,30 @@ void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Mod
 			static_cast<int32_t>(mesh.VertexOffset),
 			0
 		);
+	}
+}
+
+void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
+	Graphics::GraphicsDevice* gfxDevice = GetDevice();
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_LightSourcePSO.pipeline);
+
+	for (int i = 0; i < LightManager::GetLights().size(); i++) {
+
+		LightData light = LightManager::GetLights().at(i);
+
+		if (light.type == LightType::Directional)
+			continue;
+
+		vkCmdPushConstants(
+			commandBuffer, 
+			m_LightSourcePSO.pipelineLayout, 
+			VK_SHADER_STAGE_VERTEX_BIT,
+			sizeof(int),
+			sizeof(int),
+			&i
+		);
+
+		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
 }
