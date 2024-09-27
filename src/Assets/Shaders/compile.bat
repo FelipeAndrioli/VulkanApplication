@@ -10,4 +10,6 @@ C:/VulkanSDK/1.3.250.0/Bin/glslc.exe light_source.frag -o light_source_frag.spv
 C:/VulkanSDK/1.3.250.0/Bin/glslc.exe skybox.vert -o skybox_vert.spv
 C:/VulkanSDK/1.3.250.0/Bin/glslc.exe skybox.frag -o skybox_frag.spv
 
+C:/VulkanSDK/1.3.250.0/Bin/glslc.exe outline.vert -o outline_vert.spv
+C:/VulkanSDK/1.3.250.0/Bin/glslc.exe outline.frag -o outline_frag.spv
 pause
