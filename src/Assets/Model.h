@@ -40,6 +40,9 @@ namespace Assets {
 		bool FlipUvVertically = false;
 		bool GenerateMipMaps = true;
 		bool Rotate = false;
+		bool RenderOutline = false;
+
+		float OutlineWidth = 0.0f;
 
 		std::string ModelPath;
 		std::string MaterialPath;

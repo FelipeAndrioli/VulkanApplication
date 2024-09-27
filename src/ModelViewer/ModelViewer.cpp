@@ -117,8 +117,15 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	if (settings.renderDefault) {
 		Renderer::RenderModel(commandBuffer, *m_Dragon.get());
 		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
-		//Renderer::RenderModel(commandBuffer, *m_Sponza.get());
+		Renderer::RenderModel(commandBuffer, *m_Sponza.get());
 	}
+
+	if (m_Dragon->RenderOutline)
+		Renderer::RenderOutline(commandBuffer, *m_Dragon.get());
+	if (m_Backpack->RenderOutline)
+		Renderer::RenderOutline(commandBuffer, *m_Backpack.get());
+	if (m_Sponza->RenderOutline)
+		Renderer::RenderOutline(commandBuffer, *m_Sponza.get());
 
 	if (settings.renderWireframe) {
 		Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());

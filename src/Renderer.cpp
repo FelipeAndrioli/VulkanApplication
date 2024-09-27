@@ -38,6 +38,7 @@ namespace Renderer {
 
 	Graphics::PipelineState m_SkyboxPSO = {};
 	Graphics::PipelineState m_ColorPSO = {};
+	Graphics::PipelineState m_ColorStencilPSO = {};
 	Graphics::PipelineState m_OutlinePSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
 	Graphics::PipelineState m_LightSourcePSO = {};
@@ -85,6 +86,7 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyShader(m_OutlineVertShader);
 	gfxDevice->DestroyShader(m_OutlineFragShader);
 	gfxDevice->DestroyPipeline(m_ColorPSO);
+	gfxDevice->DestroyPipeline(m_ColorStencilPSO);
 	gfxDevice->DestroyPipeline(m_OutlinePSO);
 	gfxDevice->DestroyPipeline(m_SkyboxPSO);
 	gfxDevice->DestroyPipeline(m_WireframePSO);
@@ -166,17 +168,27 @@ void Renderer::LoadResources() {
 	colorPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	colorPSODesc.psoInputLayout.push_back(globalInputLayout);
 	colorPSODesc.psoInputLayout.push_back(modelInputLayout);
-	colorPSODesc.cullMode = VK_CULL_MODE_NONE;
-	colorPSODesc.stencilTestEnable = true;
-	colorPSODesc.stencilState.compareOp = VK_COMPARE_OP_ALWAYS;
-	colorPSODesc.stencilState.failOp = VK_STENCIL_OP_REPLACE;
-	colorPSODesc.stencilState.depthFailOp = VK_STENCIL_OP_REPLACE;
-	colorPSODesc.stencilState.passOp = VK_STENCIL_OP_REPLACE;
-	colorPSODesc.stencilState.compareMask = 0xff;
-	colorPSODesc.stencilState.writeMask = 0xff;
-	colorPSODesc.stencilState.reference = 1;
 	
 	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO);
+
+	PipelineStateDescription colorStencilPSODesc = {};
+	colorStencilPSODesc.Name = "Color Stencil Pipeline";
+	colorStencilPSODesc.vertexShader = &m_DefaultVertShader;
+	colorStencilPSODesc.fragmentShader = &m_ColorFragShader;
+	colorStencilPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	colorStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
+	colorStencilPSODesc.psoInputLayout.push_back(modelInputLayout);
+	colorStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
+	colorStencilPSODesc.stencilTestEnable = true;
+	colorStencilPSODesc.stencilState.compareOp = VK_COMPARE_OP_ALWAYS;
+	colorStencilPSODesc.stencilState.failOp = VK_STENCIL_OP_REPLACE;
+	colorStencilPSODesc.stencilState.depthFailOp = VK_STENCIL_OP_REPLACE;
+	colorStencilPSODesc.stencilState.passOp = VK_STENCIL_OP_REPLACE;
+	colorStencilPSODesc.stencilState.compareMask = 0xff;
+	colorStencilPSODesc.stencilState.writeMask = 0xff;
+	colorStencilPSODesc.stencilState.reference = 1;
+	
+	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO);
 
 	PipelineStateDescription outlinePSODesc = {};
 	outlinePSODesc.Name = "Outline Pipeline";
@@ -185,8 +197,8 @@ void Renderer::LoadResources() {
 	outlinePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	outlinePSODesc.psoInputLayout.push_back(globalInputLayout);
 	outlinePSODesc.psoInputLayout.push_back(modelInputLayout);
-	outlinePSODesc.cullMode = VK_CULL_MODE_NONE;
 	outlinePSODesc.stencilTestEnable = true;
+	outlinePSODesc.cullMode = VK_CULL_MODE_NONE;
 	outlinePSODesc.stencilState.compareOp = VK_COMPARE_OP_NOT_EQUAL;
 	outlinePSODesc.stencilState.failOp = VK_STENCIL_OP_KEEP;
 	outlinePSODesc.stencilState.depthFailOp = VK_STENCIL_OP_KEEP;
@@ -194,7 +206,7 @@ void Renderer::LoadResources() {
 	outlinePSODesc.stencilState.compareMask = 0xff;
 	outlinePSODesc.stencilState.writeMask = 0xff;
 	outlinePSODesc.stencilState.reference = 1;
-	outlinePSODesc.depthTestEnable = false;
+	outlinePSODesc.depthTestEnable = true;										// change to false if want to see through walls
 	
 	gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO);
 
@@ -243,8 +255,6 @@ void Renderer::LoadResources() {
 }
 
 void Renderer::OnUIRender() {
-
-	ImGui::DragFloat("Outline Width", &outlineWidth, 0.0002f, -5.0f, 5.0f, "%.04f");
 	LightManager::OnUIRender();
 }
 
@@ -263,7 +273,6 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	m_GlobalConstants.proj = camera.ProjectionMatrix;
 	m_GlobalConstants.cameraPosition = glm::vec4(camera.Position, 1.0f);
 	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
-	m_GlobalConstants.outlineWidth = outlineWidth;
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
 
@@ -279,14 +288,20 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& 
 
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
 	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
 
-	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorPSO.pipelineLayout, 1, 1);
+	if (model.RenderOutline) {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorStencilPSO.pipeline);
+		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorStencilPSO.pipelineLayout, 1, 1);
+	} else {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
+		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorPSO.pipelineLayout, 1, 1);
+	}
 
 	ModelConstants modelConstant = {};
 	modelConstant.model = model.GetModelMatrix();
 	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
 	modelConstant.flipUvVertically = model.FlipUvVertically;
+	modelConstant.outlineWidth = model.OutlineWidth;
 
 	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
 
@@ -309,9 +324,26 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& 
 			0
 		);
 	}
+}
 
+void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
+	GraphicsDevice* gfxDevice = GetDevice();
+
+	VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };
+
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_OutlinePSO.pipeline);
+
 	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_OutlinePSO.pipelineLayout, 1, 1);
+
+	ModelConstants modelConstant = {};
+	modelConstant.model = model.GetModelMatrix();
+	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
+	modelConstant.flipUvVertically = model.FlipUvVertically;
+	modelConstant.outlineWidth = model.OutlineWidth;
+
+	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
 
 	for (const auto& mesh : model.Meshes) {
 		vkCmdPushConstants(

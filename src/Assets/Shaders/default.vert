@@ -17,8 +17,9 @@ layout (std140, set = 1, binding = 0) uniform ObjectGPUData {
 	mat4 normal_matrix;
 	int extra_scalar;
 	int extra_scalar1;
-	int extra_scalar2;
+	
 	int flip_uv_vertically;
+	int outline_width;
 } objectGPUData;
 
 layout (location = 0) in vec3 inPosition;

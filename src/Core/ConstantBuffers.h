@@ -7,7 +7,7 @@
 struct GlobalConstants {
 	alignas(4) int totalLights = 0;
 	alignas(4) float time = 0.0f;
-	alignas(4) float outlineWidth = 0.0f;
+	alignas(4) float extra_s_2 = 0.0f;
 	alignas(4) float extra_s_3 = 0.0f;
 	glm::vec4 cameraPosition;
 	glm::vec4 extra[6];
@@ -23,6 +23,7 @@ struct ModelConstants {
 
 	alignas(4) int extraScalar = 0;
 	alignas(4) int extraScalar1 = 0;
-	alignas(4) int extraScalar2 = 0;
+
 	alignas(4) int flipUvVertically = 0;
+	alignas(4) float outlineWidth = 0;
 };
