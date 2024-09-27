@@ -29,16 +29,21 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Cube
 - [x] glTF
 - [x] Cubemap/Skybox 
+- [x] Lighting
+	- [x] Directional Light
+	- [x] Point Light
+	- [x] Spot Light
+	- [x] Blinn-Phong
 
 ## Next Up
+- [ ] Stencil testing
 - [ ] Runtime shader compilation
-- [ ] Refactoring
-- [ ] Normals
+- [ ] Blending
+- [ ] Framebuffers
+- [ ] Instancing
+- [ ] Custom Anti Aliasing
 
 ## Planning 
-- [ ] Lighting
-	- [ ] Load Normals 
-	- [ ] Generate Normals 
 - [ ] Compute Shaders
 - [ ] GPU Driven Rendering
 - [ ] Ray Tracer
