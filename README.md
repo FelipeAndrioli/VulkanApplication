@@ -29,52 +29,22 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Cube
 - [x] glTF
 - [x] Cubemap/Skybox 
-<<<<<<< HEAD
 - [x] Lighting
 	- [x] Directional Light
 	- [x] Point Light
 	- [x] Spot Light
 	- [x] Blinn-Phong
-||||||| c73f597
-=======
-- [x] Lighting
-	- [x] Load Normals 
-	- [x] Pivot Transformantion
-	- [x] Phong Lighting
-		- [x] Directional Light
-		- [x] Point Light
-		- [x] Spot Light
-	- [x] Blinn-Phong
->>>>>>> 23064b1bbdbac3212392609edb517d2d2d00a3ba
+- [x] Stencil Buffer
 
 ## Next Up
-<<<<<<< HEAD
-- [ ] Stencil testing
-||||||| c73f597
-=======
-- [ ] Stencil Buffer
->>>>>>> 23064b1bbdbac3212392609edb517d2d2d00a3ba
-- [ ] Runtime shader compilation
-<<<<<<< HEAD
+- [ ] Runtime Shader Compilation
 - [ ] Blending
 - [ ] Framebuffers
 - [ ] Instancing
 - [ ] Custom Anti Aliasing
-||||||| c73f597
-- [ ] Refactoring
-- [ ] Normals
-=======
->>>>>>> 23064b1bbdbac3212392609edb517d2d2d00a3ba
 
 ## Planning 
-<<<<<<< HEAD
-||||||| c73f597
-- [ ] Lighting
-	- [ ] Load Normals 
-	- [ ] Generate Normals 
-=======
 - [ ] Generate Normals (Mesh Generator) 
->>>>>>> 23064b1bbdbac3212392609edb517d2d2d00a3ba
 - [ ] Compute Shaders
 - [ ] GPU Driven Rendering
 - [ ] Ray Tracer
