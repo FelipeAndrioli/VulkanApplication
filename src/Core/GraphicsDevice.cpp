@@ -679,17 +679,25 @@ namespace Graphics {
 			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &properties);
 
 			if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features) {
-				return format;
+				if ((features & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) && HasStencilComponent(format)) {
+					return format;
+				} else if (!(features & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+					return format;
+				}
 			}
 			else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features) {
-				return format;
+				if ((features & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) && HasStencilComponent(format)) {
+					return format;
+				} else if (!(features & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+					return format;
+				}
 			}
 		}
 
 		throw std::runtime_error("Failed to find supported format!");
 	}
 
-	bool HasStencilComponent(VkFormat format) {
+	bool GraphicsDevice::HasStencilComponent(VkFormat format) {
 		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 	}
 
@@ -966,6 +974,10 @@ namespace Graphics {
 		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
 		viewCreateInfo.subresourceRange.layerCount = image.Description.LayerCount;
 
+		if (HasStencilComponent(image.Description.Format)) {
+			viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+		}
+
 		VkResult result = vkCreateImageView(m_LogicalDevice, &viewCreateInfo, nullptr, &image.ImageView);
 
 		assert(result == VK_SUCCESS);
@@ -1007,6 +1019,10 @@ namespace Graphics {
 
 		VkPipelineStageFlags sourceStage;
 		VkPipelineStageFlags dstStage;
+
+		if (HasStencilComponent(image.Description.Format)) {
+			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+		}
 
 		if (image.ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 			barrier.srcAccessMask = 0;
@@ -1053,6 +1069,10 @@ namespace Graphics {
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.layerCount = image.Description.LayerCount;
 		barrier.subresourceRange.levelCount = 1;
+
+		if (HasStencilComponent(image.Description.Format)) {
+			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+		}
 
 		int32_t mipWidth = image.Description.Width;
 		int32_t mipHeight = image.Description.Height;
@@ -1398,7 +1418,7 @@ namespace Graphics {
 		depthAttachment.samples = m_MsaaSamples;
 		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1816,15 +1836,16 @@ namespace Graphics {
 		}
 
 		pso.depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		pso.depthStencil.depthTestEnable = VK_TRUE;
-		pso.depthStencil.depthWriteEnable = VK_TRUE;
+		pso.depthStencil.depthTestEnable = desc.depthTestEnable ? VK_TRUE : VK_FALSE;
+		pso.depthStencil.depthWriteEnable = desc.depthWriteEnable ? VK_TRUE : VK_FALSE;
 		pso.depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 		pso.depthStencil.depthBoundsTestEnable = VK_FALSE;
 		pso.depthStencil.minDepthBounds = 0.0f;
 		pso.depthStencil.maxDepthBounds = 1.0f;
-		pso.depthStencil.stencilTestEnable = VK_FALSE;
-		pso.depthStencil.front = {};
-		pso.depthStencil.back = {};
+		pso.depthStencil.stencilTestEnable = desc.stencilTestEnable ? VK_TRUE : VK_FALSE;
+
+		pso.depthStencil.back = desc.stencilState;
+		pso.depthStencil.front = pso.depthStencil.back;
 
 		for (auto inputLayout : desc.psoInputLayout) {
 			VkDescriptorSetLayout layout = VK_NULL_HANDLE;

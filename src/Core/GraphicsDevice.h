@@ -93,6 +93,12 @@ namespace Graphics {
 
 		bool noVertex = false;
 
+		bool depthTestEnable = true;
+		bool depthWriteEnable = true;
+		bool stencilTestEnable = false;
+
+		VkStencilOpState stencilState = {};
+
 		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
 		VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
@@ -297,6 +303,7 @@ namespace Graphics {
 		bool CheckValidationLayerSupport();
 		void CheckRequiredExtensions(uint32_t glfwExtensionCount, const char** glfwExtensions, std::vector<VkExtensionProperties> vulkanSupportedExtensions);
 		VkFormat FindSupportedFormat(VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+		bool HasStencilComponent(VkFormat format);
 		VkFormat FindDepthFormat(VkPhysicalDevice& physicalDevice);
 		void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 		void CreateImage(GPUImage& image);

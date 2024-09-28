@@ -30,12 +30,16 @@ namespace Renderer {
 	Graphics::Shader m_WireframeFragShader = {};
 	Graphics::Shader m_LightSourceFragShader = {};
 	Graphics::Shader m_LightSourceVertShader = {};
+	Graphics::Shader m_OutlineFragShader = {};
+	Graphics::Shader m_OutlineVertShader = {};
 
 	Graphics::Buffer m_SkyboxBuffer = {};
 	Graphics::Buffer m_GlobalDataBuffer = {};
 
 	Graphics::PipelineState m_SkyboxPSO = {};
 	Graphics::PipelineState m_ColorPSO = {};
+	Graphics::PipelineState m_ColorStencilPSO = {};
+	Graphics::PipelineState m_OutlinePSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
 	Graphics::PipelineState m_LightSourcePSO = {};
 	
@@ -45,6 +49,8 @@ namespace Renderer {
 
 	std::vector<Material> m_Materials;
 	std::vector<Texture> m_Textures;
+
+	float outlineWidth = 0.0f;
 }
 
 std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
@@ -77,7 +83,11 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyShader(m_SkyboxFragShader);
 	gfxDevice->DestroyShader(m_LightSourceFragShader);
 	gfxDevice->DestroyShader(m_LightSourceVertShader);
+	gfxDevice->DestroyShader(m_OutlineVertShader);
+	gfxDevice->DestroyShader(m_OutlineFragShader);
 	gfxDevice->DestroyPipeline(m_ColorPSO);
+	gfxDevice->DestroyPipeline(m_ColorStencilPSO);
+	gfxDevice->DestroyPipeline(m_OutlinePSO);
 	gfxDevice->DestroyPipeline(m_SkyboxPSO);
 	gfxDevice->DestroyPipeline(m_WireframePSO);
 	gfxDevice->DestroyPipeline(m_LightSourcePSO);
@@ -114,11 +124,13 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_WireframeFragShader, "./Shaders/wireframe_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertShader, "./Shaders/light_source_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "./Shaders/light_source_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "./Shaders/outline_vert.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "./Shaders/outline_frag.spv");
 
 	InputLayout globalInputLayout = {
 		.pushConstants = {
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) },				// material index (to be removed from here)
-			{ VK_SHADER_STAGE_VERTEX_BIT, sizeof(int), sizeof(int) }				// light source index (to be removed from here)
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) },
+			{ VK_SHADER_STAGE_VERTEX_BIT, sizeof(int), sizeof(int) }
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
@@ -158,7 +170,46 @@ void Renderer::LoadResources() {
 	colorPSODesc.psoInputLayout.push_back(modelInputLayout);
 	
 	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO);
+
+	PipelineStateDescription colorStencilPSODesc = {};
+	colorStencilPSODesc.Name = "Color Stencil Pipeline";
+	colorStencilPSODesc.vertexShader = &m_DefaultVertShader;
+	colorStencilPSODesc.fragmentShader = &m_ColorFragShader;
+	colorStencilPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	colorStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
+	colorStencilPSODesc.psoInputLayout.push_back(modelInputLayout);
+	colorStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
+	colorStencilPSODesc.stencilTestEnable = true;
+	colorStencilPSODesc.stencilState.compareOp = VK_COMPARE_OP_ALWAYS;
+	colorStencilPSODesc.stencilState.failOp = VK_STENCIL_OP_REPLACE;
+	colorStencilPSODesc.stencilState.depthFailOp = VK_STENCIL_OP_REPLACE;
+	colorStencilPSODesc.stencilState.passOp = VK_STENCIL_OP_REPLACE;
+	colorStencilPSODesc.stencilState.compareMask = 0xff;
+	colorStencilPSODesc.stencilState.writeMask = 0xff;
+	colorStencilPSODesc.stencilState.reference = 1;
 	
+	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO);
+
+	PipelineStateDescription outlinePSODesc = {};
+	outlinePSODesc.Name = "Outline Pipeline";
+	outlinePSODesc.vertexShader = &m_OutlineVertShader;
+	outlinePSODesc.fragmentShader = &m_OutlineFragShader;
+	outlinePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	outlinePSODesc.psoInputLayout.push_back(globalInputLayout);
+	outlinePSODesc.psoInputLayout.push_back(modelInputLayout);
+	outlinePSODesc.stencilTestEnable = true;
+	outlinePSODesc.cullMode = VK_CULL_MODE_NONE;
+	outlinePSODesc.stencilState.compareOp = VK_COMPARE_OP_NOT_EQUAL;
+	outlinePSODesc.stencilState.failOp = VK_STENCIL_OP_KEEP;
+	outlinePSODesc.stencilState.depthFailOp = VK_STENCIL_OP_KEEP;
+	outlinePSODesc.stencilState.passOp = VK_STENCIL_OP_REPLACE;
+	outlinePSODesc.stencilState.compareMask = 0xff;
+	outlinePSODesc.stencilState.writeMask = 0xff;
+	outlinePSODesc.stencilState.reference = 1;
+	outlinePSODesc.depthTestEnable = true;										// change to false if want to see through walls
+	
+	gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO);
+
 	PipelineStateDescription skyboxPSODesc = {};
 	skyboxPSODesc.Name = "Skybox PSO";
 	skyboxPSODesc.vertexShader = &m_SkyboxVertexShader;
@@ -237,14 +288,20 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& 
 
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
 	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
 
-	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorPSO.pipelineLayout, 1, 1);
+	if (model.RenderOutline) {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorStencilPSO.pipeline);
+		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorStencilPSO.pipelineLayout, 1, 1);
+	} else {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
+		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorPSO.pipelineLayout, 1, 1);
+	}
 
 	ModelConstants modelConstant = {};
 	modelConstant.model = model.GetModelMatrix();
 	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
 	modelConstant.flipUvVertically = model.FlipUvVertically;
+	modelConstant.outlineWidth = model.OutlineWidth;
 
 	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
 
@@ -252,6 +309,46 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& 
 		vkCmdPushConstants(
 			commandBuffer,
 			m_ColorPSO.pipelineLayout,
+			VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(int),
+			&mesh.MaterialIndex
+		);
+
+		vkCmdDrawIndexed(
+			commandBuffer,
+			static_cast<uint32_t>(mesh.Indices.size()),
+			1,
+			static_cast<uint32_t>(mesh.IndexOffset),
+			static_cast<int32_t>(mesh.VertexOffset),
+			0
+		);
+	}
+}
+
+void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
+	GraphicsDevice* gfxDevice = GetDevice();
+
+	VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };
+
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_OutlinePSO.pipeline);
+
+	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_OutlinePSO.pipelineLayout, 1, 1);
+
+	ModelConstants modelConstant = {};
+	modelConstant.model = model.GetModelMatrix();
+	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
+	modelConstant.flipUvVertically = model.FlipUvVertically;
+	modelConstant.outlineWidth = model.OutlineWidth;
+
+	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
+
+	for (const auto& mesh : model.Meshes) {
+		vkCmdPushConstants(
+			commandBuffer,
+			m_OutlinePSO.pipelineLayout,
 			VK_SHADER_STAGE_FRAGMENT_BIT,
 			0,
 			sizeof(int),

@@ -23,6 +23,7 @@ struct ModelConstants {
 
 	alignas(4) int extraScalar = 0;
 	alignas(4) int extraScalar1 = 0;
-	alignas(4) int extraScalar2 = 0;
+
 	alignas(4) int flipUvVertically = 0;
+	alignas(4) float outlineWidth = 0;
 };

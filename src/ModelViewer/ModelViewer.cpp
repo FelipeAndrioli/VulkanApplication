@@ -21,7 +21,7 @@ public:
 		settings.Width = 1600;
 		settings.Height = 900;
 		settings.uiEnabled = true;
-		settings.renderSkybox = true;
+		settings.renderSkybox = false;
 	};
 
 	virtual void StartUp() override;
@@ -119,6 +119,13 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
 		Renderer::RenderModel(commandBuffer, *m_Sponza.get());
 	}
+
+	if (m_Dragon->RenderOutline)
+		Renderer::RenderOutline(commandBuffer, *m_Dragon.get());
+	if (m_Backpack->RenderOutline)
+		Renderer::RenderOutline(commandBuffer, *m_Backpack.get());
+	if (m_Sponza->RenderOutline)
+		Renderer::RenderOutline(commandBuffer, *m_Sponza.get());
 
 	if (settings.renderWireframe) {
 		Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());

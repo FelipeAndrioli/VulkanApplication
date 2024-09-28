@@ -17,8 +17,9 @@ layout (std140, set = 1, binding = 0) uniform ObjectGPUData {
 	mat4 normal_matrix;
 	int extra_scalar;
 	int extra_scalar1;
-	int extra_scalar2;
+	
 	int flip_uv_vertically;
+	int outline_width;
 } objectGPUData;
 
 layout (location = 0) in vec3 inPosition;
@@ -32,7 +33,7 @@ layout (location = 2) out vec2 fragTexCoord;
 layout (location = 3) out vec3 fragPos;
 
 void main() {
-	gl_Position = sceneGPUData.proj * sceneGPUData.view * objectGPUData.model * vec4(inPosition, 1.0f);
+	gl_Position = sceneGPUData.proj * sceneGPUData.view * objectGPUData.model * vec4(inPosition, 1.0);
 	fragColor = inColor;
 
 	if (objectGPUData.flip_uv_vertically == 1) {
@@ -42,6 +43,6 @@ void main() {
 	}
 
 	fragNormal = mat3(objectGPUData.normal_matrix) * inNormal;
-	fragPos = vec3(objectGPUData.model * vec4(inPosition, 1.0f));
+	fragPos = vec3(objectGPUData.model * vec4(inPosition, 1.0));
 }
 

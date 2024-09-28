@@ -62,6 +62,11 @@ namespace Assets {
 
 			ImGui::Checkbox("Rotate", &Rotate);
 			ImGui::Checkbox("Flip UV Vertically", &FlipUvVertically);
+			ImGui::Checkbox("Render Outline", &RenderOutline);
+
+			if (RenderOutline) {
+				ImGui::DragFloat("Outline Width", &OutlineWidth, 0.0002f, -5.0f, 5.0f, "%.04f");
+			}
 
 			ImGui::TreePop();
 		}
