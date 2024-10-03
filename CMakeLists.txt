@@ -21,9 +21,8 @@ set(STB_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/stb")
 set(IMGUI_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/imgui")
 set(IMGUI_BACKENDS_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/imgui/backends")
 set(ASSIMP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/libs/assimp/include")
-set(TINY_OBJ_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/tinyobjloader")
 
-find_package(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED COMPONENTS glslang SPIRV-Tools)
 
 if (NOT Vulkan_FOUND)
 	message(FATAL_ERROR "Vulkan not found!")
@@ -40,7 +39,6 @@ set(VK_APP_INCLUDES ${APP_INCLUDE_DIRS}
 	${IMGUI_INCLUDE_DIRS}
 	${IMGUI_BACKENDS_INCLUDE_DIRS}
 	${ASSIMP_INCLUDE_DIRS}
-	${TINY_OBJ_INCLUDE_DIRS}
 	${Vulkan_INCLUDE_DIR})
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/libs/glm)
