@@ -79,6 +79,9 @@ namespace Graphics {
 
 		VkVertexInputBindingDescription BindingDescription = Assets::Vertex::getBindingDescription();
 		std::array<VkVertexInputAttributeDescription, 4> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
+
+		std::vector<char> sourceCode;
+		std::vector<unsigned int> spirv;
 	};
 
 	struct InputLayout {
@@ -237,6 +240,9 @@ namespace Graphics {
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const Buffer& buffer);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture);
+
+		static EShLanguage FindLanguage(const Shader& shader);
+		static bool CompileShader(Shader& shader);
 
 		std::vector<char> ReadFile(const std::string& filename);
 		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
