@@ -35,9 +35,13 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [x] Spot Light
 	- [x] Blinn-Phong
 - [x] Stencil Buffer
+- [x] Runtime Shader Compilation (Partially)
+	- To avoid adding another dependency (glslang or shaderc), I decided to use VulkanSDK glslang,
+	  however, the SDK version is built using MSVC compiler, not being compatible with code built
+	  using Ninja or MinGW compiler, therefore the runtime shader compilation will only work when
+	  built using MSVC compiler.
 
 ## Next Up
-- [ ] Runtime Shader Compilation
 - [ ] Blending
 - [ ] Framebuffers
 - [ ] Instancing

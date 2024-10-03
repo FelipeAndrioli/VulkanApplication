@@ -39,4 +39,12 @@ add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} glm)
 target_link_libraries(${PROJECT_NAME} glfw)
 target_link_libraries(${PROJECT_NAME} assimp)
-target_link_libraries(${PROJECT_NAME} ${Vulkan_LIBRARY})
+
+if (RUNTIME_SHADER_COMPILE)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE RUNTIME_SHADER_COMPILATION=${RUNTIME_SHADER_COMPILE})
+	target_link_libraries(${PROJECT_NAME} Vulkan::Headers)
+	target_link_libraries(${PROJECT_NAME} Vulkan::glslang)
+	target_link_libraries(${PROJECT_NAME} Vulkan::SPIRV-Tools)
+endif()
+
+target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan)

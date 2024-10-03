@@ -116,7 +116,18 @@ void Renderer::LoadResources() {
 	};
 
 	m_Skybox = TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr");
-	
+
+#ifdef RUNTIME_SHADER_COMPILATION
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "../src/Assets/Shaders/skybox.vert");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "../src/Assets/Shaders/skybox.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_DefaultVertShader, "../src/Assets/Shaders/default.vert");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_ColorFragShader, "../src/Assets/Shaders/color_ps.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_WireframeFragShader, "../src/Assets/Shaders/wireframe.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertShader, "../src/Assets/Shaders/light_source.vert");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "../src/Assets/Shaders/light_source.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "../src/Assets/Shaders/outline.vert");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "../src/Assets/Shaders/outline.frag");
+#else 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "./Shaders/skybox_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "./Shaders/skybox_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_DefaultVertShader, "./Shaders/default_vert.spv");
@@ -126,6 +137,7 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "./Shaders/light_source_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "./Shaders/outline_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "./Shaders/outline_frag.spv");
+#endif
 
 	InputLayout globalInputLayout = {
 		.pushConstants = {
