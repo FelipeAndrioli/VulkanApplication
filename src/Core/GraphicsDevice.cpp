@@ -1688,8 +1688,11 @@ namespace Graphics {
 	}
 
 	std::vector<char> GraphicsDevice::ReadFile(const std::string& filename) {
-		//std::ifstream file(filename, std::ios::ate | std::ios::binary);
+#ifdef RUNTIME_SHADER_COMPILATION
 		std::ifstream file(filename, std::ios::ate);
+#else
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+#endif
 
 		if (!file.is_open()) {
 			throw std::runtime_error("Failed to open file!");
@@ -1706,6 +1709,7 @@ namespace Graphics {
 		return buffer;
 	}
 
+#ifdef RUNTIME_SHADER_COMPILATION
 	EShLanguage GraphicsDevice::FindLanguage(const Shader& shader) {
 		switch (static_cast<VkShaderStageFlagBits>(shader.stage)) {
 		case VK_SHADER_STAGE_VERTEX_BIT:
@@ -1859,33 +1863,32 @@ namespace Graphics {
 
 		return true;
 	}
+#endif
 
 	void GraphicsDevice::LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename) {
-		std::cout << "Compiling shader: " << filename << '\n';
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 
 		shader.stage = shaderStage;
 		shader.shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shader.shaderStageInfo.stage = shaderStage;
 		shader.shaderStageInfo.pName = "main";
-
-		VkShaderModuleCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		
-		bool runtimeShaderCompilation = true;
-		if (runtimeShaderCompilation) {
-			shader.sourceCode = ReadFile(filename);
+		shader.sourceCode = ReadFile(filename);
+#ifdef RUNTIME_SHADER_COMPILATION
+		std::cout << "Compiling shader: " << filename << '\n';
 
-			assert(CompileShader(shader));
+		assert(CompileShader(shader));
 
-			createInfo.codeSize = shader.spirv.size() * sizeof(unsigned int);
-			createInfo.pCode = reinterpret_cast<const uint32_t*>(shader.spirv.data());
-		} else {
-			// already contains the SPIRV code
-			shader.sourceCode = ReadFile(filename);
-			createInfo.codeSize = shader.sourceCode.size();
-			createInfo.pCode = reinterpret_cast<const uint32_t*>(shader.sourceCode.data());
-		}
-
+		createInfo.codeSize = shader.spirv.size() * sizeof(unsigned int);
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(shader.spirv.data());
+#else
+		std::cout << "Loading pre-compiled shader: " << filename << '\n';
+		// already contains the SPIRV code
+		createInfo.codeSize = shader.sourceCode.size();
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(shader.sourceCode.data());
+#endif
+	
 		VkResult result = vkCreateShaderModule(m_LogicalDevice, &createInfo, nullptr, &shader.shaderModule);
 		assert(result == VK_SUCCESS);
 		

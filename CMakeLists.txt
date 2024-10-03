@@ -22,7 +22,14 @@ set(IMGUI_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/imgui")
 set(IMGUI_BACKENDS_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/imgui/backends")
 set(ASSIMP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/libs/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/libs/assimp/include")
 
-find_package(Vulkan REQUIRED COMPONENTS glslang SPIRV-Tools)
+set(RUNTIME_SHADER_COMPILE "RUNTIME_SHADER_COMPILE" CACHE STRING "TRUE")
+
+if (RUNTIME_SHADER_COMPILE)
+	message("RUNTIME SHADER COMPILATION ENABLED")
+	find_package(Vulkan REQUIRED COMPONENTS glslang SPIRV-Tools)
+else()
+	find_package(Vulkan REQUIRED)
+endif()
 
 if (NOT Vulkan_FOUND)
 	message(FATAL_ERROR "Vulkan not found!")

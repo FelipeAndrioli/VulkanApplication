@@ -241,8 +241,10 @@ namespace Graphics {
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture);
 
+#ifdef RUNTIME_SHADER_COMPILATION
 		static EShLanguage FindLanguage(const Shader& shader);
 		static bool CompileShader(Shader& shader);
+#endif
 
 		std::vector<char> ReadFile(const std::string& filename);
 		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
