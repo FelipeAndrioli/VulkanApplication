@@ -104,7 +104,7 @@ layout (push_constant) uniform constant {
 	int material_index;
 } mesh_constant;
 
-vec4 calc_directional_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
+vec3 calc_directional_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
 	vec3 light_dir = normalize(-light.direction.xyz);
 
 	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
@@ -124,10 +124,10 @@ vec4 calc_directional_light(light_t light, material_t current_material, vec4 mat
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
 
-	return vec4(ambient + diffuse + specular, 1.0) * light.color;
+	return vec3(ambient + diffuse + specular) * light.color.rgb;
 }
 
-vec4 calc_point_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
+vec3 calc_point_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
 	float d = length(fragPos - light.position.xyz);
 	float constant_attenuation = 1.0;
 	float light_attenuation = 1 / (constant_attenuation + light.linear_attenuation * d + light.quadratic_attenuation * (d * d));
@@ -151,17 +151,17 @@ vec4 calc_point_light(light_t light, material_t current_material, vec4 material_
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular) * light_attenuation;
 
-	return vec4(ambient + diffuse + specular, 1.0) * light.color;
+	return vec3(ambient + diffuse + specular) * light.color.rgb;
 }
 
-vec4 calc_spot_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
+vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
 	vec3 light_dir = normalize(light.position.xyz - fragPos);
 
 	float theta = dot(light_dir, normalize(-light.direction.xyz));
 	float epsilon = light.cut_off_angle - light.outer_cut_off_angle;
 	float intensity = clamp((theta - light.outer_cut_off_angle) / epsilon, 0.0, 1.0);
 	
-	vec4 result = calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
+	vec3 result = calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
 
 	return result * intensity;
 }
@@ -188,19 +188,19 @@ void main() {
 	vec4 material_normal = vec4(1.0);
 
 	if (current_material.diffuse_texture_index == -1) {
-		material_ambient = vec4(current_material.diffuse.xyz, 1.0);
+		material_ambient = vec4(current_material.diffuse.xyz, 0.3);
 	} else {
 		material_ambient = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
-		if (material_ambient.a < 0.5) {
+		if (material_ambient.a < 0.1) {
 			discard;
 		}
 	}
 
 	if (current_material.diffuse_texture_index == -1) {
-		material_diffuse = vec4(current_material.diffuse.xyz, 1.0);
+		material_diffuse = vec4(current_material.diffuse.xyz, 0.3);
 	} else {
 		material_diffuse = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
-		if (material_diffuse.a < 0.5) {
+		if (material_diffuse.a < 0.1) {
 			discard;
 		}
 	}
@@ -212,10 +212,10 @@ void main() {
 	}
 
 	if (current_material.specular_texture_index == -1) {
-		material_specular = vec4(current_material.specular.xyz, 1.0);
+		material_specular = vec4(current_material.specular.xyz, 0.3);
 	} else {
 		material_specular = texture(texSampler[current_material.specular_texture_index], fragTexCoord);
-		if (material_specular.a < 0.5) {
+		if (material_specular.a < 0.1) {
 			discard;
 		}
 	}
@@ -225,18 +225,21 @@ void main() {
 
 		switch (light.type) {
 			case 0:
-				material_color += calc_directional_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
+				material_color.rgb += calc_directional_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
 				break;
 			case 1:
-				material_color += calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
+				material_color.rgb += calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
 				break;
 			case 2:
-				material_color += calc_spot_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
+				material_color.rgb += calc_spot_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
 				break;
 			default:
 				break;
 		}
 	}
+	
+	material_color.a = material_diffuse.a;
 
 	out_color = material_color;
+	//out_color = vec4(material_color.a);
 }

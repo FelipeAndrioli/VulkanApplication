@@ -26,6 +26,7 @@ namespace Renderer {
 	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);
 	void RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& model);
+	void RenderModelTransparent(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderLightSources(const VkCommandBuffer& commandBuffer);

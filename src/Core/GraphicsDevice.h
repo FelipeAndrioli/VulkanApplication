@@ -99,6 +99,7 @@ namespace Graphics {
 		bool depthTestEnable = true;
 		bool depthWriteEnable = true;
 		bool stencilTestEnable = false;
+		bool colorBlendingEnable = false;
 
 		VkStencilOpState stencilState = {};
 
@@ -107,6 +108,7 @@ namespace Graphics {
 		VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
 		VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		VkExtent2D pipelineExtent = {};
+		VkPipelineColorBlendAttachmentState colorBlendingDesc = {};
 
 		float lineWidth = 1.0f;
 
@@ -135,6 +137,7 @@ namespace Graphics {
 		VkSampleMask sampleMask = {};
 		VkPipelineTessellationStateCreateInfo tessellationInfo = {};
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+		VkPipelineColorBlendStateCreateInfo colorBlending = {};
 	};
 
 	struct Frame {

@@ -42,6 +42,7 @@ namespace Renderer {
 	Graphics::PipelineState m_OutlinePSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
 	Graphics::PipelineState m_LightSourcePSO = {};
+	Graphics::PipelineState m_TransparentPSO = {};
 	
 	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
 
@@ -91,6 +92,7 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyPipeline(m_SkyboxPSO);
 	gfxDevice->DestroyPipeline(m_WireframePSO);
 	gfxDevice->DestroyPipeline(m_LightSourcePSO);
+	gfxDevice->DestroyPipeline(m_TransparentPSO);
 
 	LightManager::Shutdown();
 
@@ -254,6 +256,24 @@ void Renderer::LoadResources() {
 	
 	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO);
 
+	PipelineStateDescription transparentPSODesc = {};
+	transparentPSODesc.Name = "Transparent PSO";
+	transparentPSODesc.vertexShader = &m_DefaultVertShader;
+	transparentPSODesc.fragmentShader = &m_ColorFragShader;
+	transparentPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	transparentPSODesc.psoInputLayout.push_back(globalInputLayout);
+	transparentPSODesc.psoInputLayout.push_back(modelInputLayout);
+	transparentPSODesc.colorBlendingEnable = true;
+	transparentPSODesc.colorBlendingDesc.blendEnable = VK_TRUE;
+	transparentPSODesc.colorBlendingDesc.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	transparentPSODesc.colorBlendingDesc.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	transparentPSODesc.colorBlendingDesc.colorBlendOp = VK_BLEND_OP_ADD;
+	transparentPSODesc.colorBlendingDesc.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	transparentPSODesc.colorBlendingDesc.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	transparentPSODesc.colorBlendingDesc.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO);
+
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
@@ -321,6 +341,51 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& 
 		vkCmdPushConstants(
 			commandBuffer,
 			m_ColorPSO.pipelineLayout,
+			VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(int),
+			&mesh.MaterialIndex
+		);
+
+		vkCmdDrawIndexed(
+			commandBuffer,
+			static_cast<uint32_t>(mesh.Indices.size()),
+			1,
+			static_cast<uint32_t>(mesh.IndexOffset),
+			static_cast<int32_t>(mesh.VertexOffset),
+			0
+		);
+	}
+}
+
+void Renderer::RenderModelTransparent(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
+	GraphicsDevice* gfxDevice = GetDevice();
+
+	VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };
+
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+
+	if (model.RenderOutline) {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
+		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_TransparentPSO.pipelineLayout, 1, 1);
+	} else {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
+		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_TransparentPSO.pipelineLayout, 1, 1);
+	}
+
+	ModelConstants modelConstant = {};
+	modelConstant.model = model.GetModelMatrix();
+	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
+	modelConstant.flipUvVertically = model.FlipUvVertically;
+	modelConstant.outlineWidth = model.OutlineWidth;
+
+	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
+
+	for (const auto& mesh : model.Meshes) {
+		vkCmdPushConstants(
+			commandBuffer,
+			m_TransparentPSO.pipelineLayout,
 			VK_SHADER_STAGE_FRAGMENT_BIT,
 			0,
 			sizeof(int),

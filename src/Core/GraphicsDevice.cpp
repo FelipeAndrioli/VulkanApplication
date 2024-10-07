@@ -293,6 +293,7 @@ namespace Graphics {
 		deviceFeatures.samplerAnisotropy = VK_TRUE;
 		deviceFeatures.fillModeNonSolid = VK_TRUE;
 		deviceFeatures.wideLines = VK_TRUE;
+		deviceFeatures.alphaToOne = VK_TRUE;
 
 		VkDeviceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -1945,24 +1946,20 @@ namespace Graphics {
 		pso.multisampling.rasterizationSamples = m_MsaaSamples;
 		pso.multisampling.minSampleShading = 1.0f;
 		pso.multisampling.pSampleMask = nullptr;
-		pso.multisampling.alphaToCoverageEnable = VK_FALSE;
-		pso.multisampling.alphaToOneEnable = VK_FALSE;
+		pso.multisampling.alphaToCoverageEnable = desc.colorBlendingEnable;
+		pso.multisampling.alphaToOneEnable = desc.colorBlendingEnable;
 
-		VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-			| VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		colorBlendAttachment.blendEnable = VK_FALSE;
-
-		VkPipelineColorBlendStateCreateInfo colorBlending = {};
-		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		colorBlending.logicOpEnable = VK_FALSE;
-		colorBlending.logicOp = VK_LOGIC_OP_COPY;
-		colorBlending.attachmentCount = 1;
-		colorBlending.pAttachments = &colorBlendAttachment;
-		colorBlending.blendConstants[0] = 0.0f;
-		colorBlending.blendConstants[1] = 0.0f;
-		colorBlending.blendConstants[2] = 0.0f;
-		colorBlending.blendConstants[3] = 0.0f;
+		desc.colorBlendingDesc.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		
+		pso.colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		pso.colorBlending.logicOpEnable = VK_FALSE;
+		pso.colorBlending.logicOp = VK_LOGIC_OP_COPY;
+		pso.colorBlending.attachmentCount = 1;
+		pso.colorBlending.pAttachments = &desc.colorBlendingDesc;
+		pso.colorBlending.blendConstants[0] = 0.0f;
+		pso.colorBlending.blendConstants[1] = 0.0f;
+		pso.colorBlending.blendConstants[2] = 0.0f;
+		pso.colorBlending.blendConstants[3] = 0.0f;
 
 		std::vector<VkDynamicState> dynamicStates = {
 			VK_DYNAMIC_STATE_VIEWPORT,
@@ -2065,7 +2062,7 @@ namespace Graphics {
 		pso.pipelineInfo.pRasterizationState = &pso.rasterizer;
 		pso.pipelineInfo.pMultisampleState = &pso.multisampling;
 		pso.pipelineInfo.pDepthStencilState = &pso.depthStencil;
-		pso.pipelineInfo.pColorBlendState = &colorBlending;
+		pso.pipelineInfo.pColorBlendState = &pso.colorBlending;
 		pso.pipelineInfo.pDynamicState = &dynamicState;
 		pso.pipelineInfo.layout = pso.pipelineLayout;
 		pso.pipelineInfo.renderPass = renderPass;		// this should be changed to render pass info in the future

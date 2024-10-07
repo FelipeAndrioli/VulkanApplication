@@ -115,9 +115,9 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
 	if (settings.renderDefault) {
-		Renderer::RenderModel(commandBuffer, *m_Dragon.get());
 		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
 		Renderer::RenderModel(commandBuffer, *m_Sponza.get());
+		Renderer::RenderModelTransparent(commandBuffer, *m_Dragon.get());
 	}
 
 	if (m_Dragon->RenderOutline)
