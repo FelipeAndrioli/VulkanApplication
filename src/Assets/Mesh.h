@@ -68,8 +68,6 @@ namespace Assets {
 		size_t MaterialIndex = 0;
 		size_t IndexOffset = 0;
 		size_t VertexOffset = 0;
-
-		Material CustomMeshMaterial = {};
 	};	
 }
 

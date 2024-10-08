@@ -105,17 +105,6 @@ void ProcessNode(Assets::Model& model, const aiNode* node, const aiScene* scene)
 	}
 }
 
-void LinkMeshesToMaterials(std::vector<Assets::Mesh>& meshes, std::vector<Material>& sceneMaterials) {
-	for (auto& mesh : meshes) {
-		if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
-			sceneMaterials.push_back(mesh.CustomMeshMaterial);
-			mesh.MaterialName = "Default";
-		} 
-
-		mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
-	}
-}
-
 void ValidateAndInsertTexture(
 		std::vector<Texture>& loadedTextures,
 		Texture::TextureType textureType,
@@ -313,12 +302,16 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 
 
 	for (auto& mesh : model.Meshes) {
-		if (GetMaterialIndex(materials, mesh.MaterialName) == UNEXISTENT) {
-			materials.push_back(mesh.CustomMeshMaterial);
-			mesh.MaterialName = "Default";
+
+		int materialIndex = GetMaterialIndex(materials, mesh.MaterialName);
+
+		if (materialIndex == UNEXISTENT) {
+			std::string customMaterialName = "Custom_Material_" + model.Name;
+			materials.emplace_back(Material(customMaterialName));
+			mesh.MaterialName = customMaterialName;
 		}
 
-		mesh.MaterialIndex = GetMaterialIndex(materials, mesh.MaterialName);
+		mesh.MaterialIndex = materialIndex;
 
 		mesh.IndexOffset = indices.size();
 		mesh.VertexOffset = vertices.size();
