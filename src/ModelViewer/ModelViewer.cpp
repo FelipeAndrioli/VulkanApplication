@@ -36,6 +36,7 @@ private:
 	std::shared_ptr<Assets::Model> m_Dragon;
 	std::shared_ptr<Assets::Model> m_Sponza;
 	std::shared_ptr<Assets::Model> m_Backpack;
+	std::shared_ptr<Assets::Model> m_Window;
 
 	uint32_t m_ScreenWidth = 0;
 	uint32_t m_ScreenHeight = 0;
@@ -97,6 +98,13 @@ void ModelViewer::StartUp() {
 	m_Sponza->Transformations.scaleHandler = 0.008f;
 	m_Sponza->Transformations.rotation.y = 45.0f;
 
+	m_Window = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/wooden_window/scene.gltf");
+	m_Window->Name = "Window";
+	m_Window->Transformations.translation.y = -3.3f;
+	m_Window->Transformations.translation.z = -0.9f;
+	m_Window->Transformations.rotation.y = -20.0f;
+	m_Window->Transformations.scaleHandler = 0.214f;
+
 	Renderer::LoadResources();
 }
 
@@ -118,6 +126,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
 		Renderer::RenderModel(commandBuffer, *m_Sponza.get());
 		Renderer::RenderModelTransparent(commandBuffer, *m_Dragon.get());
+		Renderer::RenderModelTransparent(commandBuffer, *m_Window.get());
 	}
 
 	if (m_Dragon->RenderOutline)
@@ -126,11 +135,14 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		Renderer::RenderOutline(commandBuffer, *m_Backpack.get());
 	if (m_Sponza->RenderOutline)
 		Renderer::RenderOutline(commandBuffer, *m_Sponza.get());
+	if (m_Window->RenderOutline)
+		Renderer::RenderOutline(commandBuffer, *m_Window.get());
 
 	if (settings.renderWireframe) {
 		Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());
 		Renderer::RenderWireframe(commandBuffer, *m_Backpack.get());
 		Renderer::RenderWireframe(commandBuffer, *m_Sponza.get());
+		Renderer::RenderWireframe(commandBuffer, *m_Window.get());
 	}
 
 	if (settings.renderLightSources) {
@@ -153,6 +165,7 @@ void ModelViewer::RenderUI() {
 	m_Dragon->OnUIRender();
 	m_Backpack->OnUIRender();
 	m_Sponza->OnUIRender();
+	m_Window->OnUIRender();
 
 	Renderer::OnUIRender();
 }
