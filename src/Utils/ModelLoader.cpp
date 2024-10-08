@@ -250,11 +250,11 @@ static void ProcessMaterials(
 		aiMaterial* material = scene->mMaterials[i];
 
 		aiString materialName;
-		aiColor3D diffuseColor;
-		aiColor3D specularColor;
-		aiColor3D ambientColor;
-		aiColor3D emissiveColor;
-		aiColor3D transparentColor;
+		aiColor4D diffuseColor;
+		aiColor4D specularColor;
+		aiColor4D ambientColor;
+		aiColor4D emissiveColor;
+		aiColor4D transparentColor;
 		float opacity;
 		float shininess;
 		float shininessStrength;
@@ -272,11 +272,11 @@ static void ProcessMaterials(
 		if (GetMaterialIndex(sceneMaterials, materialName.C_Str()) == UNEXISTENT) {
 			Material newMaterial = {};
 			newMaterial.Name = materialName.C_Str();
-			newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
-			newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
-			newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, 1.0f);
-			newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, 1.0f);
-			newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, 1.0f);
+			newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, ambientColor.a);
+			newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, diffuseColor.a);
+			newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, specularColor.a);
+			newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, emissiveColor.a);
+			newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, transparentColor.a);
 			newMaterial.MaterialData.Opacity = opacity;
 			newMaterial.MaterialData.Shininess = shininess;
 			newMaterial.MaterialData.ShininessStrength = shininessStrength;
