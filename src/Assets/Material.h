@@ -38,6 +38,21 @@ struct MaterialData {
 };
 
 struct Material {
+	Material() {};
+
+	Material(std::string materialName, MaterialData materialData) {
+		Name = materialName;
+		MaterialData = materialData;
+	}
+
+	Material(std::string materialName) {
+		Name = materialName;
+	}
+	
+	Material(MaterialData materialData) {
+		MaterialData = materialData;
+	}
+
 	std::string Name = "Default";
 	MaterialData MaterialData = {};
 };
