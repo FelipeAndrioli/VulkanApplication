@@ -52,14 +52,12 @@ namespace Renderer {
 	std::vector<Material> m_Materials;
 	std::vector<Texture> m_Textures;
 
-	float outlineWidth = 0.0f;
-
-	std::array<std::shared_ptr<Assets::Model>, 10> m_Models;
+	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
 	uint32_t m_TotalModels = 0;
 }
 
 std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
-	if (m_TotalModels == 10)
+	if (m_TotalModels == MAX_MODELS)
 		return nullptr;
 
 	m_Models[m_TotalModels++] = ModelLoader::LoadModel(path, m_Materials, m_Textures);
@@ -169,7 +167,7 @@ void Renderer::LoadResources() {
 		}
 	};
 
-	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants) * 10);
+	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants) * MAX_MODELS);
 	m_GlobalDataBuffer = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
 
 	gfxDevice->WriteBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
@@ -315,7 +313,7 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 
 	LightManager::UpdateBuffer();
 
-	std::array<ModelConstants, 10> modelConstants;
+	std::array<ModelConstants, MAX_MODELS> modelConstants;
 
 	for (uint32_t i = 0; i < m_TotalModels; i++) {
 		ModelConstants modelConstant = {};

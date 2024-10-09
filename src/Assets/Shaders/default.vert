@@ -1,5 +1,7 @@
 #version 450
 
+#define MAX_MODELS 10
+
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int total_lights;
 	float time;
@@ -33,7 +35,7 @@ layout (location = 2) out vec2 fragTexCoord;
 layout (location = 3) out vec3 fragPos;
 
 layout (std140, set = 0, binding = 5) uniform model_uniform {
-	model_t models[10];
+	model_t models[MAX_MODELS];
 };
 
 layout (push_constant) uniform constant {

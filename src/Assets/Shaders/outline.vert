@@ -1,5 +1,7 @@
 #version 450
 
+#define MAX_MODELS 10
+
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int total_lights;
 	float time;
@@ -23,7 +25,7 @@ struct model_t {
 };
 
 layout (std140, set = 0, binding = 5) uniform model_uniform {
-	model_t models[10];
+	model_t models[MAX_MODELS];
 };
 
 layout (location = 0) in vec3 inPosition;

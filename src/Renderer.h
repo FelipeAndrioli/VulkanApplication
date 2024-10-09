@@ -6,6 +6,8 @@
 #include "./Core/VulkanHeader.h"
 #include "glm.hpp"
 
+#define MAX_MODELS 10
+
 namespace Assets {
 	class Camera;
 	class Model;
