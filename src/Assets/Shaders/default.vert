@@ -19,7 +19,7 @@ struct model_t {
 	int extra_scalar1;
 	
 	int flip_uv_vertically;
-	int outline_width;
+	float outline_width;
 };
 
 layout (location = 0) in vec3 inPosition;
@@ -39,6 +39,7 @@ layout (std140, set = 0, binding = 5) uniform model_uniform {
 layout (push_constant) uniform constant {
 	int material_index;
 	int model_index;
+	int light_source_index;
 } mesh_constant;
 
 void main() {

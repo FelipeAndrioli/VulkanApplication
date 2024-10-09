@@ -342,29 +342,35 @@ void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& 
 
 	if (model.RenderOutline) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorStencilPSO.pipeline);
-		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorStencilPSO.pipelineLayout, 1, 1);
 	} else {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
-		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorPSO.pipelineLayout, 1, 1);
 	}
-
-	ModelConstants modelConstant = {};
-	modelConstant.model = model.GetModelMatrix();
-	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
-	modelConstant.flipUvVertically = model.FlipUvVertically;
-	modelConstant.outlineWidth = model.OutlineWidth;
-
-	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
-
+	
 	for (const auto& mesh : model.Meshes) {
-		vkCmdPushConstants(
-			commandBuffer,
-			m_ColorPSO.pipelineLayout,
-			VK_SHADER_STAGE_FRAGMENT_BIT,
-			0,
-			sizeof(int),
-			&mesh.MaterialIndex
-		);
+		PipelinePushConstants pushConstants = {
+			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+			.ModelIdx = static_cast<int>(model.ModelIndex)
+		};
+
+		if (model.RenderOutline) {
+			vkCmdPushConstants(
+				commandBuffer,
+				m_ColorStencilPSO.pipelineLayout,
+				VK_SHADER_STAGE_ALL_GRAPHICS,
+				0,
+				sizeof(PipelinePushConstants),
+				&pushConstants
+			);
+		} else {
+			vkCmdPushConstants(
+				commandBuffer,
+				m_ColorPSO.pipelineLayout,
+				VK_SHADER_STAGE_ALL_GRAPHICS,
+				0,
+				sizeof(PipelinePushConstants),
+				&pushConstants
+			);
+		}
 
 		vkCmdDrawIndexed(
 			commandBuffer,
@@ -384,31 +390,21 @@ void Renderer::RenderModelTransparent(const VkCommandBuffer& commandBuffer, Asse
 
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
 	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-
-	if (model.RenderOutline) {
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
-		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_TransparentPSO.pipelineLayout, 1, 1);
-	} else {
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
-		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_TransparentPSO.pipelineLayout, 1, 1);
-	}
-
-	ModelConstants modelConstant = {};
-	modelConstant.model = model.GetModelMatrix();
-	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
-	modelConstant.flipUvVertically = model.FlipUvVertically;
-	modelConstant.outlineWidth = model.OutlineWidth;
-
-	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
 
 	for (const auto& mesh : model.Meshes) {
+		PipelinePushConstants pushConstants = {
+			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+			.ModelIdx = static_cast<int>(model.ModelIndex)
+		};
+
 		vkCmdPushConstants(
 			commandBuffer,
 			m_TransparentPSO.pipelineLayout,
-			VK_SHADER_STAGE_FRAGMENT_BIT,
+			VK_SHADER_STAGE_ALL_GRAPHICS,
 			0,
-			sizeof(int),
-			&mesh.MaterialIndex
+			sizeof(PipelinePushConstants),
+			&pushConstants
 		);
 
 		vkCmdDrawIndexed(
@@ -431,24 +427,19 @@ void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model
 	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_OutlinePSO.pipeline);
 
-	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_OutlinePSO.pipelineLayout, 1, 1);
-
-	ModelConstants modelConstant = {};
-	modelConstant.model = model.GetModelMatrix();
-	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
-	modelConstant.flipUvVertically = model.FlipUvVertically;
-	modelConstant.outlineWidth = model.OutlineWidth;
-
-	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
-
 	for (const auto& mesh : model.Meshes) {
+		PipelinePushConstants pushConstants = {
+			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+			.ModelIdx = static_cast<int>(model.ModelIndex)
+		};
+
 		vkCmdPushConstants(
 			commandBuffer,
 			m_OutlinePSO.pipelineLayout,
-			VK_SHADER_STAGE_FRAGMENT_BIT,
+			VK_SHADER_STAGE_ALL_GRAPHICS,
 			0,
-			sizeof(int),
-			&mesh.MaterialIndex
+			sizeof(PipelinePushConstants),
+			&pushConstants
 		);
 
 		vkCmdDrawIndexed(
@@ -471,21 +462,19 @@ void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Mod
 	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePSO.pipeline);
 
-	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_WireframePSO.pipelineLayout, 1, 1);
-
-	ModelConstants modelConstant = {};
-	modelConstant.model = model.GetModelMatrix();
-
-	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
-
 	for (const auto& mesh : model.Meshes) {
+		PipelinePushConstants pushConstants = {
+			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+			.ModelIdx = static_cast<int>(model.ModelIndex)
+		};
+
 		vkCmdPushConstants(
 			commandBuffer,
 			m_WireframePSO.pipelineLayout,
-			VK_SHADER_STAGE_FRAGMENT_BIT,
+			VK_SHADER_STAGE_ALL_GRAPHICS,
 			0,
-			sizeof(int),
-			&mesh.MaterialIndex
+			sizeof(PipelinePushConstants),
+			&pushConstants
 		);
 
 		vkCmdDrawIndexed(
@@ -511,13 +500,17 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 		if (light.type == LightType::Directional)
 			continue;
 
+		PipelinePushConstants pushConstants = {
+			.LightSourceIdx = i
+		};
+
 		vkCmdPushConstants(
-			commandBuffer, 
-			m_LightSourcePSO.pipelineLayout, 
-			VK_SHADER_STAGE_VERTEX_BIT,
-			sizeof(int),
-			sizeof(int),
-			&i
+			commandBuffer,
+			m_LightSourcePSO.pipelineLayout,
+			VK_SHADER_STAGE_ALL_GRAPHICS,
+			0,
+			sizeof(PipelinePushConstants),
+			&pushConstants
 		);
 
 		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
