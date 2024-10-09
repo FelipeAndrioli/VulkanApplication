@@ -16,6 +16,13 @@ namespace Graphics {
 }
 
 namespace Renderer {
+
+	struct PipelinePushConstants {
+		int MaterialIdx = 0;
+		int ModelIdx = 0;
+		int LightSourceIdx = 0;
+	};
+
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
 	void Init();
@@ -31,4 +38,5 @@ namespace Renderer {
 	void RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderLightSources(const VkCommandBuffer& commandBuffer);
 	void RenderCube(const VkCommandBuffer& commandBuffer, const Graphics::PipelineState& PSO);
+	void RenderModels(const VkCommandBuffer& commandBuffer);
 }

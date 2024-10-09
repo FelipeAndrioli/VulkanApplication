@@ -102,6 +102,7 @@ layout (set = 0, binding = 3) uniform sampler2D texSampler[];
 
 layout (push_constant) uniform constant {
 	int material_index;
+	int model_index;
 } mesh_constant;
 
 vec3 calc_directional_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {

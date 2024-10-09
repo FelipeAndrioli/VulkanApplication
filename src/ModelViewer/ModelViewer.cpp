@@ -122,6 +122,8 @@ void ModelViewer::Update(float d, InputSystem::Input& input) {
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
+	Renderer::RenderModels(commandBuffer);
+	/*
 	if (settings.renderDefault) {
 		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
 		Renderer::RenderModel(commandBuffer, *m_Sponza.get());
@@ -152,6 +154,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	if (settings.renderSkybox) {
 		Renderer::RenderSkybox(commandBuffer);
 	}
+	*/
 }
 
 void ModelViewer::RenderUI() {

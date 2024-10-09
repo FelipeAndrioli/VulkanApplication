@@ -14,8 +14,6 @@ namespace Assets {
 	void Model::Destroy() {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-		gfxDevice->DestroyDescriptorSetLayout(ModelDescriptorSetLayout);
-
 		Meshes.clear();
 		gfxDevice->DestroyBuffer(DataBuffer);
 	}

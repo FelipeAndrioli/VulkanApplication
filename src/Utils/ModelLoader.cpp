@@ -351,17 +351,6 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 
 	gfxDevice->WriteBuffer(model.DataBuffer, indices.data(), sizeof(uint32_t) * indices.size(), 0);
 	gfxDevice->WriteBuffer(model.DataBuffer, vertices.data(), sizeof(Assets::Vertex) * vertices.size(), sizeof(uint32_t) * indices.size());
-
-	InputLayout modelInputLayout = {
-		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT }
-		}
-	};
-
-	model.ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants));
-	gfxDevice->CreateDescriptorSetLayout(model.ModelDescriptorSetLayout, modelInputLayout.bindings);
-	gfxDevice->CreateDescriptorSet(model.ModelDescriptorSetLayout, model.ModelDescriptorSet);
-	gfxDevice->WriteDescriptor(modelInputLayout.bindings[0], model.ModelDescriptorSet, model.ModelBuffer);
 }
 
 std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, std::vector<Material>& materials, std::vector<Graphics::Texture>& textures) {
