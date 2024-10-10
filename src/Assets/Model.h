@@ -6,6 +6,10 @@
 
 #include "../Core/Graphics.h"
 
+namespace Renderer {
+	class MeshSorter;
+};
+
 namespace Assets {
 	struct Transform {
 		glm::vec3 translation;
@@ -22,6 +26,7 @@ namespace Assets {
 		virtual void OnCreate() {};
 		virtual void OnUpdate(float t);
 		virtual void OnUIRender();
+		virtual void Render(Renderer::MeshSorter& sorter);
 		void Destroy();
 
 		glm::mat4 GetModelMatrix();

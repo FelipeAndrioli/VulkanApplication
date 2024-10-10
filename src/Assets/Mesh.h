@@ -60,6 +60,9 @@ namespace Assets {
 	};
 
 	struct Mesh {
+
+		enum MeshType { tOpaque, tTransparent };
+
 		std::string MaterialName = "";
 
 		std::vector<Vertex> Vertices;
@@ -68,6 +71,10 @@ namespace Assets {
 		size_t MaterialIndex = 0;
 		size_t IndexOffset = 0;
 		size_t VertexOffset = 0;
+
+		MeshType Type = tOpaque;
+
+		glm::vec3 PivotVector = glm::vec3(1.0f);
 	};	
 }
 

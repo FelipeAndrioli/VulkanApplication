@@ -37,6 +37,7 @@ private:
 	std::shared_ptr<Assets::Model> m_Sponza;
 	std::shared_ptr<Assets::Model> m_Backpack;
 	std::shared_ptr<Assets::Model> m_Window;
+	std::shared_ptr<Assets::Model> m_Window_;
 
 	uint32_t m_ScreenWidth = 0;
 	uint32_t m_ScreenHeight = 0;
@@ -105,6 +106,12 @@ void ModelViewer::StartUp() {
 	m_Window->Transformations.rotation.y = -20.0f;
 	m_Window->Transformations.scaleHandler = 0.214f;
 
+	m_Window_ = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/wooden_window/scene.gltf");
+	m_Window_->Name = "Window_2";
+	m_Window_->Transformations.translation = glm::vec3(2.822f, -3.3f, -3.9f);
+	m_Window_->Transformations.rotation.y = -20.0f;
+	m_Window_->Transformations.scaleHandler = 0.214f;
+
 	Renderer::LoadResources();
 }
 
@@ -122,6 +129,17 @@ void ModelViewer::Update(float d, InputSystem::Input& input) {
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
+	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
+	sorter.SetCamera(m_Camera);
+
+	m_Backpack->Render(sorter);
+	m_Sponza->Render(sorter);
+	m_Dragon->Render(sorter);
+	m_Window->Render(sorter);
+	m_Window_->Render(sorter);
+
+	sorter.RenderMeshes(commandBuffer);
+	/*
 	//Renderer::RenderModels(commandBuffer);
 	if (settings.renderDefault) {
 		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
@@ -145,6 +163,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		Renderer::RenderWireframe(commandBuffer, *m_Sponza.get());
 		Renderer::RenderWireframe(commandBuffer, *m_Window.get());
 	}
+	*/
 
 	if (settings.renderLightSources) {
 		Renderer::RenderLightSources(commandBuffer);
@@ -167,6 +186,7 @@ void ModelViewer::RenderUI() {
 	m_Backpack->OnUIRender();
 	m_Sponza->OnUIRender();
 	m_Window->OnUIRender();
+	m_Window_->OnUIRender();
 
 	Renderer::OnUIRender();
 }

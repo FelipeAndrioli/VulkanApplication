@@ -5,6 +5,10 @@
 #include "../Core/GraphicsDevice.h"
 #include "../Core/UI.h"
 
+#include "../Renderer.h"
+
+#include "Camera.h"
+
 namespace Assets {
 	Model::~Model() {
 		std::cout << "Destroying model " << Name << '\n';
@@ -80,6 +84,21 @@ namespace Assets {
 
 			if (Transformations.rotation.y > 360.0f)
 				Transformations.rotation.y = 0.0f;
+		}
+	}
+
+	void Model::Render(Renderer::MeshSorter& sorter) {
+		
+		for (const auto& mesh : Meshes) {
+			glm::mat4 toOrigin = glm::translate(glm::mat4(1.0f), -mesh.PivotVector);
+			glm::mat4 toPosition = glm::translate(glm::mat4(1.0f), Transformations.translation);
+			glm::mat4 meshModel = toPosition * toOrigin;
+
+			glm::vec3 transformedMeshPivot = glm::vec3(meshModel * glm::vec4(mesh.PivotVector, 1.0));
+
+			float distance = glm::length(sorter.GetCamera().Position - transformedMeshPivot);
+
+			sorter.AddMesh(mesh, distance, ModelIndex, TotalIndices, DataBuffer);
 		}
 	}
 }

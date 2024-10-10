@@ -11,13 +11,59 @@
 namespace Assets {
 	class Camera;
 	class Model;
+
+	struct Mesh;
 }
 
 namespace Graphics {
 	struct PipelineState;
+	struct GPUBuffer;
 }
 
 namespace Renderer {
+
+	class MeshSorter {
+	public:
+
+		struct SortedMesh {
+			const Assets::Mesh* mesh;
+			Graphics::GPUBuffer* bufferPtr;
+
+			float distance;
+			
+			uint32_t modelIndex = 0;
+			uint32_t totalIndices = 0;
+		};
+
+		enum BatchType { tDefault, tShadows };
+		enum DrawPass { tZPass, tOpaque, tTransparent, tNumPasses };
+
+		MeshSorter(BatchType type) {
+			m_BatchType = type;
+			m_Camera = nullptr;
+			m_CurrentPass = tZPass;
+			m_CurrentDraw = 0;
+
+			std::memset(m_PassCounts, 0, sizeof(m_PassCounts));
+		};
+
+		void SetCamera(const Assets::Camera& camera);
+		const Assets::Camera& GetCamera();
+		void AddMesh(const Assets::Mesh& mesh, float distance, uint32_t modelIndex, uint32_t totalIndices, Graphics::GPUBuffer& buffer);
+		void Sort();
+		void RenderMeshes(const VkCommandBuffer& commandBuffer);
+	private:
+		BatchType m_BatchType;
+		DrawPass m_CurrentPass;
+
+		uint32_t m_CurrentDraw;
+		uint32_t m_PassCounts[tNumPasses];
+
+		const Assets::Camera* m_Camera;
+
+		std::vector<SortedMesh> m_OpaqueMeshes;
+		std::map<float, SortedMesh> m_TransparentMeshes;
+	};
 
 	struct PipelinePushConstants {
 		int MaterialIdx = 0;

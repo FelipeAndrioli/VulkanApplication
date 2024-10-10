@@ -59,6 +59,7 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 
 		for (size_t j = 0; j < face.mNumIndices; j++) {
 			Assets::Vertex vertex = {};
+			
 			vertex.pos = {
 				mesh->mVertices[face.mIndices[j]].x,
 				mesh->mVertices[face.mIndices[j]].y,
@@ -88,6 +89,7 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 			newMesh.Indices.push_back(uniqueVertices[vertex]);
 		}
 	}
+
 
 	newMesh.MaterialName = scene->mMaterials[mesh->mMaterialIndex]->GetName().C_Str();
 	
@@ -270,7 +272,6 @@ static void ProcessMaterials(
 			newMaterial.MaterialData.Shininess = shininess;
 			newMaterial.MaterialData.ShininessStrength = shininessStrength;
 
-			std::cout << "Material " << materialName.C_Str() << " shininess: " << shininess << '\n';
 			sceneMaterials.push_back(newMaterial);
 
 			material_count++;
@@ -319,20 +320,37 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 		indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
 		vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
 
+		if (materials[mesh.MaterialIndex].MaterialData.Diffuse.a < 1.0f)
+			mesh.Type = Assets::Mesh::tTransparent;
+
+		float mesh_max_x = std::numeric_limits<float>::min();
+		float mesh_min_x = std::numeric_limits<float>::max();
+		
+		float mesh_max_y = std::numeric_limits<float>::min();
+		float mesh_min_y = std::numeric_limits<float>::max();
+	
+		float mesh_max_z = std::numeric_limits<float>::min();
+		float mesh_min_z = std::numeric_limits<float>::max();
+
 		for (const auto& vertex: mesh.Vertices) {
-			if (vertex.pos.x > max_x)
-				max_x = vertex.pos.x;
-			if (vertex.pos.x < min_x)
-				min_x = vertex.pos.x;
-			if (vertex.pos.y > max_y)
-				max_y = vertex.pos.y;
-			if (vertex.pos.y < min_y)
-				min_y = vertex.pos.y;
-			if (vertex.pos.z > max_z)
-				max_z = vertex.pos.z;
-			if (vertex.pos.z < min_z)
-				min_z = vertex.pos.z;	
+			max_x = std::max(vertex.pos.x, max_x);
+			max_y = std::max(vertex.pos.y, max_y);
+			max_z = std::max(vertex.pos.z, max_z);
+
+			min_x = std::min(vertex.pos.x, min_x);
+			min_y = std::min(vertex.pos.y, min_y);
+			min_z = std::min(vertex.pos.z, min_z);
+
+			mesh_max_x = std::max(vertex.pos.x, mesh_max_x);
+			mesh_max_y = std::max(vertex.pos.y, mesh_max_y);
+			mesh_max_z = std::max(vertex.pos.z, mesh_max_z);
+
+			mesh_min_x = std::min(vertex.pos.x, mesh_min_x);
+			mesh_min_y = std::min(vertex.pos.y, mesh_min_y);
+			mesh_min_z = std::min(vertex.pos.z, mesh_min_z);
 		}
+
+		mesh.PivotVector = glm::vec3((mesh_max_x + mesh_min_x) / 2, (mesh_max_y + mesh_min_y) / 2, (mesh_max_z + mesh_min_z) / 2);
 	}
 
 	model.PivotVector = glm::vec3((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2);
