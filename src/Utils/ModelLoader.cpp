@@ -321,7 +321,9 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 		vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
 
 		if (materials[mesh.MaterialIndex].MaterialData.Diffuse.a < 1.0f)
-			mesh.Type = Assets::Mesh::tTransparent;
+			mesh.PSOFlags |= PSOFlags::tTransparent;
+		else
+			mesh.PSOFlags |= PSOFlags::tOpaque;
 
 		float mesh_max_x = std::numeric_limits<float>::min();
 		float mesh_min_x = std::numeric_limits<float>::max();

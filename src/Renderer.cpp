@@ -563,88 +563,113 @@ void Renderer::MeshSorter::SetCamera(const Assets::Camera& camera) {
 }
 
 void Renderer::MeshSorter::AddMesh(const Assets::Mesh& mesh, float distance, uint32_t modelIndex, uint32_t totalIndices, Graphics::GPUBuffer& buffer) {
-	if (mesh.Type == Assets::Mesh::MeshType::tOpaque)
+	
+	SortKey key = {};
+	key.value = m_SortMeshes.size();
+	key.distance = distance;
+	key.key = static_cast<uint64_t>(distance);
+
+	if (mesh.PSOFlags & PSOFlags::tTransparent) {
+		key.passId = DrawPass::tTransparent;
+		m_PassCounts[DrawPass::tTransparent]++;
+	} else {
+		key.passId = DrawPass::tOpaque;
+		m_PassCounts[DrawPass::tOpaque]++;
+	}
+
+	m_SortKeys.push_back(key);
+	m_SortMeshes.push_back({ &mesh, &buffer, distance, modelIndex, totalIndices });
+
+	/*
+	if (mesh.PSOFlags & PSOFlags::tOpaque)
 		m_OpaqueMeshes.push_back({ &mesh, &buffer, distance, modelIndex, totalIndices });
-	else
+	if (mesh.PSOFlags & PSOFlags::tTransparent)
 		m_TransparentMeshes[distance] = { &mesh, &buffer, distance, modelIndex, totalIndices };
+	*/
 }
 
 void Renderer::MeshSorter::Sort() {
-
+	struct { bool operator()(SortKey& a, SortKey& b) const { return a.key < b.key; } } cmp;
+	std::sort(m_SortKeys.begin(), m_SortKeys.end(), cmp);
 }
 
-void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer) {
+void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass) {
 
 	GraphicsDevice* gfxDevice = GetDevice();
-	
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
 
-	for (size_t i = 0; i < m_OpaqueMeshes.size(); i++) {
-		const SortedMesh& opaqueMesh = m_OpaqueMeshes[i];
+	for (; m_CurrentPass <= pass; m_CurrentPass = (DrawPass)(m_CurrentPass + 1)) {
 
-		if (i == 0 || m_OpaqueMeshes[i - 1].modelIndex != opaqueMesh.modelIndex) {
-			VkDeviceSize offsets[] = { sizeof(uint32_t) * opaqueMesh.totalIndices };
+		const uint32_t passCount = m_PassCounts[m_CurrentPass];
+		const PipelineState* pipeline = nullptr;
 
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &opaqueMesh.bufferPtr->Handle, offsets);
-			vkCmdBindIndexBuffer(commandBuffer, opaqueMesh.bufferPtr->Handle, 0, VK_INDEX_TYPE_UINT32);
+		if (passCount == 0)
+			continue;
+
+		if (m_BatchType == tDefault) {
+			switch (m_CurrentPass) {
+			case tZPass:
+				break;
+			case tOpaque:
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
+				pipeline = &m_ColorPSO;
+				break;
+			case tTransparent:
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
+				pipeline = &m_TransparentPSO;
+				break;
+			default:
+				break;
+			}
 		}
 
-		PipelinePushConstants pushConstants = {
-			.MaterialIdx = static_cast<int>(opaqueMesh.mesh->MaterialIndex),
-			.ModelIdx = static_cast<int>(opaqueMesh.modelIndex)
-		};
+		assert(pipeline != nullptr);
 
-		vkCmdPushConstants(
-			commandBuffer,
-			m_ColorPSO.pipelineLayout,
-			VK_SHADER_STAGE_ALL_GRAPHICS,
-			0,
-			sizeof(PipelinePushConstants),
-			&pushConstants
-		);
+		const uint32_t lastDraw = m_CurrentDraw + passCount;
 
-		vkCmdDrawIndexed(
-			commandBuffer,
-			static_cast<uint32_t>(opaqueMesh.mesh->Indices.size()),
-			1,
-			static_cast<uint32_t>(opaqueMesh.mesh->IndexOffset),
-			static_cast<int32_t>(opaqueMesh.mesh->VertexOffset),
-			0
-		);
-	}
+		const VkBuffer* geometryBuffer = nullptr;
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
-	
-	for (std::map<float, SortedMesh>::reverse_iterator it = m_TransparentMeshes.rbegin(); it != m_TransparentMeshes.rend(); ++it) {
-		const SortedMesh& transparentMesh = it->second;
+		while (m_CurrentDraw < lastDraw) {
+			SortKey key = m_SortKeys[m_CurrentDraw];
 
-		VkDeviceSize offsets[] = { sizeof(uint32_t) * transparentMesh.totalIndices };
+			const SortMesh& sortMesh = m_SortMeshes[key.value];
+			const Assets::Mesh& mesh = *sortMesh.mesh;
 
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &transparentMesh.bufferPtr->Handle, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, transparentMesh.bufferPtr->Handle, 0, VK_INDEX_TYPE_UINT32);
+			if (geometryBuffer == nullptr || &sortMesh.bufferPtr->Handle != geometryBuffer) {
+				geometryBuffer = &sortMesh.bufferPtr->Handle;
 
-		PipelinePushConstants pushConstants = {
-			.MaterialIdx = static_cast<int>(transparentMesh.mesh->MaterialIndex),
-			.ModelIdx = static_cast<int>(transparentMesh.modelIndex)
-		};
+				VkDeviceSize offsets[] = { sizeof(uint32_t) * sortMesh.totalIndices };
 
-		vkCmdPushConstants(
-			commandBuffer,
-			m_ColorPSO.pipelineLayout,
-			VK_SHADER_STAGE_ALL_GRAPHICS,
-			0,
-			sizeof(PipelinePushConstants),
-			&pushConstants
-		);
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, geometryBuffer, offsets);
+				vkCmdBindIndexBuffer(commandBuffer, *geometryBuffer, 0, VK_INDEX_TYPE_UINT32);
+			}
 
-		vkCmdDrawIndexed(
-			commandBuffer,
-			static_cast<uint32_t>(transparentMesh.mesh->Indices.size()),
-			1,
-			static_cast<uint32_t>(transparentMesh.mesh->IndexOffset),
-			static_cast<int32_t>(transparentMesh.mesh->VertexOffset),
-			0
-		);	
+			assert(geometryBuffer != nullptr);
+
+			PipelinePushConstants pushConstants = {
+				.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+				.ModelIdx = static_cast<int>(sortMesh.modelIndex)
+			};
+
+			vkCmdPushConstants(
+				commandBuffer,
+				pipeline->pipelineLayout,
+				VK_SHADER_STAGE_ALL_GRAPHICS,
+				0,
+				sizeof(PipelinePushConstants),
+				&pushConstants
+			);
+
+			vkCmdDrawIndexed(
+				commandBuffer,
+				static_cast<uint32_t>(mesh.Indices.size()),
+				1,
+				static_cast<uint32_t>(mesh.IndexOffset),
+				static_cast<int32_t>(mesh.VertexOffset),
+				0
+			);
+
+			++m_CurrentDraw;
+		}
 	}
 }
 

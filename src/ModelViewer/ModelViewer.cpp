@@ -132,13 +132,14 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
 	sorter.SetCamera(m_Camera);
 
+	m_Window->Render(sorter);
+	m_Window_->Render(sorter);
 	m_Backpack->Render(sorter);
 	m_Sponza->Render(sorter);
 	m_Dragon->Render(sorter);
-	m_Window->Render(sorter);
-	m_Window_->Render(sorter);
 
-	sorter.RenderMeshes(commandBuffer);
+	sorter.Sort();
+	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
 	/*
 	//Renderer::RenderModels(commandBuffer);
 	if (settings.renderDefault) {

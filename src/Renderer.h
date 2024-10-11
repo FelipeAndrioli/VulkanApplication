@@ -25,7 +25,19 @@ namespace Renderer {
 	class MeshSorter {
 	public:
 
-		struct SortedMesh {
+		enum BatchType { tDefault, tShadows };
+		enum DrawPass { tZPass, tOpaque, tTransparent, tNumPasses };
+
+		struct SortKey {
+			uint64_t key;
+			uint64_t value;
+
+			DrawPass passId;
+
+			float distance;
+		};
+
+		struct SortMesh {
 			const Assets::Mesh* mesh;
 			Graphics::GPUBuffer* bufferPtr;
 
@@ -34,9 +46,6 @@ namespace Renderer {
 			uint32_t modelIndex = 0;
 			uint32_t totalIndices = 0;
 		};
-
-		enum BatchType { tDefault, tShadows };
-		enum DrawPass { tZPass, tOpaque, tTransparent, tNumPasses };
 
 		MeshSorter(BatchType type) {
 			m_BatchType = type;
@@ -51,7 +60,7 @@ namespace Renderer {
 		const Assets::Camera& GetCamera();
 		void AddMesh(const Assets::Mesh& mesh, float distance, uint32_t modelIndex, uint32_t totalIndices, Graphics::GPUBuffer& buffer);
 		void Sort();
-		void RenderMeshes(const VkCommandBuffer& commandBuffer);
+		void RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass);
 	private:
 		BatchType m_BatchType;
 		DrawPass m_CurrentPass;
@@ -61,8 +70,8 @@ namespace Renderer {
 
 		const Assets::Camera* m_Camera;
 
-		std::vector<SortedMesh> m_OpaqueMeshes;
-		std::map<float, SortedMesh> m_TransparentMeshes;
+		std::vector<SortKey> m_SortKeys;
+		std::vector<SortMesh> m_SortMeshes;
 	};
 
 	struct PipelinePushConstants {

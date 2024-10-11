@@ -58,12 +58,11 @@ namespace Assets {
 			return attributeDescriptions;
 		}
 	};
-
+	
 	struct Mesh {
-
-		enum MeshType { tOpaque, tTransparent };
-
 		std::string MaterialName = "";
+
+		uint16_t PSOFlags;
 
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;
@@ -72,10 +71,18 @@ namespace Assets {
 		size_t IndexOffset = 0;
 		size_t VertexOffset = 0;
 
-		MeshType Type = tOpaque;
-
 		glm::vec3 PivotVector = glm::vec3(1.0f);
 	};	
+}
+
+namespace PSOFlags {
+	enum : uint16_t {
+		tOpaque = 0x001,
+		tTransparent = 0x002,
+		tTwoSided = 0x004,
+		tOutline = 0x008,
+		tWireframe = 0x010
+	};
 }
 
 namespace std {
