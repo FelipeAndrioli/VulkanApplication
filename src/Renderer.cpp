@@ -567,12 +567,13 @@ void Renderer::MeshSorter::AddMesh(const Assets::Mesh& mesh, float distance, uin
 	SortKey key = {};
 	key.value = m_SortMeshes.size();
 	key.distance = distance;
-	key.key = static_cast<uint64_t>(distance);
 
 	if (mesh.PSOFlags & PSOFlags::tTransparent) {
+		key.key = ~static_cast<uint64_t>(distance);
 		key.passId = DrawPass::tTransparent;
 		m_PassCounts[DrawPass::tTransparent]++;
 	} else {
+		key.key = static_cast<uint64_t>(distance);
 		key.passId = DrawPass::tOpaque;
 		m_PassCounts[DrawPass::tOpaque]++;
 	}
@@ -629,8 +630,7 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 		const VkBuffer* geometryBuffer = nullptr;
 
 		while (m_CurrentDraw < lastDraw) {
-			SortKey key = m_SortKeys[m_CurrentDraw];
-
+			const SortKey& key = m_SortKeys[m_CurrentDraw];
 			const SortMesh& sortMesh = m_SortMeshes[key.value];
 			const Assets::Mesh& mesh = *sortMesh.mesh;
 

@@ -139,7 +139,11 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	m_Dragon->Render(sorter);
 
 	sorter.Sort();
+	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tZPass);
+	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tOpaque);
 	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
+
+
 	/*
 	//Renderer::RenderModels(commandBuffer);
 	if (settings.renderDefault) {
