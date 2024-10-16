@@ -31,6 +31,8 @@ namespace Assets {
 
 		glm::mat4 GetModelMatrix();
 
+		void AddPipelineFlag(uint16_t flag);
+		void RemovePipelineFlag(uint16_t flag);
 	public:
 		std::string Name = "";
 
@@ -46,6 +48,8 @@ namespace Assets {
 		bool GenerateMipMaps = true;
 		bool Rotate = false;
 		bool RenderOutline = false;
+		bool FirstStencil = true;
+		bool StencilTest = false;
 
 		float OutlineWidth = 0.0f;
 

@@ -74,6 +74,19 @@ namespace Assets {
 				ImGui::DragFloat("Outline Width", &OutlineWidth, 0.0002f, -5.0f, 5.0f, "%.04f");
 			}
 
+			ImGui::Checkbox("Stencil Test", &StencilTest);
+
+			if (StencilTest && FirstStencil) {
+				AddPipelineFlag(PSOFlags::tStencilTest);
+				FirstStencil = false;
+			}
+
+			if (!StencilTest && !FirstStencil) {
+				FirstStencil = true;
+				RemovePipelineFlag(PSOFlags::tStencilTest);
+				// remove pipeline flag
+			}
+
 			ImGui::TreePop();
 		}
 	}
@@ -99,6 +112,18 @@ namespace Assets {
 			float distance = glm::length(sorter.GetCamera().Position - transformedMeshPivot);
 
 			sorter.AddMesh(mesh, distance, ModelIndex, TotalIndices, DataBuffer);
+		}
+	}
+
+	void Model::AddPipelineFlag(uint16_t flag) {
+		for (auto& mesh : Meshes) {
+			mesh.PSOFlags |= flag;
+		}
+	}
+
+	void Model::RemovePipelineFlag(uint16_t flag) {
+		for (auto& mesh : Meshes) {
+			mesh.PSOFlags ^= flag;
 		}
 	}
 }
