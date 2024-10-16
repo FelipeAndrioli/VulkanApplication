@@ -554,6 +554,21 @@ void Renderer::RenderModels(const VkCommandBuffer& commandBuffer) {
 	}
 }
 
+const Graphics::PipelineState& Renderer::GetPSO(uint16_t flags) {
+
+	if (flags & PSOFlags::tOpaque && flags & PSOFlags::tStencilTest) {
+		return m_ColorStencilPSO;
+	}
+
+	if (flags & PSOFlags::tTransparent) {
+		return m_TransparentPSO;
+	}
+
+	if (flags & PSOFlags::tOpaque) {
+		return m_ColorPSO;
+	}
+}
+
 const Assets::Camera& Renderer::MeshSorter::GetCamera() {
 	return *m_Camera;
 }
@@ -580,13 +595,6 @@ void Renderer::MeshSorter::AddMesh(const Assets::Mesh& mesh, float distance, uin
 
 	m_SortKeys.push_back(key);
 	m_SortMeshes.push_back({ &mesh, &buffer, distance, modelIndex, totalIndices });
-
-	/*
-	if (mesh.PSOFlags & PSOFlags::tOpaque)
-		m_OpaqueMeshes.push_back({ &mesh, &buffer, distance, modelIndex, totalIndices });
-	if (mesh.PSOFlags & PSOFlags::tTransparent)
-		m_TransparentMeshes[distance] = { &mesh, &buffer, distance, modelIndex, totalIndices };
-	*/
 }
 
 void Renderer::MeshSorter::Sort() {
@@ -601,11 +609,11 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 	for (; m_CurrentPass <= pass; m_CurrentPass = (DrawPass)(m_CurrentPass + 1)) {
 
 		const uint32_t passCount = m_PassCounts[m_CurrentPass];
-		const PipelineState* pipeline = nullptr;
 
 		if (passCount == 0)
 			continue;
-
+	
+		/*
 		if (m_BatchType == tDefault) {
 			switch (m_CurrentPass) {
 			case tZPass:
@@ -622,8 +630,9 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 				break;
 			}
 		}
+		*/
 
-		assert(pipeline != nullptr);
+		const PipelineState* pipeline = nullptr;
 
 		const uint32_t lastDraw = m_CurrentDraw + passCount;
 
@@ -633,6 +642,14 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 			const SortKey& key = m_SortKeys[m_CurrentDraw];
 			const SortMesh& sortMesh = m_SortMeshes[key.value];
 			const Assets::Mesh& mesh = *sortMesh.mesh;
+
+			const PipelineState* newMeshPipeline = &GetPSO(mesh.PSOFlags);
+
+			if (pipeline == nullptr || newMeshPipeline != pipeline) {
+				pipeline = newMeshPipeline;
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+				assert(pipeline != nullptr);
+			}
 
 			if (geometryBuffer == nullptr || &sortMesh.bufferPtr->Handle != geometryBuffer) {
 				geometryBuffer = &sortMesh.bufferPtr->Handle;

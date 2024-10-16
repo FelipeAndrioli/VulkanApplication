@@ -26,13 +26,15 @@ namespace Renderer {
 	public:
 
 		enum BatchType { tDefault, tShadows };
-		enum DrawPass { tZPass, tOpaque, tTransparent, tNumPasses };
+		enum DrawPass { tZPass, tOpaque, tTransparent, tOutline, tNumPasses };
 
 		struct SortKey {
 			uint64_t key;
 			uint64_t value;
 
 			DrawPass passId;
+
+			const Graphics::PipelineState* pipelinePtr = nullptr;
 
 			float distance;
 		};
@@ -96,4 +98,6 @@ namespace Renderer {
 	void RenderLightSources(const VkCommandBuffer& commandBuffer);
 	void RenderCube(const VkCommandBuffer& commandBuffer, const Graphics::PipelineState& PSO);
 	void RenderModels(const VkCommandBuffer& commandBuffer);
+
+	const Graphics::PipelineState& GetPSO(uint16_t flags);
 }

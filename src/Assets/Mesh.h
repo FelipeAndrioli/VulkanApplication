@@ -77,11 +77,10 @@ namespace Assets {
 
 namespace PSOFlags {
 	enum : uint16_t {
-		tOpaque = 0x001,
-		tTransparent = 0x002,
-		tTwoSided = 0x004,
-		tOutline = 0x008,
-		tWireframe = 0x010
+		tOpaque			= 0x001,
+		tTransparent	= 0x002,
+		tTwoSided		= 0x004,
+		tStencilTest	= 0x008
 	};
 }
 

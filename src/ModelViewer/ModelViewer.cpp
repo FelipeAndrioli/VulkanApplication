@@ -139,19 +139,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	m_Dragon->Render(sorter);
 
 	sorter.Sort();
-	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tZPass);
-	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tOpaque);
 	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
-
-
-	/*
-	//Renderer::RenderModels(commandBuffer);
-	if (settings.renderDefault) {
-		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
-		Renderer::RenderModel(commandBuffer, *m_Sponza.get());
-		Renderer::RenderModel(commandBuffer, *m_Dragon.get());
-		Renderer::RenderModelTransparent(commandBuffer, *m_Window.get());
-	}
 
 	if (m_Dragon->RenderOutline)
 		Renderer::RenderOutline(commandBuffer, *m_Dragon.get());
@@ -161,14 +149,16 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		Renderer::RenderOutline(commandBuffer, *m_Sponza.get());
 	if (m_Window->RenderOutline)
 		Renderer::RenderOutline(commandBuffer, *m_Window.get());
+	if (m_Window_->RenderOutline)
+		Renderer::RenderOutline(commandBuffer, *m_Window_.get());
 
 	if (settings.renderWireframe) {
 		Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());
 		Renderer::RenderWireframe(commandBuffer, *m_Backpack.get());
 		Renderer::RenderWireframe(commandBuffer, *m_Sponza.get());
 		Renderer::RenderWireframe(commandBuffer, *m_Window.get());
+		Renderer::RenderWireframe(commandBuffer, *m_Window_.get());
 	}
-	*/
 
 	if (settings.renderLightSources) {
 		Renderer::RenderLightSources(commandBuffer);
