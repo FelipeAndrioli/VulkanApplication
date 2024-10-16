@@ -89,8 +89,7 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 			newMesh.Indices.push_back(uniqueVertices[vertex]);
 		}
 	}
-
-
+	
 	newMesh.MaterialName = scene->mMaterials[mesh->mMaterialIndex]->GetName().C_Str();
 	
 	return newMesh;
@@ -283,8 +282,6 @@ static void ProcessMaterials(
 		LoadTextures(model, material, aiTextureType_NORMALS, Texture::TextureType::NORMAL, sceneMaterials, loadedTextures);
 		LoadTextures(model, material, aiTextureType_HEIGHT, Texture::TextureType::BUMP, sceneMaterials, loadedTextures);
 	}
-
-	std::cout << material_count << " materials loaded" << '\n';
 }
 
 void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& materials) {
@@ -300,7 +297,6 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 	
 	float min_z = std::numeric_limits<float>::max();
 	float max_z = std::numeric_limits<float>::min();
-
 
 	for (auto& mesh : model.Meshes) {
 
@@ -320,10 +316,12 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 		indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
 		vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
 
-		if (materials[mesh.MaterialIndex].MaterialData.Diffuse.a < 1.0f)
+		if (materials[mesh.MaterialIndex].MaterialData.Diffuse.a < 1.0f) {
 			mesh.PSOFlags |= PSOFlags::tTransparent;
-		else
+			mesh.PSOFlags |= PSOFlags::tTwoSided;
+		} else {
 			mesh.PSOFlags |= PSOFlags::tOpaque;
+		}
 
 		float mesh_max_x = std::numeric_limits<float>::min();
 		float mesh_min_x = std::numeric_limits<float>::max();
