@@ -230,6 +230,7 @@ void main() {
 				break;
 		}
 	}
-	
+
+	material_color.a = material_diffuse.a;	
 	out_color = material_color;
 }
