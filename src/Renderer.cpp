@@ -32,6 +32,7 @@ namespace Renderer {
 	Graphics::Shader m_LightSourceVertShader = {};
 	Graphics::Shader m_OutlineFragShader = {};
 	Graphics::Shader m_OutlineVertShader = {};
+	Graphics::Shader m_TransparentFragShader = {};
 
 	Graphics::Buffer m_ModelBuffer = {};
 	Graphics::Buffer m_SkyboxBuffer = {};
@@ -98,6 +99,7 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyShader(m_LightSourceVertShader);
 	gfxDevice->DestroyShader(m_OutlineVertShader);
 	gfxDevice->DestroyShader(m_OutlineFragShader);
+	gfxDevice->DestroyShader(m_TransparentFragShader);
 	gfxDevice->DestroyPipeline(m_ColorPSO);
 	gfxDevice->DestroyPipeline(m_ColorStencilPSO);
 	gfxDevice->DestroyPipeline(m_OutlinePSO);
@@ -141,6 +143,7 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "../src/Assets/Shaders/light_source.frag");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "../src/Assets/Shaders/outline.vert");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "../src/Assets/Shaders/outline.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "../src/Assets/Shaders/transparent_ps.frag");
 #else 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "./Shaders/skybox_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "./Shaders/skybox_frag.spv");
@@ -151,6 +154,7 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "./Shaders/light_source_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "./Shaders/outline_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "./Shaders/outline_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "../Shaders/transparent_frag.spv");
 #endif
 
 	InputLayout globalInputLayout = {
@@ -262,8 +266,9 @@ void Renderer::LoadResources() {
 	PipelineStateDescription transparentPSODesc = {};
 	transparentPSODesc.Name = "Transparent PSO";
 	transparentPSODesc.vertexShader = &m_DefaultVertShader;
-	transparentPSODesc.fragmentShader = &m_ColorFragShader;
+	transparentPSODesc.fragmentShader = &m_TransparentFragShader;
 	transparentPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	transparentPSODesc.cullMode = VK_CULL_MODE_NONE;
 	transparentPSODesc.psoInputLayout.push_back(globalInputLayout);
 	transparentPSODesc.colorBlendingEnable = true;
 	transparentPSODesc.colorBlendingDesc.blendEnable = VK_TRUE;
