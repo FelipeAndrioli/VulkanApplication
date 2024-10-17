@@ -372,7 +372,9 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 }
 
 std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, std::vector<Material>& materials, std::vector<Graphics::Texture>& textures) {
-	
+
+	Timestep begin = glfwGetTime();
+
 	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
 	model->ModelPath = path.c_str();
 	model->MaterialPath = Helper::get_directory(path);
@@ -385,6 +387,11 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, s
 	ProcessNode(*model.get(), scene->mRootNode, scene);
 	ProcessMaterials(*model.get(), scene, materials, textures);
 	CompileMesh(*model.get(), materials);
+
+	Timestep end = glfwGetTime();
+
+	std::cout << "Model: " << path << '\n';
+	std::cout << "Loading time: " << end.GetSeconds() - begin.GetSeconds() << '\n';
 
 	return model;
 }
