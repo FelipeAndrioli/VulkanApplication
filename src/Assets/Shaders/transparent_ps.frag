@@ -231,8 +231,5 @@ void main() {
 		}
 	}
 	
-	material_color = material_diffuse;
-	//material_color.a = material_diffuse.a;
-
-	out_color = material_color * 0.5;
+	out_color = material_color;
 }
