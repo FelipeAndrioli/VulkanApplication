@@ -193,22 +193,18 @@ void main() {
 		material_ambient = vec4(current_material.diffuse);
 	} else {
 		material_ambient = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
-		/*
 		if (material_ambient.a < 0.1) {
 			discard;
 		}
-		*/
 	}
 
 	if (current_material.diffuse_texture_index == -1) {
 		material_diffuse = vec4(current_material.diffuse);
 	} else {
 		material_diffuse = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
-		/*
 		if (material_diffuse.a < 0.1) {
 			discard;
 		}
-		*/
 	}
 
 	if (current_material.normal_texture_index == -1) {
@@ -221,11 +217,6 @@ void main() {
 		material_specular = vec4(current_material.specular);
 	} else {
 		material_specular = texture(texSampler[current_material.specular_texture_index], fragTexCoord);
-		/*
-		if (material_specular.a < 0.1) {
-			discard;
-		}
-		*/
 	}
 
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
