@@ -45,6 +45,7 @@ namespace Renderer {
 	Graphics::PipelineState m_WireframePSO = {};
 	Graphics::PipelineState m_LightSourcePSO = {};
 	Graphics::PipelineState m_TransparentPSO = {};
+	Graphics::PipelineState m_TransparentStencilPSO = {};
 	
 	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
 
@@ -107,6 +108,7 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyPipeline(m_WireframePSO);
 	gfxDevice->DestroyPipeline(m_LightSourcePSO);
 	gfxDevice->DestroyPipeline(m_TransparentPSO);
+	gfxDevice->DestroyPipeline(m_TransparentStencilPSO);
 
 	LightManager::Shutdown();
 
@@ -278,8 +280,26 @@ void Renderer::LoadResources() {
 	transparentPSODesc.colorBlendingDesc.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 	transparentPSODesc.colorBlendingDesc.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	transparentPSODesc.colorBlendingDesc.alphaBlendOp = VK_BLEND_OP_ADD;
-
+	
 	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO);
+
+	PipelineStateDescription transparentStencilPSODesc = {};
+	transparentStencilPSODesc.Name = "Transparent Stencil Pipeline";
+	transparentStencilPSODesc.vertexShader = &m_DefaultVertShader;
+	transparentStencilPSODesc.fragmentShader = &m_TransparentFragShader;
+	transparentStencilPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	transparentStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
+	transparentStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
+	transparentStencilPSODesc.stencilTestEnable = true;
+	transparentStencilPSODesc.stencilState.compareOp = VK_COMPARE_OP_ALWAYS;
+	transparentStencilPSODesc.stencilState.failOp = VK_STENCIL_OP_REPLACE;
+	transparentStencilPSODesc.stencilState.depthFailOp = VK_STENCIL_OP_REPLACE;
+	transparentStencilPSODesc.stencilState.passOp = VK_STENCIL_OP_REPLACE;
+	transparentStencilPSODesc.stencilState.compareMask = 0xff;
+	transparentStencilPSODesc.stencilState.writeMask = 0xff;
+	transparentStencilPSODesc.stencilState.reference = 1;
+
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO);
 
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 
@@ -565,13 +585,15 @@ const Graphics::PipelineState& Renderer::GetPSO(uint16_t flags) {
 		return m_ColorStencilPSO;
 	}
 
+	if (flags & PSOFlags::tTransparent && flags & PSOFlags::tStencilTest) {
+		return m_TransparentStencilPSO;
+	}
+
 	if (flags & PSOFlags::tTransparent) {
 		return m_TransparentPSO;
 	}
-
-	if (flags & PSOFlags::tOpaque) {
-		return m_ColorPSO;
-	}
+	
+	return m_ColorPSO;
 }
 
 const Assets::Camera& Renderer::MeshSorter::GetCamera() {
