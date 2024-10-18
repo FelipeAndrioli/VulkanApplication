@@ -84,7 +84,6 @@ namespace Assets {
 			if (!StencilTest && !FirstStencil) {
 				FirstStencil = true;
 				RemovePipelineFlag(PSOFlags::tStencilTest);
-				// remove pipeline flag
 			}
 
 			ImGui::TreePop();

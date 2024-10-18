@@ -355,91 +355,6 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
 }
 
-void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
-	GraphicsDevice* gfxDevice = GetDevice();
-
-	VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };
-
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-
-	if (model.RenderOutline) {
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorStencilPSO.pipeline);
-	} else {
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
-	}
-	
-	for (const auto& mesh : model.Meshes) {
-		PipelinePushConstants pushConstants = {
-			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-			.ModelIdx = static_cast<int>(model.ModelIndex)
-		};
-
-		if (model.RenderOutline) {
-			vkCmdPushConstants(
-				commandBuffer,
-				m_ColorStencilPSO.pipelineLayout,
-				VK_SHADER_STAGE_ALL_GRAPHICS,
-				0,
-				sizeof(PipelinePushConstants),
-				&pushConstants
-			);
-		} else {
-			vkCmdPushConstants(
-				commandBuffer,
-				m_ColorPSO.pipelineLayout,
-				VK_SHADER_STAGE_ALL_GRAPHICS,
-				0,
-				sizeof(PipelinePushConstants),
-				&pushConstants
-			);
-		}
-
-		vkCmdDrawIndexed(
-			commandBuffer,
-			static_cast<uint32_t>(mesh.Indices.size()),
-			1,
-			static_cast<uint32_t>(mesh.IndexOffset),
-			static_cast<int32_t>(mesh.VertexOffset),
-			0
-		);
-	}
-}
-
-void Renderer::RenderModelTransparent(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
-	GraphicsDevice* gfxDevice = GetDevice();
-
-	VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };
-
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
-
-	for (const auto& mesh : model.Meshes) {
-		PipelinePushConstants pushConstants = {
-			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-			.ModelIdx = static_cast<int>(model.ModelIndex)
-		};
-
-		vkCmdPushConstants(
-			commandBuffer,
-			m_TransparentPSO.pipelineLayout,
-			VK_SHADER_STAGE_ALL_GRAPHICS,
-			0,
-			sizeof(PipelinePushConstants),
-			&pushConstants
-		);
-
-		vkCmdDrawIndexed(
-			commandBuffer,
-			static_cast<uint32_t>(mesh.Indices.size()),
-			1,
-			static_cast<uint32_t>(mesh.IndexOffset),
-			static_cast<int32_t>(mesh.VertexOffset),
-			0
-		);
-	}
-}
 
 void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
 	GraphicsDevice* gfxDevice = GetDevice();
@@ -537,45 +452,6 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 		);
 
 		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
-	}
-}
-
-void Renderer::RenderModels(const VkCommandBuffer& commandBuffer) {
-	for (uint32_t i = 0; i < m_TotalModels; i++) {
-		std::shared_ptr<Assets::Model> model = m_Models[i];
-
-		GraphicsDevice* gfxDevice = GetDevice();
-
-		VkDeviceSize offsets[] = { sizeof(uint32_t) * model->TotalIndices };
-
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model->DataBuffer.Handle, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, model->DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
-		
-		for (const auto& mesh : model->Meshes) {
-			PipelinePushConstants pushConstants = {
-				.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-				.ModelIdx = static_cast<int>(model->ModelIndex)
-			};
-
-			vkCmdPushConstants(
-				commandBuffer,
-				m_ColorPSO.pipelineLayout,
-				VK_SHADER_STAGE_ALL_GRAPHICS,
-				0,
-				sizeof(PipelinePushConstants),
-				&pushConstants
-			);
-
-			vkCmdDrawIndexed(
-				commandBuffer,
-				static_cast<uint32_t>(mesh.Indices.size()),
-				1,
-				static_cast<uint32_t>(mesh.IndexOffset),
-				static_cast<int32_t>(mesh.VertexOffset),
-				0
-			);
-		}
 	}
 }
 
