@@ -398,8 +398,7 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, s
 
 	Timestep end = glfwGetTime();
 
-	std::cout << "Model: " << model->Name<< '\n';
-	std::cout << "Loading time: " << end.GetSeconds() - begin.GetSeconds() << '\n';
+	std::cout << "Loading time: " << end.GetSeconds() - begin.GetSeconds() << " | Model: " << model->Name << '\n';
 
 	return model;
 }
