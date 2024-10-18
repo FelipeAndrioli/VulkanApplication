@@ -378,7 +378,15 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, s
 	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
 	model->ModelPath = path.c_str();
 	model->MaterialPath = Helper::get_directory(path);
-	model->Name = Helper::get_filename(path);
+	model->Name = Helper::get_directory_name(path);
+	
+	static std::unordered_map<std::string, int> loadedFileNames;
+
+	if (loadedFileNames[model->Name] > 0) {
+		model->Name = model->Name + "_" + std::to_string(loadedFileNames[model->Name]);
+	}
+		
+	loadedFileNames[model->Name]++;
 
 	const aiScene* scene = aiImportFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
 
@@ -390,7 +398,7 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, s
 
 	Timestep end = glfwGetTime();
 
-	std::cout << "Model: " << path << '\n';
+	std::cout << "Model: " << model->Name<< '\n';
 	std::cout << "Loading time: " << end.GetSeconds() - begin.GetSeconds() << '\n';
 
 	return model;
