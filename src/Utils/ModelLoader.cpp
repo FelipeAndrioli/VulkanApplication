@@ -59,6 +59,7 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 
 		for (size_t j = 0; j < face.mNumIndices; j++) {
 			Assets::Vertex vertex = {};
+			
 			vertex.pos = {
 				mesh->mVertices[face.mIndices[j]].x,
 				mesh->mVertices[face.mIndices[j]].y,
@@ -88,7 +89,7 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 			newMesh.Indices.push_back(uniqueVertices[vertex]);
 		}
 	}
-
+	
 	newMesh.MaterialName = scene->mMaterials[mesh->mMaterialIndex]->GetName().C_Str();
 	
 	return newMesh;
@@ -102,17 +103,6 @@ void ProcessNode(Assets::Model& model, const aiNode* node, const aiScene* scene)
 
 	for (size_t i = 0; i < node->mNumChildren; i++) {
 		ProcessNode(model, node->mChildren[i], scene);
-	}
-}
-
-void LinkMeshesToMaterials(std::vector<Assets::Mesh>& meshes, std::vector<Material>& sceneMaterials) {
-	for (auto& mesh : meshes) {
-		if (GetMaterialIndex(sceneMaterials, mesh.MaterialName) == UNEXISTENT) {
-			sceneMaterials.push_back(mesh.CustomMeshMaterial);
-			mesh.MaterialName = "Default";
-		} 
-
-		mesh.MaterialIndex = GetMaterialIndex(sceneMaterials, mesh.MaterialName);
 	}
 }
 
@@ -250,11 +240,11 @@ static void ProcessMaterials(
 		aiMaterial* material = scene->mMaterials[i];
 
 		aiString materialName;
-		aiColor3D diffuseColor;
-		aiColor3D specularColor;
-		aiColor3D ambientColor;
-		aiColor3D emissiveColor;
-		aiColor3D transparentColor;
+		aiColor4D diffuseColor;
+		aiColor4D specularColor;
+		aiColor4D ambientColor;
+		aiColor4D emissiveColor;
+		aiColor4D transparentColor;
 		float opacity;
 		float shininess;
 		float shininessStrength;
@@ -272,16 +262,15 @@ static void ProcessMaterials(
 		if (GetMaterialIndex(sceneMaterials, materialName.C_Str()) == UNEXISTENT) {
 			Material newMaterial = {};
 			newMaterial.Name = materialName.C_Str();
-			newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, 1.0f);
-			newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, 1.0f);
-			newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, 1.0f);
-			newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, 1.0f);
-			newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, 1.0f);
+			newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, ambientColor.a);
+			newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, diffuseColor.a);
+			newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, specularColor.a);
+			newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, emissiveColor.a);
+			newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, transparentColor.a);
 			newMaterial.MaterialData.Opacity = opacity;
 			newMaterial.MaterialData.Shininess = shininess;
 			newMaterial.MaterialData.ShininessStrength = shininessStrength;
 
-			std::cout << "Material " << materialName.C_Str() << " shininess: " << shininess << '\n';
 			sceneMaterials.push_back(newMaterial);
 
 			material_count++;
@@ -293,8 +282,6 @@ static void ProcessMaterials(
 		LoadTextures(model, material, aiTextureType_NORMALS, Texture::TextureType::NORMAL, sceneMaterials, loadedTextures);
 		LoadTextures(model, material, aiTextureType_HEIGHT, Texture::TextureType::BUMP, sceneMaterials, loadedTextures);
 	}
-
-	std::cout << material_count << " materials loaded" << '\n';
 }
 
 void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& materials) {
@@ -311,14 +298,17 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 	float min_z = std::numeric_limits<float>::max();
 	float max_z = std::numeric_limits<float>::min();
 
-
 	for (auto& mesh : model.Meshes) {
-		if (GetMaterialIndex(materials, mesh.MaterialName) == UNEXISTENT) {
-			materials.push_back(mesh.CustomMeshMaterial);
-			mesh.MaterialName = "Default";
+
+		int materialIndex = GetMaterialIndex(materials, mesh.MaterialName);
+
+		if (materialIndex == UNEXISTENT) {
+			std::string customMaterialName = "Custom_Material_" + model.Name;
+			materials.emplace_back(Material(customMaterialName));
+			mesh.MaterialName = customMaterialName;
 		}
 
-		mesh.MaterialIndex = GetMaterialIndex(materials, mesh.MaterialName);
+		mesh.MaterialIndex = materialIndex;
 
 		mesh.IndexOffset = indices.size();
 		mesh.VertexOffset = vertices.size();
@@ -326,20 +316,41 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 		indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
 		vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
 
-		for (const auto& vertex: mesh.Vertices) {
-			if (vertex.pos.x > max_x)
-				max_x = vertex.pos.x;
-			if (vertex.pos.x < min_x)
-				min_x = vertex.pos.x;
-			if (vertex.pos.y > max_y)
-				max_y = vertex.pos.y;
-			if (vertex.pos.y < min_y)
-				min_y = vertex.pos.y;
-			if (vertex.pos.z > max_z)
-				max_z = vertex.pos.z;
-			if (vertex.pos.z < min_z)
-				min_z = vertex.pos.z;	
+		if (materials[mesh.MaterialIndex].MaterialData.Diffuse.a < 1.0f) {
+			mesh.PSOFlags |= PSOFlags::tTransparent;
+			mesh.PSOFlags |= PSOFlags::tTwoSided;
+		} else {
+			mesh.PSOFlags |= PSOFlags::tOpaque;
 		}
+
+		float mesh_max_x = std::numeric_limits<float>::min();
+		float mesh_min_x = std::numeric_limits<float>::max();
+		
+		float mesh_max_y = std::numeric_limits<float>::min();
+		float mesh_min_y = std::numeric_limits<float>::max();
+	
+		float mesh_max_z = std::numeric_limits<float>::min();
+		float mesh_min_z = std::numeric_limits<float>::max();
+
+		for (const auto& vertex: mesh.Vertices) {
+			max_x = std::max(vertex.pos.x, max_x);
+			max_y = std::max(vertex.pos.y, max_y);
+			max_z = std::max(vertex.pos.z, max_z);
+
+			min_x = std::min(vertex.pos.x, min_x);
+			min_y = std::min(vertex.pos.y, min_y);
+			min_z = std::min(vertex.pos.z, min_z);
+
+			mesh_max_x = std::max(vertex.pos.x, mesh_max_x);
+			mesh_max_y = std::max(vertex.pos.y, mesh_max_y);
+			mesh_max_z = std::max(vertex.pos.z, mesh_max_z);
+
+			mesh_min_x = std::min(vertex.pos.x, mesh_min_x);
+			mesh_min_y = std::min(vertex.pos.y, mesh_min_y);
+			mesh_min_z = std::min(vertex.pos.z, mesh_min_z);
+		}
+
+		mesh.PivotVector = glm::vec3((mesh_max_x + mesh_min_x) / 2, (mesh_max_y + mesh_min_y) / 2, (mesh_max_z + mesh_min_z) / 2);
 	}
 
 	model.PivotVector = glm::vec3((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2);
@@ -358,25 +369,24 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 
 	gfxDevice->WriteBuffer(model.DataBuffer, indices.data(), sizeof(uint32_t) * indices.size(), 0);
 	gfxDevice->WriteBuffer(model.DataBuffer, vertices.data(), sizeof(Assets::Vertex) * vertices.size(), sizeof(uint32_t) * indices.size());
-
-	InputLayout modelInputLayout = {
-		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT }
-		}
-	};
-
-	model.ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants));
-	gfxDevice->CreateDescriptorSetLayout(model.ModelDescriptorSetLayout, modelInputLayout.bindings);
-	gfxDevice->CreateDescriptorSet(model.ModelDescriptorSetLayout, model.ModelDescriptorSet);
-	gfxDevice->WriteDescriptor(modelInputLayout.bindings[0], model.ModelDescriptorSet, model.ModelBuffer);
 }
 
 std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, std::vector<Material>& materials, std::vector<Graphics::Texture>& textures) {
-	
+
+	Timestep begin = glfwGetTime();
+
 	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
 	model->ModelPath = path.c_str();
 	model->MaterialPath = Helper::get_directory(path);
-	model->Name = Helper::get_filename(path);
+	model->Name = Helper::get_directory_name(path);
+	
+	static std::unordered_map<std::string, int> loadedFileNames;
+
+	if (loadedFileNames[model->Name] > 0) {
+		model->Name = model->Name + "_" + std::to_string(loadedFileNames[model->Name]);
+	}
+		
+	loadedFileNames[model->Name]++;
 
 	const aiScene* scene = aiImportFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
 
@@ -385,6 +395,10 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, s
 	ProcessNode(*model.get(), scene->mRootNode, scene);
 	ProcessMaterials(*model.get(), scene, materials, textures);
 	CompileMesh(*model.get(), materials);
+
+	Timestep end = glfwGetTime();
+
+	std::cout << "Loading time: " << end.GetSeconds() - begin.GetSeconds() << " | Model: " << model->Name << '\n';
 
 	return model;
 }

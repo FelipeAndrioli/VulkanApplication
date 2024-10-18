@@ -6,6 +6,10 @@
 
 #include "../Core/Graphics.h"
 
+namespace Renderer {
+	class MeshSorter;
+};
+
 namespace Assets {
 	struct Transform {
 		glm::vec3 translation;
@@ -22,10 +26,13 @@ namespace Assets {
 		virtual void OnCreate() {};
 		virtual void OnUpdate(float t);
 		virtual void OnUIRender();
+		virtual void Render(Renderer::MeshSorter& sorter);
 		void Destroy();
 
 		glm::mat4 GetModelMatrix();
 
+		void AddPipelineFlag(uint16_t flag);
+		void RemovePipelineFlag(uint16_t flag);
 	public:
 		std::string Name = "";
 
@@ -41,8 +48,12 @@ namespace Assets {
 		bool GenerateMipMaps = true;
 		bool Rotate = false;
 		bool RenderOutline = false;
+		bool FirstStencil = true;
+		bool StencilTest = false;
 
 		float OutlineWidth = 0.0f;
+
+		uint32_t ModelIndex = 0;
 
 		std::string ModelPath;
 		std::string MaterialPath;

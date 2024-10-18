@@ -45,7 +45,9 @@ layout (set = 0, binding = 2) uniform light_uniform {
 };
 
 layout (push_constant) uniform constant {
-	layout(offset = 4) int light_index;
+	int material_index;
+	int model_index;
+	int light_source_index;
 } light_constant;
 
 layout (location = 0) out vec4 light_dir;
@@ -84,7 +86,7 @@ const int indices[36] = int[36](
 void main() {
 	int idx = indices[gl_VertexIndex];
 
-	light_t light = lights[light_constant.light_index];
+	light_t light = lights[light_constant.light_source_index];
 
 	gl_Position = sceneGPUData.proj * sceneGPUData.view * light.model * vec4(pos[idx], 1.0);
 	frag_pos = light.model * vec4(pos[idx], 1.0);

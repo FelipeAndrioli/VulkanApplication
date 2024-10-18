@@ -193,18 +193,12 @@ void main() {
 		material_ambient = vec4(current_material.diffuse);
 	} else {
 		material_ambient = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
-		if (material_ambient.a < 0.1) {
-			discard;
-		}
 	}
 
 	if (current_material.diffuse_texture_index == -1) {
 		material_diffuse = vec4(current_material.diffuse);
 	} else {
 		material_diffuse = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
-		if (material_diffuse.a < 0.1) {
-			discard;
-		}
 	}
 
 	if (current_material.normal_texture_index == -1) {
@@ -236,9 +230,7 @@ void main() {
 				break;
 		}
 	}
-	
-	material_color.a = material_diffuse.a;
 
+	material_color.a = material_diffuse.a;	
 	out_color = material_color;
-	//out_color = vec4(material_color.a);
 }

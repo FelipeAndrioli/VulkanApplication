@@ -27,8 +27,32 @@ namespace Helper {
 				fileNameSize++;
 		}
 
-
 		return temp.erase(lastSlashIndex, fileNameSize).c_str();
+	}
+
+	static std::string get_directory_name(const std::string& path) {
+		
+		std::string temp = path;
+
+		int lastSlashIndex = 0;
+		int beforeLastSlashIndex = 0;
+		int directoryNameSize = 0; 
+
+		for (size_t i = temp.size() - 1; i > 0; i--) {
+			if (path[i] == '/' && lastSlashIndex == 0) {
+				lastSlashIndex = i;
+			} else if (path[i] == '/' && lastSlashIndex != 0 && beforeLastSlashIndex == 0) {
+				beforeLastSlashIndex = i + 1;
+			}
+
+			if (lastSlashIndex > 0)
+				directoryNameSize++;
+		}
+
+		temp = temp.erase(lastSlashIndex, temp.size() - 1).c_str();
+		temp = temp.erase(0, beforeLastSlashIndex).c_str();
+
+		return temp;
 	}
 
 	static std::string get_filename(const std::string& path) {

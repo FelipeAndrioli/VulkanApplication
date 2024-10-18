@@ -32,7 +32,9 @@ namespace Renderer {
 	Graphics::Shader m_LightSourceVertShader = {};
 	Graphics::Shader m_OutlineFragShader = {};
 	Graphics::Shader m_OutlineVertShader = {};
+	Graphics::Shader m_TransparentFragShader = {};
 
+	Graphics::Buffer m_ModelBuffer = {};
 	Graphics::Buffer m_SkyboxBuffer = {};
 	Graphics::Buffer m_GlobalDataBuffer = {};
 
@@ -42,6 +44,8 @@ namespace Renderer {
 	Graphics::PipelineState m_OutlinePSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
 	Graphics::PipelineState m_LightSourcePSO = {};
+	Graphics::PipelineState m_TransparentPSO = {};
+	Graphics::PipelineState m_TransparentStencilPSO = {};
 	
 	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
 
@@ -50,11 +54,21 @@ namespace Renderer {
 	std::vector<Material> m_Materials;
 	std::vector<Texture> m_Textures;
 
-	float outlineWidth = 0.0f;
+	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
+	uint32_t m_TotalModels = 0;
 }
 
 std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
-	return ModelLoader::LoadModel(path, m_Materials, m_Textures);
+	if (m_TotalModels == MAX_MODELS)
+		return nullptr;
+
+	m_Models[m_TotalModels++] = ModelLoader::LoadModel(path, m_Materials, m_Textures);
+
+	uint32_t modelIdx = m_TotalModels - 1;
+
+	m_Models[modelIdx]->ModelIndex = modelIdx;
+
+	return m_Models[modelIdx];
 }
 
 void Renderer::Init() {
@@ -71,6 +85,7 @@ void Renderer::Shutdown() {
 		gfxDevice->DestroyImage(texture);
 	}
 
+	m_Models.fill(nullptr);
 	m_Textures.clear();
 	m_Materials.clear();
 	
@@ -85,12 +100,15 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyShader(m_LightSourceVertShader);
 	gfxDevice->DestroyShader(m_OutlineVertShader);
 	gfxDevice->DestroyShader(m_OutlineFragShader);
+	gfxDevice->DestroyShader(m_TransparentFragShader);
 	gfxDevice->DestroyPipeline(m_ColorPSO);
 	gfxDevice->DestroyPipeline(m_ColorStencilPSO);
 	gfxDevice->DestroyPipeline(m_OutlinePSO);
 	gfxDevice->DestroyPipeline(m_SkyboxPSO);
 	gfxDevice->DestroyPipeline(m_WireframePSO);
 	gfxDevice->DestroyPipeline(m_LightSourcePSO);
+	gfxDevice->DestroyPipeline(m_TransparentPSO);
+	gfxDevice->DestroyPipeline(m_TransparentStencilPSO);
 
 	LightManager::Shutdown();
 
@@ -127,6 +145,7 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "../src/Assets/Shaders/light_source.frag");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "../src/Assets/Shaders/outline.vert");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "../src/Assets/Shaders/outline.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "../src/Assets/Shaders/transparent_ps.frag");
 #else 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "./Shaders/skybox_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "./Shaders/skybox_frag.spv");
@@ -137,12 +156,12 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "./Shaders/light_source_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "./Shaders/outline_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "./Shaders/outline_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "../Shaders/transparent_frag.spv");
 #endif
 
 	InputLayout globalInputLayout = {
 		.pushConstants = {
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int) },
-			{ VK_SHADER_STAGE_VERTEX_BIT, sizeof(int), sizeof(int) }
+			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PipelinePushConstants) }
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
@@ -150,15 +169,11 @@ void Renderer::LoadResources() {
 			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
 			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
 			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS }
 		}
 	};
 
-	InputLayout modelInputLayout = {
-		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT }
-		}
-	};
-
+	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants) * MAX_MODELS);
 	m_GlobalDataBuffer = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
 
 	gfxDevice->WriteBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
@@ -179,7 +194,6 @@ void Renderer::LoadResources() {
 	colorPSODesc.fragmentShader = &m_ColorFragShader;
 	colorPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	colorPSODesc.psoInputLayout.push_back(globalInputLayout);
-	colorPSODesc.psoInputLayout.push_back(modelInputLayout);
 	
 	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO);
 
@@ -189,7 +203,6 @@ void Renderer::LoadResources() {
 	colorStencilPSODesc.fragmentShader = &m_ColorFragShader;
 	colorStencilPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	colorStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
-	colorStencilPSODesc.psoInputLayout.push_back(modelInputLayout);
 	colorStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
 	colorStencilPSODesc.stencilTestEnable = true;
 	colorStencilPSODesc.stencilState.compareOp = VK_COMPARE_OP_ALWAYS;
@@ -208,7 +221,6 @@ void Renderer::LoadResources() {
 	outlinePSODesc.fragmentShader = &m_OutlineFragShader;
 	outlinePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	outlinePSODesc.psoInputLayout.push_back(globalInputLayout);
-	outlinePSODesc.psoInputLayout.push_back(modelInputLayout);
 	outlinePSODesc.stencilTestEnable = true;
 	outlinePSODesc.cullMode = VK_CULL_MODE_NONE;
 	outlinePSODesc.stencilState.compareOp = VK_COMPARE_OP_NOT_EQUAL;
@@ -240,7 +252,6 @@ void Renderer::LoadResources() {
 	wireframePSODesc.polygonMode = VK_POLYGON_MODE_LINE;
 	wireframePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	wireframePSODesc.psoInputLayout.push_back(globalInputLayout);
-	wireframePSODesc.psoInputLayout.push_back(modelInputLayout);
 
 	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO);
 
@@ -254,6 +265,42 @@ void Renderer::LoadResources() {
 	
 	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO);
 
+	PipelineStateDescription transparentPSODesc = {};
+	transparentPSODesc.Name = "Transparent PSO";
+	transparentPSODesc.vertexShader = &m_DefaultVertShader;
+	transparentPSODesc.fragmentShader = &m_TransparentFragShader;
+	transparentPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	transparentPSODesc.cullMode = VK_CULL_MODE_NONE;
+	transparentPSODesc.psoInputLayout.push_back(globalInputLayout);
+	transparentPSODesc.colorBlendingEnable = true;
+	transparentPSODesc.colorBlendingDesc.blendEnable = VK_TRUE;
+	transparentPSODesc.colorBlendingDesc.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	transparentPSODesc.colorBlendingDesc.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	transparentPSODesc.colorBlendingDesc.colorBlendOp = VK_BLEND_OP_ADD;
+	transparentPSODesc.colorBlendingDesc.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	transparentPSODesc.colorBlendingDesc.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	transparentPSODesc.colorBlendingDesc.alphaBlendOp = VK_BLEND_OP_ADD;
+	
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO);
+
+	PipelineStateDescription transparentStencilPSODesc = {};
+	transparentStencilPSODesc.Name = "Transparent Stencil Pipeline";
+	transparentStencilPSODesc.vertexShader = &m_DefaultVertShader;
+	transparentStencilPSODesc.fragmentShader = &m_TransparentFragShader;
+	transparentStencilPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
+	transparentStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
+	transparentStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
+	transparentStencilPSODesc.stencilTestEnable = true;
+	transparentStencilPSODesc.stencilState.compareOp = VK_COMPARE_OP_ALWAYS;
+	transparentStencilPSODesc.stencilState.failOp = VK_STENCIL_OP_REPLACE;
+	transparentStencilPSODesc.stencilState.depthFailOp = VK_STENCIL_OP_REPLACE;
+	transparentStencilPSODesc.stencilState.passOp = VK_STENCIL_OP_REPLACE;
+	transparentStencilPSODesc.stencilState.compareMask = 0xff;
+	transparentStencilPSODesc.stencilState.writeMask = 0xff;
+	transparentStencilPSODesc.stencilState.reference = 1;
+
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO);
+
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
@@ -263,6 +310,7 @@ void Renderer::LoadResources() {
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, LightManager::GetLightBuffer());
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[4], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[5], gfxDevice->GetFrame(i).bindlessSet, m_ModelBuffer);
 	}
 }
 
@@ -290,53 +338,23 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 
 	LightManager::UpdateBuffer();
 
+	std::array<ModelConstants, MAX_MODELS> modelConstants;
+
+	for (uint32_t i = 0; i < m_TotalModels; i++) {
+		ModelConstants modelConstant = {};
+		modelConstant.model = m_Models[i]->GetModelMatrix();
+		modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
+		modelConstant.flipUvVertically = m_Models[i]->FlipUvVertically;
+		modelConstant.outlineWidth = m_Models[i]->OutlineWidth;
+
+		modelConstants[i] = modelConstant;
+	}
+
+	gfxDevice->UpdateBuffer(m_ModelBuffer, modelConstants.data());
+
 	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
 }
 
-void Renderer::RenderModel(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
-	GraphicsDevice* gfxDevice = GetDevice();
-
-	VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };
-
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-
-	if (model.RenderOutline) {
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorStencilPSO.pipeline);
-		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorStencilPSO.pipelineLayout, 1, 1);
-	} else {
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
-		gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_ColorPSO.pipelineLayout, 1, 1);
-	}
-
-	ModelConstants modelConstant = {};
-	modelConstant.model = model.GetModelMatrix();
-	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
-	modelConstant.flipUvVertically = model.FlipUvVertically;
-	modelConstant.outlineWidth = model.OutlineWidth;
-
-	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
-
-	for (const auto& mesh : model.Meshes) {
-		vkCmdPushConstants(
-			commandBuffer,
-			m_ColorPSO.pipelineLayout,
-			VK_SHADER_STAGE_FRAGMENT_BIT,
-			0,
-			sizeof(int),
-			&mesh.MaterialIndex
-		);
-
-		vkCmdDrawIndexed(
-			commandBuffer,
-			static_cast<uint32_t>(mesh.Indices.size()),
-			1,
-			static_cast<uint32_t>(mesh.IndexOffset),
-			static_cast<int32_t>(mesh.VertexOffset),
-			0
-		);
-	}
-}
 
 void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
 	GraphicsDevice* gfxDevice = GetDevice();
@@ -347,24 +365,19 @@ void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model
 	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_OutlinePSO.pipeline);
 
-	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_OutlinePSO.pipelineLayout, 1, 1);
-
-	ModelConstants modelConstant = {};
-	modelConstant.model = model.GetModelMatrix();
-	modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
-	modelConstant.flipUvVertically = model.FlipUvVertically;
-	modelConstant.outlineWidth = model.OutlineWidth;
-
-	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
-
 	for (const auto& mesh : model.Meshes) {
+		PipelinePushConstants pushConstants = {
+			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+			.ModelIdx = static_cast<int>(model.ModelIndex)
+		};
+
 		vkCmdPushConstants(
 			commandBuffer,
 			m_OutlinePSO.pipelineLayout,
-			VK_SHADER_STAGE_FRAGMENT_BIT,
+			VK_SHADER_STAGE_ALL_GRAPHICS,
 			0,
-			sizeof(int),
-			&mesh.MaterialIndex
+			sizeof(PipelinePushConstants),
+			&pushConstants
 		);
 
 		vkCmdDrawIndexed(
@@ -387,21 +400,19 @@ void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Mod
 	vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_WireframePSO.pipeline);
 
-	gfxDevice->BindDescriptorSet(model.ModelDescriptorSet, commandBuffer, m_WireframePSO.pipelineLayout, 1, 1);
-
-	ModelConstants modelConstant = {};
-	modelConstant.model = model.GetModelMatrix();
-
-	gfxDevice->UpdateBuffer(model.ModelBuffer, &modelConstant);
-
 	for (const auto& mesh : model.Meshes) {
+		PipelinePushConstants pushConstants = {
+			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+			.ModelIdx = static_cast<int>(model.ModelIndex)
+		};
+
 		vkCmdPushConstants(
 			commandBuffer,
 			m_WireframePSO.pipelineLayout,
-			VK_SHADER_STAGE_FRAGMENT_BIT,
+			VK_SHADER_STAGE_ALL_GRAPHICS,
 			0,
-			sizeof(int),
-			&mesh.MaterialIndex
+			sizeof(PipelinePushConstants),
+			&pushConstants
 		);
 
 		vkCmdDrawIndexed(
@@ -427,15 +438,158 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 		if (light.type == LightType::Directional)
 			continue;
 
+		PipelinePushConstants pushConstants = {
+			.LightSourceIdx = i
+		};
+
 		vkCmdPushConstants(
-			commandBuffer, 
-			m_LightSourcePSO.pipelineLayout, 
-			VK_SHADER_STAGE_VERTEX_BIT,
-			sizeof(int),
-			sizeof(int),
-			&i
+			commandBuffer,
+			m_LightSourcePSO.pipelineLayout,
+			VK_SHADER_STAGE_ALL_GRAPHICS,
+			0,
+			sizeof(PipelinePushConstants),
+			&pushConstants
 		);
 
 		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
 }
+
+const Graphics::PipelineState& Renderer::GetPSO(uint16_t flags) {
+
+	if (flags & PSOFlags::tOpaque && flags & PSOFlags::tStencilTest) {
+		return m_ColorStencilPSO;
+	}
+
+	if (flags & PSOFlags::tTransparent && flags & PSOFlags::tStencilTest) {
+		return m_TransparentStencilPSO;
+	}
+
+	if (flags & PSOFlags::tTransparent) {
+		return m_TransparentPSO;
+	}
+	
+	return m_ColorPSO;
+}
+
+const Assets::Camera& Renderer::MeshSorter::GetCamera() {
+	return *m_Camera;
+}
+
+void Renderer::MeshSorter::SetCamera(const Assets::Camera& camera) {
+	m_Camera = &camera;
+}
+
+void Renderer::MeshSorter::AddMesh(const Assets::Mesh& mesh, float distance, uint32_t modelIndex, uint32_t totalIndices, Graphics::GPUBuffer& buffer) {
+	
+	SortKey key = {};
+	key.value = m_SortMeshes.size();
+	key.distance = distance;
+
+	if (mesh.PSOFlags & PSOFlags::tTransparent) {
+		key.key = ~static_cast<uint64_t>(distance);
+		key.passId = DrawPass::tTransparent;
+		m_PassCounts[DrawPass::tTransparent]++;
+	} else {
+		key.key = static_cast<uint64_t>(distance);
+		key.passId = DrawPass::tOpaque;
+		m_PassCounts[DrawPass::tOpaque]++;
+	}
+
+	m_SortKeys.push_back(key);
+	m_SortMeshes.push_back({ &mesh, &buffer, distance, modelIndex, totalIndices });
+}
+
+void Renderer::MeshSorter::Sort() {
+	struct { bool operator()(SortKey& a, SortKey& b) const { return a.key < b.key; } } cmp;
+	std::sort(m_SortKeys.begin(), m_SortKeys.end(), cmp);
+}
+
+void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass) {
+
+	GraphicsDevice* gfxDevice = GetDevice();
+
+	for (; m_CurrentPass <= pass; m_CurrentPass = (DrawPass)(m_CurrentPass + 1)) {
+
+		const uint32_t passCount = m_PassCounts[m_CurrentPass];
+
+		if (passCount == 0)
+			continue;
+	
+		/*
+		if (m_BatchType == tDefault) {
+			switch (m_CurrentPass) {
+			case tZPass:
+				break;
+			case tOpaque:
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
+				pipeline = &m_ColorPSO;
+				break;
+			case tTransparent:
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
+				pipeline = &m_TransparentPSO;
+				break;
+			default:
+				break;
+			}
+		}
+		*/
+
+		const PipelineState* pipeline = nullptr;
+
+		const uint32_t lastDraw = m_CurrentDraw + passCount;
+
+		const VkBuffer* geometryBuffer = nullptr;
+
+		while (m_CurrentDraw < lastDraw) {
+			const SortKey& key = m_SortKeys[m_CurrentDraw];
+			const SortMesh& sortMesh = m_SortMeshes[key.value];
+			const Assets::Mesh& mesh = *sortMesh.mesh;
+
+			const PipelineState* newMeshPipeline = &GetPSO(mesh.PSOFlags);
+
+			if (pipeline == nullptr || newMeshPipeline != pipeline) {
+				pipeline = newMeshPipeline;
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+				assert(pipeline != nullptr);
+			}
+
+			if (geometryBuffer == nullptr || &sortMesh.bufferPtr->Handle != geometryBuffer) {
+				geometryBuffer = &sortMesh.bufferPtr->Handle;
+
+				VkDeviceSize offsets[] = { sizeof(uint32_t) * sortMesh.totalIndices };
+
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, geometryBuffer, offsets);
+				vkCmdBindIndexBuffer(commandBuffer, *geometryBuffer, 0, VK_INDEX_TYPE_UINT32);
+			}
+
+			assert(geometryBuffer != nullptr);
+
+			PipelinePushConstants pushConstants = {
+				.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+				.ModelIdx = static_cast<int>(sortMesh.modelIndex)
+			};
+
+			vkCmdPushConstants(
+				commandBuffer,
+				pipeline->pipelineLayout,
+				VK_SHADER_STAGE_ALL_GRAPHICS,
+				0,
+				sizeof(PipelinePushConstants),
+				&pushConstants
+			);
+
+			vkCmdDrawIndexed(
+				commandBuffer,
+				static_cast<uint32_t>(mesh.Indices.size()),
+				1,
+				static_cast<uint32_t>(mesh.IndexOffset),
+				static_cast<int32_t>(mesh.VertexOffset),
+				0
+			);
+
+			++m_CurrentDraw;
+		}
+	}
+}
+

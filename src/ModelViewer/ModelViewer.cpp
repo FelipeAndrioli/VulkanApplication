@@ -36,6 +36,10 @@ private:
 	std::shared_ptr<Assets::Model> m_Dragon;
 	std::shared_ptr<Assets::Model> m_Sponza;
 	std::shared_ptr<Assets::Model> m_Backpack;
+	std::shared_ptr<Assets::Model> m_Window;
+	std::shared_ptr<Assets::Model> m_Window_;
+
+	std::vector<std::shared_ptr<Assets::Model>> m_Models;
 
 	uint32_t m_ScreenWidth = 0;
 	uint32_t m_ScreenHeight = 0;
@@ -79,58 +83,68 @@ void ModelViewer::StartUp() {
 	LightManager::AddLight(sunLight);
 	LightManager::AddLight(light);
 
-	m_Dragon = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
-	m_Dragon->Name = "Dragon";
-	m_Dragon->Transformations.scaleHandler = 11.2f;
-	m_Dragon->Transformations.translation = glm::vec3(2.5f, -3.75f, -2.5f);
-	m_Dragon->Transformations.rotation.y = -46.9f;
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation = glm::vec3(2.5f, -3.75f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation = glm::vec3(0.0f, -46.9f, 0.0f);
 
-	m_Backpack = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj");
-	m_Backpack->Name = "Backpack";
-	m_Backpack->Transformations.scaleHandler = 0.3f;
-	m_Backpack->Transformations.translation = glm::vec3(0.0f, -3.75f, 0.0f);
-	m_Backpack->FlipUvVertically = true;
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.3f;
+	m_Models[m_Models.size() - 1]->Transformations.translation = glm::vec3(0.0f, -3.75f, 0.0f);
+	m_Models[m_Models.size() - 1]->FlipUvVertically = true;
 
-	m_Sponza = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
-	//m_Sponza = Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/sponza/scene.gltf");
-	m_Sponza->Name = "Sponza";
-	m_Sponza->Transformations.scaleHandler = 0.008f;
-	m_Sponza->Transformations.rotation.y = 45.0f;
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.008f;
+	m_Models[m_Models.size() - 1]->Transformations.rotation.y = 45.0f;
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/wooden_window/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.translation = glm::vec3(0.0f, -3.3f, -0.9f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation = glm::vec3(0.0f, -20.0f, 0.0f);
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.214f;
+	
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/wooden_window/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.translation = glm::vec3(2.822f, -3.3f, -3.9f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation = glm::vec3(0.0f, -20.0f, 0.0f);
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.214f;
 
 	Renderer::LoadResources();
 }
 
 void ModelViewer::CleanUp() {
+	m_Models.clear();
 	Renderer::Shutdown();
 }
 
 void ModelViewer::Update(float d, InputSystem::Input& input) {
 	m_Camera.OnUpdate(d, input);
-	m_Dragon->OnUpdate(d);
-	m_Backpack->OnUpdate(d);
-	m_Sponza->OnUpdate(d);
+
+	for (auto& model : m_Models) {
+		model->OnUpdate(d);
+	}
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
-	if (settings.renderDefault) {
-		Renderer::RenderModel(commandBuffer, *m_Dragon.get());
-		Renderer::RenderModel(commandBuffer, *m_Backpack.get());
-		Renderer::RenderModel(commandBuffer, *m_Sponza.get());
+	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
+	sorter.SetCamera(m_Camera);
+
+	for (auto& model : m_Models) {
+		model->Render(sorter);
 	}
 
-	if (m_Dragon->RenderOutline)
-		Renderer::RenderOutline(commandBuffer, *m_Dragon.get());
-	if (m_Backpack->RenderOutline)
-		Renderer::RenderOutline(commandBuffer, *m_Backpack.get());
-	if (m_Sponza->RenderOutline)
-		Renderer::RenderOutline(commandBuffer, *m_Sponza.get());
+	sorter.Sort();
+	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
+
+	for (auto& model : m_Models) {
+		if (model->RenderOutline)
+			Renderer::RenderOutline(commandBuffer, *model.get());
+	}
 
 	if (settings.renderWireframe) {
-		Renderer::RenderWireframe(commandBuffer, *m_Dragon.get());
-		Renderer::RenderWireframe(commandBuffer, *m_Backpack.get());
-		Renderer::RenderWireframe(commandBuffer, *m_Sponza.get());
+		for (auto& model : m_Models) {
+			Renderer::RenderWireframe(commandBuffer, *model.get());
+		}
 	}
 
 	if (settings.renderLightSources) {
@@ -150,9 +164,11 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox("Render Light Sources", &settings.renderLightSources);
 
 	m_Camera.OnUIRender();
-	m_Dragon->OnUIRender();
-	m_Backpack->OnUIRender();
-	m_Sponza->OnUIRender();
+
+
+	for (auto& model : m_Models) {
+		model->OnUIRender();
+	}
 
 	Renderer::OnUIRender();
 }
