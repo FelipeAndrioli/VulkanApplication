@@ -156,7 +156,7 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "./Shaders/light_source_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "./Shaders/outline_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "./Shaders/outline_frag.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "../Shaders/transparent_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "./Shaders/transparent_frag.spv");
 #endif
 
 	InputLayout globalInputLayout = {
