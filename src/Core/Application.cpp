@@ -50,8 +50,16 @@ void Application::InitializeResources(Settings& settings) {
 }
 
 void Application::RunApplication(IScene& scene) {
+
+	Timestep initStartTime = glfwGetTime();
 	InitializeResources(scene.settings);
+	Timestep resourcesInitializedTime = glfwGetTime();
 	InitializeApplication(scene);
+	Timestep sceneInitializedTime = glfwGetTime();
+
+	std::cout << "Application initialization time: " << resourcesInitializedTime.GetSeconds() - initStartTime.GetSeconds() << " seconds." << '\n';
+	std::cout << "Scene initialization time: " << sceneInitializedTime.GetSeconds() - resourcesInitializedTime.GetSeconds() << " seconds." << '\n';
+	std::cout << "Total initialization time: " << sceneInitializedTime.GetSeconds() - initStartTime.GetSeconds() << " seconds." << '\n';
 
 	while (UpdateApplication(scene)) {
 		glfwPollEvents();
