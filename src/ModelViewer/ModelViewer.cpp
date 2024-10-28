@@ -107,7 +107,7 @@ void ModelViewer::StartUp() {
 	m_Models[m_Models.size() - 1]->Transformations.rotation = glm::vec3(0.0f, -20.0f, 0.0f);
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.214f;
 
-	Renderer::LoadResources();
+	Renderer::LoadResources(renderPass);
 }
 
 void ModelViewer::CleanUp() {
@@ -136,6 +136,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	sorter.Sort();
 	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
 
+	/*
 	for (auto& model : m_Models) {
 		if (model->RenderOutline)
 			Renderer::RenderOutline(commandBuffer, *model.get());
@@ -154,6 +155,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	if (settings.renderSkybox) {
 		Renderer::RenderSkybox(commandBuffer);
 	}
+	*/
 }
 
 void ModelViewer::RenderUI() {

@@ -55,6 +55,9 @@ namespace Renderer {
 	std::vector<Texture> m_Textures;
 
 	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
+
+	std::unordered_map<RenderPassKey, Graphics::RenderPass> m_RenderPassMap;
+	
 	uint32_t m_TotalModels = 0;
 }
 
@@ -74,6 +77,24 @@ std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
 void Renderer::Init() {
 	if (m_Initialized)
 		return;
+
+	Graphics::GraphicsDevice* gfxDevice = GetDevice();
+	
+	Graphics::RenderPassDesc desc = {};
+	desc.scissor.offset = { 0, 0 };
+	desc.scissor.extent = gfxDevice->GetSwapChain().swapChainExtent;
+	desc.viewport.x = 0.0f;
+	desc.viewport.y = 0.0f;
+	desc.viewport.width = static_cast<float>(gfxDevice->GetSwapChain().swapChainExtent.width);
+	desc.viewport.height = static_cast<float>(gfxDevice->GetSwapChain().swapChainExtent.height);
+	desc.viewport.minDepth = 0.0f;
+	desc.viewport.maxDepth = 1.0f;
+	desc.clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+	desc.clearValues[1].depthStencil = { 1.0f, 0 };
+	//desc.flags = Graphics::RenderPass::tColorAttachment | Graphics::RenderPass::tDepthAttachment | Graphics::RenderPass::tColorResolveAttachment;
+	desc.flags = Graphics::RenderPass::tColorAttachment | Graphics::RenderPass::tDepthAttachment;
+
+	gfxDevice->CreateRenderPass(desc, m_RenderPassMap[tDrawPass]);
 
 	m_Initialized = true;
 }
@@ -110,12 +131,14 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyPipeline(m_TransparentPSO);
 	gfxDevice->DestroyPipeline(m_TransparentStencilPSO);
 
+	gfxDevice->DestroyRenderPass(m_RenderPassMap[tDrawPass]);
+
 	LightManager::Shutdown();
 
 	m_Initialized = false;
 }
 
-void Renderer::LoadResources() {
+void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
 	if (!m_Initialized)
 		return;
 
@@ -192,16 +215,15 @@ void Renderer::LoadResources() {
 	colorPSODesc.Name = "Color Pipeline";
 	colorPSODesc.vertexShader = &m_DefaultVertShader;
 	colorPSODesc.fragmentShader = &m_ColorFragShader;
-	colorPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	colorPSODesc.psoInputLayout.push_back(globalInputLayout);
 	
-	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO);
+	//gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO, m_RenderPassMap[tDrawPass]);
+	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO, renderPass);
 
 	PipelineStateDescription colorStencilPSODesc = {};
 	colorStencilPSODesc.Name = "Color Stencil Pipeline";
 	colorStencilPSODesc.vertexShader = &m_DefaultVertShader;
 	colorStencilPSODesc.fragmentShader = &m_ColorFragShader;
-	colorStencilPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	colorStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
 	colorStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
 	colorStencilPSODesc.stencilTestEnable = true;
@@ -213,13 +235,13 @@ void Renderer::LoadResources() {
 	colorStencilPSODesc.stencilState.writeMask = 0xff;
 	colorStencilPSODesc.stencilState.reference = 1;
 	
-	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO);
+	//gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO, m_RenderPassMap[tDrawPass]);
+	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO, renderPass);
 
 	PipelineStateDescription outlinePSODesc = {};
 	outlinePSODesc.Name = "Outline Pipeline";
 	outlinePSODesc.vertexShader = &m_OutlineVertShader;
 	outlinePSODesc.fragmentShader = &m_OutlineFragShader;
-	outlinePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	outlinePSODesc.psoInputLayout.push_back(globalInputLayout);
 	outlinePSODesc.stencilTestEnable = true;
 	outlinePSODesc.cullMode = VK_CULL_MODE_NONE;
@@ -232,17 +254,18 @@ void Renderer::LoadResources() {
 	outlinePSODesc.stencilState.reference = 1;
 	outlinePSODesc.depthTestEnable = true;										// change to false if want to see through walls
 	
-	gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO);
+	//gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO, m_RenderPassMap[tDrawPass]);
+	gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO, renderPass);
 
 	PipelineStateDescription skyboxPSODesc = {};
 	skyboxPSODesc.Name = "Skybox PSO";
 	skyboxPSODesc.vertexShader = &m_SkyboxVertexShader;
 	skyboxPSODesc.fragmentShader = &m_SkyboxFragShader;
 	skyboxPSODesc.noVertex = true;
-	skyboxPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	skyboxPSODesc.psoInputLayout.push_back(globalInputLayout);
 
-	gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO);
+	//gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO, m_RenderPassMap[tDrawPass]);
+	gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO, renderPass);
 
 	PipelineStateDescription wireframePSODesc = {};
 	wireframePSODesc.Name = "Wireframe PSO";
@@ -250,26 +273,25 @@ void Renderer::LoadResources() {
 	wireframePSODesc.fragmentShader = &m_WireframeFragShader;
 	wireframePSODesc.lineWidth = 2.0f;
 	wireframePSODesc.polygonMode = VK_POLYGON_MODE_LINE;
-	wireframePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	wireframePSODesc.psoInputLayout.push_back(globalInputLayout);
 
-	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO);
+	//gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO, m_RenderPassMap[tDrawPass]);
+	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO, renderPass);
 
 	PipelineStateDescription lightSourcePSODesc = {};
 	lightSourcePSODesc.Name = "Light Source PSO";
 	lightSourcePSODesc.vertexShader = &m_LightSourceVertShader;
 	lightSourcePSODesc.fragmentShader = &m_LightSourceFragShader;
 	lightSourcePSODesc.noVertex = true;
-	lightSourcePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	lightSourcePSODesc.psoInputLayout.push_back(globalInputLayout);
 	
-	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO);
+	//gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO, m_RenderPassMap[tDrawPass]);
+	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO, renderPass);
 
 	PipelineStateDescription transparentPSODesc = {};
 	transparentPSODesc.Name = "Transparent PSO";
 	transparentPSODesc.vertexShader = &m_DefaultVertShader;
 	transparentPSODesc.fragmentShader = &m_TransparentFragShader;
-	transparentPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	transparentPSODesc.cullMode = VK_CULL_MODE_NONE;
 	transparentPSODesc.psoInputLayout.push_back(globalInputLayout);
 	transparentPSODesc.colorBlendingEnable = true;
@@ -281,13 +303,13 @@ void Renderer::LoadResources() {
 	transparentPSODesc.colorBlendingDesc.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	transparentPSODesc.colorBlendingDesc.alphaBlendOp = VK_BLEND_OP_ADD;
 	
-	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO);
+	//gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO, m_RenderPassMap[tDrawPass]);
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO, renderPass);
 
 	PipelineStateDescription transparentStencilPSODesc = {};
 	transparentStencilPSODesc.Name = "Transparent Stencil Pipeline";
 	transparentStencilPSODesc.vertexShader = &m_DefaultVertShader;
 	transparentStencilPSODesc.fragmentShader = &m_TransparentFragShader;
-	transparentStencilPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	transparentStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
 	transparentStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
 	transparentStencilPSODesc.stencilTestEnable = true;
@@ -299,7 +321,8 @@ void Renderer::LoadResources() {
 	transparentStencilPSODesc.stencilState.writeMask = 0xff;
 	transparentStencilPSODesc.stencilState.reference = 1;
 
-	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO);
+	//gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO, m_RenderPassMap[tDrawPass]);
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO, renderPass);
 
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 
@@ -354,7 +377,6 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 
 	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
 }
-
 
 void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
 	GraphicsDevice* gfxDevice = GetDevice();
@@ -516,31 +538,24 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 		if (passCount == 0)
 			continue;
 	
-		/*
 		if (m_BatchType == tDefault) {
 			switch (m_CurrentPass) {
 			case tZPass:
 				break;
 			case tOpaque:
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
-				pipeline = &m_ColorPSO;
-				break;
 			case tTransparent:
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
-				pipeline = &m_TransparentPSO;
+				//gfxDevice->BeginRenderPass(m_RenderPassMap[tDrawPass], commandBuffer);
 				break;
 			default:
 				break;
 			}
 		}
-		*/
 
 		const PipelineState* pipeline = nullptr;
-
-		const uint32_t lastDraw = m_CurrentDraw + passCount;
-
 		const VkBuffer* geometryBuffer = nullptr;
 
+		const uint32_t lastDraw = m_CurrentDraw + passCount;
+		
 		while (m_CurrentDraw < lastDraw) {
 			const SortKey& key = m_SortKeys[m_CurrentDraw];
 			const SortMesh& sortMesh = m_SortMeshes[key.value];
@@ -589,6 +604,19 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 			);
 
 			++m_CurrentDraw;
+		}
+
+		if (m_BatchType == tDefault) {
+			switch (m_CurrentPass) {
+			case tZPass:
+				break;
+			case tOpaque:
+			case tTransparent:
+				//gfxDevice->EndRenderPass(commandBuffer);
+				break;
+			default:
+				break;
+			}
 		}
 	}
 }

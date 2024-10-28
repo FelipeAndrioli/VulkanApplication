@@ -3,6 +3,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "./Core/VulkanHeader.h"
 #include "glm.hpp"
@@ -19,6 +20,7 @@ namespace Assets {
 namespace Graphics {
 	struct PipelineState;
 	struct GPUBuffer;
+	struct RenderPass;
 }
 
 namespace Renderer {
@@ -85,9 +87,11 @@ namespace Renderer {
 
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
+	enum RenderPassKey { tPrePass, tDrawPass, tUI, tDebug };
+
 	void Init();
 	void Shutdown();
-	void LoadResources();
+	void LoadResources(Graphics::RenderPass& renderPass);
 	void OnUIRender();
 
 	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);

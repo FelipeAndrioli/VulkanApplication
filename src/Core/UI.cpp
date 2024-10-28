@@ -2,7 +2,7 @@
 
 #include "GraphicsDevice.h"
 
-UI::UI(GLFWwindow& window) {
+UI::UI(GLFWwindow& window, VkRenderPass& uiRenderPass) {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -35,7 +35,8 @@ UI::UI(GLFWwindow& window) {
 	init_info.MSAASamples = gfxDevice->m_MsaaSamples;
 	init_info.Allocator = nullptr;
 	init_info.CheckVkResultFn = check_vk_result;
-	ImGui_ImplVulkan_Init(&init_info, gfxDevice->GetDefaultRenderPass());
+	//ImGui_ImplVulkan_Init(&init_info, gfxDevice->GetDefaultRenderPass());
+	ImGui_ImplVulkan_Init(&init_info, uiRenderPass);
 
 	VkCommandBuffer commandBuffer = gfxDevice->BeginSingleTimeCommandBuffer(m_UICommandPool);
 	ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);

@@ -10,7 +10,7 @@
 
 class UI {
 public:
-	UI(GLFWwindow& window);
+	UI(GLFWwindow& window, VkRenderPass& uiRenderPass);
 	~UI();
 
 	void BeginFrame();

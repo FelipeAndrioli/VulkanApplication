@@ -70,6 +70,36 @@ namespace Graphics {
 		uint32_t imageIndex = 0;
 	};
 
+	struct RenderPassDesc {
+		VkOffset2D offset = {};
+		VkViewport viewport = {};
+		VkExtent2D extent = {};
+		VkRect2D scissor = {};
+
+		std::array<VkClearValue, 2> clearValues;
+
+		uint16_t flags;
+	};
+
+	struct RenderPass {
+		RenderPassDesc description = {};
+
+		Graphics::GPUImage renderTarget = {};
+		Graphics::GPUImage depthBuffer = {};
+
+		std::vector<VkFramebuffer> framebuffers;
+
+		VkRenderPass handle = VK_NULL_HANDLE;
+
+		VkDescriptorSet outputDescriptorSet = VK_NULL_HANDLE;
+
+		enum : uint16_t {
+			tColorAttachment			= 0x001,
+			tDepthAttachment			= 0x002,
+			tColorResolveAttachment		= 0x004
+		};
+	};
+
 	struct Shader {
 		std::string filename;
 		VkShaderStageFlagBits stage;
@@ -158,7 +188,7 @@ namespace Graphics {
 		~GraphicsDevice();
 
 		bool CreateSwapChain(Window& window, SwapChain& swapChain);
-		void RecreateSwapChain(Window& window, SwapChain& swapChain);
+		void RecreateSwapChain(Window& window);
 		void DestroySwapChain(SwapChain& swapChain);
 
 		void WaitIdle();
@@ -166,15 +196,15 @@ namespace Graphics {
 		void DestroyFrameResources(Frame& frame);
 		void BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer);
 		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
-		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea, uint32_t imageIndex, const VkFramebuffer& framebuffer);
-		void EndRenderPass(VkCommandBuffer& commandBuffer);
+		void BeginRenderPass(const RenderPass& renderPass, const VkCommandBuffer& commandBuffer);
+		void EndRenderPass(const VkCommandBuffer& commandBuffer);
 		
 		void BeginCommandBuffer(VkCommandBuffer& commandBuffer);
 		void EndCommandBuffer(VkCommandBuffer& commandBuffer);
 
-		bool BeginFrame(SwapChain& swapChain, Frame& frame);
-		void EndFrame(const SwapChain& swapChain, const Frame& frame);
-		void PresentFrame(const SwapChain& swapChain, const Frame& frame);
+		bool BeginFrame(Frame& frame);
+		void EndFrame(const Frame& frame);
+		void PresentFrame(const Frame& frame);
 
 		VkCommandBuffer BeginSingleTimeCommandBuffer(VkCommandPool& commandPool);
 		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer, VkCommandPool& commandPool);
@@ -253,20 +283,22 @@ namespace Graphics {
 		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
 		void DestroyShader(Shader& shader);
 		void CreateRenderPass(VkFormat colorImageFormat, VkFormat depthFormat, VkRenderPass& renderPass);
-		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso);
-		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, VkRenderPass& renderPass);
+		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const RenderPass& renderPass);
 		void DestroyPipeline(PipelineState& pso);
 
-		void SetSwapChainExtent(VkExtent2D newExtent) { m_SwapChainExtent = newExtent; }
-		VkExtent2D& GetSwapChainExtent() { return m_SwapChainExtent; }
-
 		uint32_t GetCurrentFrameIndex() { return m_CurrentFrame; }
+
+		VkExtent2D& GetSwapChainExtent() { return m_SwapChain.swapChainExtent; }
+		const SwapChain& GetSwapChain() { return m_SwapChain; }
 
 		Frame& GetCurrentFrame();
 		Frame& GetLastFrame();
 		Frame& GetFrame(int i);
 
-		VkRenderPass& GetDefaultRenderPass() { return m_DefaultRenderPass; }
+		void CreateRenderPass(RenderPassDesc& desc, RenderPass& renderPass);
+		void DestroyRenderPass(RenderPass& renderPass);
+		void ResizeRenderPass(const uint32_t width, const uint32_t height, RenderPass& renderPass);
+
 	public:
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
@@ -274,7 +306,6 @@ namespace Graphics {
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
 		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
 		VkCommandPool m_CommandPool = VK_NULL_HANDLE;
-		VkRenderPass m_DefaultRenderPass = VK_NULL_HANDLE;
 
 		QueueFamilyIndices m_QueueFamilyIndices;
 		VkSampleCountFlagBits m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -295,6 +326,8 @@ namespace Graphics {
 		Frame m_Frames[FRAMES_IN_FLIGHT] = {};
 		
 		std::unique_ptr<class BufferManager> m_BufferManager;
+	
+		Graphics::SwapChain m_SwapChain;
 	private:
 		VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice& device, VkSurfaceKHR& surface);

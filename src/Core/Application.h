@@ -14,7 +14,7 @@
 
 #define RUN_APPLICATION(class_name)		\
 	int main(int argc, char* argv[]) {	\
-		Application app;		\
+		Application app;				\
 		class_name scene;				\
 		app.RunApplication(scene);		\
 										\
@@ -40,6 +40,8 @@ public:
 
 	public:
 		Settings settings = {};
+
+		Graphics::RenderPass renderPass = {};
 	};
 
 	Application() {};
@@ -51,7 +53,7 @@ public:
 	void InitializeApplication(IScene& scene);
 	void TerminateApplication(IScene& scene);
 private:
-	void InitializeResources(Settings& settings);
+	void InitializeResources(IScene& scene);
 	void Resize(int width, int height);
 private:
 	float m_CurrentFrameTime = 0.0f;
@@ -65,14 +67,6 @@ private:
 	std::unique_ptr<Window> m_Window;
 	std::unique_ptr<InputSystem::Input> m_Input;
 
-	Graphics::SwapChain m_SwapChain;
-
 	std::unique_ptr<Graphics::GraphicsDevice> m_GraphicsDevice;
-
-	Graphics::GPUImage m_RenderTarget = {};
-	Graphics::GPUImage m_DepthBuffer = {};
-
-	std::vector<VkFramebuffer> m_Framebuffers;
-
 	std::unique_ptr<UI> m_UI;
 };
