@@ -8,9 +8,13 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
+namespace Graphics {
+	struct RenderPass;
+};
+
 class UI {
 public:
-	UI(GLFWwindow& window, VkRenderPass& uiRenderPass);
+	UI(GLFWwindow& window, Graphics::RenderPass& uiRenderPass);
 	~UI();
 
 	void BeginFrame();

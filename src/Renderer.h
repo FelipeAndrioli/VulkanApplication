@@ -87,7 +87,8 @@ namespace Renderer {
 
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
-	enum RenderPassKey { tPrePass, tDrawPass, tUI, tDebug };
+	enum RenderPassKey { tPrePass, tColorPass, tPostPass, tUI, tDebug };
+	extern std::unordered_map<RenderPassKey, Graphics::RenderPass> m_RenderPassMap;
 
 	void Init();
 	void Shutdown();

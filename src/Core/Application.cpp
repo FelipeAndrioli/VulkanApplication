@@ -37,11 +37,13 @@ void Application::InitializeResources(IScene& scene) {
 	desc.viewport.maxDepth = 1.0f;
 	desc.clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
 	desc.clearValues[1].depthStencil = { 1.0f, 0 };
+	desc.clearValues[2].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+	desc.sampleCount = m_GraphicsDevice->m_MsaaSamples;
 	desc.flags = Graphics::RenderPass::tColorAttachment | Graphics::RenderPass::tDepthAttachment | Graphics::RenderPass::tColorResolveAttachment;
 
 	m_GraphicsDevice->CreateRenderPass(desc, scene.renderPass);
 
-	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), scene.renderPass.handle);
+	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), scene.renderPass);
 }
 
 void Application::RunApplication(IScene& scene) {
@@ -95,7 +97,7 @@ bool Application::UpdateApplication(IScene& scene) {
 		return true;
 
 	Graphics::Frame& frame = m_GraphicsDevice->GetCurrentFrame();
-
+	
 	m_GraphicsDevice->BeginRenderPass(scene.renderPass, frame.commandBuffer);
 	
 	scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);

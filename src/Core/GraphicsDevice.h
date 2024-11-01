@@ -76,9 +76,11 @@ namespace Graphics {
 		VkExtent2D extent = {};
 		VkRect2D scissor = {};
 
-		std::array<VkClearValue, 2> clearValues;
+		std::array<VkClearValue, 3> clearValues;
 
 		uint16_t flags;
+
+		VkSampleCountFlagBits sampleCount;
 	};
 
 	struct RenderPass {
@@ -168,6 +170,8 @@ namespace Graphics {
 		VkPipelineTessellationStateCreateInfo tessellationInfo = {};
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 		VkPipelineColorBlendStateCreateInfo colorBlending = {};
+
+		const RenderPass* renderPass = nullptr;
 	};
 
 	struct Frame {
@@ -227,8 +231,8 @@ namespace Graphics {
 		void UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer);
-		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
-		void CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat format);
+		void CreateDepthBuffer(GPUImage& depthBuffer, const RenderPassDesc& renderPassDesc);
+		void CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format);
 
 		template <class T>
 		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize, size_t offset);
@@ -273,6 +277,7 @@ namespace Graphics {
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const Buffer& buffer);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture);
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, GPUImage& image);
 
 #ifdef RUNTIME_SHADER_COMPILATION
 		static EShLanguage FindLanguage(const Shader& shader);
