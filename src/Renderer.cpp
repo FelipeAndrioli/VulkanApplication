@@ -7,6 +7,7 @@
 #include "./Core/GraphicsDevice.h"
 #include "./Core/Application.h"
 #include "./Core/ConstantBuffers.h"
+#include "./Core/BufferManager.h"
 
 #include "./Utils/TextureLoader.h"
 #include "./Utils/ModelLoader.h"
@@ -55,10 +56,10 @@ namespace Renderer {
 	std::vector<Texture> m_Textures;
 
 	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
-
-	std::unordered_map<RenderPassKey, Graphics::RenderPass> m_RenderPassMap;
 	
 	uint32_t m_TotalModels = 0;
+
+	Graphics::RenderPass renderPass;
 }
 
 std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
@@ -74,15 +75,19 @@ std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
 	return m_Models[modelIdx];
 }
 
-void Renderer::Init() {
-	if (m_Initialized)
-		return;
-
+void Renderer::CreateRenderPass() {
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
+
+	std::vector<VkAttachmentDescription> attachments = {};
+	std::vector<VkSubpassDependency> dependencies = {};
 	
+	VkSubpassDescription subpass{};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
 	Graphics::RenderPassDesc desc = {};
 	desc.scissor.offset = { 0, 0 };
 	desc.scissor.extent = gfxDevice->GetSwapChain().swapChainExtent;
+	desc.extent = gfxDevice->GetSwapChain().swapChainExtent;
 	desc.viewport.x = 0.0f;
 	desc.viewport.y = 0.0f;
 	desc.viewport.width = static_cast<float>(gfxDevice->GetSwapChain().swapChainExtent.width);
@@ -91,13 +96,93 @@ void Renderer::Init() {
 	desc.viewport.maxDepth = 1.0f;
 	desc.clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
 	desc.clearValues[1].depthStencil = { 1.0f, 0 };
-	desc.flags = Graphics::RenderPass::tColorAttachment | Graphics::RenderPass::tDepthAttachment;
-	desc.sampleCount = gfxDevice->m_MsaaSamples;
+	desc.sampleCount = Graphics::g_SceneColor.Description.MsaaSamples;
 
-	gfxDevice->CreateRenderPass(desc, m_RenderPassMap[tColorPass]);
-	
-	desc.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-	gfxDevice->CreateRenderPass(desc, m_RenderPassMap[tPostPass]);
+	renderPass.description = desc;
+
+	VkAttachmentDescription colorAttachment{};
+	colorAttachment.format = Graphics::g_SceneColor.Description.Format;
+	colorAttachment.samples = Graphics::g_SceneColor.Description.MsaaSamples;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	attachments.emplace_back(colorAttachment);
+
+	VkAttachmentReference colorAttachmentRef{};
+	colorAttachmentRef.attachment = attachments.size() - 1;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorAttachmentRef;
+
+	VkSubpassDependency colorDependency = {};
+	colorDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	colorDependency.dstSubpass = 0;
+	colorDependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	colorDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	colorDependency.srcAccessMask = VK_ACCESS_NONE_KHR;
+	colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	colorDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	dependencies.emplace_back(colorDependency);
+
+	VkAttachmentDescription depthAttachment{};
+	depthAttachment.format = gfxDevice->GetDepthFormat();
+	depthAttachment.samples = Graphics::g_SceneDepth.Description.MsaaSamples;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	attachments.emplace_back(depthAttachment);
+
+	VkAttachmentReference depthAttachmentReference{};
+	depthAttachmentReference.attachment = attachments.size() - 1;
+	depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	subpass.pDepthStencilAttachment = &depthAttachmentReference;
+
+	VkSubpassDependency depthDependency = {};
+	depthDependency.srcSubpass = 0;
+	depthDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+	depthDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	depthDependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	depthDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	depthDependency.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	depthDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	dependencies.emplace_back(depthDependency);
+
+	std::vector<VkSubpassDescription> subpasses = { subpass };
+
+	gfxDevice->CreateRenderPass(renderPass.handle, attachments, subpasses, dependencies);
+
+	renderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
+
+	for (int i = 0; i < gfxDevice->GetSwapChain().swapChainImageViews.size(); i++) {
+		std::vector<VkImageView> framebufferAttachments = {};
+		framebufferAttachments.emplace_back(Graphics::g_SceneColor.ImageView);
+		framebufferAttachments.emplace_back(Graphics::g_SceneDepth.ImageView);
+
+		gfxDevice->CreateFramebuffer(
+			renderPass.handle, 
+			framebufferAttachments, 
+			renderPass.description.extent, 
+			renderPass.framebuffers[i]);
+	}
+}
+
+void Renderer::Init() {
+	if (m_Initialized)
+		return;
+
+	CreateRenderPass();
 
 	m_Initialized = true;
 }
@@ -133,16 +218,14 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyPipeline(m_LightSourcePSO);
 	gfxDevice->DestroyPipeline(m_TransparentPSO);
 	gfxDevice->DestroyPipeline(m_TransparentStencilPSO);
-
-	gfxDevice->DestroyRenderPass(m_RenderPassMap[tColorPass]);
-	gfxDevice->DestroyRenderPass(m_RenderPassMap[tPostPass]);
+	gfxDevice->DestroyRenderPass(renderPass);
 
 	LightManager::Shutdown();
 
 	m_Initialized = false;
 }
 
-void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
+void Renderer::LoadResources() {
 	if (!m_Initialized)
 		return;
 
@@ -221,7 +304,6 @@ void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
 	colorPSODesc.fragmentShader = &m_ColorFragShader;
 	colorPSODesc.psoInputLayout.push_back(globalInputLayout);
 	
-	//gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO, m_RenderPassMap[tColorPass]);
 	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO, renderPass);
 
 	PipelineStateDescription colorStencilPSODesc = {};
@@ -239,7 +321,6 @@ void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
 	colorStencilPSODesc.stencilState.writeMask = 0xff;
 	colorStencilPSODesc.stencilState.reference = 1;
 	
-	//gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO, m_RenderPassMap[tColorPass]);
 	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO, renderPass);
 
 	PipelineStateDescription outlinePSODesc = {};
@@ -258,7 +339,6 @@ void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
 	outlinePSODesc.stencilState.reference = 1;
 	outlinePSODesc.depthTestEnable = true;										// change to false if want to see through walls
 	
-	//gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO, m_RenderPassMap[tColorPass]);
 	gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO, renderPass);
 
 	PipelineStateDescription skyboxPSODesc = {};
@@ -268,7 +348,6 @@ void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
 	skyboxPSODesc.noVertex = true;
 	skyboxPSODesc.psoInputLayout.push_back(globalInputLayout);
 
-	//gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO, m_RenderPassMap[tColorPass]);
 	gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO, renderPass);
 
 	PipelineStateDescription wireframePSODesc = {};
@@ -279,7 +358,6 @@ void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
 	wireframePSODesc.polygonMode = VK_POLYGON_MODE_LINE;
 	wireframePSODesc.psoInputLayout.push_back(globalInputLayout);
 
-	//gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO, m_RenderPassMap[tColorPass]);
 	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO, renderPass);
 
 	PipelineStateDescription lightSourcePSODesc = {};
@@ -289,7 +367,6 @@ void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
 	lightSourcePSODesc.noVertex = true;
 	lightSourcePSODesc.psoInputLayout.push_back(globalInputLayout);
 	
-	//gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO, m_RenderPassMap[tColorPass]);
 	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO, renderPass);
 
 	PipelineStateDescription transparentPSODesc = {};
@@ -307,7 +384,6 @@ void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
 	transparentPSODesc.colorBlendingDesc.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	transparentPSODesc.colorBlendingDesc.alphaBlendOp = VK_BLEND_OP_ADD;
 	
-	//gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO, m_RenderPassMap[tColorPass]);
 	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO, renderPass);
 
 	PipelineStateDescription transparentStencilPSODesc = {};
@@ -325,7 +401,6 @@ void Renderer::LoadResources(Graphics::RenderPass& renderPass) {
 	transparentStencilPSODesc.stencilState.writeMask = 0xff;
 	transparentStencilPSODesc.stencilState.reference = 1;
 
-	//gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO, m_RenderPassMap[tColorPass]);
 	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO, renderPass);
 
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
@@ -534,6 +609,7 @@ void Renderer::MeshSorter::Sort() {
 void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass) {
 
 	GraphicsDevice* gfxDevice = GetDevice();
+	gfxDevice->BeginRenderPass(renderPass, commandBuffer);
 
 	for (; m_CurrentPass <= pass; m_CurrentPass = (DrawPass)(m_CurrentPass + 1)) {
 
@@ -541,19 +617,6 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 
 		if (passCount == 0)
 			continue;
-	
-		if (m_BatchType == tDefault) {
-			switch (m_CurrentPass) {
-			case tZPass:
-				break;
-			case tOpaque:
-			case tTransparent:
-				//gfxDevice->BeginRenderPass(m_RenderPassMap[tColorPass], commandBuffer);
-				break;
-			default:
-				break;
-			}
-		}
 
 		const PipelineState* pipeline = nullptr;
 		const VkBuffer* geometryBuffer = nullptr;
@@ -609,19 +672,8 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 
 			++m_CurrentDraw;
 		}
-
-		if (m_BatchType == tDefault) {
-			switch (m_CurrentPass) {
-			case tZPass:
-				break;
-			case tOpaque:
-			case tTransparent:
-				//gfxDevice->EndRenderPass(commandBuffer);
-				break;
-			default:
-				break;
-			}
-		}
 	}
+
+	gfxDevice->EndRenderPass(commandBuffer);
 }
 

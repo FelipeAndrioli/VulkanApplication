@@ -87,12 +87,10 @@ namespace Renderer {
 
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
-	enum RenderPassKey { tPrePass, tColorPass, tPostPass, tUI, tDebug };
-	extern std::unordered_map<RenderPassKey, Graphics::RenderPass> m_RenderPassMap;
-
 	void Init();
+	void CreateRenderPass();
 	void Shutdown();
-	void LoadResources(Graphics::RenderPass& renderPass);
+	void LoadResources();
 	void OnUIRender();
 
 	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);

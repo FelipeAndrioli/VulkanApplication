@@ -13,7 +13,6 @@
 #include "VulkanHeader.h"
 #include "Window.h"
 #include "Graphics.h"
-#include "BufferManager.h"
 
 #include "../Assets/Mesh.h"
 
@@ -86,8 +85,8 @@ namespace Graphics {
 	struct RenderPass {
 		RenderPassDesc description = {};
 
-		Graphics::GPUImage renderTarget = {};
-		Graphics::GPUImage depthBuffer = {};
+		//Graphics::GPUImage renderTarget = {};
+		//Graphics::GPUImage depthBuffer = {};
 
 		std::vector<VkFramebuffer> framebuffers;
 
@@ -186,6 +185,8 @@ namespace Graphics {
 		VkDescriptorSet bindlessSet;
 	};
 
+	class BufferManager;
+
 	class GraphicsDevice {
 	public:
 		GraphicsDevice(Window& window);
@@ -232,7 +233,9 @@ namespace Graphics {
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer);
 		void CreateDepthBuffer(GPUImage& depthBuffer, const RenderPassDesc& renderPassDesc);
+		void CreateDepthBuffer(GPUImage& depthBuffer, const VkExtent2D& extent, const VkSampleCountFlagBits& samples);
 		void CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format);
+		void CreateRenderTarget(GPUImage& renderTarget, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples);
 
 		template <class T>
 		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize, size_t offset);
@@ -303,6 +306,8 @@ namespace Graphics {
 		void CreateRenderPass(RenderPassDesc& desc, RenderPass& renderPass);
 		void DestroyRenderPass(RenderPass& renderPass);
 		void ResizeRenderPass(const uint32_t width, const uint32_t height, RenderPass& renderPass);
+
+		VkFormat GetDepthFormat() { return FindDepthFormat(m_PhysicalDevice); }
 
 	public:
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;

@@ -55,6 +55,7 @@ public:
 private:
 	void InitializeResources(IScene& scene);
 	void Resize(int width, int height);
+	void CreateRenderPass(IScene& scene);
 private:
 	float m_CurrentFrameTime = 0.0f;
 	float m_LastFrameTime = 0.0f;

@@ -1,6 +1,8 @@
 #include "GraphicsDevice.h"
 
 #include "UI.h"
+#include "BufferManager.h"
+
 #include "../Utils/Helper.h"
 
 #include <string>
@@ -1258,6 +1260,55 @@ namespace Graphics {
 		CreateImageView(depthBuffer);
 	}
 
+	void GraphicsDevice::CreateDepthBuffer(GPUImage& depthBuffer, const VkExtent2D& extent, const VkSampleCountFlagBits& samples) {
+
+		ImageDescription depthDesc = {};
+		depthDesc.Width = extent.width;
+		depthDesc.Height = extent.height;
+		depthDesc.MipLevels = 1;
+		//depthDesc.MsaaSamples = m_MsaaSamples;
+		//depthDesc.MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
+		depthDesc.MsaaSamples = samples;
+		depthDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
+		depthDesc.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		depthDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		depthDesc.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+		depthDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;
+		depthDesc.LayerCount = 1;
+		depthDesc.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		depthDesc.Format = FindDepthFormat(m_PhysicalDevice);
+		depthDesc.ImageType = VK_IMAGE_TYPE_2D;
+
+		depthBuffer.Description = depthDesc;
+
+		CreateImage(depthBuffer);
+		CreateImageView(depthBuffer);
+	}
+
+
+	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples) {
+
+		ImageDescription renderTargetDesc = {};
+		renderTargetDesc.Width = extent.width;
+		renderTargetDesc.Height = extent.height;
+		renderTargetDesc.MipLevels = 1;
+		renderTargetDesc.MsaaSamples = samples;
+		renderTargetDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
+		renderTargetDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		renderTargetDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		renderTargetDesc.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+		renderTargetDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;
+		renderTargetDesc.LayerCount = 1;
+		renderTargetDesc.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		renderTargetDesc.Format = format;
+		renderTargetDesc.ImageType = VK_IMAGE_TYPE_2D;
+
+		renderTarget.Description = renderTargetDesc;
+
+		CreateImage(renderTarget);
+		CreateImageView(renderTarget);
+	}
+
 	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format) {
 
 		ImageDescription renderTargetDesc = {};
@@ -1688,7 +1739,8 @@ namespace Graphics {
 	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, GPUImage& image) {
 
 		VkDescriptorImageInfo newImageInfo = {};
-		newImageInfo.imageLayout = image.ImageLayout;
+		//newImageInfo.imageLayout = image.ImageLayout;
+		newImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		newImageInfo.imageView = image.ImageView;
 		newImageInfo.sampler = image.ImageSampler;
 
@@ -2116,9 +2168,9 @@ namespace Graphics {
 		VkSubpassDescription subpass{};
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-		if (renderPass.description.flags & RenderPass::tColorAttachment) {
-			CreateRenderTarget(renderPass.renderTarget, renderPass.description, m_SwapChain.swapChainImageFormat);
-			CreateImageSampler(renderPass.renderTarget);
+		if (renderPass.description.flags & RenderPass::tColorAttachment && renderPass.description.flags & RenderPass::tColorResolveAttachment) {
+			//CreateRenderTarget(renderPass.renderTarget, renderPass.description, m_SwapChain.swapChainImageFormat);
+			//CreateImageSampler(renderPass.renderTarget);
 
 			VkAttachmentDescription colorAttachment{};
 			//colorAttachment.format = surfaceFormat.format;
@@ -2156,19 +2208,23 @@ namespace Graphics {
 			dependencies.emplace_back(colorDependency);
 
 		} else if (renderPass.description.flags & RenderPass::tColorAttachment) {
-			CreateRenderTarget(renderPass.renderTarget, renderPass.description, VK_FORMAT_R8G8B8A8_UNORM);
-			CreateImageSampler(renderPass.renderTarget);
+			//CreateRenderTarget(renderPass.renderTarget, renderPass.description, VK_FORMAT_R8G8B8A8_UNORM);
+			//CreateRenderTarget(renderPass.renderTarget, renderPass.description, m_SwapChain.swapChainImageFormat);
+			//CreateImageSampler(renderPass.renderTarget);
 
 			VkAttachmentDescription colorAttachment{};
 			//colorAttachment.format = surfaceFormat.format;
-			colorAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
+			colorAttachment.format = Graphics::g_SceneColor.Description.Format;
+			//colorAttachment.format = m_SwapChain.swapChainImageFormat;
 			//colorAttachment.samples = m_MsaaSamples;
 			colorAttachment.samples = renderPass.description.sampleCount;
 			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			//colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			//colorAttachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			//colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -2196,7 +2252,7 @@ namespace Graphics {
 
 		if (renderPass.description.flags & RenderPass::tDepthAttachment 
 			&& renderPass.description.flags & RenderPass::tColorResolveAttachment) {
-			CreateDepthBuffer(renderPass.depthBuffer, renderPass.description);
+			//CreateDepthBuffer(renderPass.depthBuffer, renderPass.description);
 
 			VkAttachmentDescription depthAttachment{};
 			depthAttachment.format = FindDepthFormat(m_PhysicalDevice);
@@ -2228,7 +2284,7 @@ namespace Graphics {
 
 			dependencies.emplace_back(depthDependency);
 		} else if (renderPass.description.flags & RenderPass::tDepthAttachment) {
-			CreateDepthBuffer(renderPass.depthBuffer, renderPass.description);
+			//CreateDepthBuffer(renderPass.depthBuffer, renderPass.description);
 
 			VkAttachmentDescription depthAttachment{};
 			depthAttachment.format = FindDepthFormat(m_PhysicalDevice);
@@ -2298,15 +2354,28 @@ namespace Graphics {
 
 		renderPass.framebuffers.resize(m_SwapChain.swapChainImageViews.size());
 
+		// TODO: need to rework framebuffer creation
+
 		for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
 			std::vector<VkImageView> framebufferAttachments = {};
 
-			if (renderPass.description.flags & RenderPass::tColorAttachment)
-				framebufferAttachments.emplace_back(renderPass.renderTarget.ImageView);
-			if (renderPass.description.flags & RenderPass::tDepthAttachment)
-				framebufferAttachments.emplace_back(renderPass.depthBuffer.ImageView);
-			if (renderPass.description.flags & RenderPass::tColorResolveAttachment)
+			if (renderPass.description.flags & RenderPass::tColorAttachment
+				&& renderPass.description.flags & RenderPass::tColorResolveAttachment) {
+				framebufferAttachments.emplace_back(Graphics::g_FinalImage.ImageView);
+			}
+			else if (renderPass.description.flags & RenderPass::tColorAttachment) {
+				//framebufferAttachments.emplace_back(renderPass.renderTarget.ImageView);
+				framebufferAttachments.emplace_back(Graphics::g_SceneColor.ImageView);
+			}
+
+			if (renderPass.description.flags & RenderPass::tDepthAttachment) {
+				//framebufferAttachments.emplace_back(renderPass.depthBuffer.ImageView);
+				framebufferAttachments.emplace_back(Graphics::g_SceneDepth.ImageView);
+			}
+
+			if (renderPass.description.flags & RenderPass::tColorResolveAttachment) {
 				framebufferAttachments.emplace_back(m_SwapChain.swapChainImageViews[i]);
+			}
 
 			CreateFramebuffer(
 				renderPass.handle, 
@@ -2315,15 +2384,17 @@ namespace Graphics {
 				renderPass.framebuffers[i]);
 		}
 
+		/*
 		if (renderPass.description.flags & RenderPass::tColorAttachment) {
 			TransitionImageLayout(renderPass.renderTarget, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 			TransitionImageLayout(renderPass.renderTarget, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
+		*/
 	}
 
 	void GraphicsDevice::DestroyRenderPass(RenderPass& renderPass) {
-		DestroyImage(renderPass.depthBuffer);
-		DestroyImage(renderPass.renderTarget);
+		//DestroyImage(renderPass.depthBuffer);
+		//DestroyImage(renderPass.renderTarget);
 		DestroyFramebuffer(renderPass.framebuffers);
 		renderPass.framebuffers.clear();
 
@@ -2331,7 +2402,9 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::ResizeRenderPass(const uint32_t width, const uint32_t height, RenderPass& renderPass) {
+		// TODO: need to rework framebuffer resize
 
+		/*
 		float widthRatio = static_cast<float>(width) / static_cast<float>(renderPass.description.extent.width);
 		float heightRatio = static_cast<float>(height) / static_cast<float>(renderPass.description.extent.height);
 
@@ -2345,30 +2418,24 @@ namespace Graphics {
 		renderPass.description.viewport.height = static_cast<float>(newHeight);
 		renderPass.description.scissor.extent = { newWidth, newHeight };
 
-		ResizeImage(renderPass.renderTarget, 
-				renderPass.description.extent.width, 
-				renderPass.description.extent.height);
-
-		CreateImageSampler(renderPass.renderTarget);
-
-		ResizeImage(renderPass.depthBuffer,
-				renderPass.description.extent.width, 
-				renderPass.description.extent.height);
-
 		DestroyFramebuffer(renderPass.framebuffers);
 		
 		for (int i = 0; i < renderPass.framebuffers.size(); i++) {
-			std::vector<VkImageView> framebufferAttachments = { 
-				renderPass.renderTarget.ImageView, 
-				renderPass.depthBuffer.ImageView, 
-				m_SwapChain.swapChainImageViews[i] 
-			};
-			
+			std::vector<VkImageView> framebufferAttachments = {};
+
+			if (renderPass.description.flags & RenderPass::tColorAttachment)
+				framebufferAttachments.emplace_back(Graphics::g_SceneColor);
+			if (renderPass.description.flags & RenderPass::tDepthAttachment)
+				framebufferAttachments.emplace_back(Graphics::g_SceneDepth);
+			if (renderPass.description.flags & RenderPass::tColorResolveAttachment)
+				framebufferAttachments.emplace_back(m_SwapChain.swapChainImageViews[i]);
+
 			CreateFramebuffer(
 				renderPass.handle, 
 				framebufferAttachments, 
 				renderPass.description.extent, 
 				renderPass.framebuffers[i]);
 		}
+		*/
 	}
 }
