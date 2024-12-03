@@ -2,6 +2,7 @@
 
 #include "RenderPassManager.h"
 #include "BufferManager.h"
+#include "PostEffects/PostEffects.h"
 
 Application::~Application() {
 	m_UI.reset();
@@ -72,6 +73,8 @@ void Application::RunApplication(IScene& scene) {
 	std::cout << "Scene initialization time: " << sceneInitializedTime.GetSeconds() - resourcesInitializedTime.GetSeconds() << " seconds." << '\n';
 	std::cout << "Total initialization time: " << sceneInitializedTime.GetSeconds() - initStartTime.GetSeconds() << " seconds." << '\n';
 
+	PostEffects::Initialize();
+
 	while (UpdateApplication(scene)) {
 		glfwPollEvents();
 	}
@@ -86,6 +89,8 @@ void Application::RenderCoreUI() {
 	ImGui::Text("Last Frame: %f ms", m_Milliseconds);
 	ImGui::Text("Framerate: %.1f fps", m_FramesPerSecond);
 	ImGui::Checkbox("Limit Framerate", &m_Vsync);
+
+	PostEffects::RenderUI();
 }
 
 bool Application::UpdateApplication(IScene& scene) {
@@ -112,22 +117,44 @@ bool Application::UpdateApplication(IScene& scene) {
 
 	Graphics::Frame& frame = m_GraphicsDevice->GetCurrentFrame();
 
-	scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
-
-	m_GraphicsDevice->BeginRenderPass(Graphics::g_FinalRenderPass, frame.commandBuffer);
-
-	m_GraphicsDevice->BindDescriptorSet(m_Set[m_GraphicsDevice->GetCurrentFrameIndex()], frame.commandBuffer, m_Pso.pipelineLayout, 0, 1);
-	vkCmdBindPipeline(frame.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pso.pipeline);
-	vkCmdDraw(frame.commandBuffer, 6, 1, 0, 0);
-
-	if (m_UI) {
-		m_UI->BeginFrame();
-		RenderCoreUI();
-		scene.RenderUI();
-		m_UI->EndFrame(frame.commandBuffer);
+	// Color Render Pass
+	{
+		m_GraphicsDevice->BeginRenderPass(Graphics::g_ColorRenderPass, frame.commandBuffer);
+		scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
+		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
 	}
 
-	m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
+	// Post Effects Render Pass
+	{
+		m_GraphicsDevice->BeginRenderPass(Graphics::g_PostEffectsRenderPass, frame.commandBuffer);
+		PostEffects::Render(frame.commandBuffer);
+		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
+	}
+
+	// Present/Final Render Pass
+	{
+		m_GraphicsDevice->BeginRenderPass(Graphics::g_FinalRenderPass, frame.commandBuffer);
+
+		if (!scene.settings.postEffectsEnabled && !PostEffects::Rendered) {
+			m_GraphicsDevice->WriteDescriptor(m_InputLayout.bindings[0], m_Set[m_GraphicsDevice->GetCurrentFrameIndex()], Graphics::g_SceneColor);
+		}
+		else {
+			m_GraphicsDevice->WriteDescriptor(m_InputLayout.bindings[0], m_Set[m_GraphicsDevice->GetCurrentFrameIndex()], Graphics::g_PostEffects);
+		}
+
+		m_GraphicsDevice->BindDescriptorSet(m_Set[m_GraphicsDevice->GetCurrentFrameIndex()], frame.commandBuffer, m_Pso.pipelineLayout, 0, 1);
+		vkCmdBindPipeline(frame.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pso.pipeline);
+		vkCmdDraw(frame.commandBuffer, 6, 1, 0, 0);
+
+		if (m_UI) {
+			m_UI->BeginFrame();
+			RenderCoreUI();
+			scene.RenderUI();
+			m_UI->EndFrame(frame.commandBuffer);
+		}
+
+		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
+	}
 
 	m_GraphicsDevice->EndFrame(frame);
 	m_GraphicsDevice->PresentFrame(frame);
@@ -149,6 +176,8 @@ void Application::TerminateApplication(IScene& scene) {
 	Graphics::ShutdownRenderPasses();
 
 	scene.CleanUp();
+
+	PostEffects::Shutdown();
 
 	m_GraphicsDevice->DestroyPipeline(m_Pso);
 	m_GraphicsDevice->DestroyDescriptorSetLayout(m_SetLayout);

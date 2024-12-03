@@ -8,14 +8,13 @@
 #include "../Core/GraphicsDevice.h"
 #include "../Core/Settings.h"
 #include "../Core/RenderPassManager.h"
+#include "../Core/PostEffects/PostEffects.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Model.h"
 
 #include "../Renderer.h"
 #include "../LightManager.h"
-
-#include "./GrayScale.h"
 
 class ModelViewer : public Application::IScene {
 public:
@@ -114,13 +113,10 @@ void ModelViewer::StartUp() {
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.214f;
 
 	Renderer::LoadResources();
-
-	GrayScale::Initialize();
 }
 
 void ModelViewer::CleanUp() {
 	m_Models.clear();
-	GrayScale::Shutdown();
 	Renderer::Shutdown();
 }
 
@@ -134,7 +130,6 @@ void ModelViewer::Update(float d, InputSystem::Input& input) {
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-	gfxDevice->BeginRenderPass(Graphics::g_ColorRenderPass, commandBuffer);
 
 	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
@@ -152,17 +147,8 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		Renderer::RenderSkybox(commandBuffer);
 	}
 
-	gfxDevice->EndRenderPass(commandBuffer);
-
-	gfxDevice->BeginRenderPass(Graphics::g_PostEffectsRenderPass, commandBuffer);
-	GrayScale::Render(commandBuffer, Graphics::g_PostEffectsRenderPass);
-	
-	gfxDevice->EndRenderPass(commandBuffer);
-
-	/*
-	for (auto& model : m_Models) {
-		if (model->RenderOutline)
-			Renderer::RenderOutline(commandBuffer, *model.get());
+	if (settings.renderLightSources) {
+		Renderer::RenderLightSources(commandBuffer);
 	}
 
 	if (settings.renderWireframe) {
@@ -171,11 +157,10 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		}
 	}
 
-	if (settings.renderLightSources) {
-		Renderer::RenderLightSources(commandBuffer);
+	for (auto& model : m_Models) {
+		if (model->RenderOutline)
+			Renderer::RenderOutline(commandBuffer, *model.get());
 	}
-
-	*/
 }
 
 void ModelViewer::RenderUI() {
@@ -186,7 +171,6 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox("Render Light Sources", &settings.renderLightSources);
 
 	m_Camera.OnUIRender();
-
 
 	for (auto& model : m_Models) {
 		model->OnUIRender();

@@ -11,4 +11,12 @@ struct Settings {
 	bool renderSkybox = false;
 	bool renderDefault = true;
 	bool renderLightSources = true;
+
+	bool postEffectsEnabled = false;
+
+	struct PostEffects {
+		bool grayScale = true;
+	};
+
+	PostEffects postEffects = {};
 };
