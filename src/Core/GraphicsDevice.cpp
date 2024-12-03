@@ -2,6 +2,7 @@
 
 #include "UI.h"
 #include "BufferManager.h"
+#include "RenderPassManager.h"
 
 #include "../Utils/Helper.h"
 
@@ -1003,7 +1004,8 @@ namespace Graphics {
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.image = image.Image;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		//barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.aspectMask = image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? VK_IMAGE_ASPECT_COLOR_BIT : image.Description.AspectFlags;
 		barrier.subresourceRange.baseMipLevel = 0;
 		barrier.subresourceRange.levelCount = image.Description.MipLevels;
 		barrier.subresourceRange.baseArrayLayer = 0;
@@ -1028,6 +1030,12 @@ namespace Graphics {
 
 			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 			dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		} else if (image.ImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 		} else {
 			throw std::invalid_argument("Unsupported layout transition!");
 		}
@@ -1270,7 +1278,7 @@ namespace Graphics {
 		//depthDesc.MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 		depthDesc.MsaaSamples = samples;
 		depthDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		depthDesc.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		depthDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 		depthDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		depthDesc.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 		depthDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;

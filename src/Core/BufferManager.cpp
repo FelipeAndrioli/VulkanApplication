@@ -29,6 +29,8 @@ void Graphics::InitializeRenderingImages(uint32_t width, uint32_t height) {
 		//gfxDevice->m_MsaaSamples);
 		VK_SAMPLE_COUNT_1_BIT);
 	
+	gfxDevice->TransitionImageLayout(g_PostEffects, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	gfxDevice->TransitionImageLayout(g_PostEffects, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	gfxDevice->CreateImageSampler(g_PostEffects);
 
 	gfxDevice->CreateDepthBuffer(g_SceneDepth,

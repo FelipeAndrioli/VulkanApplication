@@ -18,4 +18,6 @@ C:/VulkanSDK/1.3.250.0/Bin/glslc.exe transparent_ps.frag -o transparent_frag.spv
 C:/VulkanSDK/1.3.250.0/Bin/glslc.exe quad.vert -o quad_vert.spv
 C:/VulkanSDK/1.3.250.0/Bin/glslc.exe grayscale.frag -o grayscale_frag.spv
 
+C:/VulkanSDK/1.3.250.0/Bin/glslc.exe present.frag -o present_frag.spv
+
 pause

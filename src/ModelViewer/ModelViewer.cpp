@@ -7,6 +7,7 @@
 #include "../Core/Application.h"
 #include "../Core/GraphicsDevice.h"
 #include "../Core/Settings.h"
+#include "../Core/RenderPassManager.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Model.h"
@@ -132,6 +133,9 @@ void ModelViewer::Update(float d, InputSystem::Input& input) {
 }
 
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+	gfxDevice->BeginRenderPass(Graphics::g_ColorRenderPass, commandBuffer);
+
 	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
 	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
@@ -143,8 +147,17 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	sorter.Sort();
 	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
+	
+	if (settings.renderSkybox) {
+		Renderer::RenderSkybox(commandBuffer);
+	}
 
-	GrayScale::Render(commandBuffer, renderPass);
+	gfxDevice->EndRenderPass(commandBuffer);
+
+	gfxDevice->BeginRenderPass(Graphics::g_PostEffectsRenderPass, commandBuffer);
+	GrayScale::Render(commandBuffer, Graphics::g_PostEffectsRenderPass);
+	
+	gfxDevice->EndRenderPass(commandBuffer);
 
 	/*
 	for (auto& model : m_Models) {
@@ -162,9 +175,6 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		Renderer::RenderLightSources(commandBuffer);
 	}
 
-	if (settings.renderSkybox) {
-		Renderer::RenderSkybox(commandBuffer);
-	}
 	*/
 }
 

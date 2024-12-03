@@ -55,7 +55,6 @@ public:
 private:
 	void InitializeResources(IScene& scene);
 	void Resize(int width, int height);
-	void CreateRenderPass(IScene& scene);
 private:
 	float m_CurrentFrameTime = 0.0f;
 	float m_LastFrameTime = 0.0f;
@@ -64,6 +63,22 @@ private:
 
 	bool m_Vsync = false;
 	bool m_ResizeApplication = false;
+
+	Graphics::Shader m_VertexShader = {};
+	Graphics::Shader m_FragShader = {};
+
+	Graphics::PipelineState m_Pso = {};
+	Graphics::PipelineStateDescription m_PsoDesc = {};
+
+	VkDescriptorSetLayout m_SetLayout = VK_NULL_HANDLE;
+	VkDescriptorSet m_Set[Graphics::FRAMES_IN_FLIGHT];
+
+	Graphics::InputLayout m_InputLayout = {
+		.pushConstants = {},
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }
+		}
+	};
 
 	std::unique_ptr<Window> m_Window;
 	std::unique_ptr<InputSystem::Input> m_Input;

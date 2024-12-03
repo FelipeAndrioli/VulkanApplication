@@ -75,7 +75,8 @@ namespace Graphics {
 		VkExtent2D extent = {};
 		VkRect2D scissor = {};
 
-		std::array<VkClearValue, 3> clearValues;
+//		std::array<VkClearValue, 3> clearValues;
+		std::vector<VkClearValue> clearValues;
 
 		uint16_t flags;
 
