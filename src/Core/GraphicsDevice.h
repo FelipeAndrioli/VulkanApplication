@@ -95,6 +95,10 @@ namespace Graphics {
 
 		VkDescriptorSet outputDescriptorSet = VK_NULL_HANDLE;
 
+		std::vector<VkAttachmentDescription> attachments = {};
+		std::vector<VkSubpassDependency> dependencies = {};
+		std::vector<VkSubpassDescription> subpasses = {};
+
 		enum : uint16_t {
 			tColorAttachment			= 0x001,
 			tDepthAttachment			= 0x002,
@@ -254,10 +258,8 @@ namespace Graphics {
 		void AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
 		void DestroyBuffer(GPUBuffer& buffer);
 	
-		void CreateDefaultRenderPass(VkRenderPass& renderPass);
-		void CreateRenderPass(VkRenderPass& renderPass, std::vector<VkAttachmentDescription> attachments, std::vector<VkSubpassDescription> subpass, std::vector<VkSubpassDependency> dependencies);
+		void CreateRenderPass(RenderPass& renderPass);
 		void DestroyRenderPass(VkRenderPass& renderPass);
-		void RecreateDefaultRenderPass(VkRenderPass& renderPass, SwapChain& swapChain);
 		void DestroyFramebuffer(std::vector<VkFramebuffer>& framebuffers);
 
 		void CreateUI(Window& window, VkRenderPass& renderPass);
@@ -291,7 +293,6 @@ namespace Graphics {
 		std::vector<char> ReadFile(const std::string& filename);
 		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
 		void DestroyShader(Shader& shader);
-		void CreateRenderPass(VkFormat colorImageFormat, VkFormat depthFormat, VkRenderPass& renderPass);
 		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const RenderPass& renderPass);
 		void DestroyPipeline(PipelineState& pso);
 
@@ -304,7 +305,6 @@ namespace Graphics {
 		Frame& GetLastFrame();
 		Frame& GetFrame(int i);
 
-		void CreateRenderPass(RenderPassDesc& desc, RenderPass& renderPass);
 		void DestroyRenderPass(RenderPass& renderPass);
 		void ResizeRenderPass(const uint32_t width, const uint32_t height, RenderPass& renderPass);
 

@@ -54,21 +54,21 @@ void Graphics::InitializeRenderingImages(uint32_t width, uint32_t height) {
 void Graphics::ResizeDisplayDependentImages(uint32_t width, uint32_t height) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	float widthRatio = static_cast<float>(width) / static_cast<float>(g_SceneColor.Description.Width);
-	float heightRatio = static_cast<float>(height) / static_cast<float>(g_SceneColor.Description.Height);
-
-	uint32_t newWidth = static_cast<uint32_t>(g_SceneColor.Description.Width * widthRatio);
-	uint32_t newHeight = static_cast<uint32_t>(g_SceneColor.Description.Height * widthRatio);
-
-	gfxDevice->ResizeImage(g_SceneColor, newWidth, newHeight);
+	gfxDevice->ResizeImage(g_SceneColor, width, height);
 	gfxDevice->CreateImageSampler(g_SceneColor);
 
-	gfxDevice->ResizeImage(g_SceneDepth, newWidth, newHeight);
-
-	gfxDevice->ResizeImage(g_PostEffects, newWidth, newHeight);
+	gfxDevice->ResizeImage(g_PostEffects, width, height);
+	gfxDevice->TransitionImageLayout(g_PostEffects, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	gfxDevice->TransitionImageLayout(g_PostEffects, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	gfxDevice->CreateImageSampler(g_PostEffects);
 
-	gfxDevice->ResizeImage(g_FinalImage, newWidth, newHeight);
+	gfxDevice->ResizeImage(g_FinalImage, width, height);
+	gfxDevice->TransitionImageLayout(g_FinalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	gfxDevice->TransitionImageLayout(g_FinalImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	gfxDevice->CreateImageSampler(g_FinalImage);
+
+	gfxDevice->ResizeImage(g_SceneDepth, width, height);
+	gfxDevice->ResizeImage(g_FinalDepth, width, height);
 }
 
 void Graphics::ShutdownRenderingImages() {
@@ -102,6 +102,8 @@ void Graphics::BufferManager::CreateMainBuffer() {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 	gfxDevice->CreateBuffer(desc, m_MainBuffer, desc.BufferSize);
+
+	std::cout << "Main buffer capacity: " << m_Capacity << '\n';
 }
 
 Graphics::Buffer Graphics::BufferManager::SubAllocateBuffer(size_t size) {
@@ -116,7 +118,9 @@ Graphics::Buffer Graphics::BufferManager::SubAllocateBuffer(size_t size) {
 	buffer.Handle = &m_MainBuffer.Handle;
 
 	m_Size += size;
-	
+
+	std::cout << "Main buffer suballocation: " << m_Size << '\n';
+
 	return buffer;
 }
 

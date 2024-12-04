@@ -73,13 +73,13 @@ void GrayScale::Render(const VkCommandBuffer& commandBuffer, const Graphics::Ren
 
 		for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 			gfxDevice->CreateDescriptorSet(m_GrayScaleDescriptorLayout, m_GrayScaleSet[i]);
-			gfxDevice->WriteDescriptor(
-				m_GrayScaleInputLayout.bindings[0], 
-				m_GrayScaleSet[i], 
-				Graphics::g_SceneColor
-			);
 		}
 	}
+
+	gfxDevice->WriteDescriptor(
+		m_GrayScaleInputLayout.bindings[0], 
+		m_GrayScaleSet[gfxDevice->GetCurrentFrameIndex()], 
+		Graphics::g_SceneColor);
 
 	gfxDevice->BindDescriptorSet(
 		m_GrayScaleSet[gfxDevice->GetCurrentFrameIndex()], 

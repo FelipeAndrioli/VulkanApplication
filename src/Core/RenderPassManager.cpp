@@ -11,13 +11,8 @@ namespace Graphics {
 void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
-
 	// Color Render Pass
 	{	
-
-		std::vector<VkAttachmentDescription> attachments = {};
-		std::vector<VkSubpassDependency> dependencies = {};
-
 		VkSubpassDescription subpass{};
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
@@ -47,10 +42,10 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		attachments.emplace_back(colorAttachment);
+		g_ColorRenderPass.attachments.emplace_back(colorAttachment);
 
 		VkAttachmentReference colorAttachmentRef = {};
-		colorAttachmentRef.attachment = attachments.size() - 1;
+		colorAttachmentRef.attachment = g_ColorRenderPass.attachments.size() - 1;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		subpass.colorAttachmentCount = 1;
@@ -65,7 +60,7 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		colorDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-		dependencies.emplace_back(colorDependency);
+		g_ColorRenderPass.dependencies.emplace_back(colorDependency);
 
 		VkAttachmentDescription depthAttachment = {};
 		depthAttachment.format = gfxDevice->GetDepthFormat();
@@ -77,14 +72,16 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-		attachments.emplace_back(depthAttachment);
+		g_ColorRenderPass.attachments.emplace_back(depthAttachment);
 
 		VkAttachmentReference depthAttachmentReference = {};
-		depthAttachmentReference.attachment = attachments.size() - 1;
+		depthAttachmentReference.attachment = g_ColorRenderPass.attachments.size() - 1;
 		depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		subpass.pDepthStencilAttachment = &depthAttachmentReference;
 
+		g_ColorRenderPass.subpasses.emplace_back(subpass);
+		
 		VkSubpassDependency depthDependency = {};
 		depthDependency.srcSubpass = 0;
 		depthDependency.dstSubpass = VK_SUBPASS_EXTERNAL;
@@ -94,20 +91,13 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		depthDependency.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 		depthDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-		dependencies.emplace_back(depthDependency);
+		g_ColorRenderPass.dependencies.emplace_back(depthDependency);
 
-		std::vector<VkSubpassDescription> subpasses = { subpass };
-
-		gfxDevice->CreateRenderPass(g_ColorRenderPass.handle, attachments, subpasses, dependencies);
-
+		gfxDevice->CreateRenderPass(g_ColorRenderPass);
 	}
 
 	// Post Effects Render Pass
 	{
-		std::vector<VkAttachmentDescription> attachments(1);
-		std::vector<VkSubpassDependency> dependencies(1);
-		std::vector<VkSubpassDescription> subpasses(1);
-
 		Graphics::RenderPassDesc desc = {};
 		desc.scissor.offset = { 0, 0 };
 		desc.scissor.extent = { width, height };
@@ -135,10 +125,10 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		attachments[0] = colorAttachment;
+		g_PostEffectsRenderPass.attachments.emplace_back(colorAttachment);
 
 		VkAttachmentReference colorAttachmentRef = {};
-		colorAttachmentRef.attachment = attachments.size() - 1;
+		colorAttachmentRef.attachment = g_PostEffectsRenderPass.attachments.size() - 1;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		VkSubpassDescription subpass = {};
@@ -146,7 +136,7 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colorAttachmentRef;
 
-		subpasses[0] = subpass;
+		g_PostEffectsRenderPass.subpasses.emplace_back(subpass);
 
 		VkSubpassDependency colorDependency = {};
 		colorDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -157,16 +147,13 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		colorDependency.dependencyFlags = 0;
 
-		dependencies[0] = colorDependency;
+		g_PostEffectsRenderPass.dependencies.emplace_back(colorDependency);
 
-		gfxDevice->CreateRenderPass(g_PostEffectsRenderPass.handle, attachments, subpasses, dependencies);
+		gfxDevice->CreateRenderPass(g_PostEffectsRenderPass);
 	}
 
 	// Final Render Pass
 	{	
-
-		std::vector<VkAttachmentDescription> attachments = {};
-		std::vector<VkSubpassDependency> dependencies = {};
 
 		Graphics::RenderPassDesc desc = {};
 		desc.scissor.offset = { 0, 0 };
@@ -195,10 +182,10 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		attachments.emplace_back(colorAttachment);
+		g_FinalRenderPass.attachments.emplace_back(colorAttachment);
 
 		VkAttachmentReference colorAttachmentRef = {};
-		colorAttachmentRef.attachment = attachments.size() - 1;
+		colorAttachmentRef.attachment = g_FinalRenderPass.attachments.size() - 1;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		VkSubpassDescription subpass = {};
@@ -217,10 +204,10 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-		attachments.emplace_back(depthAttachment);
+		g_FinalRenderPass.attachments.emplace_back(depthAttachment);
 
 		VkAttachmentReference depthAttachmentReference = {};
-		depthAttachmentReference.attachment = attachments.size() - 1;
+		depthAttachmentReference.attachment = g_FinalRenderPass.attachments.size() - 1;
 		depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		subpass.pDepthStencilAttachment = &depthAttachmentReference;
@@ -235,10 +222,10 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-		attachments.emplace_back(colorAttachmentResolve);
+		g_FinalRenderPass.attachments.emplace_back(colorAttachmentResolve);
 
 		VkAttachmentReference colorAttachmentResolveRef{};
-		colorAttachmentResolveRef.attachment = attachments.size() - 1;
+		colorAttachmentResolveRef.attachment = g_FinalRenderPass.attachments.size() - 1;
 		colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		subpass.pResolveAttachments = &colorAttachmentResolveRef;
@@ -252,7 +239,7 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		colorDependency.dependencyFlags = 0;
 
-		dependencies.emplace_back(colorDependency);
+		g_FinalRenderPass.dependencies.emplace_back(colorDependency);
 
 		VkSubpassDependency depthDependency = {};
 		depthDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -263,7 +250,7 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		depthDependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 		depthDependency.dependencyFlags = 0;
 
-		dependencies.emplace_back(depthDependency);
+		g_FinalRenderPass.dependencies.emplace_back(depthDependency);
 
 		VkSubpassDependency resolveDependency = {};
 		resolveDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -274,11 +261,11 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		resolveDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 		resolveDependency.dependencyFlags = 0;
 
-		dependencies.emplace_back(resolveDependency);
+		g_FinalRenderPass.dependencies.emplace_back(resolveDependency);
+		
+		g_FinalRenderPass.subpasses.emplace_back(subpass);
 
-		std::vector<VkSubpassDescription> subpasses = { subpass };
-
-		gfxDevice->CreateRenderPass(g_FinalRenderPass.handle, attachments, subpasses, dependencies);
+		gfxDevice->CreateRenderPass(g_FinalRenderPass);
 	}
 
 	g_ColorRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
@@ -286,7 +273,6 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 	g_FinalRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
 
 	std::vector<VkImageView> colorFramebufferAttachments = { Graphics::g_SceneColor.ImageView, Graphics::g_SceneDepth.ImageView };
-
 	std::vector<VkImageView> postEffectsFramebufferAttachments = { Graphics::g_PostEffects.ImageView };
 
 	for (int i = 0; i < gfxDevice->GetSwapChain().swapChainImageViews.size(); i++) {
@@ -315,9 +301,56 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 	}
 }
 
-
 void Graphics::ResizeRenderPasses(uint32_t width, uint32_t height) {
+	g_ColorRenderPass.description.extent = { width, height };
+	g_ColorRenderPass.description.viewport.width = width;
+	g_ColorRenderPass.description.viewport.height = height;
 
+	g_PostEffectsRenderPass.description.extent = { width, height };
+	g_PostEffectsRenderPass.description.viewport.width = width;
+	g_PostEffectsRenderPass.description.viewport.height = height;
+
+	g_FinalRenderPass.description.extent = { width, height };
+	g_FinalRenderPass.description.viewport.width = width;
+	g_FinalRenderPass.description.viewport.height = height;
+
+	Graphics::GraphicsDevice* gfxDevice = GetDevice();
+
+	gfxDevice->DestroyFramebuffer(g_ColorRenderPass.framebuffers);
+	gfxDevice->DestroyFramebuffer(g_PostEffectsRenderPass.framebuffers);
+	gfxDevice->DestroyFramebuffer(g_FinalRenderPass.framebuffers);
+
+	g_ColorRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
+	g_PostEffectsRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
+	g_FinalRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
+
+	std::vector<VkImageView> colorFramebufferAttachments = { Graphics::g_SceneColor.ImageView, Graphics::g_SceneDepth.ImageView };
+	std::vector<VkImageView> postEffectsFramebufferAttachments = { Graphics::g_PostEffects.ImageView };
+
+	for (int i = 0; i < gfxDevice->GetSwapChain().swapChainImageViews.size(); i++) {
+		gfxDevice->CreateFramebuffer(
+			g_ColorRenderPass.handle, 
+			colorFramebufferAttachments, 
+			g_ColorRenderPass.description.extent, 
+			g_ColorRenderPass.framebuffers[i]);
+
+		gfxDevice->CreateFramebuffer(
+			g_PostEffectsRenderPass.handle,
+			postEffectsFramebufferAttachments,
+			g_PostEffectsRenderPass.description.extent,
+			g_PostEffectsRenderPass.framebuffers[i]);
+
+		std::vector<VkImageView> finalFramebufferAttachments = {};
+		finalFramebufferAttachments.emplace_back(Graphics::g_FinalImage.ImageView);
+		finalFramebufferAttachments.emplace_back(Graphics::g_FinalDepth.ImageView);
+		finalFramebufferAttachments.emplace_back(gfxDevice->GetSwapChain().swapChainImageViews[i]);
+
+		gfxDevice->CreateFramebuffer(
+			g_FinalRenderPass.handle, 
+			finalFramebufferAttachments, 
+			g_FinalRenderPass.description.extent, 
+			g_FinalRenderPass.framebuffers[i]);
+	}
 }
 
 void Graphics::ResizeRenderPass(RenderPass& renderPass, uint32_t width, uint32_t height) {

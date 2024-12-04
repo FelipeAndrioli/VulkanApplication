@@ -194,5 +194,9 @@ void Application::Resize(int width, int height) {
 		m_GraphicsDevice->GetSwapChainExtent().width, 
 		m_GraphicsDevice->GetSwapChainExtent().height);
 
+	Graphics::ResizeRenderPasses(
+		m_GraphicsDevice->GetSwapChainExtent().width,
+		m_GraphicsDevice->GetSwapChainExtent().height);
+
 	m_ResizeApplication = true;
 }
