@@ -8,9 +8,9 @@
 namespace Graphics {
 	extern GPUImage g_SceneColor;
 	extern GPUImage g_SceneDepth;
+	extern GPUImage g_ResolvedColor;
+	extern GPUImage g_ResolvedDepth;
 	extern GPUImage g_PostEffects;
-	extern GPUImage g_FinalDepth;
-	extern GPUImage g_FinalImage;
 
 	void InitializeRenderingImages(uint32_t width, uint32_t height);
 	void ResizeDisplayDependentImages(uint32_t width, uint32_t height);

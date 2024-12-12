@@ -454,6 +454,39 @@ namespace Graphics {
 		CreateSwapChainInternal(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
 		CreateSwapChainImageViews(m_LogicalDevice, swapChain);
 
+		// Creating swap chain samplers
+		{
+			swapChain.swapChainImageSamplers.resize(swapChain.swapChainImageViews.size());
+			
+			VkSamplerCreateInfo samplerInfo{};
+			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			samplerInfo.magFilter = VK_FILTER_LINEAR;
+			samplerInfo.minFilter = VK_FILTER_LINEAR;
+			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.anisotropyEnable = VK_TRUE;
+
+			VkPhysicalDeviceProperties properties{};
+			vkGetPhysicalDeviceProperties(m_PhysicalDevice, &properties);
+		
+			samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+			samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+			samplerInfo.unnormalizedCoordinates = VK_FALSE;
+			samplerInfo.compareEnable = VK_FALSE;
+			samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+			samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			samplerInfo.mipLodBias = 0.0f;
+			samplerInfo.minLod = 0.0f;
+			samplerInfo.maxLod = static_cast<float>(1);
+
+			for (int i = 0; i < swapChain.swapChainImageViews.size(); i++) {
+				VkResult result = vkCreateSampler(m_LogicalDevice, &samplerInfo, nullptr, &swapChain.swapChainImageSamplers[i]);
+				
+				assert(result == VK_SUCCESS);
+			}
+		}
+
 		return true;
 	}
 
@@ -478,7 +511,7 @@ namespace Graphics {
 		createInfo.imageColorSpace = surfaceFormat.colorSpace;
 		createInfo.imageExtent = extent;
 		createInfo.imageArrayLayers = 1;
-		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 		QueueFamilyIndices indices = FindQueueFamilies(physicalDevice, surface);
 		uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
@@ -518,10 +551,11 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain) {
+
 		swapChain.swapChainImageViews.resize(swapChain.swapChainImages.size());
 
 		for (size_t i = 0; i < swapChain.swapChainImages.size(); i++) {
-			VkImageViewCreateInfo createInfo{};
+			VkImageViewCreateInfo createInfo = {};
 			createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			createInfo.image = swapChain.swapChainImages[i];
 			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -712,6 +746,7 @@ namespace Graphics {
 
 		m_PhysicalDeviceProperties = GetDeviceProperties(m_PhysicalDevice);
 		m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
+		//m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
 		std::cout << "Selected device: " << m_PhysicalDeviceProperties.deviceName << '\n';
 		std::cout << "MSAA Samples: " << m_MsaaSamples << '\n';
@@ -764,13 +799,16 @@ namespace Graphics {
 		WaitIdle();
 
 		DestroySwapChain(m_SwapChain);
-		CreateSwapChainInternal(m_PhysicalDevice, m_LogicalDevice, m_Surface, m_SwapChain, window.GetFramebufferSize());
-		CreateSwapChainImageViews(m_LogicalDevice, m_SwapChain);
+		CreateSwapChain(window, m_SwapChain);
 	}
 
 	void GraphicsDevice::DestroySwapChain(SwapChain& swapChain) {
 		for (auto imageView : swapChain.swapChainImageViews) {
 			vkDestroyImageView(m_LogicalDevice, imageView, nullptr);
+		}
+
+		for (auto sampler : swapChain.swapChainImageSamplers) {
+			vkDestroySampler(m_LogicalDevice, sampler, nullptr);
 		}
 
 		vkDestroySwapchainKHR(m_LogicalDevice, swapChain.swapChain, nullptr);
@@ -994,6 +1032,40 @@ namespace Graphics {
 		vkBindImageMemory(m_LogicalDevice, image.Image, image.Memory, 0);
 	}
 
+	void GraphicsDevice::TransitionImageLayout(
+		const VkImage& image, 
+		const VkImageLayout oldLayout,
+		const VkImageLayout newLayout,
+		const VkAccessFlags srcAccessMask,
+		const VkAccessFlags dstAccessMask,
+		const VkPipelineStageFlags srcPipelineStage,
+		const VkPipelineStageFlags dstPipelineStage
+	) {
+		VkCommandBuffer singleTimeCommandBuffer = BeginSingleTimeCommandBuffer(m_CommandPool);
+
+		VkImageMemoryBarrier barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.oldLayout = oldLayout;
+		barrier.newLayout = newLayout;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = image;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = srcAccessMask;
+		barrier.dstAccessMask = dstAccessMask;
+
+		VkPipelineStageFlags sourceStage = srcPipelineStage;
+		VkPipelineStageFlags dstStage = dstPipelineStage;
+
+		vkCmdPipelineBarrier(singleTimeCommandBuffer, sourceStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+		EndSingleTimeCommandBuffer(singleTimeCommandBuffer, m_CommandPool);
+	}
+
 	void GraphicsDevice::TransitionImageLayout(GPUImage& image, VkImageLayout newLayout) {
 		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(m_CommandPool);
 
@@ -1024,19 +1096,36 @@ namespace Graphics {
 
 			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		} else if (image.ImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
 			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 			dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-		} else if (image.ImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		} 
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 			barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
 			sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 			dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		} else {
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+		else {
 			throw std::invalid_argument("Unsupported layout transition!");
 		}
 
@@ -1304,7 +1393,7 @@ namespace Graphics {
 		renderTargetDesc.MipLevels = 1;
 		renderTargetDesc.MsaaSamples = samples;
 		renderTargetDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		renderTargetDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		renderTargetDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 		renderTargetDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		renderTargetDesc.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 		renderTargetDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -1680,6 +1769,32 @@ namespace Graphics {
 		newImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		newImageInfo.imageView = image.ImageView;
 		newImageInfo.sampler = image.ImageSampler;
+
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = binding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = binding.descriptorType;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pImageInfo = &newImageInfo;
+		
+		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr); 
+	}
+
+	void GraphicsDevice::WriteDescriptor(
+		const VkDescriptorSetLayoutBinding binding, 
+		const VkDescriptorSet& descriptorSet, 
+		const VkImageLayout& imageLayout,
+		const VkImageView& imageView,
+		const VkSampler& imageSampler) {
+
+		VkDescriptorImageInfo newImageInfo = {};
+		//newImageInfo.imageLayout = image.ImageLayout;
+		//newImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		newImageInfo.imageLayout = imageLayout;
+		newImageInfo.imageView = imageView;
+		newImageInfo.sampler = imageSampler;
 
 		VkWriteDescriptorSet descriptorWrite = {};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -2095,7 +2210,11 @@ namespace Graphics {
 		//DestroyImage(renderPass.depthBuffer);
 		//DestroyImage(renderPass.renderTarget);
 		DestroyFramebuffer(renderPass.framebuffers);
+
 		renderPass.framebuffers.clear();
+		renderPass.attachments.clear();
+		renderPass.dependencies.clear();
+		renderPass.subpasses.clear();
 
 		vkDestroyRenderPass(m_LogicalDevice, renderPass.handle, nullptr);
 	}

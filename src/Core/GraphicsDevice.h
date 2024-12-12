@@ -58,15 +58,14 @@ namespace Graphics {
 
 	struct SwapChain {
 		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+		VkExtent2D swapChainExtent = { 0, 0 };
+		uint32_t imageIndex = 0;
 
 		std::vector<VkImage> swapChainImages;
 		std::vector<VkImageView> swapChainImageViews;
-
+		std::vector<VkSampler> swapChainImageSamplers;
+		
 		VkFormat swapChainImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
-
-		VkExtent2D swapChainExtent = { 0, 0 };
-
-		uint32_t imageIndex = 0;
 	};
 
 	struct RenderPassDesc {
@@ -226,6 +225,7 @@ namespace Graphics {
 		void AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits memoryProperty);
 		void AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty);
 
+		void TransitionImageLayout(const VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout, const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask, const VkPipelineStageFlags srcPipelineStage, const VkPipelineStageFlags dstPipelineStage);
 		void TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
 		void GenerateMipMaps(GPUImage& image);
 		void CreateImageSampler(GPUImage& image);
@@ -284,6 +284,7 @@ namespace Graphics {
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, GPUImage& image);
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const VkImageLayout& imageLayout, const VkImageView& imageView, const VkSampler& imageSampler);
 
 #ifdef RUNTIME_SHADER_COMPILATION
 		static EShLanguage FindLanguage(const Shader& shader);

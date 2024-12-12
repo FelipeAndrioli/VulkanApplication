@@ -56,9 +56,7 @@ void Application::InitializeResources(IScene& scene) {
 		m_GraphicsDevice->WriteDescriptor(m_InputLayout.bindings[0], m_Set[i], Graphics::g_PostEffects);
 	}
 
-	m_GraphicsDevice->CreatePipelineState(m_PsoDesc, m_Pso, Graphics::g_FinalRenderPass);
-	
-	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), Graphics::g_FinalRenderPass);
+	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), Graphics::g_PostEffectsRenderPass);
 }
 
 void Application::RunApplication(IScene& scene) {
@@ -128,9 +126,59 @@ bool Application::UpdateApplication(IScene& scene) {
 	{
 		m_GraphicsDevice->BeginRenderPass(Graphics::g_PostEffectsRenderPass, frame.commandBuffer);
 		PostEffects::Render(frame.commandBuffer);
+
+		if (m_UI) {
+			m_UI->BeginFrame();
+			RenderCoreUI();
+			scene.RenderUI();
+			m_UI->EndFrame(frame.commandBuffer);
+		}
+
 		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
 	}
 
+	m_GraphicsDevice->TransitionImageLayout(
+		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_ACCESS_SHADER_READ_BIT,
+		VK_ACCESS_TRANSFER_WRITE_BIT,
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+		VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+//	m_GraphicsDevice->TransitionImageLayout(Graphics::g_PostEffects, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+	VkImageCopy imageCopy = {};
+	imageCopy.extent.width = m_GraphicsDevice->GetSwapChainExtent().width;
+	imageCopy.extent.height = m_GraphicsDevice->GetSwapChainExtent().height;
+	imageCopy.extent.depth = 1;
+	imageCopy.srcOffset = { 0, 0, 0 };
+	imageCopy.srcSubresource = {
+		.aspectMask = Graphics::g_PostEffects.Description.AspectFlags,
+		.mipLevel = 0,
+		.baseArrayLayer = 0,
+		.layerCount = Graphics::g_PostEffects.Description.LayerCount
+	};
+	imageCopy.dstOffset = { 0, 0, 0 };
+	imageCopy.dstSubresource = {
+		.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+		.mipLevel = 0,
+		.baseArrayLayer = 0,
+		.layerCount = 1
+	};
+
+	vkCmdCopyImage(
+		frame.commandBuffer, 
+		Graphics::g_PostEffects.Image, 
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,															// must be transfer src optimal															
+		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,																
+		1,
+		&imageCopy);
+
+//	m_GraphicsDevice->TransitionImageLayout(Graphics::g_PostEffects, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	/*
 	// Present/Final Render Pass
 	{
 		m_GraphicsDevice->BeginRenderPass(Graphics::g_FinalRenderPass, frame.commandBuffer);
@@ -155,8 +203,20 @@ bool Application::UpdateApplication(IScene& scene) {
 
 		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
 	}
-
+	*/
+	
 	m_GraphicsDevice->EndFrame(frame);
+
+	m_GraphicsDevice->TransitionImageLayout(
+		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		VK_ACCESS_TRANSFER_WRITE_BIT,
+		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+	);
+
 	m_GraphicsDevice->PresentFrame(frame);
 
 	m_LastFrameTime = m_CurrentFrameTime;
