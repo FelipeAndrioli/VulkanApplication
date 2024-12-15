@@ -33,30 +33,7 @@ void Application::InitializeResources(IScene& scene) {
 	Graphics::InitializeRenderingImages(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 	Graphics::InitializeStaticRenderPasses(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 
-
-#ifdef RUNTIME_SHADER_COMPILATION
-	m_GraphicsDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "../src/Assets/Shaders/quad.vert");
-	m_GraphicsDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragShader, "../src/Assets/Shaders/present.frag");
-#else
-	m_GraphicsDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "./Shaders/quad_vert.spv");
-	m_GraphicsDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragShader, "./Shaders/present_frag.spv");
-#endif
-
-	m_PsoDesc.Name = "Present Pipeline";
-	m_PsoDesc.vertexShader = &m_VertexShader;
-	m_PsoDesc.fragmentShader = &m_FragShader;
-	m_PsoDesc.psoInputLayout.push_back(m_InputLayout);
-	m_PsoDesc.cullMode = VK_CULL_MODE_FRONT_BIT;
-	m_PsoDesc.noVertex = true;
-
-	m_GraphicsDevice->CreateDescriptorSetLayout(m_SetLayout, m_InputLayout.bindings);
-
-	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-		m_GraphicsDevice->CreateDescriptorSet(m_SetLayout, m_Set[i]);
-		m_GraphicsDevice->WriteDescriptor(m_InputLayout.bindings[0], m_Set[i], Graphics::g_PostEffects);
-	}
-
-	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), Graphics::g_PostEffectsRenderPass);
+	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), Graphics::g_ColorRenderPass);
 }
 
 void Application::RunApplication(IScene& scene) {
@@ -119,24 +96,30 @@ bool Application::UpdateApplication(IScene& scene) {
 	{
 		m_GraphicsDevice->BeginRenderPass(Graphics::g_ColorRenderPass, frame.commandBuffer);
 		scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
+
+		// UI Render Pass
+		{
+			if (m_UI) {
+				m_UI->BeginFrame();
+				RenderCoreUI();
+				scene.RenderUI();
+				m_UI->EndFrame(frame.commandBuffer);
+			}
+		}
+
 		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
 	}
 
 	// Post Effects Render Pass
 	{
 		m_GraphicsDevice->BeginRenderPass(Graphics::g_PostEffectsRenderPass, frame.commandBuffer);
+
 		PostEffects::Render(frame.commandBuffer);
-
-		if (m_UI) {
-			m_UI->BeginFrame();
-			RenderCoreUI();
-			scene.RenderUI();
-			m_UI->EndFrame(frame.commandBuffer);
-		}
-
 		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
 	}
 
+	m_GraphicsDevice->EndFrame(frame);
+	
 	m_GraphicsDevice->TransitionImageLayout(
 		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
 		VK_IMAGE_LAYOUT_UNDEFINED,
@@ -146,7 +129,23 @@ bool Application::UpdateApplication(IScene& scene) {
 		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-//	m_GraphicsDevice->TransitionImageLayout(Graphics::g_PostEffects, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	Graphics::GPUImage* imageToCopy = nullptr;
+
+	if (!PostEffects::Rendered) {
+		if (m_GraphicsDevice->m_MsaaSamples & VK_SAMPLE_COUNT_1_BIT) {
+			imageToCopy = &Graphics::g_SceneColor;
+		}
+		else {
+			imageToCopy = &Graphics::g_ResolvedColor;
+		}
+	}
+	else {
+		imageToCopy = &Graphics::g_PostEffects;
+	}
+
+	imageToCopy->ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	m_GraphicsDevice->TransitionImageLayout(*imageToCopy, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
 	VkImageCopy imageCopy = {};
 	imageCopy.extent.width = m_GraphicsDevice->GetSwapChainExtent().width;
@@ -154,10 +153,10 @@ bool Application::UpdateApplication(IScene& scene) {
 	imageCopy.extent.depth = 1;
 	imageCopy.srcOffset = { 0, 0, 0 };
 	imageCopy.srcSubresource = {
-		.aspectMask = Graphics::g_PostEffects.Description.AspectFlags,
+		.aspectMask = imageToCopy->Description.AspectFlags,
 		.mipLevel = 0,
 		.baseArrayLayer = 0,
-		.layerCount = Graphics::g_PostEffects.Description.LayerCount
+		.layerCount = imageToCopy->Description.LayerCount
 	};
 	imageCopy.dstOffset = { 0, 0, 0 };
 	imageCopy.dstSubresource = {
@@ -167,45 +166,18 @@ bool Application::UpdateApplication(IScene& scene) {
 		.layerCount = 1
 	};
 
+	VkCommandBuffer commandBuffer = m_GraphicsDevice->BeginSingleTimeCommandBuffer(m_GraphicsDevice->m_CommandPool);
+
 	vkCmdCopyImage(
-		frame.commandBuffer, 
-		Graphics::g_PostEffects.Image, 
-		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,															// must be transfer src optimal															
+		commandBuffer, 
+		imageToCopy->Image,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,																														
 		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,																
 		1,
 		&imageCopy);
 
-//	m_GraphicsDevice->TransitionImageLayout(Graphics::g_PostEffects, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	/*
-	// Present/Final Render Pass
-	{
-		m_GraphicsDevice->BeginRenderPass(Graphics::g_FinalRenderPass, frame.commandBuffer);
-
-		if (!scene.settings.postEffectsEnabled && !PostEffects::Rendered) {
-			m_GraphicsDevice->WriteDescriptor(m_InputLayout.bindings[0], m_Set[m_GraphicsDevice->GetCurrentFrameIndex()], Graphics::g_SceneColor);
-		}
-		else {
-			m_GraphicsDevice->WriteDescriptor(m_InputLayout.bindings[0], m_Set[m_GraphicsDevice->GetCurrentFrameIndex()], Graphics::g_PostEffects);
-		}
-
-		m_GraphicsDevice->BindDescriptorSet(m_Set[m_GraphicsDevice->GetCurrentFrameIndex()], frame.commandBuffer, m_Pso.pipelineLayout, 0, 1);
-		vkCmdBindPipeline(frame.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pso.pipeline);
-		vkCmdDraw(frame.commandBuffer, 6, 1, 0, 0);
-
-		if (m_UI) {
-			m_UI->BeginFrame();
-			RenderCoreUI();
-			scene.RenderUI();
-			m_UI->EndFrame(frame.commandBuffer);
-		}
-
-		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
-	}
-	*/
-	
-	m_GraphicsDevice->EndFrame(frame);
+	m_GraphicsDevice->EndSingleTimeCommandBuffer(commandBuffer, m_GraphicsDevice->m_CommandPool);
 
 	m_GraphicsDevice->TransitionImageLayout(
 		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
@@ -238,11 +210,6 @@ void Application::TerminateApplication(IScene& scene) {
 	scene.CleanUp();
 
 	PostEffects::Shutdown();
-
-	m_GraphicsDevice->DestroyPipeline(m_Pso);
-	m_GraphicsDevice->DestroyDescriptorSetLayout(m_SetLayout);
-	m_GraphicsDevice->DestroyShader(m_VertexShader);
-	m_GraphicsDevice->DestroyShader(m_FragShader);
 }
 
 void Application::Resize(int width, int height) {
