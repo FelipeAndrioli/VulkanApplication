@@ -11,6 +11,7 @@ namespace Graphics {
 	extern GPUImage g_ResolvedColor;
 	extern GPUImage g_ResolvedDepth;
 	extern GPUImage g_PostEffects;
+	extern GPUImage g_DebugColor;
 
 	void InitializeRenderingImages(uint32_t width, uint32_t height);
 	void ResizeDisplayDependentImages(uint32_t width, uint32_t height);

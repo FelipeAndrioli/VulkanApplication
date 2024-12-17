@@ -5,6 +5,7 @@
 namespace Graphics {
 	RenderPass g_ColorRenderPass;
 	RenderPass g_PostEffectsRenderPass;
+	RenderPass g_DebugRenderPass;
 //	RenderPass g_FinalRenderPass;
 }
 
@@ -185,8 +186,64 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		gfxDevice->CreateRenderPass(g_PostEffectsRenderPass);
 	}
 
+	// Debug Render Pass
+	{
+		Graphics::RenderPassDesc desc = {};
+		desc.scissor.offset = { 0, 0 };
+		desc.scissor.extent = { width, height };
+		desc.extent = { width, height };
+		desc.viewport.x = 0.0f;
+		desc.viewport.y = 0.0f;
+		desc.viewport.width = static_cast<float>(width);
+		desc.viewport.height = static_cast<float>(height);
+		desc.viewport.minDepth = 0.0f;
+		desc.viewport.maxDepth = 1.0f;
+		desc.clearValues.push_back({ .color = {0.0f, 0.0f, 0.0f, 1.0f} });
+		desc.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+
+		g_DebugRenderPass.description = desc;
+
+		VkAttachmentDescription colorAttachment = {};
+		colorAttachment.format = gfxDevice->GetSwapChain().swapChainImageFormat;
+		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		//colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		g_DebugRenderPass.attachments.emplace_back(colorAttachment);
+
+		VkAttachmentReference colorAttachmentRef = {};
+		colorAttachmentRef.attachment = g_DebugRenderPass.attachments.size() - 1;
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass = {};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+
+		g_DebugRenderPass.subpasses.emplace_back(subpass);
+
+		VkSubpassDependency colorDependency = {};
+		colorDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		colorDependency.dstSubpass = 0;
+		colorDependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		colorDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		colorDependency.srcAccessMask = VK_ACCESS_NONE_KHR;
+		colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		colorDependency.dependencyFlags = 0;
+
+		g_DebugRenderPass.dependencies.emplace_back(colorDependency);
+
+		gfxDevice->CreateRenderPass(g_DebugRenderPass);
+	}
+
 	g_ColorRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
 	g_PostEffectsRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
+	g_DebugRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
 
 	for (int i = 0; i < gfxDevice->GetSwapChain().swapChainImageViews.size(); i++) {
 
@@ -203,6 +260,8 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 			Graphics::g_PostEffects.ImageView 
 		};
 
+		std::vector<VkImageView> debugFramebufferAttachments = { gfxDevice->GetSwapChain().swapChainImageViews[i] };
+
 		gfxDevice->CreateFramebuffer(
 			g_ColorRenderPass.handle, 
 			colorFramebufferAttachments, 
@@ -214,6 +273,12 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 			postEffectsFramebufferAttachments,
 			g_PostEffectsRenderPass.description.extent,
 			g_PostEffectsRenderPass.framebuffers[i]);
+
+		gfxDevice->CreateFramebuffer(
+			g_DebugRenderPass.handle,
+			debugFramebufferAttachments,
+			g_DebugRenderPass.description.extent,
+			g_DebugRenderPass.framebuffers[i]);
 	}
 }
 
@@ -231,4 +296,5 @@ void Graphics::ShutdownRenderPasses() {
 
 	gfxDevice->DestroyRenderPass(g_ColorRenderPass);
 	gfxDevice->DestroyRenderPass(g_PostEffectsRenderPass);
+	gfxDevice->DestroyRenderPass(g_DebugRenderPass);
 }

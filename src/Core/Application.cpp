@@ -33,7 +33,7 @@ void Application::InitializeResources(IScene& scene) {
 	Graphics::InitializeRenderingImages(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 	Graphics::InitializeStaticRenderPasses(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 
-	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), Graphics::g_ColorRenderPass);
+	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), Graphics::g_DebugRenderPass);
 }
 
 void Application::RunApplication(IScene& scene) {
@@ -96,30 +96,16 @@ bool Application::UpdateApplication(IScene& scene) {
 	{
 		m_GraphicsDevice->BeginRenderPass(Graphics::g_ColorRenderPass, frame.commandBuffer);
 		scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
-
-		// UI Render Pass
-		{
-			if (m_UI) {
-				m_UI->BeginFrame();
-				RenderCoreUI();
-				scene.RenderUI();
-				m_UI->EndFrame(frame.commandBuffer);
-			}
-		}
-
 		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
 	}
 
 	// Post Effects Render Pass
 	{
 		m_GraphicsDevice->BeginRenderPass(Graphics::g_PostEffectsRenderPass, frame.commandBuffer);
-
 		PostEffects::Render(frame.commandBuffer);
 		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
 	}
 
-	m_GraphicsDevice->EndFrame(frame);
-	
 	m_GraphicsDevice->TransitionImageLayout(
 		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
 		VK_IMAGE_LAYOUT_UNDEFINED,
@@ -182,10 +168,34 @@ bool Application::UpdateApplication(IScene& scene) {
 	m_GraphicsDevice->TransitionImageLayout(
 		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 		VK_ACCESS_TRANSFER_WRITE_BIT,
 		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
 		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+	);
+
+	// Debug Render Pass
+	{
+		m_GraphicsDevice->BeginRenderPass(Graphics::g_DebugRenderPass, frame.commandBuffer);
+		if (m_UI) {
+			m_UI->BeginFrame();
+			RenderCoreUI();
+			scene.RenderUI();
+			m_UI->EndFrame(frame.commandBuffer);
+		}
+		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
+	}
+
+	m_GraphicsDevice->EndFrame(frame);
+	
+	m_GraphicsDevice->TransitionImageLayout(
+		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 	);
 

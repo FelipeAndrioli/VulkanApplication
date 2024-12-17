@@ -746,7 +746,7 @@ namespace Graphics {
 
 		m_PhysicalDeviceProperties = GetDeviceProperties(m_PhysicalDevice);
 		m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
-		//m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
+//		m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
 		std::cout << "Selected device: " << m_PhysicalDeviceProperties.deviceName << '\n';
 		std::cout << "MSAA Samples: " << m_MsaaSamples << '\n';
