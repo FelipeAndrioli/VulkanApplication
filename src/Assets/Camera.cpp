@@ -36,27 +36,27 @@ namespace Assets {
 		Yaw += static_cast<float>(m_OffsetX) * Sensitivity * t;
 		Pitch += static_cast<float>(m_OffsetY) * Sensitivity * t;
 
-		if (input.Keys[GLFW_KEY_W].IsPressed) {
+		if (input.Keys[GLFW_KEY_W].IsDown) {
 			Position += Front * MovementSpeed * t;
 		}
 
-		if (input.Keys[GLFW_KEY_S].IsPressed) {
+		if (input.Keys[GLFW_KEY_S].IsDown) {
 			Position -= Front * MovementSpeed * t;
 		}
 
-		if (input.Keys[GLFW_KEY_D].IsPressed) {
+		if (input.Keys[GLFW_KEY_D].IsDown) {
 			Position += Right * MovementSpeed * t;
 		}
 
-		if (input.Keys[GLFW_KEY_A].IsPressed) {
+		if (input.Keys[GLFW_KEY_A].IsDown) {
 			Position -= Right * MovementSpeed * t;
 		}
 		
-		if (input.Keys[GLFW_KEY_Q].IsPressed) {
+		if (input.Keys[GLFW_KEY_Q].IsDown) {
 			Position -= WorldUp * MovementSpeed * t;
 		}
 		
-		if (input.Keys[GLFW_KEY_E].IsPressed) {
+		if (input.Keys[GLFW_KEY_E].IsDown) {
 			Position += WorldUp * MovementSpeed * t;
 		}
 

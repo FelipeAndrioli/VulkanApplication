@@ -51,6 +51,7 @@ void Application::RunApplication(IScene& scene) {
 	PostEffects::Initialize();
 
 	while (UpdateApplication(scene)) {
+		m_Input->Update();
 		glfwPollEvents();
 	}
 
@@ -84,7 +85,10 @@ bool Application::UpdateApplication(IScene& scene) {
 	}
 
 	if (m_Vsync && timestep.GetSeconds() < (1 / 60.0f)) return true;
-	
+
+	if (m_Input->Keys[GLFW_KEY_I].IsPressed)
+		scene.settings.uiEnabled = !scene.settings.uiEnabled;
+
 	scene.Update(timestep.GetMilliseconds(), *m_Input.get());
 
 	if (!m_GraphicsDevice->BeginFrame(m_GraphicsDevice->GetCurrentFrame()))
@@ -178,7 +182,7 @@ bool Application::UpdateApplication(IScene& scene) {
 	// Debug Render Pass
 	{
 		m_GraphicsDevice->BeginRenderPass(Graphics::g_DebugRenderPass, frame.commandBuffer);
-		if (m_UI) {
+		if (m_UI && scene.settings.uiEnabled) {
 			m_UI->BeginFrame();
 			RenderCoreUI();
 			scene.RenderUI();
@@ -188,7 +192,7 @@ bool Application::UpdateApplication(IScene& scene) {
 	}
 
 	m_GraphicsDevice->EndFrame(frame);
-	
+
 	m_GraphicsDevice->TransitionImageLayout(
 		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,

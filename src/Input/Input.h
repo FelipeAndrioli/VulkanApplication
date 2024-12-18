@@ -26,9 +26,13 @@ namespace InputSystem {
 		void ProcessMouseClick(int button, int action, int mods);
 		void ProcessCursorMove(double x, double y);
 		void ProcessCursorOnScreen(int entered);
+		void Update();
 
 	public:
 		key_t Keys[GLFW_KEY_LAST];
 		mouse_t Mouse;
+
+	private:
+		int m_LastPressedKey = -1;
 	};
 }
