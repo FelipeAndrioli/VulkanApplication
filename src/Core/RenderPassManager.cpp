@@ -26,13 +26,13 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		desc.viewport.height = static_cast<float>(height);
 		desc.viewport.minDepth = 0.0f;
 		desc.viewport.maxDepth = 1.0f;
-		desc.sampleCount = Graphics::g_SceneColor.Description.MsaaSamples;
+		desc.sampleCount = Graphics::g_MsaaSceneColor.Description.MsaaSamples;
 
 		g_ColorRenderPass.description = desc;
 
 		VkAttachmentDescription colorAttachment = {};
-		colorAttachment.format = gfxDevice->GetSwapChain().swapChainImageFormat;
-		colorAttachment.samples = Graphics::g_SceneColor.Description.MsaaSamples;
+		colorAttachment.format = Graphics::g_MsaaSceneColor.Description.Format;
+		colorAttachment.samples = Graphics::g_MsaaSceneColor.Description.MsaaSamples;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -95,7 +95,7 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 
 		if (!(gfxDevice->m_MsaaSamples & VK_SAMPLE_COUNT_1_BIT)) {
 			VkAttachmentDescription resolveAttachment = {};
-			resolveAttachment.format = gfxDevice->GetSwapChain().swapChainImageFormat;
+			resolveAttachment.format = Graphics::g_SceneColor.Description.Format;
 			resolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			resolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -243,20 +243,23 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 	g_PostEffectsRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
 	g_DebugRenderPass.framebuffers.resize(gfxDevice->GetSwapChain().swapChainImageViews.size());
 
+	std::vector<VkImageView> colorFramebufferAttachments;
+
+	if (gfxDevice->m_MsaaSamples & VK_SAMPLE_COUNT_1_BIT) {
+		colorFramebufferAttachments.emplace_back(Graphics::g_SceneColor.ImageView);
+		colorFramebufferAttachments.emplace_back(Graphics::g_SceneDepth.ImageView);
+	}
+	else {
+		colorFramebufferAttachments.emplace_back(Graphics::g_MsaaSceneColor.ImageView);
+		colorFramebufferAttachments.emplace_back(Graphics::g_SceneDepth.ImageView);
+		colorFramebufferAttachments.emplace_back(Graphics::g_SceneColor.ImageView);
+	}
+
+	std::vector<VkImageView> postEffectsFramebufferAttachments = { 
+		Graphics::g_PostEffects.ImageView 
+	};
+
 	for (int i = 0; i < gfxDevice->GetSwapChain().swapChainImageViews.size(); i++) {
-
-		std::vector<VkImageView> colorFramebufferAttachments = {
-			Graphics::g_SceneColor.ImageView,
-			Graphics::g_SceneDepth.ImageView,
-		};
-
-		if (!(gfxDevice->m_MsaaSamples & VK_SAMPLE_COUNT_1_BIT)) {
-			colorFramebufferAttachments.emplace_back(Graphics::g_ResolvedColor.ImageView);
-		}
-
-		std::vector<VkImageView> postEffectsFramebufferAttachments = { 
-			Graphics::g_PostEffects.ImageView 
-		};
 
 		std::vector<VkImageView> debugFramebufferAttachments = { gfxDevice->GetSwapChain().swapChainImageViews[i] };
 

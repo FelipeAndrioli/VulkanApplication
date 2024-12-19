@@ -121,9 +121,9 @@ void GrayScale::Render(const VkCommandBuffer& commandBuffer, const Graphics::Ren
 
 
 	gfxDevice->WriteDescriptor(
-		m_GrayScaleInputLayout.bindings[0], 
+		m_GrayScaleInputLayout.bindings[0],
 		m_GrayScaleSet[gfxDevice->GetCurrentFrameIndex()],
-		(gfxDevice->m_MsaaSamples & VK_SAMPLE_COUNT_1_BIT) ? Graphics::g_SceneColor : Graphics::g_ResolvedColor);
+		Graphics::g_SceneColor);
 
 	gfxDevice->BindDescriptorSet(
 		m_GrayScaleSet[gfxDevice->GetCurrentFrameIndex()], 

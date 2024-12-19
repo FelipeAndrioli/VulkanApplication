@@ -8,7 +8,7 @@
 #include "./GrayScale.h"
 
 namespace PostEffects {
-	bool GrayScale = true;
+	bool GrayScale = false;
 	bool Rendered = false;
 }
 

@@ -6,9 +6,9 @@
 #include "Graphics.h"
 
 namespace Graphics {
-	extern GPUImage g_SceneColor;
+	extern GPUImage g_MsaaSceneColor;
 	extern GPUImage g_SceneDepth;
-	extern GPUImage g_ResolvedColor;
+	extern GPUImage g_SceneColor;
 	extern GPUImage g_ResolvedDepth;
 	extern GPUImage g_PostEffects;
 	extern GPUImage g_DebugColor;

@@ -119,19 +119,7 @@ bool Application::UpdateApplication(IScene& scene) {
 		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-	Graphics::GPUImage* imageToCopy = nullptr;
-
-	if (!PostEffects::Rendered) {
-		if (m_GraphicsDevice->m_MsaaSamples & VK_SAMPLE_COUNT_1_BIT) {
-			imageToCopy = &Graphics::g_SceneColor;
-		}
-		else {
-			imageToCopy = &Graphics::g_ResolvedColor;
-		}
-	}
-	else {
-		imageToCopy = &Graphics::g_PostEffects;
-	}
+	Graphics::GPUImage* imageToCopy = PostEffects::Rendered ? &Graphics::g_PostEffects : &Graphics::g_SceneColor;
 
 	/*
 		If the very first image is from scene color, the validation layer complains saying its format is
