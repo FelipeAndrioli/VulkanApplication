@@ -6,7 +6,6 @@ namespace Graphics {
 	RenderPass g_ColorRenderPass;
 	RenderPass g_PostEffectsRenderPass;
 	RenderPass g_DebugRenderPass;
-//	RenderPass g_FinalRenderPass;
 }
 
 void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
@@ -112,10 +111,10 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 			VkSubpassDependency resolveDependency = {};
 			resolveDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 			resolveDependency.dstSubpass = 0;
-			resolveDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			resolveDependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			resolveDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			resolveDependency.srcAccessMask = 0;
-			resolveDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+			resolveDependency.srcAccessMask = VK_ACCESS_NONE_KHR;
+			resolveDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT ;
 			resolveDependency.dependencyFlags = 0;
 
 			VkAttachmentReference resolveAttachmentRef = {};
@@ -211,8 +210,7 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		//colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 		g_DebugRenderPass.attachments.emplace_back(colorAttachment);
 
@@ -230,9 +228,9 @@ void Graphics::InitializeStaticRenderPasses(uint32_t width, uint32_t height) {
 		VkSubpassDependency colorDependency = {};
 		colorDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 		colorDependency.dstSubpass = 0;
-		colorDependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		colorDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		colorDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		colorDependency.srcAccessMask = VK_ACCESS_NONE_KHR;
+		colorDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		colorDependency.dependencyFlags = 0;
 

@@ -133,9 +133,17 @@ bool Application::UpdateApplication(IScene& scene) {
 		imageToCopy = &Graphics::g_PostEffects;
 	}
 
-	imageToCopy->ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	m_GraphicsDevice->TransitionImageLayout(*imageToCopy, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	/*
+		If the very first image is from scene color, the validation layer complains saying its format is
+		undefined and not shader only, it complains only during the first frame, therefore this temp 
+		workaround.
+	*/
+	if (imageToCopy->ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
+		m_GraphicsDevice->TransitionImageLayout(*imageToCopy, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	}
+	else {
+		m_GraphicsDevice->TransitionImageLayout(*imageToCopy, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	}
 
 	VkImageCopy imageCopy = {};
 	imageCopy.extent.width = m_GraphicsDevice->GetSwapChainExtent().width;
@@ -193,9 +201,13 @@ bool Application::UpdateApplication(IScene& scene) {
 
 	m_GraphicsDevice->EndFrame(frame);
 
+	/*
+		This barrier ensures the swapchain layout transition, there's no validation layer error if removed, but
+		some artifacts appears in the image while moving. This barrier costs about 1ms.
+	*/
 	m_GraphicsDevice->TransitionImageLayout(
 		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
 		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,

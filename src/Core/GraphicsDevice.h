@@ -226,6 +226,7 @@ namespace Graphics {
 		void AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty);
 
 		void TransitionImageLayout(const VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout, const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask, const VkPipelineStageFlags srcPipelineStage, const VkPipelineStageFlags dstPipelineStage);
+		void TransitionImageLayout(GPUImage& image, VkImageLayout oldLayout, VkImageLayout newLayout);
 		void TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
 		void GenerateMipMaps(GPUImage& image);
 		void CreateImageSampler(GPUImage& image);

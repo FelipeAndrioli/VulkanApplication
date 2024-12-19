@@ -1066,6 +1066,12 @@ namespace Graphics {
 		EndSingleTimeCommandBuffer(singleTimeCommandBuffer, m_CommandPool);
 	}
 
+	void GraphicsDevice::TransitionImageLayout(GPUImage& image, VkImageLayout oldLayout, VkImageLayout newLayout) {
+		image.ImageLayout = oldLayout;
+
+		TransitionImageLayout(image, newLayout);
+	}
+
 	void GraphicsDevice::TransitionImageLayout(GPUImage& image, VkImageLayout newLayout) {
 		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(m_CommandPool);
 
@@ -1088,10 +1094,6 @@ namespace Graphics {
 
 		if (HasStencilComponent(image.Description.Format)) {
 			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-		}
-
-		if (image.ImageLayout == newLayout) {
-			return;
 		}
 
 		if (image.ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
