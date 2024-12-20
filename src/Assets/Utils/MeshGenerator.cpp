@@ -173,11 +173,11 @@ namespace Assets {
 
 		// back face
 		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(6);
 		mesh.Indices.push_back(5);
-		mesh.Indices.push_back(6);
 		mesh.Indices.push_back(4);
-		mesh.Indices.push_back(6);
 		mesh.Indices.push_back(7);
+		mesh.Indices.push_back(6);
 
 		// left face
 		mesh.Indices.push_back(4);
