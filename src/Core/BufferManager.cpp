@@ -8,7 +8,6 @@ namespace Graphics {
 	GPUImage g_PostEffects;
 	GPUImage g_SceneColor;
 	GPUImage g_ResolvedDepth;
-	GPUImage g_DebugColor;
 };
 
 void Graphics::InitializeRenderingImages(uint32_t width, uint32_t height) {
@@ -53,8 +52,6 @@ void Graphics::ResizeDisplayDependentImages(uint32_t width, uint32_t height) {
 	gfxDevice->CreateImageSampler(g_SceneColor);
 
 	gfxDevice->ResizeImage(g_ResolvedDepth, width, height);
-	
-	gfxDevice->ResizeImage(g_DebugColor, width, height);
 }
 
 void Graphics::ShutdownRenderingImages() {
@@ -65,7 +62,6 @@ void Graphics::ShutdownRenderingImages() {
 	gfxDevice->DestroyImage(g_PostEffects);
 	gfxDevice->DestroyImage(g_SceneColor);
 	gfxDevice->DestroyImage(g_ResolvedDepth);
-	gfxDevice->DestroyImage(g_DebugColor);
 }
 
 Graphics::BufferManager::BufferManager() {
