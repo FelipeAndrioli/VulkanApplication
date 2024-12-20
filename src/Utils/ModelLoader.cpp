@@ -11,6 +11,7 @@
 
 #include "../Assets/Model.h"
 #include "../Assets/Mesh.h"
+#include "../Assets/Utils/MeshGenerator.h"
 
 #include "../Core/Graphics.h"
 #include "../Core/GraphicsDevice.h"
@@ -306,9 +307,11 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 			std::string customMaterialName = "Custom_Material_" + model.Name;
 			materials.emplace_back(Material(customMaterialName));
 			mesh.MaterialName = customMaterialName;
+			mesh.MaterialIndex = 0;
 		}
-
-		mesh.MaterialIndex = materialIndex;
+		else {
+			mesh.MaterialIndex = materialIndex;
+		}
 
 		mesh.IndexOffset = indices.size();
 		mesh.VertexOffset = vertices.size();
@@ -401,4 +404,22 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, s
 	std::cout << "Loading time: " << end.GetSeconds() - begin.GetSeconds() << " | Model: " << model->Name << '\n';
 
 	return model;
+}
+
+std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::vec3 position, float size) {
+	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
+
+	if (modelType == ModelType::CUBE) {
+		static int cubeIdx = 0;
+	
+		model->Meshes = Assets::MeshGenerator::GenerateCubeMesh(position, size);
+		model->Name = "Cube_" + std::to_string(cubeIdx++);
+		model->Transformations.translation = position;
+
+		std::vector<Material> materials;
+
+		CompileMesh(*model.get(), materials);
+
+		return model;
+	}
 }
