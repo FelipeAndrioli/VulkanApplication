@@ -11,12 +11,6 @@ namespace Assets {
 	class Model;
 }
 
-struct Material;
-
-namespace Graphics {
-	struct Texture;
-}
-
 enum ModelType {
 	CUBE,
 	QUAD,
