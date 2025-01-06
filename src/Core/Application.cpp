@@ -3,6 +3,7 @@
 #include "RenderPassManager.h"
 #include "BufferManager.h"
 #include "PostEffects/PostEffects.h"
+#include "ResourceManager.h"
 
 Application::~Application() {
 	m_UI.reset();
@@ -224,6 +225,8 @@ void Application::TerminateApplication(IScene& scene) {
 	scene.CleanUp();
 
 	PostEffects::Shutdown();
+
+	ResourceManager::Get()->Destroy();
 }
 
 void Application::Resize(int width, int height) {
