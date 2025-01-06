@@ -3,15 +3,16 @@
 #include <vector>
 #include <string>
 
-#include "./Core/Graphics.h"
-#include "./Core/GraphicsDevice.h"
-#include "./Core/Application.h"
-#include "./Core/ConstantBuffers.h"
-#include "./Core/RenderPassManager.h"
+#include "../Core/Graphics.h"
+#include "../Core/GraphicsDevice.h"
+#include "../Core/Application.h"
+#include "../Core/ConstantBuffers.h"
+#include "../Core/RenderPassManager.h"
+#include "../Core/ResourceManager.h"
 
-#include "./Utils/TextureLoader.h"
-#include "./Utils/ModelLoader.h"
-#include "./Utils/Helper.h"
+#include "../Utils/TextureLoader.h"
+#include "../Utils/ModelLoader.h"
+#include "../Utils/Helper.h"
 
 #include "../Assets/Material.h"
 #include "../Assets/Model.h"
@@ -52,8 +53,6 @@ namespace Renderer {
 
 	GlobalConstants m_GlobalConstants = {};
 
-	std::vector<Material> m_Materials;
-	std::vector<Texture> m_Textures;
 
 	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
 	
@@ -64,7 +63,7 @@ std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
 	if (m_TotalModels == MAX_MODELS)
 		return nullptr;
 
-	m_Models[m_TotalModels++] = ModelLoader::LoadModel(path, m_Materials, m_Textures);
+	m_Models[m_TotalModels++] = ModelLoader::LoadModel(path);
 
 	uint32_t modelIdx = m_TotalModels - 1;
 
@@ -83,13 +82,7 @@ void Renderer::Init() {
 void Renderer::Shutdown() {
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
-	for (auto texture : m_Textures) {
-		gfxDevice->DestroyImage(texture);
-	}
-
 	m_Models.fill(nullptr);
-	m_Textures.clear();
-	m_Materials.clear();
 	
 	gfxDevice->DestroyDescriptorSetLayout(m_GlobalDescriptorSetLayout);
 	gfxDevice->DestroyImage(m_Skybox);
@@ -124,6 +117,8 @@ void Renderer::LoadResources() {
 	LightManager::Init();
 
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
+
+	ResourceManager* rm = ResourceManager::Get();
 
 	// Skybox PSO
 	std::vector<std::string> cubeTextures = {
@@ -169,7 +164,7 @@ void Renderer::LoadResources() {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
 			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
-			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(rm->GetTextures().size()), VK_SHADER_STAGE_FRAGMENT_BIT},
 			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
 			{ 5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS }
 		}
@@ -178,17 +173,7 @@ void Renderer::LoadResources() {
 	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants) * MAX_MODELS);
 	m_GlobalDataBuffer = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
 
-	gfxDevice->WriteBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
-
-	std::vector<MaterialData> meshMaterialData;
-
-	for (const auto& material : m_Materials) {
-		meshMaterialData.push_back(material.MaterialData);
-	}
-
-	Buffer materialBuffer = gfxDevice->CreateBuffer(sizeof(MaterialData) * m_Materials.size());
-
-	gfxDevice->WriteBuffer(materialBuffer, meshMaterialData.data());
+	gfxDevice->WriteSubBuffer(m_GlobalDataBuffer, &m_GlobalConstants, sizeof(GlobalConstants));
 
 	PipelineStateDescription colorPSODesc = {};
 	colorPSODesc.Name = "Color Pipeline";
@@ -300,9 +285,9 @@ void Renderer::LoadResources() {
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).bindlessSet);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, materialBuffer);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, rm->GetMaterialBuffer());
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, LightManager::GetLightBuffer());
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, rm->GetTextures());
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[4], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[5], gfxDevice->GetFrame(i).bindlessSet, m_ModelBuffer);
 	}

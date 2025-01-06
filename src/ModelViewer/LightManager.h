@@ -8,8 +8,8 @@
 #include "../Core/Graphics.h"
 #include "../Core/GraphicsDevice.h"
 
-#include "./Core/VulkanHeader.h"
-#include "./Core/ConstantBuffers.h"
+#include "../Core/VulkanHeader.h"
+#include "../Core/ConstantBuffers.h"
 
 #define MAX_LIGHTS 5
 

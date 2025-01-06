@@ -13,8 +13,8 @@
 #include "../Assets/Camera.h"
 #include "../Assets/Model.h"
 
-#include "../Renderer.h"
-#include "../LightManager.h"
+#include "./Renderer.h"
+#include "./LightManager.h"
 
 class ModelViewer : public Application::IScene {
 public:

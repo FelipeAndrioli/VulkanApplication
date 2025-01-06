@@ -5,7 +5,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "./Core/VulkanHeader.h"
+#include "../Core/VulkanHeader.h"
 #include "glm.hpp"
 
 #define MAX_MODELS 10
