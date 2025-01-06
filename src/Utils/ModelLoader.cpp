@@ -305,7 +305,7 @@ void CompileMesh(Assets::Model& model) {
 
 std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 
-	Timestep begin = glfwGetTime();
+	Timestep geometryBegin = glfwGetTime();
 
 	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
 	model->ModelPath = path.c_str();
@@ -325,12 +325,24 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 	assert(scene && scene->HasMeshes());
 
 	ProcessNode(*model.get(), scene->mRootNode, scene);
+	Timestep geometryEnd = glfwGetTime();
+
+	Timestep materialBegin = glfwGetTime();
+
 	ProcessMaterials(*model.get(), scene);
+
+	Timestep materialEnd = glfwGetTime();
+	
+	Timestep compilingBegin = glfwGetTime();
+
 	CompileMesh(*model.get());
 
-	Timestep end = glfwGetTime();
+	Timestep compilingEnd = glfwGetTime();
 
-	std::cout << "Loading time: " << end.GetSeconds() - begin.GetSeconds() << " | Model: " << model->Name << '\n';
+	std::cout << "Loading time: " << compilingEnd.GetSeconds() - geometryBegin.GetSeconds() << "\t| Model: " << model->Name << '\n';
+	std::cout << "\tGeometry Loading time: " << geometryEnd.GetSeconds() - geometryBegin.GetSeconds() << '\n';
+	std::cout << "\tMaterial and Textures time: " << materialEnd.GetSeconds() - materialBegin.GetSeconds() << '\n';
+	std::cout << "\tMesh Compiling time: " << compilingEnd.GetSeconds() - compilingBegin.GetSeconds() << '\n';
 
 	return model;
 }
