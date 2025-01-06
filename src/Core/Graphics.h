@@ -98,6 +98,7 @@ namespace Graphics {
 	};
 
 	struct Buffer {
+		size_t Capacity = 0;
 		size_t Size = 0;
 		size_t Offset = 0;
 
