@@ -85,14 +85,9 @@ namespace Graphics {
 	struct RenderPass {
 		RenderPassDesc description = {};
 
-		//Graphics::GPUImage renderTarget = {};
-		//Graphics::GPUImage depthBuffer = {};
-
 		std::vector<VkFramebuffer> framebuffers;
 
 		VkRenderPass handle = VK_NULL_HANDLE;
-
-		VkDescriptorSet outputDescriptorSet = VK_NULL_HANDLE;
 
 		std::vector<VkAttachmentDescription> attachments = {};
 		std::vector<VkSubpassDependency> dependencies = {};
@@ -251,7 +246,7 @@ namespace Graphics {
 		void UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, size_t dataSize);
 		void UpdateBuffer(Buffer& buffer, void* data);
 		void WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0);
-		void WriteBuffer(const Buffer& buffer, void* data);
+		void WriteSubBuffer(Buffer& buffer, void* data, size_t dataSize);
 
 		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, void* initialData, size_t dataSize);
 
@@ -296,6 +291,7 @@ namespace Graphics {
 		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
 		void DestroyShader(Shader& shader);
 		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const RenderPass& renderPass);
+		void DestroyPipelineLayout(VkPipelineLayout& pipelineLayout);
 		void DestroyPipeline(PipelineState& pso);
 
 		uint32_t GetCurrentFrameIndex() { return m_CurrentFrame; }

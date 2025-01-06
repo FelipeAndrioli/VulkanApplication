@@ -203,8 +203,7 @@ namespace Graphics {
 			std::cout << '\t' << extension.extensionName << '\n';
 		}
 
-		CheckRequiredExtensions(static_cast<uint32_t>(glfwExtensions.size()), glfwExtensions.data(),
-			extensions);
+		CheckRequiredExtensions(static_cast<uint32_t>(glfwExtensions.size()), glfwExtensions.data(), extensions);
 	}
 
 	bool GraphicsDevice::CheckValidationLayerSupport() {
@@ -317,6 +316,8 @@ namespace Graphics {
 		deviceFeatures2.features = deviceFeatures;
 		deviceFeatures2.pNext = &descriptorIndexingCreateInfo;
 
+		vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
+
 		createInfo.pNext = &deviceFeatures2;
 
 		if (c_EnableValidationLayers) {
@@ -328,7 +329,6 @@ namespace Graphics {
 		}
 
 		VkResult result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &logicalDevice);
-
 		assert(result == VK_SUCCESS);
 	}
 
@@ -1542,8 +1542,8 @@ namespace Graphics {
 		CopyDataFromStaging(buffer, data, std::min(buffer.Description.BufferSize, size), offset);
 	}
 
-	void GraphicsDevice::WriteBuffer(const Buffer& buffer, void* data) {
-		m_BufferManager->WriteBuffer(buffer, data);
+	void GraphicsDevice::WriteSubBuffer(Buffer& buffer, void* data, size_t dataSize) {
+		m_BufferManager->WriteBuffer(buffer, data, dataSize);
 	}
 
 	void GraphicsDevice::UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, size_t dataSize) {
@@ -1596,7 +1596,8 @@ namespace Graphics {
 		VkDescriptorPoolCreateInfo poolCreateInfo = {};
 		poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolCreateInfo.poolSizeCount = 1;
-		poolCreateInfo.maxSets = 1;
+		//poolCreateInfo.maxSets = 1;
+		poolCreateInfo.maxSets = 256;
 		poolCreateInfo.pPoolSizes = &poolSizes;
 		poolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
 
@@ -1719,7 +1720,7 @@ namespace Graphics {
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = *buffer.Handle;
 		bufferInfo.offset = buffer.Offset;
-		bufferInfo.range = buffer.Size;
+		bufferInfo.range = buffer.Capacity;
 
 		VkWriteDescriptorSet descriptorWrite = {};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -2204,12 +2205,26 @@ namespace Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
+	void GraphicsDevice::DestroyPipelineLayout(VkPipelineLayout& pipelineLayout) {
+
+		if (pipelineLayout == VK_NULL_HANDLE)
+			return;
+
+		vkDestroyPipelineLayout(m_LogicalDevice, pipelineLayout, nullptr);
+	}
+
 	void GraphicsDevice::DestroyPipeline(PipelineState& pso) {
 		vkDestroyPipelineLayout(m_LogicalDevice, pso.pipelineLayout, nullptr);
+
+		pso.pushConstants.clear();
+		pso.layoutBindings.clear();
+		pso.imageViewTypes.clear();
 
 		for (auto descriptorSetLayout : pso.descriptorSetLayout) {
 			vkDestroyDescriptorSetLayout(m_LogicalDevice, descriptorSetLayout, nullptr);
 		}
+
+		pso.descriptorSetLayout.clear();
 
 		vkDestroyPipeline(m_LogicalDevice, pso.pipeline, nullptr);
 	}
