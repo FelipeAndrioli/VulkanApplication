@@ -97,7 +97,8 @@ Graphics::Buffer Graphics::BufferManager::SubAllocateBuffer(size_t size) {
 
 	Graphics::Buffer buffer = {};
 	buffer.Offset = m_Size;
-	buffer.Size = size;
+	buffer.Size = 0;
+	buffer.Capacity = size;
 	buffer.Handle = &m_MainBuffer.Handle;
 
 	m_Size += size;
@@ -107,12 +108,21 @@ Graphics::Buffer Graphics::BufferManager::SubAllocateBuffer(size_t size) {
 	return buffer;
 }
 
-void Graphics::BufferManager::WriteBuffer(const Graphics::Buffer& buffer, void* data) {
+void Graphics::BufferManager::WriteBuffer(Graphics::Buffer& buffer, void* data, size_t dataSize) {
+
+	if (buffer.Size + dataSize > buffer.Capacity) {
+		// TODO: better handle with realocation 
+		std::cout << "Buffer out of capacity!" << '\n';
+		return;
+	}
+
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-	gfxDevice->WriteBuffer(m_MainBuffer, data, buffer.Size, buffer.Offset);
+	gfxDevice->WriteBuffer(m_MainBuffer, data, dataSize, buffer.Offset + buffer.Size);
+	
+	buffer.Size += dataSize;
 }
 
 void Graphics::BufferManager::UpdateBuffer(const Graphics::Buffer& buffer, void* data) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-	gfxDevice->UpdateBuffer(m_MainBuffer, buffer.Offset, data, buffer.Size);
+	gfxDevice->UpdateBuffer(m_MainBuffer, buffer.Offset, data, buffer.Capacity);
 }

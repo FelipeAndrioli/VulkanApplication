@@ -23,7 +23,7 @@ namespace Graphics {
 
 		Graphics::Buffer SubAllocateBuffer(size_t size);
 
-		void WriteBuffer(const Graphics::Buffer& buffer, void* data);
+		void WriteBuffer(Graphics::Buffer& buffer, void* data, size_t dataSize);
 		void UpdateBuffer(const Graphics::Buffer& buffer, void* data);
 
 		// TODO: delete - when a buffer is not longer needed and we can get rid of its sub allocation
