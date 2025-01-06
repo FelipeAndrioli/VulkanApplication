@@ -240,5 +240,4 @@ void main() {
 	material_color.a = material_diffuse.a;
 
 	out_color = material_color;
-	//out_color = vec4(material_color.a);
 }
