@@ -7,7 +7,6 @@
 #include "../Core/GraphicsDevice.h"
 #include "../Core/Application.h"
 #include "../Core/ConstantBuffers.h"
-#include "../Core/RenderPassManager.h"
 #include "../Core/ResourceManager.h"
 
 #include "../Utils/TextureLoader.h"
@@ -18,6 +17,7 @@
 #include "../Assets/Model.h"
 #include "../Assets/Camera.h"
 
+#include "RenderPassManager.h"
 #include "LightManager.h"
 
 namespace Renderer {

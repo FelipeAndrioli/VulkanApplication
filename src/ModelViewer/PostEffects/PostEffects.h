@@ -1,6 +1,10 @@
 #pragma once
 
-#include "../VulkanHeader.h"
+#include "../Core/VulkanHeader.h"
+
+namespace Graphics {
+	struct GPUImage;
+}
 
 namespace PostEffects {
 	
@@ -9,6 +13,6 @@ namespace PostEffects {
 
 	void Initialize();
 	void Shutdown();
-	void Render(const VkCommandBuffer& commandBuffer);
+	void Render(const VkCommandBuffer& commandBuffer, const Graphics::GPUImage& sceneColor);
 	void RenderUI();
 }

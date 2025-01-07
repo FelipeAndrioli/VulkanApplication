@@ -3,7 +3,7 @@
 #include "../../src/Core/Application.h"
 #include "../../src/Core/GraphicsDevice.h"
 #include "../../src/Core/ConstantBuffers.h"
-#include "../../src/Core/RenderPassManager.h"
+//#include "../../src/Core/RenderPassManager.h"
 
 #include "../../src/Core/VulkanHeader.h"
 
@@ -18,6 +18,8 @@
 #define HORIZONTAL_CUBES 11
 #define VERTICAL_CUBES 11
 #define TOTAL_CUBES HORIZONTAL_CUBES * VERTICAL_CUBES
+
+// TODO: Fix this sample
 
 class Cubes : public Application::IScene {
 public:
@@ -117,7 +119,7 @@ void Cubes::StartUp() {
 	desc.fragmentShader = &m_FragShader;
 	desc.psoInputLayout.push_back(inputLayout);
 
-	gfxDevice->CreatePipelineState(desc, m_PSO, Graphics::g_ColorRenderPass);
+//	gfxDevice->CreatePipelineState(desc, m_PSO, Graphics::g_ColorRenderPass);
 	gfxDevice->CreateDescriptorSetLayout(m_SetLayout, inputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {

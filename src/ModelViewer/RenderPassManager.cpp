@@ -1,6 +1,6 @@
 #include "RenderPassManager.h"
 
-#include "BufferManager.h"
+#include "../Core/BufferManager.h"
 
 namespace Graphics {
 	RenderPass g_ColorRenderPass;

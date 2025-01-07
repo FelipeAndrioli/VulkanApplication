@@ -2,7 +2,6 @@
 
 #include "../Core/Graphics.h"
 #include "../Core/GraphicsDevice.h"
-#include "../Core/RenderPassManager.h"
 #include "../Core/BufferManager.h"
 
 namespace GrayScale {
@@ -62,7 +61,7 @@ void GrayScale::Shutdown() {
 	m_Initialized = false;
 }
 
-void GrayScale::Render(const VkCommandBuffer& commandBuffer, const Graphics::RenderPass& renderPass) {
+void GrayScale::Render(const VkCommandBuffer& commandBuffer, const Graphics::RenderPass& renderPass, const Graphics::GPUImage& sceneColor) {
 	if (!m_Initialized)
 		return;
 
@@ -76,54 +75,10 @@ void GrayScale::Render(const VkCommandBuffer& commandBuffer, const Graphics::Ren
 		}
 	}
 
-	/*
-	gfxDevice->WriteDescriptor(
-		m_GrayScaleInputLayout.bindings[0], 
-		m_GrayScaleSet[gfxDevice->GetCurrentFrameIndex()], 
-		Graphics::g_SceneColor);
-	*/
-
-	/*
-	VkCommandBuffer singleTimeCommandBuffer = gfxDevice->BeginSingleTimeCommandBuffer(gfxDevice->m_CommandPool);
-
-	VkImageMemoryBarrier barrier{};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-//	barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = gfxDevice->GetSwapChain().swapChainImages[gfxDevice->GetCurrentFrameIndex()];
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-	barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-	VkPipelineStageFlags sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
-	vkCmdPipelineBarrier(singleTimeCommandBuffer, sourceStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-	gfxDevice->EndSingleTimeCommandBuffer(singleTimeCommandBuffer, gfxDevice->m_CommandPool);
-
 	gfxDevice->WriteDescriptor(
 		m_GrayScaleInputLayout.bindings[0],
 		m_GrayScaleSet[gfxDevice->GetCurrentFrameIndex()],
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		gfxDevice->GetSwapChain().swapChainImageViews[gfxDevice->GetCurrentFrameIndex()],
-		gfxDevice->GetSwapChain().swapChainImageSamplers[gfxDevice->GetCurrentFrameIndex()]);
-	*/
-
-	// TODO: maybe find a way to extract the result of a render pass instead of checking msaa
-
-
-	gfxDevice->WriteDescriptor(
-		m_GrayScaleInputLayout.bindings[0],
-		m_GrayScaleSet[gfxDevice->GetCurrentFrameIndex()],
-		Graphics::g_SceneColor);
+		sceneColor);
 
 	gfxDevice->BindDescriptorSet(
 		m_GrayScaleSet[gfxDevice->GetCurrentFrameIndex()], 

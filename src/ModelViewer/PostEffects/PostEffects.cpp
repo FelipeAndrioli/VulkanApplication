@@ -1,9 +1,9 @@
 #include "PostEffects.h"
 
-#include "../Graphics.h"
-#include "../GraphicsDevice.h"
+#include "../Core/Graphics.h"
+#include "../Core/GraphicsDevice.h"
 #include "../RenderPassManager.h"
-#include "../UI.h"
+#include "../Core/UI.h"
 
 #include "./GrayScale.h"
 
@@ -20,11 +20,11 @@ void PostEffects::Shutdown() {
 	GrayScale::Shutdown();
 }
 
-void PostEffects::Render(const VkCommandBuffer& commandBuffer) {
+void PostEffects::Render(const VkCommandBuffer& commandBuffer, const Graphics::GPUImage& sceneColor) {
 	Rendered = false;
 
 	if (GrayScale) {
-		GrayScale::Render(commandBuffer, Graphics::g_PostEffectsRenderPass);
+		GrayScale::Render(commandBuffer, Graphics::g_PostEffectsRenderPass, sceneColor);
 		Rendered = true;
 	}
 }
