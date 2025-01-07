@@ -1,8 +1,6 @@
 #include "Application.h"
 
-#include "RenderPassManager.h"
 #include "BufferManager.h"
-#include "PostEffects/PostEffects.h"
 #include "ResourceManager.h"
 
 Application::~Application() {
@@ -32,7 +30,6 @@ void Application::InitializeResources(IScene& scene) {
 	m_GraphicsDevice->CreateDescriptorPool();
 
 	Graphics::InitializeRenderingImages(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
-	Graphics::InitializeStaticRenderPasses(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 
 	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().renderPass);
 }
@@ -49,8 +46,6 @@ void Application::RunApplication(IScene& scene) {
 	std::cout << "Scene initialization time: " << sceneInitializedTime.GetSeconds() - resourcesInitializedTime.GetSeconds() << " seconds." << '\n';
 	std::cout << "Total initialization time: " << sceneInitializedTime.GetSeconds() - initStartTime.GetSeconds() << " seconds." << '\n';
 
-	PostEffects::Initialize();
-
 	while (UpdateApplication(scene)) {
 		m_Input->Update();
 		glfwPollEvents();
@@ -66,8 +61,6 @@ void Application::RenderCoreUI() {
 	ImGui::Text("Last Frame: %f ms", m_Milliseconds);
 	ImGui::Text("Framerate: %.1f fps", m_FramesPerSecond);
 	ImGui::Checkbox("Limit Framerate", &m_Vsync);
-
-	PostEffects::RenderUI();
 }
 
 bool Application::UpdateApplication(IScene& scene) {
@@ -97,84 +90,7 @@ bool Application::UpdateApplication(IScene& scene) {
 
 	Graphics::Frame& frame = m_GraphicsDevice->GetCurrentFrame();
 
-	// Color Render Pass
-	{
-		m_GraphicsDevice->BeginRenderPass(Graphics::g_ColorRenderPass, frame.commandBuffer);
-		scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
-		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
-	}
-
-	// Post Effects Render Pass
-	{
-		m_GraphicsDevice->BeginRenderPass(Graphics::g_PostEffectsRenderPass, frame.commandBuffer);
-		PostEffects::Render(frame.commandBuffer);
-		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
-	}
-
-	m_GraphicsDevice->TransitionImageLayout(
-		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_ACCESS_SHADER_READ_BIT,
-		VK_ACCESS_TRANSFER_WRITE_BIT,
-		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-		VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-	Graphics::GPUImage* imageToCopy = PostEffects::Rendered ? &Graphics::g_PostEffects : &Graphics::g_SceneColor;
-
-	/*
-		If the very first image is from scene color, the validation layer complains saying its format is
-		undefined and not shader only, it complains only during the first frame, therefore this temp 
-		workaround.
-	*/
-	if (imageToCopy->ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
-		m_GraphicsDevice->TransitionImageLayout(*imageToCopy, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	}
-	else {
-		m_GraphicsDevice->TransitionImageLayout(*imageToCopy, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	}
-
-	VkImageCopy imageCopy = {};
-	imageCopy.extent.width = m_GraphicsDevice->GetSwapChainExtent().width;
-	imageCopy.extent.height = m_GraphicsDevice->GetSwapChainExtent().height;
-	imageCopy.extent.depth = 1;
-	imageCopy.srcOffset = { 0, 0, 0 };
-	imageCopy.srcSubresource = {
-		.aspectMask = imageToCopy->Description.AspectFlags,
-		.mipLevel = 0,
-		.baseArrayLayer = 0,
-		.layerCount = imageToCopy->Description.LayerCount
-	};
-	imageCopy.dstOffset = { 0, 0, 0 };
-	imageCopy.dstSubresource = {
-		.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-		.mipLevel = 0,
-		.baseArrayLayer = 0,
-		.layerCount = 1
-	};
-
-	VkCommandBuffer commandBuffer = m_GraphicsDevice->BeginSingleTimeCommandBuffer(m_GraphicsDevice->m_CommandPool);
-
-	vkCmdCopyImage(
-		commandBuffer, 
-		imageToCopy->Image,
-		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,																														
-		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,																
-		1,
-		&imageCopy);
-
-	m_GraphicsDevice->EndSingleTimeCommandBuffer(commandBuffer, m_GraphicsDevice->m_CommandPool);
-
-	m_GraphicsDevice->TransitionImageLayout(
-		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		VK_ACCESS_TRANSFER_WRITE_BIT,
-		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
-		VK_PIPELINE_STAGE_TRANSFER_BIT,
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-	);
+	scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
 
 	// SwapChain Render Pass
 	{
@@ -189,6 +105,8 @@ bool Application::UpdateApplication(IScene& scene) {
 	}
 
 	m_GraphicsDevice->EndFrame(frame);
+
+	// TODO: find an alternative solution to fix image artifacts since this barrier is quite expensive.
 
 	/*
 		This barrier ensures the swapchain layout transition, there's no validation layer error if removed, but
@@ -220,11 +138,8 @@ void Application::InitializeApplication(IScene& scene) {
 
 void Application::TerminateApplication(IScene& scene) {
 	Graphics::ShutdownRenderingImages();
-	Graphics::ShutdownRenderPasses();
 
 	scene.CleanUp();
-
-	PostEffects::Shutdown();
 
 	ResourceManager::Get()->Destroy();
 }
@@ -236,10 +151,6 @@ void Application::Resize(int width, int height) {
 
 	Graphics::ResizeDisplayDependentImages(
 		m_GraphicsDevice->GetSwapChainExtent().width, 
-		m_GraphicsDevice->GetSwapChainExtent().height);
-
-	Graphics::ResizeRenderPasses(
-		m_GraphicsDevice->GetSwapChainExtent().width,
 		m_GraphicsDevice->GetSwapChainExtent().height);
 
 	m_ResizeApplication = true;
