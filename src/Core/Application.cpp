@@ -34,7 +34,7 @@ void Application::InitializeResources(IScene& scene) {
 	Graphics::InitializeRenderingImages(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 	Graphics::InitializeStaticRenderPasses(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 
-	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), Graphics::g_DebugRenderPass);
+	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().renderPass);
 }
 
 void Application::RunApplication(IScene& scene) {
@@ -176,9 +176,9 @@ bool Application::UpdateApplication(IScene& scene) {
 		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 	);
 
-	// Debug Render Pass
+	// SwapChain Render Pass
 	{
-		m_GraphicsDevice->BeginRenderPass(Graphics::g_DebugRenderPass, frame.commandBuffer);
+		m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->GetSwapChain().renderPass, frame.commandBuffer);
 		if (m_UI && scene.settings.uiEnabled) {
 			m_UI->BeginFrame();
 			RenderCoreUI();
