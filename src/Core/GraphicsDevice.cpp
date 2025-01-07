@@ -2,7 +2,6 @@
 
 #include "UI.h"
 #include "BufferManager.h"
-#include "RenderPassManager.h"
 
 #include "../Utils/Helper.h"
 
@@ -1853,7 +1852,7 @@ namespace Graphics {
 		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr); 
 	}
 
-	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, GPUImage& image) {
+	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUImage& image) {
 
 		VkDescriptorImageInfo newImageInfo = {};
 		//newImageInfo.imageLayout = image.ImageLayout;
