@@ -2,7 +2,7 @@
 
 #include "GraphicsDevice.h"
 
-UI::UI(GLFWwindow& window, Graphics::RenderPass& uiRenderPass) {
+UI::UI(GLFWwindow& window, const Graphics::RenderPass& uiRenderPass) {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 

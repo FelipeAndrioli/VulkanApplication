@@ -14,7 +14,7 @@ namespace Graphics {
 
 class UI {
 public:
-	UI(GLFWwindow& window, Graphics::RenderPass& uiRenderPass);
+	UI(GLFWwindow& window, const Graphics::RenderPass& uiRenderPass);
 	~UI();
 
 	void BeginFrame();
