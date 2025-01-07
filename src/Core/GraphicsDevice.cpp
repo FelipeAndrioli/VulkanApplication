@@ -487,6 +487,74 @@ namespace Graphics {
 			}
 		}
 
+		// Create swap chain render pass
+		{
+			RenderPassDesc desc = {};
+
+			desc.scissor.offset = { 0, 0 };
+			desc.scissor.extent = window.GetFramebufferSize();
+			desc.extent = window.GetFramebufferSize();
+			desc.viewport.x = 0.0f;
+			desc.viewport.y = 0.0f;
+			desc.viewport.width = static_cast<float>(window.GetFramebufferSize().width);
+			desc.viewport.height = static_cast<float>(window.GetFramebufferSize().height);
+			desc.viewport.minDepth = 0.0f;
+			desc.viewport.maxDepth = 1.0f;
+			desc.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+			desc.clearValues.push_back({ .color {0.0f, 0.0f, 0.0f, 1.0f} });
+
+			swapChain.renderPass.description = desc;
+
+			VkAttachmentDescription colorAttachment = {};
+
+			colorAttachment.format = swapChain.swapChainImageFormat;
+			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			
+			swapChain.renderPass.attachments.emplace_back(colorAttachment);
+
+			VkAttachmentReference colorAttachmentRef = {};
+			colorAttachmentRef.attachment = swapChain.renderPass.attachments.size() - 1;
+			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+			VkSubpassDescription subpass = {};
+			subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+			subpass.colorAttachmentCount = 1;
+			subpass.pColorAttachments = &colorAttachmentRef;
+
+			swapChain.renderPass.subpasses.emplace_back(subpass);
+
+			VkSubpassDependency colorDependency = {};
+			colorDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+			colorDependency.dstSubpass = 0;
+			colorDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			colorDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			colorDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			colorDependency.dependencyFlags = 0;
+
+			swapChain.renderPass.dependencies.emplace_back(colorDependency);
+
+			CreateRenderPass(swapChain.renderPass);
+
+			swapChain.renderPass.framebuffers.resize(swapChain.swapChainImageViews.size());
+
+			for (int i = 0; i < swapChain.swapChainImageViews.size(); i++) {
+				std::vector<VkImageView> framebufferAttachments = { swapChain.swapChainImageViews[i] };
+
+				CreateFramebuffer(
+					swapChain.renderPass.handle, 
+					framebufferAttachments, 
+					swapChain.swapChainExtent, 
+					swapChain.renderPass.framebuffers[i]);
+			}
+		}
+
 		return true;
 	}
 
@@ -812,6 +880,8 @@ namespace Graphics {
 		}
 
 		vkDestroySwapchainKHR(m_LogicalDevice, swapChain.swapChain, nullptr);
+		
+		DestroyRenderPass(m_SwapChain.renderPass);
 	}
 
 	void GraphicsDevice::WaitIdle() {

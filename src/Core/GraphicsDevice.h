@@ -50,24 +50,6 @@ namespace Graphics {
 	void CreateDebugMessenger(VkInstance& instance, VkDebugUtilsMessengerEXT& debugMessenger);
 	VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
-	struct SwapChainSupportDetails {
-		VkSurfaceCapabilitiesKHR capabilities;
-		std::vector<VkSurfaceFormatKHR> formats;
-		std::vector<VkPresentModeKHR> presentModes;
-	};
-
-	struct SwapChain {
-		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-		VkExtent2D swapChainExtent = { 0, 0 };
-		uint32_t imageIndex = 0;
-
-		std::vector<VkImage> swapChainImages;
-		std::vector<VkImageView> swapChainImageViews;
-		std::vector<VkSampler> swapChainImageSamplers;
-		
-		VkFormat swapChainImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
-	};
-
 	struct RenderPassDesc {
 		VkOffset2D offset = {};
 		VkViewport viewport = {};
@@ -94,10 +76,30 @@ namespace Graphics {
 		std::vector<VkSubpassDescription> subpasses = {};
 
 		enum : uint16_t {
-			tColorAttachment			= 0x001,
-			tDepthAttachment			= 0x002,
-			tColorResolveAttachment		= 0x004
+			eColorAttachment			= 0x001,
+			eDepthAttachment			= 0x002,
+			eColorResolveAttachment		= 0x004
 		};
+	};
+
+	struct SwapChainSupportDetails {
+		VkSurfaceCapabilitiesKHR capabilities;
+		std::vector<VkSurfaceFormatKHR> formats;
+		std::vector<VkPresentModeKHR> presentModes;
+	};
+
+	struct SwapChain {
+		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+		VkExtent2D swapChainExtent = { 0, 0 };
+		uint32_t imageIndex = 0;
+
+		std::vector<VkImage> swapChainImages;
+		std::vector<VkImageView> swapChainImageViews;
+		std::vector<VkSampler> swapChainImageSamplers;
+
+		VkFormat swapChainImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+
+		RenderPass renderPass = {};
 	};
 
 	struct Shader {
