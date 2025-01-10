@@ -25,8 +25,6 @@ void Graphics::InitializeRenderingImages(uint32_t width, uint32_t height) {
 
 	// old format VK_FORMAT_R8G8B8A8_SRGB
 	gfxDevice->CreateRenderTarget(g_PostEffects, gfxDevice->GetSwapChain().swapChainImageFormat, {width, height}, VK_SAMPLE_COUNT_1_BIT);
-	gfxDevice->TransitionImageLayout(g_PostEffects, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	gfxDevice->TransitionImageLayout(g_PostEffects, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	gfxDevice->CreateImageSampler(g_PostEffects);
 
 	gfxDevice->CreateRenderTarget(g_SceneColor, gfxDevice->GetSwapChain().swapChainImageFormat, { width, height }, VK_SAMPLE_COUNT_1_BIT);
