@@ -449,11 +449,12 @@ namespace Graphics {
 		}
 	}
 
+	// TODO: remove window from this function and use only the extent instead 
 	bool GraphicsDevice::CreateSwapChain(Window& window, SwapChain& swapChain) {
 		CreateSwapChainInternal(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
 		CreateSwapChainImageViews(m_LogicalDevice, swapChain);
 
-		// Creating swap chain samplers
+		// Create swap chain samplers
 		{
 			swapChain.swapChainImageSamplers.resize(swapChain.swapChainImageViews.size());
 			
@@ -486,6 +487,13 @@ namespace Graphics {
 			}
 		}
 
+		// Create swap chain depth image
+		{
+			CreateDepthBuffer(swapChain.depthImage,
+				{ window.GetFramebufferSize().width, window.GetFramebufferSize().height },
+				VK_SAMPLE_COUNT_1_BIT);
+		}
+
 		// Create swap chain render pass
 		{
 			RenderPassDesc desc = {};
@@ -501,6 +509,7 @@ namespace Graphics {
 			desc.viewport.maxDepth = 1.0f;
 			desc.sampleCount = VK_SAMPLE_COUNT_1_BIT;
 			desc.clearValues.push_back({ .color {0.0f, 0.0f, 0.0f, 1.0f} });
+			desc.clearValues.push_back({ .depthStencil { 1.0f, 0 } });
 
 			swapChain.renderPass.description = desc;
 
@@ -521,19 +530,52 @@ namespace Graphics {
 			colorAttachmentRef.attachment = swapChain.renderPass.attachments.size() - 1;
 			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-			VkSubpassDescription subpass = {};
-			subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			subpass.colorAttachmentCount = 1;
-			subpass.pColorAttachments = &colorAttachmentRef;
+			VkAttachmentDescription depthAttachment = {};
+			depthAttachment.format = FindDepthFormat(m_PhysicalDevice);
+			depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-			swapChain.renderPass.subpasses.emplace_back(subpass);
+			swapChain.renderPass.attachments.emplace_back(depthAttachment);
+
+			VkAttachmentReference depthStencilAttachmentRef = {};
+			depthStencilAttachmentRef.attachment = swapChain.renderPass.attachments.size() - 1;
+			depthStencilAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+			VkSubpassDescription subpassDescription = {};
+			subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+			subpassDescription.colorAttachmentCount = 1;
+			subpassDescription.pColorAttachments = &colorAttachmentRef;
+			subpassDescription.pDepthStencilAttachment = &depthStencilAttachmentRef;
+			subpassDescription.inputAttachmentCount = 0;
+			subpassDescription.pInputAttachments = nullptr;
+			subpassDescription.preserveAttachmentCount = 0;
+			subpassDescription.pPreserveAttachments = nullptr;
+			subpassDescription.pResolveAttachments = nullptr;
+
+			swapChain.renderPass.subpasses.emplace_back(subpassDescription);
+
+			VkSubpassDependency depthStencilDependency = {};
+			depthStencilDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+			depthStencilDependency.dstSubpass = 0;
+			depthStencilDependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			depthStencilDependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			depthStencilDependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			depthStencilDependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			depthStencilDependency.dependencyFlags = 0;
+
+			swapChain.renderPass.dependencies.emplace_back(depthStencilDependency);
 
 			VkSubpassDependency colorDependency = {};
 			colorDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 			colorDependency.dstSubpass = 0;
 			colorDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			colorDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			colorDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			colorDependency.srcAccessMask = 0;
 			colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 			colorDependency.dependencyFlags = 0;
 
@@ -544,7 +586,7 @@ namespace Graphics {
 			swapChain.renderPass.framebuffers.resize(swapChain.swapChainImageViews.size());
 
 			for (int i = 0; i < swapChain.swapChainImageViews.size(); i++) {
-				std::vector<VkImageView> framebufferAttachments = { swapChain.swapChainImageViews[i] };
+				std::vector<VkImageView> framebufferAttachments = { swapChain.swapChainImageViews[i], swapChain.depthImage.ImageView };
 
 				CreateFramebuffer(
 					swapChain.renderPass.handle, 
@@ -812,8 +854,8 @@ namespace Graphics {
 		m_PhysicalDevice = CreatePhysicalDevice(m_VulkanInstance, m_Surface);
 
 		m_PhysicalDeviceProperties = GetDeviceProperties(m_PhysicalDevice);
-		m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
-//		m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
+//		m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
+		m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
 		std::cout << "Selected device: " << m_PhysicalDeviceProperties.deviceName << '\n';
 		std::cout << "MSAA Samples: " << m_MsaaSamples << '\n';
@@ -879,7 +921,8 @@ namespace Graphics {
 		}
 
 		vkDestroySwapchainKHR(m_LogicalDevice, swapChain.swapChain, nullptr);
-		
+	
+		DestroyImage(m_SwapChain.depthImage);
 		DestroyRenderPass(m_SwapChain.renderPass);
 	}
 
@@ -1495,6 +1538,7 @@ namespace Graphics {
 
 		CreateImage(renderTarget);
 		CreateImageView(renderTarget);
+		TransitionImageLayout(renderTarget, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 
 	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format) {
