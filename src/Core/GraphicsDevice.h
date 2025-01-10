@@ -100,6 +100,8 @@ namespace Graphics {
 		VkFormat swapChainImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 
 		RenderPass renderPass = {};
+
+		GPUImage depthImage = {};
 	};
 
 	struct Shader {
