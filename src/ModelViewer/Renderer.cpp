@@ -38,7 +38,7 @@ namespace Renderer {
 
 	Graphics::Buffer m_ModelBuffer = {};
 	Graphics::Buffer m_SkyboxBuffer = {};
-	Graphics::Buffer m_GlobalDataBuffer = {};
+	Graphics::Buffer m_GlobalDataBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 
 	Graphics::PipelineState m_SkyboxPSO = {};
 	Graphics::PipelineState m_ColorPSO = {};
@@ -171,9 +171,11 @@ void Renderer::LoadResources() {
 	};
 
 	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants) * MAX_MODELS);
-	m_GlobalDataBuffer = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
 
-	gfxDevice->WriteSubBuffer(m_GlobalDataBuffer, &m_GlobalConstants, sizeof(GlobalConstants));
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+		m_GlobalDataBuffer[i] = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
+		gfxDevice->WriteSubBuffer(m_GlobalDataBuffer[i], &m_GlobalConstants, sizeof(GlobalConstants));
+	}
 
 	PipelineStateDescription colorPSODesc = {};
 	colorPSODesc.Name = "Color Pipeline";
@@ -284,7 +286,7 @@ void Renderer::LoadResources() {
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).bindlessSet);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer[i]);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, rm->GetMaterialBuffer());
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, LightManager::GetLightBuffer());
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, rm->GetTextures());
@@ -313,7 +315,7 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	m_GlobalConstants.cameraPosition = glm::vec4(camera.Position, 1.0f);
 	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
 
-	gfxDevice->UpdateBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
+	gfxDevice->UpdateBuffer(m_GlobalDataBuffer[gfxDevice->GetCurrentFrameIndex()], &m_GlobalConstants);
 
 	LightManager::UpdateBuffer();
 
