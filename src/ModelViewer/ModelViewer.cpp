@@ -173,12 +173,14 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	}
 		
 	gfxDevice->EndRenderPass(commandBuffer);
+	// here color render target is expected to be in shader read only optimal image layout
 
 	gfxDevice->BeginRenderPass(Graphics::g_PostEffectsRenderPass, commandBuffer);
 
 	PostEffects::Render(commandBuffer, Graphics::g_SceneColor);
 
 	gfxDevice->EndRenderPass(commandBuffer);
+	// here post effects render target is expected to be in transfer src optimal image layout
 
 	gfxDevice->TransitionImageLayout(
 		gfxDevice->GetSwapChain().swapChainImages[gfxDevice->GetSwapChain().imageIndex],
@@ -188,16 +190,15 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		VK_ACCESS_TRANSFER_WRITE_BIT,
 		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		VK_PIPELINE_STAGE_TRANSFER_BIT);
+	// prepare swap chain to receive the final content
 
-	Graphics::GPUImage* imageToCopy = PostEffects::Rendered ? &Graphics::g_PostEffects : &Graphics::g_SceneColor;
-
-		//If the very first image is from scene color, the validation layer complains saying its format is
-		//undefined and not shader only, it complains only during the first frame, therefore this temp 
-		//workaround.
-	if (imageToCopy->ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
-		gfxDevice->TransitionImageLayout(*imageToCopy, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	Graphics::GPUImage* imageToCopy = nullptr;
+	
+	if (PostEffects::Rendered) {
+		imageToCopy = &Graphics::g_PostEffects;
 	}
 	else {
+		imageToCopy = &Graphics::g_SceneColor;
 		gfxDevice->TransitionImageLayout(*imageToCopy, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	}
 
@@ -242,6 +243,8 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		VK_PIPELINE_STAGE_TRANSFER_BIT,
 		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 	);
+	// once the resulting image is copied to the swap chain, transition its layout to color attachment
+	// for the final pass that will load its content instead of clearing it.
 }
 
 void ModelViewer::RenderUI() {
