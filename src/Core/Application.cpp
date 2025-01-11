@@ -104,24 +104,7 @@ bool Application::UpdateApplication(IScene& scene) {
 		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
 	}
 
-	m_GraphicsDevice->EndFrame(frame);
-
-	// TODO: find an alternative solution to fix image artifacts since this barrier is quite expensive.
-
-	/*
-		This barrier ensures the swapchain layout transition, there's no validation layer error if removed, but
-		some artifacts appears in the image while moving. This barrier costs about 1ms.
-	*/
-	m_GraphicsDevice->TransitionImageLayout(
-		m_GraphicsDevice->GetSwapChain().swapChainImages[m_GraphicsDevice->GetSwapChain().imageIndex],
-		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
-		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-	);
-
+	m_GraphicsDevice->EndFrame(frame);	
 	m_GraphicsDevice->PresentFrame(frame);
 
 	m_LastFrameTime = m_CurrentFrameTime;

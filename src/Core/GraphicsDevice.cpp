@@ -854,8 +854,7 @@ namespace Graphics {
 		m_PhysicalDevice = CreatePhysicalDevice(m_VulkanInstance, m_Surface);
 
 		m_PhysicalDeviceProperties = GetDeviceProperties(m_PhysicalDevice);
-//		m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
-		m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
+		m_MsaaSamples = GetMaxSampleCount(m_PhysicalDeviceProperties);
 
 		std::cout << "Selected device: " << m_PhysicalDeviceProperties.deviceName << '\n';
 		std::cout << "MSAA Samples: " << m_MsaaSamples << '\n';
@@ -990,7 +989,7 @@ namespace Graphics {
 		VkResult result = vkEndCommandBuffer(frame.commandBuffer);
 		assert(result == VK_SUCCESS);
 
-		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 		std::vector<VkCommandBuffer> cmdBuffers = { frame.commandBuffer };
 
 		VkSubmitInfo submitInfo{};
