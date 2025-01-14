@@ -31,7 +31,8 @@ void Application::InitializeResources(IScene& scene) {
 
 	Graphics::InitializeRenderingImages(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 
-	m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().renderPass);
+	if (scene.settings.uiEnabled)
+		m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().renderPass);
 }
 
 void Application::RunApplication(IScene& scene) {

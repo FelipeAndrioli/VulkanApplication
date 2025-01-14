@@ -24,7 +24,6 @@ public:
 		settings.Width = 1600;
 		settings.Height = 900;
 		settings.uiEnabled = true;
-		settings.renderSkybox = false;
 	};
 
 	virtual void StartUp() override;
@@ -49,6 +48,11 @@ private:
 
 	Graphics::RenderPass m_ColorRenderPass = {};
 	Graphics::RenderPass m_PostRenderPass = {};
+
+	bool m_RenderSkybox = false;
+	bool m_RenderWireframe = false;
+	bool m_RenderLightSources = false;
+
 };
 
 void ModelViewer::StartUp() {
@@ -153,15 +157,15 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	sorter.Sort();
 	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
 	
-	if (settings.renderSkybox) {
+	if (m_RenderSkybox) {
 		Renderer::RenderSkybox(commandBuffer);
 	}
 
-	if (settings.renderLightSources) {
+	if (m_RenderLightSources) {
 		Renderer::RenderLightSources(commandBuffer);
 	}
 
-	if (settings.renderWireframe) {
+	if (m_RenderWireframe) {
 		for (auto& model : m_Models) {
 			Renderer::RenderWireframe(commandBuffer, *model.get());
 		}
@@ -249,10 +253,9 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 void ModelViewer::RenderUI() {
 	ImGui::SeparatorText("Model Viewer");
-	ImGui::Checkbox("Render Default", &settings.renderDefault);
-	ImGui::Checkbox("Render Wireframe", &settings.renderWireframe);
-	ImGui::Checkbox("Render Skybox", &settings.renderSkybox);
-	ImGui::Checkbox("Render Light Sources", &settings.renderLightSources);
+	ImGui::Checkbox("Render Wireframe", &m_RenderWireframe);
+	ImGui::Checkbox("Render Skybox", &m_RenderSkybox);
+	ImGui::Checkbox("Render Light Sources", &m_RenderLightSources);
 
 	PostEffects::RenderUI();
 	

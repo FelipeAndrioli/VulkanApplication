@@ -7,16 +7,4 @@ struct Settings {
 	uint32_t Width = 800;
 	uint32_t Height = 600;
 	bool uiEnabled = true;
-	bool renderWireframe = false;
-	bool renderSkybox = false;
-	bool renderDefault = true;
-	bool renderLightSources = true;
-
-	bool postEffectsEnabled = false;
-
-	struct PostEffects {
-		bool grayScale = true;
-	};
-
-	PostEffects postEffects = {};
 };
