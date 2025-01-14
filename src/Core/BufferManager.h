@@ -34,6 +34,6 @@ namespace Graphics {
 		Graphics::GPUBuffer m_MainBuffer;
 
 		size_t m_Size = 0;
-		size_t m_Capacity = VK_WHOLE_SIZE;
+		size_t m_Capacity = 256 * 100000;
 	};
 }

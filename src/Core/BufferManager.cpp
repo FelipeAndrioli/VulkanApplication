@@ -73,9 +73,6 @@ Graphics::BufferManager::~BufferManager() {
 
 void Graphics::BufferManager::CreateMainBuffer() {
 
-	// need to do a better job calculating the capacity, or even make it dynamic 
-	m_Capacity = 256 * 100000;
-
 	Graphics::BufferDescription desc = {};
 	desc.BufferSize = m_Capacity;
 	desc.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
