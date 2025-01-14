@@ -2,6 +2,7 @@
 
 #include "BufferManager.h"
 #include "ResourceManager.h"
+#include "RenderPassManager.h"
 
 Application::~Application() {
 	m_UI.reset();
@@ -30,6 +31,7 @@ void Application::InitializeResources(IScene& scene) {
 	m_GraphicsDevice->CreateDescriptorPool();
 
 	Graphics::InitializeRenderingImages(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
+	Graphics::InitializeStaticRenderPasses(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 
 	if (scene.settings.uiEnabled)
 		m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().renderPass);
@@ -124,6 +126,8 @@ void Application::TerminateApplication(IScene& scene) {
 	Graphics::ShutdownRenderingImages();
 
 	scene.CleanUp();
+	
+	Graphics::ShutdownRenderPasses();
 
 	ResourceManager::Get()->Destroy();
 }
@@ -137,5 +141,7 @@ void Application::Resize(int width, int height) {
 		m_GraphicsDevice->GetSwapChainExtent().width, 
 		m_GraphicsDevice->GetSwapChainExtent().height);
 
+	Graphics::ResizeRenderPasses(width, height);
+	
 	m_ResizeApplication = true;
 }

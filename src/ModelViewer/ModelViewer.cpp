@@ -56,12 +56,9 @@ private:
 };
 
 void ModelViewer::StartUp() {
-
 	m_ScreenWidth = settings.Width;
 	m_ScreenHeight = settings.Height;
 	
-	Graphics::InitializeStaticRenderPasses(m_ScreenWidth, m_ScreenHeight);
-
 	glm::vec3 position = glm::vec3(-5.414f, -0.019f, 5.115f);
 
 	float fov = 45.0f;
@@ -125,7 +122,6 @@ void ModelViewer::StartUp() {
 }
 
 void ModelViewer::CleanUp() {
-	Graphics::ShutdownRenderPasses();
 	m_Models.clear();
 	Renderer::Shutdown();
 	PostEffects::Shutdown();
@@ -270,7 +266,6 @@ void ModelViewer::RenderUI() {
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {
 	m_Camera.Resize(width, height);
-	Graphics::ResizeRenderPasses(width, height);
 }
 
 RUN_APPLICATION(ModelViewer)
