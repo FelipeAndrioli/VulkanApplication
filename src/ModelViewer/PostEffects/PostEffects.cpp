@@ -2,7 +2,7 @@
 
 #include "../Core/Graphics.h"
 #include "../Core/GraphicsDevice.h"
-#include "../RenderPassManager.h"
+#include "../Core/RenderPassManager.h"
 #include "../Core/UI.h"
 
 #include "./GrayScale.h"

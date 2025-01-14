@@ -8,12 +8,12 @@
 #include "../Core/GraphicsDevice.h"
 #include "../Core/Settings.h"
 #include "../Core/BufferManager.h"
+#include "../Core/RenderPassManager.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Model.h"
 
 #include "./PostEffects/PostEffects.h"
-#include "./RenderPassManager.h"
 #include "./Renderer.h"
 #include "./LightManager.h"
 
