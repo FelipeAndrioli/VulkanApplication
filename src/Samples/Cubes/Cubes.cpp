@@ -28,7 +28,6 @@ public:
 		settings.Width = 1600;
 		settings.Height = 900;
 		settings.uiEnabled = true;
-		settings.renderSkybox = false;
 	};
 
 	virtual void StartUp() override;
