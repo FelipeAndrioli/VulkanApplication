@@ -454,6 +454,9 @@ namespace Graphics {
 		CreateSwapChainInternal(m_PhysicalDevice, m_LogicalDevice, m_Surface, swapChain, window.GetFramebufferSize());
 		CreateSwapChainImageViews(m_LogicalDevice, swapChain);
 
+		uint32_t width = window.GetFramebufferSize().width;
+		uint32_t height = window.GetFramebufferSize().height;
+
 		// Create swap chain samplers
 		{
 			swapChain.swapChainImageSamplers.resize(swapChain.swapChainImageViews.size());
@@ -488,98 +491,37 @@ namespace Graphics {
 		}
 
 		// Create swap chain depth image
-		{
-			CreateDepthBuffer(swapChain.depthImage,
-				{ window.GetFramebufferSize().width, window.GetFramebufferSize().height },
-				VK_SAMPLE_COUNT_1_BIT);
-		}
+		CreateDepthBuffer(swapChain.depthImage, { width, height }, VK_SAMPLE_COUNT_1_BIT);
 
 		// Create swap chain render pass
 		{
-			RenderPassDesc desc = {};
 
-			desc.scissor.offset = { 0, 0 };
-			desc.scissor.extent = window.GetFramebufferSize();
-			desc.extent = window.GetFramebufferSize();
-			desc.viewport.x = 0.0f;
-			desc.viewport.y = 0.0f;
-			desc.viewport.width = static_cast<float>(window.GetFramebufferSize().width);
-			desc.viewport.height = static_cast<float>(window.GetFramebufferSize().height);
-			desc.viewport.minDepth = 0.0f;
-			desc.viewport.maxDepth = 1.0f;
-			desc.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-			desc.clearValues.push_back({ .color {0.0f, 0.0f, 0.0f, 1.0f} });
-			desc.clearValues.push_back({ .depthStencil { 1.0f, 0 } });
-
-			swapChain.renderPass.description = desc;
-
-			VkAttachmentDescription colorAttachment = {};
-
-			colorAttachment.format = swapChain.swapChainImageFormat;
-			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			
-			swapChain.renderPass.attachments.emplace_back(colorAttachment);
-
-			VkAttachmentReference colorAttachmentRef = {};
-			colorAttachmentRef.attachment = swapChain.renderPass.attachments.size() - 1;
-			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-			VkAttachmentDescription depthAttachment = {};
-			depthAttachment.format = FindDepthFormat(m_PhysicalDevice);
-			depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-			swapChain.renderPass.attachments.emplace_back(depthAttachment);
-
-			VkAttachmentReference depthStencilAttachmentRef = {};
-			depthStencilAttachmentRef.attachment = swapChain.renderPass.attachments.size() - 1;
-			depthStencilAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-			VkSubpassDescription subpassDescription = {};
-			subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			subpassDescription.colorAttachmentCount = 1;
-			subpassDescription.pColorAttachments = &colorAttachmentRef;
-			subpassDescription.pDepthStencilAttachment = &depthStencilAttachmentRef;
-			subpassDescription.inputAttachmentCount = 0;
-			subpassDescription.pInputAttachments = nullptr;
-			subpassDescription.preserveAttachmentCount = 0;
-			subpassDescription.pPreserveAttachments = nullptr;
-			subpassDescription.pResolveAttachments = nullptr;
-
-			swapChain.renderPass.subpasses.emplace_back(subpassDescription);
-
-			VkSubpassDependency depthStencilDependency = {};
-			depthStencilDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-			depthStencilDependency.dstSubpass = 0;
-			depthStencilDependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			depthStencilDependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			depthStencilDependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			depthStencilDependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-			depthStencilDependency.dependencyFlags = 0;
-
-			swapChain.renderPass.dependencies.emplace_back(depthStencilDependency);
-
-			VkSubpassDependency colorDependency = {};
-			colorDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-			colorDependency.dstSubpass = 0;
-			colorDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			colorDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			colorDependency.srcAccessMask = 0;
-			colorDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			colorDependency.dependencyFlags = 0;
-
-			swapChain.renderPass.dependencies.emplace_back(colorDependency);
+			swapChain.renderPass.description.extent = { width, height };
+			swapChain.renderPass.description.viewport = {
+				.x = 0,
+				.y = 0,
+				.width = static_cast<float>(width),
+				.height = static_cast<float>(height),
+				.minDepth = 0.0f,
+				.maxDepth = 1.0f
+			};
+			swapChain.renderPass.description.scissor = {
+				.offset = {
+					.x = 0,
+					.y = 0
+				},
+				.extent = {
+					.width = width,
+					.height = height
+				}
+			};
+			swapChain.renderPass.description.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+			swapChain.renderPass.description.flags = eColorAttachment 
+				| eDepthAttachment 
+				| eColorLoadOpLoad 
+				| eColorStoreOpStore 
+				| eInitialLayoutColorOptimal 
+				| eFinalLayoutPresent;
 
 			CreateRenderPass(swapChain.renderPass);
 
@@ -1016,8 +958,25 @@ namespace Graphics {
 		renderPassBeginInfo.renderArea.offset = renderPass.description.offset;
 		renderPassBeginInfo.renderArea.extent = renderPass.description.extent;
 		renderPassBeginInfo.pNext = nullptr;
-		renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(renderPass.description.clearValues.size());
-		renderPassBeginInfo.pClearValues = renderPass.description.clearValues.data();
+
+		if (renderPass.description.clearValues.size() == 0) {
+			std::array<VkClearValue, 3> clearValues = {};
+			int clearValuesCount = 0;
+
+			if (renderPass.description.flags & eColorAttachment)
+				clearValues[clearValuesCount++] = { .color{0.0f, 0.0f, 0.0f, 1.0f} };
+			if (renderPass.description.flags & eDepthAttachment)
+				clearValues[clearValuesCount++] = { .depthStencil{ 1.0f, 0 } };
+			if (renderPass.description.flags & eResolveAttachment)
+				clearValues[clearValuesCount++] = { .color{0.0f, 0.0f, 0.0f, 1.0f} };
+
+			renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValuesCount);
+			renderPassBeginInfo.pClearValues = clearValues.data();
+		}
+		else {
+			renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(renderPass.description.clearValues.size());
+			renderPassBeginInfo.pClearValues = renderPass.description.clearValues.data();
+		}
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -1680,6 +1639,104 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::CreateRenderPass(RenderPass& renderPass) {
+	
+		std::vector<VkAttachmentReference> colorAttachmentReferences;
+		std::vector<VkAttachmentReference> depthAttachmentReferences;
+		std::vector<VkAttachmentReference> resolveAttachmentReferences;
+
+		if (renderPass.description.flags & eColorAttachment) {
+			VkAttachmentDescription colorAttachment = {};
+			colorAttachment.format = m_SwapChain.swapChainImageFormat;
+			colorAttachment.samples = renderPass.description.sampleCount;
+
+			if (renderPass.description.flags & eColorLoadOpLoad)
+				colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+			else if (renderPass.description.flags & eColorLoadOpClear)
+				colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			else
+				colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+			if (renderPass.description.flags & eColorStoreOpStore)
+				colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			else
+				colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+			if (renderPass.description.flags & eInitialLayoutColorOptimal)
+				colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			else
+				colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+			if (renderPass.description.flags & eFinalLayoutTransferSrc)
+				colorAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			else if (renderPass.description.flags & eFinalLayoutTransferDst)
+				colorAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			else if (renderPass.description.flags & eFinalLayoutPresent)
+				colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			else
+				colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+			renderPass.attachments.emplace_back(colorAttachment);
+
+			VkAttachmentReference colorAttachRef = {};
+			colorAttachRef.attachment = renderPass.attachments.size() - 1;
+			colorAttachRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+			colorAttachmentReferences.emplace_back(colorAttachRef);
+		}
+
+		if (renderPass.description.flags & eDepthAttachment) {
+			VkAttachmentDescription depthAttachment = {};
+			depthAttachment.format = GetDepthFormat();
+			depthAttachment.samples = renderPass.description.sampleCount;
+			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+			renderPass.attachments.emplace_back(depthAttachment);
+
+			VkAttachmentReference depthAttachRef = {};
+			depthAttachRef.attachment = renderPass.attachments.size() - 1;
+			depthAttachRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+			depthAttachmentReferences.emplace_back(depthAttachRef);
+		}
+
+		if (renderPass.description.flags & eResolveAttachment) {
+			VkAttachmentDescription resolveAttachment = {};
+			resolveAttachment.format = m_SwapChain.swapChainImageFormat;
+			resolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+			resolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			resolveAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			resolveAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			resolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+			renderPass.attachments.emplace_back(resolveAttachment);
+
+			VkAttachmentReference resolveAttachRef = {};
+			resolveAttachRef.attachment = renderPass.attachments.size() - 1;
+			resolveAttachRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+			resolveAttachmentReferences.emplace_back(resolveAttachRef);
+		}
+
+		VkSubpassDescription subpassDesc = {};
+		subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		
+		subpassDesc.colorAttachmentCount = colorAttachmentReferences.size();
+		subpassDesc.pColorAttachments = colorAttachmentReferences.data();
+		subpassDesc.pDepthStencilAttachment = depthAttachmentReferences.data();
+		subpassDesc.pResolveAttachments = resolveAttachmentReferences.data();
+
+		renderPass.subpasses.emplace_back(subpassDesc);
+
 		VkRenderPassCreateInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		renderPassInfo.attachmentCount = static_cast<uint32_t>(renderPass.attachments.size());

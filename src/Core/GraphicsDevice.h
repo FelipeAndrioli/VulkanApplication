@@ -50,16 +50,34 @@ namespace Graphics {
 	void CreateDebugMessenger(VkInstance& instance, VkDebugUtilsMessengerEXT& debugMessenger);
 	VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
+	typedef enum RenderPassFlags : uint32_t {
+		// attachments
+		eColorAttachment			= 0x00000001,
+		eDepthAttachment			= 0x00000002,
+		eResolveAttachment			= 0x00000004,
+
+		// op operations
+		eColorLoadOpClear			= 0x00000008,
+		eColorLoadOpLoad			= 0x00000010,
+		eColorStoreOpStore			= 0x00000020,
+
+		// layouts
+		eInitialLayoutColorOptimal	= 0x00000040,
+		eFinalLayoutTransferSrc		= 0x00000080,
+		eFinalLayoutTransferDst		= 0x00000100,
+		eFinalLayoutPresent			= 0x00000200
+	} RenderPassFlags;
+
 	struct RenderPassDesc {
 		VkOffset2D offset = {};
 		VkViewport viewport = {};
 		VkExtent2D extent = {};
 		VkRect2D scissor = {};
 
-//		std::array<VkClearValue, 3> clearValues;
 		std::vector<VkClearValue> clearValues;
 
-		uint16_t flags;
+		// RenderPassFlags
+		uint32_t flags;
 
 		VkSampleCountFlagBits sampleCount;
 	};
@@ -74,12 +92,6 @@ namespace Graphics {
 		std::vector<VkAttachmentDescription> attachments = {};
 		std::vector<VkSubpassDependency> dependencies = {};
 		std::vector<VkSubpassDescription> subpasses = {};
-
-		enum : uint16_t {
-			eColorAttachment			= 0x001,
-			eDepthAttachment			= 0x002,
-			eColorResolveAttachment		= 0x004
-		};
 	};
 
 	struct SwapChainSupportDetails {
