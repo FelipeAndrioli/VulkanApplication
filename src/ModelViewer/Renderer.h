@@ -6,6 +6,8 @@
 #include <unordered_map>
 
 #include "../Core/VulkanHeader.h"
+#include "../Core/RenderTarget.h"
+
 #include "glm.hpp"
 
 #define MAX_MODELS 10
@@ -88,9 +90,8 @@ namespace Renderer {
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
 	void Init();
-	void CreateRenderPass();
 	void Shutdown();
-	void LoadResources();
+	void LoadResources(const Graphics::IRenderTarget& renderTarget);
 	void OnUIRender();
 
 	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);

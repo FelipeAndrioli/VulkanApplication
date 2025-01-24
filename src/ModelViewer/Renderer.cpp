@@ -8,7 +8,6 @@
 #include "../Core/Application.h"
 #include "../Core/ConstantBuffers.h"
 #include "../Core/ResourceManager.h"
-#include "../Core/RenderPassManager.h"
 
 #include "../Utils/TextureLoader.h"
 #include "../Utils/ModelLoader.h"
@@ -110,7 +109,7 @@ void Renderer::Shutdown() {
 	m_Initialized = false;
 }
 
-void Renderer::LoadResources() {
+void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 	if (!m_Initialized)
 		return;
 
@@ -183,7 +182,7 @@ void Renderer::LoadResources() {
 	colorPSODesc.fragmentShader = &m_ColorFragShader;
 	colorPSODesc.psoInputLayout.push_back(globalInputLayout);
 	
-	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO, g_ColorRenderPass);
+	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO, renderTarget);
 
 	PipelineStateDescription colorStencilPSODesc = {};
 	colorStencilPSODesc.Name = "Color Stencil Pipeline";
@@ -200,7 +199,7 @@ void Renderer::LoadResources() {
 	colorStencilPSODesc.stencilState.writeMask = 0xff;
 	colorStencilPSODesc.stencilState.reference = 1;
 	
-	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO, g_ColorRenderPass);
+	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO, renderTarget);
 
 	PipelineStateDescription outlinePSODesc = {};
 	outlinePSODesc.Name = "Outline Pipeline";
@@ -218,7 +217,7 @@ void Renderer::LoadResources() {
 	outlinePSODesc.stencilState.reference = 1;
 	outlinePSODesc.depthTestEnable = true;										// change to false if want to see through walls
 	
-	gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO, g_ColorRenderPass);
+	gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO, renderTarget);
 
 	PipelineStateDescription skyboxPSODesc = {};
 	skyboxPSODesc.Name = "Skybox PSO";
@@ -227,7 +226,7 @@ void Renderer::LoadResources() {
 	skyboxPSODesc.noVertex = true;
 	skyboxPSODesc.psoInputLayout.push_back(globalInputLayout);
 
-	gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO, g_ColorRenderPass);
+	gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO, renderTarget);
 
 	PipelineStateDescription wireframePSODesc = {};
 	wireframePSODesc.Name = "Wireframe PSO";
@@ -237,7 +236,7 @@ void Renderer::LoadResources() {
 	wireframePSODesc.polygonMode = VK_POLYGON_MODE_LINE;
 	wireframePSODesc.psoInputLayout.push_back(globalInputLayout);
 
-	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO, g_ColorRenderPass);
+	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO, renderTarget);
 
 	PipelineStateDescription lightSourcePSODesc = {};
 	lightSourcePSODesc.Name = "Light Source PSO";
@@ -246,7 +245,7 @@ void Renderer::LoadResources() {
 	lightSourcePSODesc.noVertex = true;
 	lightSourcePSODesc.psoInputLayout.push_back(globalInputLayout);
 	
-	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO, g_ColorRenderPass);
+	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO, renderTarget);
 
 	PipelineStateDescription transparentPSODesc = {};
 	transparentPSODesc.Name = "Transparent PSO";
@@ -263,7 +262,7 @@ void Renderer::LoadResources() {
 	transparentPSODesc.colorBlendingDesc.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	transparentPSODesc.colorBlendingDesc.alphaBlendOp = VK_BLEND_OP_ADD;
 	
-	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO, g_ColorRenderPass);
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO, renderTarget);
 
 	PipelineStateDescription transparentStencilPSODesc = {};
 	transparentStencilPSODesc.Name = "Transparent Stencil Pipeline";
@@ -280,7 +279,7 @@ void Renderer::LoadResources() {
 	transparentStencilPSODesc.stencilState.writeMask = 0xff;
 	transparentStencilPSODesc.stencilState.reference = 1;
 
-	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO, g_ColorRenderPass);
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO, renderTarget);
 
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
 

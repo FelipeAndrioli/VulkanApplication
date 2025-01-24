@@ -2,7 +2,7 @@
 
 #include "BufferManager.h"
 #include "ResourceManager.h"
-#include "RenderPassManager.h"
+#include "RenderTarget.h"
 
 Application::~Application() {
 	m_UI.reset();
@@ -29,12 +29,13 @@ void Application::InitializeResources(IScene& scene) {
 	Graphics::GetDevice() = m_GraphicsDevice.get();
 
 	m_GraphicsDevice->CreateDescriptorPool();
+	m_GraphicsDevice->CreateSwapChainRenderTarget();
 
 	Graphics::InitializeRenderingImages(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
-	Graphics::InitializeStaticRenderPasses(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
+//	Graphics::InitializeStaticRenderPasses(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 
 	if (scene.settings.uiEnabled)
-		m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().renderPass);
+		m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().RenderTarget->GetRenderPass());
 }
 
 void Application::RunApplication(IScene& scene) {
@@ -73,11 +74,6 @@ bool Application::UpdateApplication(IScene& scene) {
 	if (m_ResizeApplication) {
 		m_ResizeApplication = false;
 		
-		m_GraphicsDevice->ResizeRenderPass(
-			m_GraphicsDevice->GetSwapChain().swapChainExtent.width,
-			m_GraphicsDevice->GetSwapChain().swapChainExtent.height,
-			scene.renderPass);
-
 		scene.Resize(m_Window->GetFramebufferSize().width, m_Window->GetFramebufferSize().height);
 	}
 
@@ -97,14 +93,14 @@ bool Application::UpdateApplication(IScene& scene) {
 
 	// SwapChain Render Pass
 	{
-		m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->GetSwapChain().renderPass, frame.commandBuffer);
+		m_GraphicsDevice->GetSwapChain().RenderTarget->BeginRenderPass(frame.commandBuffer);
 		if (m_UI && scene.settings.uiEnabled) {
 			m_UI->BeginFrame();
 			RenderCoreUI();
 			scene.RenderUI();
 			m_UI->EndFrame(frame.commandBuffer);
 		}
-		m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
+		m_GraphicsDevice->GetSwapChain().RenderTarget->EndRenderPass(frame.commandBuffer);
 	}
 
 	m_GraphicsDevice->EndFrame(frame);	
@@ -127,7 +123,7 @@ void Application::TerminateApplication(IScene& scene) {
 
 	scene.CleanUp();
 	
-	Graphics::ShutdownRenderPasses();
+//	Graphics::ShutdownRenderPasses();
 
 	ResourceManager::Get()->Destroy();
 }
@@ -141,7 +137,7 @@ void Application::Resize(int width, int height) {
 		m_GraphicsDevice->GetSwapChainExtent().width, 
 		m_GraphicsDevice->GetSwapChainExtent().height);
 
-	Graphics::ResizeRenderPasses(width, height);
+//	Graphics::ResizeRenderPasses(width, height);
 	
 	m_ResizeApplication = true;
 }

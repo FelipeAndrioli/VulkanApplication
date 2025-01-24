@@ -17,6 +17,9 @@
 #include "../Assets/Mesh.h"
 
 namespace Graphics {
+	class IRenderTarget;
+	class SwapChainRenderTarget;
+
 	const int FRAMES_IN_FLIGHT = 2;
 	const int DEDICATED_GPU = 2;
 	const std::vector<const char*> c_DeviceExtensions = {
@@ -83,15 +86,13 @@ namespace Graphics {
 	};
 
 	struct RenderPass {
-		RenderPassDesc description = {};
+		RenderPassDesc Description = {};
 
-		std::vector<VkFramebuffer> framebuffers;
+		VkRenderPass Handle = VK_NULL_HANDLE;
 
-		VkRenderPass handle = VK_NULL_HANDLE;
-
-		std::vector<VkAttachmentDescription> attachments = {};
-		std::vector<VkSubpassDependency> dependencies = {};
-		std::vector<VkSubpassDescription> subpasses = {};
+		std::vector<VkAttachmentDescription> Attachments = {};
+		std::vector<VkSubpassDependency> Dependencies = {};
+		std::vector<VkSubpassDescription> Subpasses = {};
 	};
 
 	struct SwapChainSupportDetails {
@@ -101,19 +102,16 @@ namespace Graphics {
 	};
 
 	struct SwapChain {
-		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-		VkExtent2D swapChainExtent = { 0, 0 };
-		uint32_t imageIndex = 0;
+		VkSwapchainKHR Handle = VK_NULL_HANDLE;
+		VkExtent2D Extent = { 0, 0 };
+		uint32_t ImageIndex = 0;
 
-		std::vector<VkImage> swapChainImages;
-		std::vector<VkImageView> swapChainImageViews;
-		std::vector<VkSampler> swapChainImageSamplers;
+		std::vector<VkImage> Images;
+		std::vector<VkImageView> ImageViews;
+		std::vector<VkSampler> ImageSamplers;
 
-		VkFormat swapChainImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
-
-		RenderPass renderPass = {};
-
-		GPUImage depthImage = {};
+		std::unique_ptr<SwapChainRenderTarget> RenderTarget;
+		VkFormat ImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 	};
 
 	struct Shader {
@@ -208,6 +206,7 @@ namespace Graphics {
 		~GraphicsDevice();
 
 		bool CreateSwapChain(Window& window, SwapChain& swapChain);
+		void CreateSwapChainRenderTarget();
 		void RecreateSwapChain(Window& window);
 		void DestroySwapChain(SwapChain& swapChain);
 
@@ -283,6 +282,7 @@ namespace Graphics {
 		void DestroyDescriptorPool();
 		void DestroyDescriptorPool(VkDescriptorPool& descriptorPool);
 		void CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout);
+		void CreatePipelineLayout(const VkDescriptorSetLayout& descriptorSetLayout, VkPipelineLayout& pipelineLayout);
 
 		void CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const std::vector<VkDescriptorSetLayoutBinding> bindings);
 		void CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const VkDescriptorSetLayoutCreateInfo& layoutInfo);
@@ -306,13 +306,13 @@ namespace Graphics {
 		std::vector<char> ReadFile(const std::string& filename);
 		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
 		void DestroyShader(Shader& shader);
-		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const RenderPass& renderPass);
+		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget);
 		void DestroyPipelineLayout(VkPipelineLayout& pipelineLayout);
 		void DestroyPipeline(PipelineState& pso);
 
 		uint32_t GetCurrentFrameIndex() { return m_CurrentFrame; }
 
-		VkExtent2D& GetSwapChainExtent() { return m_SwapChain.swapChainExtent; }
+		VkExtent2D& GetSwapChainExtent() { return m_SwapChain.Extent; }
 		const SwapChain& GetSwapChain() { return m_SwapChain; }
 
 		Frame& GetCurrentFrame();
@@ -361,7 +361,7 @@ namespace Graphics {
 		void CreateInstance(VkInstance& instance);
 		void CreateLogicalDevice(QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice);
 		void CreateQueue(VkDevice& logicalDevice, uint32_t queueFamilyIndex, VkQueue& queue);
-		void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
+		void CreateSwapChainImageViews(SwapChain& swapChain);
 		
 		void CreateCommandPool(VkCommandPool& commandPool, uint32_t queueFamilyIndex);
 		void CreateCommandBuffer(VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);

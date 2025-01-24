@@ -16,7 +16,7 @@ void Graphics::InitializeRenderingImages(uint32_t width, uint32_t height) {
 	// old format VK_FORMAT_R8G8B8A8_SRGB,
 	gfxDevice->CreateRenderTarget(
 		g_MsaaSceneColor, 
-		gfxDevice->GetSwapChain().swapChainImageFormat, 
+		gfxDevice->GetSwapChain().ImageFormat, 
 		{ width, height }, 
 		gfxDevice->m_MsaaSamples);
 	gfxDevice->CreateImageSampler(g_MsaaSceneColor);
@@ -24,10 +24,10 @@ void Graphics::InitializeRenderingImages(uint32_t width, uint32_t height) {
 	gfxDevice->CreateDepthBuffer(g_SceneDepth, { width, height }, gfxDevice->m_MsaaSamples);
 
 	// old format VK_FORMAT_R8G8B8A8_SRGB
-	gfxDevice->CreateRenderTarget(g_PostEffects, gfxDevice->GetSwapChain().swapChainImageFormat, {width, height}, VK_SAMPLE_COUNT_1_BIT);
+	gfxDevice->CreateRenderTarget(g_PostEffects, gfxDevice->GetSwapChain().ImageFormat, {width, height}, VK_SAMPLE_COUNT_1_BIT);
 	gfxDevice->CreateImageSampler(g_PostEffects);
 
-	gfxDevice->CreateRenderTarget(g_SceneColor, gfxDevice->GetSwapChain().swapChainImageFormat, { width, height }, VK_SAMPLE_COUNT_1_BIT);
+	gfxDevice->CreateRenderTarget(g_SceneColor, gfxDevice->GetSwapChain().ImageFormat, { width, height }, VK_SAMPLE_COUNT_1_BIT);
 	gfxDevice->CreateImageSampler(g_SceneColor);
 
 	gfxDevice->CreateDepthBuffer(g_ResolvedDepth, { width, height }, VK_SAMPLE_COUNT_1_BIT);

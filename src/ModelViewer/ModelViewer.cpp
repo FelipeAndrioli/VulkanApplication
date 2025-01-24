@@ -7,8 +7,6 @@
 #include "../Core/Application.h"
 #include "../Core/GraphicsDevice.h"
 #include "../Core/Settings.h"
-#include "../Core/BufferManager.h"
-#include "../Core/RenderPassManager.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Model.h"
@@ -43,16 +41,15 @@ private:
 
 	std::vector<std::shared_ptr<Assets::Model>> m_Models;
 
-	uint32_t m_ScreenWidth = settings.Width;
-	uint32_t m_ScreenHeight = settings.Height;
-
-	Graphics::RenderPass m_ColorRenderPass = {};
-	Graphics::RenderPass m_PostRenderPass = {};
+	uint32_t m_ScreenWidth = 0;
+	uint32_t m_ScreenHeight = 0;
 
 	bool m_RenderSkybox = false;
 	bool m_RenderWireframe = false;
 	bool m_RenderLightSources = false;
 
+	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
+	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
 };
 
 void ModelViewer::StartUp() {
@@ -115,13 +112,21 @@ void ModelViewer::StartUp() {
 	m_Models[m_Models.size() - 1]->Transformations.translation = glm::vec3(2.822f, -3.3f, -3.9f);
 	m_Models[m_Models.size() - 1]->Transformations.rotation = glm::vec3(0.0f, -20.0f, 0.0f);
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.214f;
+	
+	m_OffscreenRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
+	m_PostEffectsRenderTarget = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 
-	Renderer::LoadResources();
+	Renderer::LoadResources(*m_OffscreenRenderTarget);
 	
 	PostEffects::Initialize();
 }
 
 void ModelViewer::CleanUp() {
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	m_OffscreenRenderTarget.reset();
+	m_PostEffectsRenderTarget.reset();
+
 	m_Models.clear();
 	Renderer::Shutdown();
 	PostEffects::Shutdown();
@@ -138,8 +143,7 @@ void ModelViewer::Update(float d, InputSystem::Input& input) {
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	// Color Render Pass
-	gfxDevice->BeginRenderPass(Graphics::g_ColorRenderPass, commandBuffer);
+	m_OffscreenRenderTarget->BeginRenderPass(commandBuffer);
 
 	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
@@ -171,80 +175,22 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		if (model->RenderOutline)
 			Renderer::RenderOutline(commandBuffer, *model.get());
 	}
-		
-	gfxDevice->EndRenderPass(commandBuffer);
-	// here color render target is expected to be in shader read only optimal image layout
 
-	gfxDevice->BeginRenderPass(Graphics::g_PostEffectsRenderPass, commandBuffer);
+	m_OffscreenRenderTarget->EndRenderPass(commandBuffer);
 
-	PostEffects::Render(commandBuffer, Graphics::g_SceneColor);
+	m_PostEffectsRenderTarget->BeginRenderPass(commandBuffer);
 
-	gfxDevice->EndRenderPass(commandBuffer);
-	// here post effects render target is expected to be in transfer src optimal image layout
+	PostEffects::Render(commandBuffer, *m_PostEffectsRenderTarget.get(), m_OffscreenRenderTarget->GetColorBuffer());
 
-	gfxDevice->TransitionImageLayout(
-		gfxDevice->GetSwapChain().swapChainImages[gfxDevice->GetSwapChain().imageIndex],
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_ACCESS_SHADER_READ_BIT,
-		VK_ACCESS_TRANSFER_WRITE_BIT,
-		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-		VK_PIPELINE_STAGE_TRANSFER_BIT);
-	// prepare swap chain to receive the final content
+	m_PostEffectsRenderTarget->EndRenderPass(commandBuffer);
 
-	Graphics::GPUImage* imageToCopy = nullptr;
-	
 	if (PostEffects::Rendered) {
-		imageToCopy = &Graphics::g_PostEffects;
+		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_PostEffectsRenderTarget->GetColorBuffer());
 	}
 	else {
-		imageToCopy = &Graphics::g_SceneColor;
-		gfxDevice->TransitionImageLayout(*imageToCopy, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		m_OffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_OffscreenRenderTarget->GetColorBuffer());
 	}
-
-	VkImageCopy imageCopy = {};
-	imageCopy.extent.width = gfxDevice->GetSwapChainExtent().width;
-	imageCopy.extent.height = gfxDevice->GetSwapChainExtent().height;
-	imageCopy.extent.depth = 1;
-	imageCopy.srcOffset = { 0, 0, 0 };
-	imageCopy.srcSubresource = {
-		.aspectMask = imageToCopy->Description.AspectFlags,
-		.mipLevel = 0,
-		.baseArrayLayer = 0,
-		.layerCount = imageToCopy->Description.LayerCount
-	};
-	imageCopy.dstOffset = { 0, 0, 0 };
-	imageCopy.dstSubresource = {
-		.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-		.mipLevel = 0,
-		.baseArrayLayer = 0,
-		.layerCount = 1
-	};
-
-	VkCommandBuffer singleTimeCommandBuffer = gfxDevice->BeginSingleTimeCommandBuffer(gfxDevice->m_CommandPool);
-
-	vkCmdCopyImage(
-		singleTimeCommandBuffer, 
-		imageToCopy->Image,
-		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,																														
-		gfxDevice->GetSwapChain().swapChainImages[gfxDevice->GetSwapChain().imageIndex],
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,																
-		1,
-		&imageCopy);
-
-	gfxDevice->EndSingleTimeCommandBuffer(singleTimeCommandBuffer, gfxDevice->m_CommandPool);
-
-	gfxDevice->TransitionImageLayout(
-		gfxDevice->GetSwapChain().swapChainImages[gfxDevice->GetSwapChain().imageIndex],
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		VK_ACCESS_TRANSFER_WRITE_BIT,
-		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
-		VK_PIPELINE_STAGE_TRANSFER_BIT,
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-	);
-	// once the resulting image is copied to the swap chain, transition its layout to color attachment
-	// for the final pass that will load its content instead of clearing it.
 }
 
 void ModelViewer::RenderUI() {
