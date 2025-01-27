@@ -47,6 +47,7 @@ private:
 	bool m_RenderSkybox = false;
 	bool m_RenderWireframe = false;
 	bool m_RenderLightSources = false;
+	bool m_RenderDepthSwapChain = false;
 
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_DebugOffscreenRenderTarget;
@@ -182,17 +183,19 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	m_OffscreenRenderTarget->EndRenderPass(commandBuffer);
 
-	m_DebugOffscreenRenderTarget->BeginRenderPass(commandBuffer);
+	if (m_RenderDepthSwapChain) {
+		m_DebugOffscreenRenderTarget->BeginRenderPass(commandBuffer);
 
-	Renderer::MeshSorter debugSorter(Renderer::MeshSorter::BatchType::tDefault);
-	debugSorter.SetCamera(m_Camera);
+		Renderer::MeshSorter debugSorter(Renderer::MeshSorter::BatchType::tDefault);
+		debugSorter.SetCamera(m_Camera);
 
-	for (auto& model : m_Models) {
-		model->Render(debugSorter);
+		for (auto& model : m_Models) {
+			model->Render(debugSorter);
+		}
+
+		debugSorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenRenderTarget.get(), &Renderer::m_RenderDepthPSO);
+		m_DebugOffscreenRenderTarget->EndRenderPass(commandBuffer);
 	}
-
-	debugSorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenRenderTarget.get(), &Renderer::m_RenderDepthPSO);
-	m_DebugOffscreenRenderTarget->EndRenderPass(commandBuffer);
 
 	m_PostEffectsRenderTarget->BeginRenderPass(commandBuffer);
 	PostEffects::Render(commandBuffer, *m_PostEffectsRenderTarget.get(), m_OffscreenRenderTarget->GetColorBuffer());
@@ -208,8 +211,10 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_OffscreenRenderTarget->GetColorBuffer());
 	}
 
-	m_DebugOffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_DebugOffscreenRenderTarget->GetColorBuffer(), ((m_ScreenWidth / 2) + (m_ScreenWidth / 2) / 2) - 50, 100);
+	if (m_RenderDepthSwapChain) {
+		m_DebugOffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_DebugOffscreenRenderTarget->GetColorBuffer(), ((m_ScreenWidth / 2) + (m_ScreenWidth / 2) / 2) - 50, 100);
+	}
 }
 
 void ModelViewer::RenderUI() {
@@ -227,6 +232,9 @@ void ModelViewer::RenderUI() {
 	}
 
 	Renderer::OnUIRender();
+	
+	ImGui::SeparatorText("Debug");
+	ImGui::Checkbox("Render Depth (SwapChain Debug)", &m_RenderDepthSwapChain);
 }
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {
