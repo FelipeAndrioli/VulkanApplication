@@ -20,4 +20,6 @@ C:/VulkanSDK/1.3.250.0/Bin/glslc.exe grayscale.frag -o grayscale_frag.spv
 
 C:/VulkanSDK/1.3.250.0/Bin/glslc.exe present.frag -o present_frag.spv
 
+C:/VulkanSDK/1.3.250.0/Bin/glslc.exe depth.frag -o depth_frag.spv
+
 pause
