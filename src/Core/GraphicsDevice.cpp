@@ -1893,18 +1893,17 @@ namespace Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
-	void GraphicsDevice::CreatePipelineLayout(const VkDescriptorSetLayout& descriptorSetLayout, VkPipelineLayout& pipelineLayout) {
+	void GraphicsDevice::CreatePipelineLayout(const VkDescriptorSetLayout& descriptorSetLayout, VkPipelineLayout& pipelineLayout, const std::vector<VkPushConstantRange>& pushConstants) {
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = 1;
 		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-//		pipelineLayoutInfo.pushConstantRangeCount = 0;
-//		pipelineLayoutInfo.pPushConstantRanges = nullptr;
+		pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
+		pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
 
 		VkResult result = vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout);
 
 		assert(result == VK_SUCCESS);
-
 	}
 
 	void GraphicsDevice::CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const std::vector<VkDescriptorSetLayoutBinding> bindings) {
@@ -2440,6 +2439,7 @@ namespace Graphics {
 		VkResult result = vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &pso.pipelineLayout);
 		assert(result == VK_SUCCESS);
 
+
 		pso.pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pso.pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 		pso.pipelineInfo.pStages = shaderStages.data();
@@ -2460,6 +2460,8 @@ namespace Graphics {
 
 		result = vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pso.pipelineInfo, nullptr, &pso.pipeline);
 		assert(result == VK_SUCCESS);
+
+		pso.description = desc;
 	}
 
 	void GraphicsDevice::DestroyPipelineLayout(VkPipelineLayout& pipelineLayout) {
@@ -2471,7 +2473,8 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::DestroyPipeline(PipelineState& pso) {
-		vkDestroyPipelineLayout(m_LogicalDevice, pso.pipelineLayout, nullptr);
+		if (pso.pipelineLayout != VK_NULL_HANDLE)
+			vkDestroyPipelineLayout(m_LogicalDevice, pso.pipelineLayout, nullptr);
 
 		pso.pushConstants.clear();
 		pso.layoutBindings.clear();
@@ -2483,7 +2486,8 @@ namespace Graphics {
 
 		pso.descriptorSetLayout.clear();
 
-		vkDestroyPipeline(m_LogicalDevice, pso.pipeline, nullptr);
+		if (pso.pipeline != VK_NULL_HANDLE)
+			vkDestroyPipeline(m_LogicalDevice, pso.pipeline, nullptr);
 	}
 
 	Frame& GraphicsDevice::GetCurrentFrame() {

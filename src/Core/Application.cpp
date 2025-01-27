@@ -93,14 +93,14 @@ bool Application::UpdateApplication(IScene& scene) {
 
 	// SwapChain Render Pass
 	{
-		m_GraphicsDevice->GetSwapChain().RenderTarget->BeginRenderPass(frame.commandBuffer);
+		m_GraphicsDevice->GetSwapChain().RenderTarget->Begin(frame.commandBuffer);
 		if (m_UI && scene.settings.uiEnabled) {
 			m_UI->BeginFrame();
 			RenderCoreUI();
 			scene.RenderUI();
 			m_UI->EndFrame(frame.commandBuffer);
 		}
-		m_GraphicsDevice->GetSwapChain().RenderTarget->EndRenderPass(frame.commandBuffer);
+		m_GraphicsDevice->GetSwapChain().RenderTarget->End(frame.commandBuffer);
 	}
 
 	m_GraphicsDevice->EndFrame(frame);	

@@ -31,7 +31,7 @@ void PostEffects::Initialize() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 	
 	gfxDevice->CreateDescriptorSetLayout(m_DescriptorSetLayout, m_InputLayout.bindings);
-	gfxDevice->CreatePipelineLayout(m_DescriptorSetLayout, m_PipelineLayout);
+	gfxDevice->CreatePipelineLayout(m_DescriptorSetLayout, m_PipelineLayout, m_InputLayout.pushConstants);
 	
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_DescriptorSetLayout, m_DescriptorSet[i]);

@@ -49,7 +49,7 @@ namespace Renderer {
 			Graphics::GPUBuffer* bufferPtr;
 
 			float distance;
-			
+
 			uint32_t modelIndex = 0;
 			uint32_t totalIndices = 0;
 		};
@@ -68,6 +68,8 @@ namespace Renderer {
 		void AddMesh(const Assets::Mesh& mesh, float distance, uint32_t modelIndex, uint32_t totalIndices, Graphics::GPUBuffer& buffer);
 		void Sort();
 		void RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass);
+		void RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass, Graphics::IRenderTarget& renderTarget, Graphics::PipelineState* pso);
+		void ResetDraw() { m_CurrentDraw = 0; }
 	private:
 		BatchType m_BatchType;
 		DrawPass m_CurrentPass;
@@ -86,6 +88,16 @@ namespace Renderer {
 		int ModelIdx = 0;
 		int LightSourceIdx = 0;
 	};
+
+	extern Graphics::PipelineState m_SkyboxPSO;
+	extern Graphics::PipelineState m_ColorPSO;
+	extern Graphics::PipelineState m_ColorStencilPSO;
+	extern Graphics::PipelineState m_OutlinePSO;
+	extern Graphics::PipelineState m_WireframePSO;
+	extern Graphics::PipelineState m_LightSourcePSO;
+	extern Graphics::PipelineState m_TransparentPSO;
+	extern Graphics::PipelineState m_TransparentStencilPSO;
+	extern Graphics::PipelineState m_RenderDepthPSO;
 
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 

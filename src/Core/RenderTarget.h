@@ -18,12 +18,12 @@ namespace Graphics {
 
 		const VkExtent2D GetExtent() const { return { m_Width, m_Height }; }
 		const Graphics::RenderPass& GetRenderPass() const { return m_RenderPass; }
-
 	protected:
 		// support to color, depth, and resolve images 
 		std::array<GPUImage, 3> m_Images;
 
 		std::vector<VkFramebuffer> m_Framebuffers;
+		std::vector<VkImageCopy> m_ImagesToCopy;
 
 		Graphics::RenderPass m_RenderPass;
 		
@@ -45,7 +45,11 @@ namespace Graphics {
 
 //		GPUImage& GetColorBuffer()	{ return m_Images[m_ColorIndex]; } // this should probably return the Swap Chain Image
 		GPUImage& GetDepthBuffer()	{ return m_Images[m_DepthIndex]; }
-		void CopyColor(const GPUImage& colorBuffer);
+		void CopyColor(const GPUImage& colorBuffer, int positionX = 0, int positionY = 0);
+		void Begin(const VkCommandBuffer& commandBuffer);
+		void End(const VkCommandBuffer& commandBuffer);
+	private:
+		VkImageLayout m_ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	};
 
 	class OffscreenRenderTarget : public IRenderTarget {
@@ -55,6 +59,10 @@ namespace Graphics {
 		void ChangeLayout(VkImageLayout newLayout);
 		const GPUImage& GetColorBuffer() const { return m_Images[m_ColorIndex]; }
 		const GPUImage& GetDepthBuffer() const { return m_Images[m_DepthIndex]; }
+
+	private:
+		float m_PositionX = 0;
+		float m_PositionY = 0;
 	};
 
 	class PostEffectsRenderTarget : public IRenderTarget {

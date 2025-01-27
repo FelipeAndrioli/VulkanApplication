@@ -49,6 +49,7 @@ private:
 	bool m_RenderLightSources = false;
 
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
+	std::unique_ptr<Graphics::OffscreenRenderTarget> m_DebugOffscreenRenderTarget;
 	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
 };
 
@@ -114,6 +115,7 @@ void ModelViewer::StartUp() {
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.214f;
 	
 	m_OffscreenRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
+	m_DebugOffscreenRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(400, 250);
 	m_PostEffectsRenderTarget = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 
 	Renderer::LoadResources(*m_OffscreenRenderTarget);
@@ -125,6 +127,7 @@ void ModelViewer::CleanUp() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	m_OffscreenRenderTarget.reset();
+	m_DebugOffscreenRenderTarget.reset();
 	m_PostEffectsRenderTarget.reset();
 
 	m_Models.clear();
@@ -143,8 +146,6 @@ void ModelViewer::Update(float d, InputSystem::Input& input) {
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_OffscreenRenderTarget->BeginRenderPass(commandBuffer);
-
 	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
 
 	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
@@ -155,6 +156,9 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	}
 
 	sorter.Sort();
+
+	m_OffscreenRenderTarget->BeginRenderPass(commandBuffer);
+
 	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
 	
 	if (m_RenderSkybox) {
@@ -178,11 +182,23 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	m_OffscreenRenderTarget->EndRenderPass(commandBuffer);
 
+	m_DebugOffscreenRenderTarget->BeginRenderPass(commandBuffer);
+
+	Renderer::MeshSorter debugSorter(Renderer::MeshSorter::BatchType::tDefault);
+	debugSorter.SetCamera(m_Camera);
+
+	for (auto& model : m_Models) {
+		model->Render(debugSorter);
+	}
+
+	debugSorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenRenderTarget.get(), &Renderer::m_RenderDepthPSO);
+	m_DebugOffscreenRenderTarget->EndRenderPass(commandBuffer);
+
 	m_PostEffectsRenderTarget->BeginRenderPass(commandBuffer);
-
 	PostEffects::Render(commandBuffer, *m_PostEffectsRenderTarget.get(), m_OffscreenRenderTarget->GetColorBuffer());
-
 	m_PostEffectsRenderTarget->EndRenderPass(commandBuffer);
+
+	std::vector<VkImageCopy> imagesToCopy = {};
 
 	if (PostEffects::Rendered) {
 		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_PostEffectsRenderTarget->GetColorBuffer());
@@ -191,6 +207,9 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		m_OffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_OffscreenRenderTarget->GetColorBuffer());
 	}
+
+	m_DebugOffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_DebugOffscreenRenderTarget->GetColorBuffer(), ((m_ScreenWidth / 2) + (m_ScreenWidth / 2) / 2) - 50, 100);
 }
 
 void ModelViewer::RenderUI() {
@@ -211,6 +230,7 @@ void ModelViewer::RenderUI() {
 }
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {
+	// TODO: check render targets resize
 	m_Camera.Resize(width, height);
 }
 

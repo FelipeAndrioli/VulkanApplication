@@ -184,6 +184,8 @@ namespace Graphics {
 		VkPipelineColorBlendStateCreateInfo colorBlending = {};
 
 		const RenderPass* renderPass = nullptr;
+
+		PipelineStateDescription description = {};
 	};
 
 	struct Frame {
@@ -282,7 +284,7 @@ namespace Graphics {
 		void DestroyDescriptorPool();
 		void DestroyDescriptorPool(VkDescriptorPool& descriptorPool);
 		void CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout);
-		void CreatePipelineLayout(const VkDescriptorSetLayout& descriptorSetLayout, VkPipelineLayout& pipelineLayout);
+		void CreatePipelineLayout(const VkDescriptorSetLayout& descriptorSetLayout, VkPipelineLayout& pipelineLayout, const std::vector<VkPushConstantRange>& pushConstants);
 
 		void CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const std::vector<VkDescriptorSetLayoutBinding> bindings);
 		void CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const VkDescriptorSetLayoutCreateInfo& layoutInfo);

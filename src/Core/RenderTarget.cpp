@@ -175,17 +175,19 @@ namespace Graphics {
 		}
 	}
 
-	void SwapChainRenderTarget::CopyColor(const Graphics::GPUImage& colorBuffer) {
+	void SwapChainRenderTarget::CopyColor(const Graphics::GPUImage& colorBuffer, int positionX, int positionY) {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 		gfxDevice->TransitionImageLayout(
 			gfxDevice->GetSwapChain().Images[gfxDevice->GetSwapChain().ImageIndex],
-			VK_IMAGE_LAYOUT_UNDEFINED,
+			m_ImageLayout,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			VK_ACCESS_SHADER_READ_BIT,
 			VK_ACCESS_TRANSFER_WRITE_BIT,
 			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 			VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+		m_ImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
 		VkImageCopy imageCopy = {};
 		imageCopy.extent.width = colorBuffer.Description.Width;
@@ -198,7 +200,11 @@ namespace Graphics {
 			.baseArrayLayer = 0,
 			.layerCount = colorBuffer.Description.LayerCount
 		};
-		imageCopy.dstOffset = { 0, 0, 0 };
+		imageCopy.dstOffset = { 
+			.x = positionX, 
+			.y = positionY, 
+			.z = 0 
+		};
 		imageCopy.dstSubresource = {
 			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 			.mipLevel = 0,
@@ -228,6 +234,17 @@ namespace Graphics {
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 		);
+		
+		m_ImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	}
+
+	void SwapChainRenderTarget::Begin(const VkCommandBuffer& commandBuffer) {
+		BeginRenderPass(commandBuffer);
+	}
+	
+	void SwapChainRenderTarget::End(const VkCommandBuffer& commandBuffer) {
+		EndRenderPass(commandBuffer);
+		m_ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 
 	/* ========================== SwapChain Render Target Implementation End ========================== */
@@ -250,7 +267,7 @@ namespace Graphics {
 
 		m_RenderPass.Description.extent = GetExtent();
 		m_RenderPass.Description.viewport = {
-			.x = 0,
+			.x = 0, 
 			.y = 0,
 			.width = static_cast<float>(m_Width),
 			.height = static_cast<float>(m_Height),
@@ -259,8 +276,8 @@ namespace Graphics {
 		};
 		m_RenderPass.Description.scissor = {
 			.offset = {
-				.x = 0,
-				.y = 0
+				.x = 0, 
+				.y = 0 
 			},
 			.extent = {
 				.width = m_Width,

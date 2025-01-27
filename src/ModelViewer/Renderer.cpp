@@ -34,6 +34,7 @@ namespace Renderer {
 	Graphics::Shader m_OutlineFragShader = {};
 	Graphics::Shader m_OutlineVertShader = {};
 	Graphics::Shader m_TransparentFragShader = {};
+	Graphics::Shader m_DepthFragShader = {};
 
 	Graphics::Buffer m_ModelBuffer = {};
 	Graphics::Buffer m_SkyboxBuffer = {};
@@ -47,7 +48,10 @@ namespace Renderer {
 	Graphics::PipelineState m_LightSourcePSO = {};
 	Graphics::PipelineState m_TransparentPSO = {};
 	Graphics::PipelineState m_TransparentStencilPSO = {};
-	
+	Graphics::PipelineState m_RenderDepthPSO = {};
+
+	VkPipelineLayout m_GlobalPipelineLayout = VK_NULL_HANDLE;
+
 	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
 
 	GlobalConstants m_GlobalConstants = {};
@@ -95,6 +99,8 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyShader(m_OutlineVertShader);
 	gfxDevice->DestroyShader(m_OutlineFragShader);
 	gfxDevice->DestroyShader(m_TransparentFragShader);
+	gfxDevice->DestroyShader(m_DepthFragShader);
+
 	gfxDevice->DestroyPipeline(m_ColorPSO);
 	gfxDevice->DestroyPipeline(m_ColorStencilPSO);
 	gfxDevice->DestroyPipeline(m_OutlinePSO);
@@ -103,6 +109,9 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyPipeline(m_LightSourcePSO);
 	gfxDevice->DestroyPipeline(m_TransparentPSO);
 	gfxDevice->DestroyPipeline(m_TransparentStencilPSO);
+	gfxDevice->DestroyPipeline(m_RenderDepthPSO);
+
+	gfxDevice->DestroyPipelineLayout(m_GlobalPipelineLayout);
 
 	LightManager::Shutdown();
 
@@ -142,6 +151,7 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "../src/Assets/Shaders/outline.vert");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "../src/Assets/Shaders/outline.frag");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "../src/Assets/Shaders/transparent_ps.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader, "../src/Assets/Shaders/depth.frag");
 #else 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "./Shaders/skybox_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "./Shaders/skybox_frag.spv");
@@ -153,6 +163,7 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "./Shaders/outline_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "./Shaders/outline_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "./Shaders/transparent_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader, "./Shaders/depth_frag.spv");
 #endif
 
 	InputLayout globalInputLayout = {
@@ -176,12 +187,15 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 		gfxDevice->WriteSubBuffer(m_GlobalDataBuffer[i], &m_GlobalConstants, sizeof(GlobalConstants));
 	}
 
+	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
+	gfxDevice->CreatePipelineLayout(m_GlobalDescriptorSetLayout, m_GlobalPipelineLayout, globalInputLayout.pushConstants);
+	
 	PipelineStateDescription colorPSODesc = {};
 	colorPSODesc.Name = "Color Pipeline";
 	colorPSODesc.vertexShader = &m_DefaultVertShader;
 	colorPSODesc.fragmentShader = &m_ColorFragShader;
 	colorPSODesc.psoInputLayout.push_back(globalInputLayout);
-	
+
 	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO, renderTarget);
 
 	PipelineStateDescription colorStencilPSODesc = {};
@@ -281,7 +295,15 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 
 	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO, renderTarget);
 
-	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
+	PipelineStateDescription renderDepthPSODesc = {};
+	renderDepthPSODesc.Name = "Render Depth";
+	renderDepthPSODesc.vertexShader = &m_DefaultVertShader;
+	renderDepthPSODesc.fragmentShader = &m_DepthFragShader;
+	renderDepthPSODesc.psoInputLayout.push_back(globalInputLayout);
+	
+	m_RenderDepthPSO.description = renderDepthPSODesc;
+
+//	gfxDevice->CreatePipelineState(renderDepthPSODesc, m_RenderDepthPSO, renderTarget);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).bindlessSet);
@@ -332,7 +354,7 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 
 	gfxDevice->UpdateBuffer(m_ModelBuffer, modelConstants.data());
 
-	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
+	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_GlobalPipelineLayout, 0, 1);
 }
 
 void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
@@ -499,7 +521,7 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 		const VkBuffer* geometryBuffer = nullptr;
 
 		const uint32_t lastDraw = m_CurrentDraw + passCount;
-		
+
 		while (m_CurrentDraw < lastDraw) {
 			const SortKey& key = m_SortKeys[m_CurrentDraw];
 			const SortMesh& sortMesh = m_SortMeshes[key.value];
@@ -513,6 +535,80 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 				assert(pipeline != nullptr);
 			}
 
+			if (geometryBuffer == nullptr || &sortMesh.bufferPtr->Handle != geometryBuffer) {
+				geometryBuffer = &sortMesh.bufferPtr->Handle;
+
+				VkDeviceSize offsets[] = { sizeof(uint32_t) * sortMesh.totalIndices };
+
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, geometryBuffer, offsets);
+				vkCmdBindIndexBuffer(commandBuffer, *geometryBuffer, 0, VK_INDEX_TYPE_UINT32);
+			}
+
+			assert(geometryBuffer != nullptr);
+
+			PipelinePushConstants pushConstants = {
+				.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+				.ModelIdx = static_cast<int>(sortMesh.modelIndex)
+			};
+
+			vkCmdPushConstants(
+				commandBuffer,
+				pipeline->pipelineLayout,
+				VK_SHADER_STAGE_ALL_GRAPHICS,
+				0,
+				sizeof(PipelinePushConstants),
+				&pushConstants
+			);
+
+			vkCmdDrawIndexed(
+				commandBuffer,
+				static_cast<uint32_t>(mesh.Indices.size()),
+				1,
+				static_cast<uint32_t>(mesh.IndexOffset),
+				static_cast<int32_t>(mesh.VertexOffset),
+				0
+			);
+
+			++m_CurrentDraw;
+		}
+	}
+}
+
+void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass, Graphics::IRenderTarget& renderTarget, Graphics::PipelineState* pso) {
+
+	GraphicsDevice* gfxDevice = GetDevice();
+	
+	for (; m_CurrentPass <= pass; m_CurrentPass = (DrawPass)(m_CurrentPass + 1)) {
+
+		const uint32_t passCount = m_PassCounts[m_CurrentPass];
+
+		if (passCount == 0)
+			continue;
+
+		if (pso->renderPass == nullptr 
+			|| pso->renderPass->Handle == VK_NULL_HANDLE 
+			|| pso->renderPass->Handle != renderTarget.GetRenderPass().Handle) {
+
+			gfxDevice->DestroyPipeline(*pso);
+			gfxDevice->CreatePipelineState(pso->description, *pso, renderTarget);
+		}
+
+		const PipelineState* pipeline = nullptr;
+		const VkBuffer* geometryBuffer = nullptr;
+
+		const uint32_t lastDraw = m_CurrentDraw + passCount;
+
+		while (m_CurrentDraw < lastDraw) {
+			const SortKey& key = m_SortKeys[m_CurrentDraw];
+			const SortMesh& sortMesh = m_SortMeshes[key.value];
+			const Assets::Mesh& mesh = *sortMesh.mesh;
+
+			if (pipeline == nullptr || pso != pipeline) {
+				pipeline = pso;
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+				assert(pipeline != nullptr);
+			}
+		
 			if (geometryBuffer == nullptr || &sortMesh.bufferPtr->Handle != geometryBuffer) {
 				geometryBuffer = &sortMesh.bufferPtr->Handle;
 
