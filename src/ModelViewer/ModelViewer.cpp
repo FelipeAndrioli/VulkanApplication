@@ -48,10 +48,13 @@ private:
 	bool m_RenderWireframe = false;
 	bool m_RenderLightSources = false;
 	bool m_RenderDepthSwapChain = false;
+	bool m_RenderDepthImGui= false;
 
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_DebugOffscreenRenderTarget;
 	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
+
+	VkDescriptorSet m_DebugOffscreenDescriptorSet = VK_NULL_HANDLE;
 };
 
 void ModelViewer::StartUp() {
@@ -117,6 +120,11 @@ void ModelViewer::StartUp() {
 	
 	m_OffscreenRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 	m_DebugOffscreenRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(400, 250);
+	m_DebugOffscreenDescriptorSet = ImGui_ImplVulkan_AddTexture(
+		m_DebugOffscreenRenderTarget->GetColorBuffer().ImageSampler,
+		m_DebugOffscreenRenderTarget->GetColorBuffer().ImageView,
+		m_DebugOffscreenRenderTarget->GetRenderPass().FinalLayout
+	);
 	m_PostEffectsRenderTarget = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 
 	Renderer::LoadResources(*m_OffscreenRenderTarget);
@@ -183,7 +191,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	m_OffscreenRenderTarget->EndRenderPass(commandBuffer);
 
-	if (m_RenderDepthSwapChain) {
+	if (m_RenderDepthSwapChain || m_RenderDepthImGui) {
 		m_DebugOffscreenRenderTarget->BeginRenderPass(commandBuffer);
 
 		Renderer::MeshSorter debugSorter(Renderer::MeshSorter::BatchType::tDefault);
@@ -235,6 +243,14 @@ void ModelViewer::RenderUI() {
 	
 	ImGui::SeparatorText("Debug");
 	ImGui::Checkbox("Render Depth (SwapChain Debug)", &m_RenderDepthSwapChain);
+
+	ImGui::Checkbox("Render Depth (ImGui Debug)", &m_RenderDepthImGui);
+
+	if (m_RenderDepthImGui) {
+		ImGui::Begin("Render Depth (ImGui Debug)");
+		ImGui::Image((ImTextureID)m_DebugOffscreenDescriptorSet, ImVec2(m_DebugOffscreenRenderTarget->GetExtent().width, m_DebugOffscreenRenderTarget->GetExtent().height));
+		ImGui::End();
+	}
 }
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {
