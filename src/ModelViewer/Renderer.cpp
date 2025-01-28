@@ -35,6 +35,7 @@ namespace Renderer {
 	Graphics::Shader m_OutlineVertShader = {};
 	Graphics::Shader m_TransparentFragShader = {};
 	Graphics::Shader m_DepthFragShader = {};
+	Graphics::Shader m_NormalsFragShader = {};
 
 	Graphics::Buffer m_ModelBuffer = {};
 	Graphics::Buffer m_SkyboxBuffer = {};
@@ -49,6 +50,7 @@ namespace Renderer {
 	Graphics::PipelineState m_TransparentPSO = {};
 	Graphics::PipelineState m_TransparentStencilPSO = {};
 	Graphics::PipelineState m_RenderDepthPSO = {};
+	Graphics::PipelineState m_RenderNormalsPSO= {};
 
 	VkPipelineLayout m_GlobalPipelineLayout = VK_NULL_HANDLE;
 
@@ -100,6 +102,7 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyShader(m_OutlineFragShader);
 	gfxDevice->DestroyShader(m_TransparentFragShader);
 	gfxDevice->DestroyShader(m_DepthFragShader);
+	gfxDevice->DestroyShader(m_NormalsFragShader);
 
 	gfxDevice->DestroyPipeline(m_ColorPSO);
 	gfxDevice->DestroyPipeline(m_ColorStencilPSO);
@@ -110,6 +113,7 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyPipeline(m_TransparentPSO);
 	gfxDevice->DestroyPipeline(m_TransparentStencilPSO);
 	gfxDevice->DestroyPipeline(m_RenderDepthPSO);
+	gfxDevice->DestroyPipeline(m_RenderNormalsPSO);
 
 	gfxDevice->DestroyPipelineLayout(m_GlobalPipelineLayout);
 
@@ -152,6 +156,7 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "../src/Assets/Shaders/outline.frag");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "../src/Assets/Shaders/transparent_ps.frag");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader, "../src/Assets/Shaders/depth.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalsFragShader, "../src/Assets/Shaders/debug_normals.frag");
 #else 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "./Shaders/skybox_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "./Shaders/skybox_frag.spv");
@@ -164,6 +169,7 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "./Shaders/outline_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "./Shaders/transparent_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader, "./Shaders/depth_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalsFragShader, "./Shaders/debug_normals_frag.spv");
 #endif
 
 	InputLayout globalInputLayout = {
@@ -302,6 +308,15 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 	renderDepthPSODesc.psoInputLayout.push_back(globalInputLayout);
 	
 	m_RenderDepthPSO.description = renderDepthPSODesc;
+
+	PipelineStateDescription renderNormalsPSODesc = {};
+	renderNormalsPSODesc.Name = "Render Normals";
+	renderNormalsPSODesc.vertexShader = &m_DefaultVertShader;
+	renderNormalsPSODesc.fragmentShader = &m_NormalsFragShader;
+	renderNormalsPSODesc.psoInputLayout.push_back(globalInputLayout);
+
+	m_RenderNormalsPSO.description = renderNormalsPSODesc;
+
 
 //	gfxDevice->CreatePipelineState(renderDepthPSODesc, m_RenderDepthPSO, renderTarget);
 

@@ -48,13 +48,17 @@ private:
 	bool m_RenderWireframe = false;
 	bool m_RenderLightSources = false;
 	bool m_RenderDepthSwapChain = false;
-	bool m_RenderDepthImGui= false;
+	bool m_RenderDepthImGui = false;
+	bool m_RenderNormalsSwapChain = false;
+	bool m_RenderNormalsImGui= false;
 
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_DebugOffscreenRenderTarget;
+	std::unique_ptr<Graphics::OffscreenRenderTarget> m_DebugOffscreenNormalsRenderTarget;
 	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
 
 	VkDescriptorSet m_DebugOffscreenDescriptorSet = VK_NULL_HANDLE;
+	VkDescriptorSet m_DebugOffscreenNormalDescriptorSet = VK_NULL_HANDLE;
 };
 
 void ModelViewer::StartUp() {
@@ -125,6 +129,14 @@ void ModelViewer::StartUp() {
 		m_DebugOffscreenRenderTarget->GetColorBuffer().ImageView,
 		m_DebugOffscreenRenderTarget->GetRenderPass().FinalLayout
 	);
+
+	m_DebugOffscreenNormalsRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(400, 250);
+	m_DebugOffscreenNormalDescriptorSet = ImGui_ImplVulkan_AddTexture(
+		m_DebugOffscreenNormalsRenderTarget->GetColorBuffer().ImageSampler,
+		m_DebugOffscreenNormalsRenderTarget->GetColorBuffer().ImageView,
+		m_DebugOffscreenNormalsRenderTarget->GetRenderPass().FinalLayout
+	);
+
 	m_PostEffectsRenderTarget = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 
 	Renderer::LoadResources(*m_OffscreenRenderTarget);
@@ -137,6 +149,7 @@ void ModelViewer::CleanUp() {
 
 	m_OffscreenRenderTarget.reset();
 	m_DebugOffscreenRenderTarget.reset();
+	m_DebugOffscreenNormalsRenderTarget.reset();
 	m_PostEffectsRenderTarget.reset();
 
 	m_Models.clear();
@@ -205,6 +218,20 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		m_DebugOffscreenRenderTarget->EndRenderPass(commandBuffer);
 	}
 
+	if (m_RenderNormalsSwapChain || m_RenderNormalsImGui) {
+		m_DebugOffscreenNormalsRenderTarget->BeginRenderPass(commandBuffer);
+	
+		Renderer::MeshSorter normalsDebugSorter(Renderer::MeshSorter::BatchType::tDefault);
+		normalsDebugSorter.SetCamera(m_Camera);
+
+		for (auto& model : m_Models) {
+			model->Render(normalsDebugSorter);
+		}
+
+		normalsDebugSorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenNormalsRenderTarget.get(), &Renderer::m_RenderNormalsPSO);
+		m_DebugOffscreenNormalsRenderTarget->EndRenderPass(commandBuffer);
+	}
+
 	m_PostEffectsRenderTarget->BeginRenderPass(commandBuffer);
 	PostEffects::Render(commandBuffer, *m_PostEffectsRenderTarget.get(), m_OffscreenRenderTarget->GetColorBuffer());
 	m_PostEffectsRenderTarget->EndRenderPass(commandBuffer);
@@ -222,6 +249,12 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	if (m_RenderDepthSwapChain) {
 		m_DebugOffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_DebugOffscreenRenderTarget->GetColorBuffer(), ((m_ScreenWidth / 2) + (m_ScreenWidth / 2) / 2) - 50, 100);
+	}
+
+	if (m_RenderNormalsSwapChain) {
+		m_DebugOffscreenNormalsRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_DebugOffscreenNormalsRenderTarget->GetColorBuffer(), 
+			((m_ScreenWidth / 2) + (m_ScreenWidth / 2) / 2) - 50, 150 + m_DebugOffscreenRenderTarget->GetExtent().height);
 	}
 }
 
@@ -243,12 +276,22 @@ void ModelViewer::RenderUI() {
 	
 	ImGui::SeparatorText("Debug");
 	ImGui::Checkbox("Render Depth (SwapChain Debug)", &m_RenderDepthSwapChain);
+	ImGui::Checkbox("Render Normals (SwapChain Debug)", &m_RenderNormalsSwapChain);
 
 	ImGui::Checkbox("Render Depth (ImGui Debug)", &m_RenderDepthImGui);
+	ImGui::Checkbox("Render Normals (ImGui Debug)", &m_RenderNormalsImGui);
 
 	if (m_RenderDepthImGui) {
-		ImGui::Begin("Render Depth (ImGui Debug)");
-		ImGui::Image((ImTextureID)m_DebugOffscreenDescriptorSet, ImVec2(m_DebugOffscreenRenderTarget->GetExtent().width, m_DebugOffscreenRenderTarget->GetExtent().height));
+		ImGui::Begin("Render Depth");
+		ImGui::Image((ImTextureID)m_DebugOffscreenDescriptorSet, 
+			ImVec2(m_DebugOffscreenRenderTarget->GetExtent().width, m_DebugOffscreenRenderTarget->GetExtent().height));
+		ImGui::End();
+	}
+
+	if (m_RenderNormalsImGui) {
+		ImGui::Begin("Render Normals");
+		ImGui::Image((ImTextureID)m_DebugOffscreenNormalDescriptorSet, 
+			ImVec2(m_DebugOffscreenNormalsRenderTarget->GetExtent().width, m_DebugOffscreenNormalsRenderTarget->GetExtent().height));
 		ImGui::End();
 	}
 }

@@ -22,4 +22,5 @@ C:/VulkanSDK/1.3.250.0/Bin/glslc.exe present.frag -o present_frag.spv
 
 C:/VulkanSDK/1.3.250.0/Bin/glslc.exe depth.frag -o depth_frag.spv
 
+C:/VulkanSDK/1.3.250.0/Bin/glslc.exe debug_normals.frag -o debug_normals_frag.spv
 pause

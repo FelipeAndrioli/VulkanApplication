@@ -98,6 +98,7 @@ namespace Renderer {
 	extern Graphics::PipelineState m_TransparentPSO;
 	extern Graphics::PipelineState m_TransparentStencilPSO;
 	extern Graphics::PipelineState m_RenderDepthPSO;
+	extern Graphics::PipelineState m_RenderNormalsPSO;
 
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
