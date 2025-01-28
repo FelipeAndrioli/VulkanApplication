@@ -31,9 +31,6 @@ void Application::InitializeResources(IScene& scene) {
 	m_GraphicsDevice->CreateDescriptorPool();
 	m_GraphicsDevice->CreateSwapChainRenderTarget();
 
-	// TODO: remove
-	Graphics::InitializeRenderingImages(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
-
 	if (scene.settings.uiEnabled)
 		m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().RenderTarget->GetRenderPass());
 }
@@ -119,8 +116,6 @@ void Application::InitializeApplication(IScene& scene) {
 }
 
 void Application::TerminateApplication(IScene& scene) {
-	Graphics::ShutdownRenderingImages();
-
 	scene.CleanUp();
 	
 	ResourceManager::Get()->Destroy();

@@ -6,16 +6,6 @@
 #include "Graphics.h"
 
 namespace Graphics {
-	extern GPUImage g_MsaaSceneColor;
-	extern GPUImage g_SceneDepth;
-	extern GPUImage g_SceneColor;
-	extern GPUImage g_ResolvedDepth;
-	extern GPUImage g_PostEffects;
-
-	void InitializeRenderingImages(uint32_t width, uint32_t height);
-	void ResizeDisplayDependentImages(uint32_t width, uint32_t height);
-	void ShutdownRenderingImages();
-
 	class BufferManager {
 	public:
 		BufferManager();

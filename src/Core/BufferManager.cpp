@@ -2,66 +2,6 @@
 
 #include "GraphicsDevice.h"
 
-namespace Graphics {
-	GPUImage g_MsaaSceneColor;
-	GPUImage g_SceneDepth;
-	GPUImage g_PostEffects;
-	GPUImage g_SceneColor;
-	GPUImage g_ResolvedDepth;
-};
-
-void Graphics::InitializeRenderingImages(uint32_t width, uint32_t height) {
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
-	// old format VK_FORMAT_R8G8B8A8_SRGB,
-	gfxDevice->CreateRenderTarget(
-		g_MsaaSceneColor, 
-		gfxDevice->GetSwapChain().ImageFormat, 
-		{ width, height }, 
-		gfxDevice->m_MsaaSamples);
-	gfxDevice->CreateImageSampler(g_MsaaSceneColor);
-	
-	gfxDevice->CreateDepthBuffer(g_SceneDepth, { width, height }, gfxDevice->m_MsaaSamples);
-
-	// old format VK_FORMAT_R8G8B8A8_SRGB
-	gfxDevice->CreateRenderTarget(g_PostEffects, gfxDevice->GetSwapChain().ImageFormat, {width, height}, VK_SAMPLE_COUNT_1_BIT);
-	gfxDevice->CreateImageSampler(g_PostEffects);
-
-	gfxDevice->CreateRenderTarget(g_SceneColor, gfxDevice->GetSwapChain().ImageFormat, { width, height }, VK_SAMPLE_COUNT_1_BIT);
-	gfxDevice->CreateImageSampler(g_SceneColor);
-
-	gfxDevice->CreateDepthBuffer(g_ResolvedDepth, { width, height }, VK_SAMPLE_COUNT_1_BIT);
-}
-
-void Graphics::ResizeDisplayDependentImages(uint32_t width, uint32_t height) {
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
-	gfxDevice->ResizeImage(g_MsaaSceneColor, width, height);
-	gfxDevice->CreateImageSampler(g_MsaaSceneColor);
-	
-	gfxDevice->ResizeImage(g_SceneDepth, width, height);
-
-	gfxDevice->ResizeImage(g_PostEffects, width, height);
-	gfxDevice->TransitionImageLayout(g_PostEffects, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	gfxDevice->TransitionImageLayout(g_PostEffects, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	gfxDevice->CreateImageSampler(g_PostEffects);
-
-	gfxDevice->ResizeImage(g_SceneColor, width, height);
-	gfxDevice->CreateImageSampler(g_SceneColor);
-
-	gfxDevice->ResizeImage(g_ResolvedDepth, width, height);
-}
-
-void Graphics::ShutdownRenderingImages() {
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
-	gfxDevice->DestroyImage(g_MsaaSceneColor);
-	gfxDevice->DestroyImage(g_SceneDepth);
-	gfxDevice->DestroyImage(g_PostEffects);
-	gfxDevice->DestroyImage(g_SceneColor);
-	gfxDevice->DestroyImage(g_ResolvedDepth);
-}
-
 Graphics::BufferManager::BufferManager() {
 
 }
