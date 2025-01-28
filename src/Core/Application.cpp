@@ -31,8 +31,8 @@ void Application::InitializeResources(IScene& scene) {
 	m_GraphicsDevice->CreateDescriptorPool();
 	m_GraphicsDevice->CreateSwapChainRenderTarget();
 
+	// TODO: remove
 	Graphics::InitializeRenderingImages(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
-//	Graphics::InitializeStaticRenderPasses(m_GraphicsDevice->GetSwapChainExtent().width, m_GraphicsDevice->GetSwapChainExtent().height);
 
 	if (scene.settings.uiEnabled)
 		m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().RenderTarget->GetRenderPass());
@@ -123,8 +123,6 @@ void Application::TerminateApplication(IScene& scene) {
 
 	scene.CleanUp();
 	
-//	Graphics::ShutdownRenderPasses();
-
 	ResourceManager::Get()->Destroy();
 }
 
@@ -133,11 +131,12 @@ void Application::Resize(int width, int height) {
 
 	m_GraphicsDevice->RecreateSwapChain(*m_Window.get());
 
-	Graphics::ResizeDisplayDependentImages(
-		m_GraphicsDevice->GetSwapChainExtent().width, 
-		m_GraphicsDevice->GetSwapChainExtent().height);
-
-//	Graphics::ResizeRenderPasses(width, height);
-	
 	m_ResizeApplication = true;
 }
+
+/*
+	Known Issues:
+		- When resizing with debug render passes enabled, if screen becomes too small the 
+		  validation layer will complain about the destination image pRegion exceeding 
+		  the destination image dimensions.
+*/

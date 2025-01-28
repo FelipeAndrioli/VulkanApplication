@@ -238,8 +238,9 @@ void ModelViewer::RenderUI() {
 }
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {
-	// TODO: check render targets resize
 	m_Camera.Resize(width, height);
+	m_OffscreenRenderTarget->Resize(width, height);
+	m_PostEffectsRenderTarget->Resize(width, height);
 }
 
 RUN_APPLICATION(ModelViewer)

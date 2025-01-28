@@ -48,6 +48,7 @@ namespace Graphics {
 		void CopyColor(const GPUImage& colorBuffer, int positionX = 0, int positionY = 0);
 		void Begin(const VkCommandBuffer& commandBuffer);
 		void End(const VkCommandBuffer& commandBuffer);
+		void Resize(uint32_t width, uint32_t height) override;
 	private:
 		VkImageLayout m_ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	};

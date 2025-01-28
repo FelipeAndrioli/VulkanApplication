@@ -1697,6 +1697,9 @@ namespace Graphics {
 			colorAttachRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 			colorAttachmentReferences.emplace_back(colorAttachRef);
+
+			renderPass.InitialLayout = colorAttachment.initialLayout;
+			renderPass.FinalLayout = colorAttachment.finalLayout;
 		}
 
 		if (renderPass.Description.flags & eDepthAttachment) {
@@ -1747,6 +1750,10 @@ namespace Graphics {
 			resolveAttachRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 			resolveAttachmentReferences.emplace_back(resolveAttachRef);
+
+
+			renderPass.InitialLayout = resolveAttachment.initialLayout;
+			renderPass.FinalLayout = resolveAttachment.finalLayout;
 		}
 
 		if (renderPass.Description.flags & eFinalLayoutPresent) {

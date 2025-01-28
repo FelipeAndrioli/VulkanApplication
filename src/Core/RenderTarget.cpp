@@ -32,18 +32,34 @@ namespace Graphics {
 
 		gfxDevice->DestroyFramebuffer(m_Framebuffers);
 
-		if (m_ColorIndex != -1) {
-			gfxDevice->ResizeImage(m_Images[m_ColorIndex], width, height);
-			gfxDevice->CreateImageSampler(m_Images[m_ColorIndex]);
-		}
+		std::vector<VkImageView> attachments = {};
 
 		if (m_ResolveIndex != -1) {
 			gfxDevice->ResizeImage(m_Images[m_ResolveIndex], width, height);
 			gfxDevice->CreateImageSampler(m_Images[m_ResolveIndex]);
+
+			attachments.emplace_back(m_Images[m_ResolveIndex].ImageView);
 		}
 
 		if (m_DepthIndex != -1) {
 			gfxDevice->ResizeImage(m_Images[m_DepthIndex], width, height);
+			
+			attachments.emplace_back(m_Images[m_DepthIndex].ImageView);
+		}
+
+		if (m_ColorIndex != -1) {
+			gfxDevice->ResizeImage(m_Images[m_ColorIndex], width, height);
+			gfxDevice->CreateImageSampler(m_Images[m_ColorIndex]);
+
+			gfxDevice->TransitionImageLayout(m_Images[m_ColorIndex], VK_IMAGE_LAYOUT_UNDEFINED, m_RenderPass.FinalLayout);
+		
+			attachments.emplace_back(m_Images[m_ColorIndex].ImageView);
+		}
+
+		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
+
+		for (int i = 0; i < m_Framebuffers.size(); i++) {
+			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, attachments, GetExtent(), m_Framebuffers[i]);
 		}
 	}
 
@@ -245,6 +261,34 @@ namespace Graphics {
 	void SwapChainRenderTarget::End(const VkCommandBuffer& commandBuffer) {
 		EndRenderPass(commandBuffer);
 		m_ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	}
+
+	void SwapChainRenderTarget::Resize(uint32_t width, uint32_t height) {
+		m_Width = width;
+		m_Height = height;
+
+		m_RenderPass.Description.viewport.width = width;
+		m_RenderPass.Description.viewport.height = height;
+		m_RenderPass.Description.extent = GetExtent();
+		m_RenderPass.Description.scissor.extent = GetExtent();
+
+		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+		gfxDevice->ResizeImage(m_Images[m_DepthIndex], width, height);
+
+		gfxDevice->DestroyFramebuffer(m_Framebuffers);
+
+		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
+
+		for (int i = 0; i < m_Framebuffers.size(); i++) {
+			std::vector<VkImageView> attachments = {
+				gfxDevice->GetSwapChain().ImageViews[i],
+				m_Images[m_DepthIndex].ImageView
+			};
+
+			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, attachments, GetExtent(), m_Framebuffers[i]);
+		}
+
 	}
 
 	/* ========================== SwapChain Render Target Implementation End ========================== */

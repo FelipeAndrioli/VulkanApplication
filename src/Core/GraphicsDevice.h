@@ -93,6 +93,9 @@ namespace Graphics {
 		std::vector<VkAttachmentDescription> Attachments = {};
 		std::vector<VkSubpassDependency> Dependencies = {};
 		std::vector<VkSubpassDescription> Subpasses = {};
+
+		VkImageLayout InitialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VkImageLayout FinalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	};
 
 	struct SwapChainSupportDetails {
