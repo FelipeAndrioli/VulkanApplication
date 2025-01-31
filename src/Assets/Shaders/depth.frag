@@ -78,17 +78,6 @@ struct light_t {
 	float specular;
 };
 
-layout (std140, set = 0, binding = 0) uniform SceneGPUData {
-	int total_lights;
-	float time;
-	float extra_s_2;
-	float extra_s_3;
-	vec4 camera_position;
-	vec4 extra[6];
-	mat4 view;
-	mat4 proj;
-} sceneGPUData;
-
 layout (std140, set = 0, binding = 1) uniform material_uniform {
 	material_t materials[MAX_MATERIALS];
 };
@@ -118,6 +107,5 @@ vec4 render_depth() {
 }
 
 void main() {
-
 	out_color = render_depth();
 }

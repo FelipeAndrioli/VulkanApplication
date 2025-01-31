@@ -5,6 +5,7 @@
 
 #define MAX_MATERIALS 50
 #define MAX_LIGHTS 5
+#define MAX_CAMERAS 10
 
 layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec3 fragNormal;
@@ -79,15 +80,19 @@ struct light_t {
 	float specular;
 };
 
+struct camera_t {
+	vec4 extra[7];
+	vec4 position;
+	mat4 view;
+	mat4 proj;
+};
+
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int total_lights;
 	float time;
 	float extra_s_2;
 	float extra_s_3;
-	vec4 camera_position;
-	vec4 extra[6];
-	mat4 view;
-	mat4 proj;
+	vec4 extra[15];
 } sceneGPUData;
 
 layout (std140, set = 0, binding = 1) uniform material_uniform {
@@ -100,10 +105,15 @@ layout (set = 0, binding = 2) uniform light_uniform {
 
 layout (set = 0, binding = 3) uniform sampler2D texSampler[];
 
+layout (std140, set = 0, binding = 6) uniform camera_uniform {
+	camera_t cameras[MAX_CAMERAS];
+};
+
 layout (push_constant) uniform constant {
 	int material_index;
 	int model_index;
 	int light_source_index;
+	int camera_index;
 } mesh_constant;
 
 vec3 calc_directional_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
@@ -114,7 +124,7 @@ vec3 calc_directional_light(light_t light, material_t current_material, vec4 mat
 	vec3 ambient = material_ambient.rgb * vec3(light.ambient);
 	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse);
 
-	vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
+	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
 
 	//Phong specular model
 	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
@@ -141,7 +151,7 @@ vec3 calc_point_light(light_t light, material_t current_material, vec4 material_
 	vec3 ambient = material_ambient.rgb * vec3(light.ambient) * light_attenuation;
 	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse) * light_attenuation;
 
-	vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
+	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
 
 	// Phong specular model
 	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));

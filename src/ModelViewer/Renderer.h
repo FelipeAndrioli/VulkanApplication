@@ -11,6 +11,7 @@
 #include "glm.hpp"
 
 #define MAX_MODELS 10
+#define MAX_CAMERAS 10
 
 namespace Assets {
 	class Camera;
@@ -69,7 +70,7 @@ namespace Renderer {
 		void Sort();
 		void RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass);
 		void RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass, Graphics::IRenderTarget& renderTarget, Graphics::PipelineState* pso);
-		void ResetDraw() { m_CurrentDraw = 0; }
+		void ResetDraw() { m_CurrentDraw = 0; m_CurrentPass = tZPass; }
 	private:
 		BatchType m_BatchType;
 		DrawPass m_CurrentPass;
@@ -87,6 +88,7 @@ namespace Renderer {
 		int MaterialIdx = 0;
 		int ModelIdx = 0;
 		int LightSourceIdx = 0;
+		int CameraIdx = 0;
 	};
 
 	extern Graphics::PipelineState m_SkyboxPSO;
@@ -107,12 +109,13 @@ namespace Renderer {
 	void LoadResources(const Graphics::IRenderTarget& renderTarget);
 	void OnUIRender();
 
-	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);
+	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras);
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);
 	void RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderLightSources(const VkCommandBuffer& commandBuffer);
 	void RenderCube(const VkCommandBuffer& commandBuffer, const Graphics::PipelineState& PSO);
+	void SetCameraIndex(int index);
 
 	const Graphics::PipelineState& GetPSO(uint16_t flags);
 }

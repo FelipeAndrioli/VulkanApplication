@@ -39,6 +39,7 @@ namespace Renderer {
 
 	Graphics::Buffer m_ModelBuffer = {};
 	Graphics::Buffer m_SkyboxBuffer = {};
+	Graphics::Buffer m_CamerasBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 	Graphics::Buffer m_GlobalDataBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 
 	Graphics::PipelineState m_SkyboxPSO = {};
@@ -58,10 +59,11 @@ namespace Renderer {
 
 	GlobalConstants m_GlobalConstants = {};
 
-
 	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
 	
 	uint32_t m_TotalModels = 0;
+
+	int m_CameraIndex = 0;
 }
 
 std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
@@ -174,7 +176,7 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 
 	InputLayout globalInputLayout = {
 		.pushConstants = {
-			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PipelinePushConstants) }
+			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PipelinePushConstants) },
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
@@ -182,13 +184,15 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
 			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(rm->GetTextures().size()), VK_SHADER_STAGE_FRAGMENT_BIT},
 			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-			{ 5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS }
+			{ 5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
+			{ 6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS }		// Multiple cameras UBO 
 		}
 	};
 
 	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants) * MAX_MODELS);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+		m_CamerasBuffer[i] = gfxDevice->CreateBuffer(sizeof(CameraConstants) * MAX_CAMERAS);
 		m_GlobalDataBuffer[i] = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
 		gfxDevice->WriteSubBuffer(m_GlobalDataBuffer[i], &m_GlobalConstants, sizeof(GlobalConstants));
 	}
@@ -328,6 +332,7 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, rm->GetTextures());
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[4], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[5], gfxDevice->GetFrame(i).bindlessSet, m_ModelBuffer);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[6], gfxDevice->GetFrame(i).bindlessSet, m_CamerasBuffer[i]);
 	}
 }
 
@@ -343,12 +348,9 @@ void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
 	vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 }
 
-void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera) {
+void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras) {
 	GraphicsDevice* gfxDevice = GetDevice();
 	
-	m_GlobalConstants.view = camera.ViewMatrix;
-	m_GlobalConstants.proj = camera.ProjectionMatrix;
-	m_GlobalConstants.cameraPosition = glm::vec4(camera.Position, 1.0f);
 	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer[gfxDevice->GetCurrentFrameIndex()], &m_GlobalConstants);
@@ -357,7 +359,7 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 
 	std::array<ModelConstants, MAX_MODELS> modelConstants;
 
-	for (uint32_t i = 0; i < m_TotalModels; i++) {
+	for (size_t i = 0; i < m_TotalModels; i++) {
 		ModelConstants modelConstant = {};
 		modelConstant.model = m_Models[i]->GetModelMatrix();
 		modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
@@ -368,6 +370,19 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 	}
 
 	gfxDevice->UpdateBuffer(m_ModelBuffer, modelConstants.data());
+
+	std::array<CameraConstants, MAX_CAMERAS> cameraConstants;
+
+	for (size_t i = 0; i < cameras.size(); i++) {
+		CameraConstants cameraConstant = {};
+		cameraConstant.position = glm::vec4(cameras[i].Position, 1.0f);
+		cameraConstant.view = cameras[i].ViewMatrix;
+		cameraConstant.proj = cameras[i].ProjectionMatrix;
+
+		cameraConstants[i] = cameraConstant;
+	}
+
+	gfxDevice->UpdateBuffer(m_CamerasBuffer[gfxDevice->GetCurrentFrameIndex()], cameraConstants.data());
 
 	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_GlobalPipelineLayout, 0, 1);
 }
@@ -384,7 +399,8 @@ void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model
 	for (const auto& mesh : model.Meshes) {
 		PipelinePushConstants pushConstants = {
 			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-			.ModelIdx = static_cast<int>(model.ModelIndex)
+			.ModelIdx = static_cast<int>(model.ModelIndex),
+			.CameraIdx = m_CameraIndex
 		};
 
 		vkCmdPushConstants(
@@ -419,7 +435,8 @@ void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Mod
 	for (const auto& mesh : model.Meshes) {
 		PipelinePushConstants pushConstants = {
 			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-			.ModelIdx = static_cast<int>(model.ModelIndex)
+			.ModelIdx = static_cast<int>(model.ModelIndex),
+			.CameraIdx = m_CameraIndex
 		};
 
 		vkCmdPushConstants(
@@ -455,7 +472,8 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 			continue;
 
 		PipelinePushConstants pushConstants = {
-			.LightSourceIdx = i
+			.LightSourceIdx = i,
+			.CameraIdx = m_CameraIndex
 		};
 
 		vkCmdPushConstants(
@@ -469,6 +487,10 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 
 		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
+}
+
+void Renderer::SetCameraIndex(int index) {
+	m_CameraIndex = index;
 }
 
 const Graphics::PipelineState& Renderer::GetPSO(uint16_t flags) {
@@ -563,7 +585,8 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 
 			PipelinePushConstants pushConstants = {
 				.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-				.ModelIdx = static_cast<int>(sortMesh.modelIndex)
+				.ModelIdx = static_cast<int>(sortMesh.modelIndex),
+				.CameraIdx = m_CameraIndex
 			};
 
 			vkCmdPushConstants(
@@ -637,7 +660,8 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 
 			PipelinePushConstants pushConstants = {
 				.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-				.ModelIdx = static_cast<int>(sortMesh.modelIndex)
+				.ModelIdx = static_cast<int>(sortMesh.modelIndex),
+				.CameraIdx = m_CameraIndex
 			};
 
 			vkCmdPushConstants(

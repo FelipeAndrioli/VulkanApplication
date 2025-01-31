@@ -5,6 +5,7 @@
 
 #define MAX_MATERIALS 26
 #define MAX_LIGHTS 5
+#define MAX_CAMERAS 10
 
 struct light_t {
 	vec4 position;
@@ -34,10 +35,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float time;
 	float extra_s_2;
 	float extra_s_3;
-	vec4 camera_position;
-	vec4 extra[6];
-	mat4 view;
-	mat4 proj;
+	vec4 extra[15];
 } sceneGPUData;
 
 layout (set = 0, binding = 2) uniform light_uniform {
@@ -48,7 +46,19 @@ layout (push_constant) uniform constant {
 	int material_index;
 	int model_index;
 	int light_source_index;
+	int camera_index;
 } light_constant;
+
+struct camera_t {
+	vec4 extra[7];
+	vec4 position;
+	mat4 view;
+	mat4 proj;
+};
+
+layout (std140, set = 0, binding = 6) uniform camera_uniform {
+	camera_t cameras[MAX_CAMERAS];
+};
 
 layout (location = 0) out vec4 light_dir;
 layout (location = 1) out vec4 color;
@@ -86,9 +96,10 @@ const int indices[36] = int[36](
 void main() {
 	int idx = indices[gl_VertexIndex];
 
+	camera_t current_camera = cameras[light_constant.camera_index];
 	light_t light = lights[light_constant.light_source_index];
 
-	gl_Position = sceneGPUData.proj * sceneGPUData.view * light.model * vec4(pos[idx], 1.0);
+	gl_Position = current_camera.proj * current_camera.view * light.model * vec4(pos[idx], 1.0);
 	frag_pos = light.model * vec4(pos[idx], 1.0);
 	light_dir = light.direction;
 	light_type = light.type;

@@ -32,6 +32,7 @@ public:
 	virtual void Resize(uint32_t width, uint32_t height) override;
 private:
 	Assets::Camera m_Camera = {};
+	Assets::Camera m_SecondCamera = {};
 
 	std::shared_ptr<Assets::Model> m_Dragon;
 	std::shared_ptr<Assets::Model> m_Sponza;
@@ -72,6 +73,7 @@ void ModelViewer::StartUp() {
 	float pitch = -13.5f;
 
 	m_Camera.Init(position, fov, yaw, pitch, m_ScreenWidth, m_ScreenHeight);
+	m_SecondCamera.Init(position, fov, yaw, pitch, m_ScreenWidth, m_ScreenHeight);
 
 	Renderer::Init();
 
@@ -159,6 +161,7 @@ void ModelViewer::CleanUp() {
 
 void ModelViewer::Update(float d, InputSystem::Input& input) {
 	m_Camera.OnUpdate(d, input);
+	m_SecondCamera.OnUpdate(d, input);
 
 	for (auto& model : m_Models) {
 		model->OnUpdate(d);
@@ -168,7 +171,8 @@ void ModelViewer::Update(float d, InputSystem::Input& input) {
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	Renderer::UpdateGlobalDescriptors(commandBuffer, m_Camera);
+	// check if the cameras are being copied, that might impact performance
+	Renderer::UpdateGlobalDescriptors(commandBuffer, { m_Camera, m_SecondCamera });
 
 	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
 	sorter.SetCamera(m_Camera);
@@ -181,6 +185,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	m_OffscreenRenderTarget->BeginRenderPass(commandBuffer);
 
+	Renderer::SetCameraIndex(0);
 	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
 	
 	if (m_RenderSkybox) {
@@ -207,28 +212,18 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	if (m_RenderDepthSwapChain || m_RenderDepthImGui) {
 		m_DebugOffscreenRenderTarget->BeginRenderPass(commandBuffer);
 
-		Renderer::MeshSorter debugSorter(Renderer::MeshSorter::BatchType::tDefault);
-		debugSorter.SetCamera(m_Camera);
-
-		for (auto& model : m_Models) {
-			model->Render(debugSorter);
-		}
-
-		debugSorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenRenderTarget.get(), &Renderer::m_RenderDepthPSO);
+		sorter.ResetDraw();
+		sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenRenderTarget.get(), &Renderer::m_RenderDepthPSO);
 		m_DebugOffscreenRenderTarget->EndRenderPass(commandBuffer);
 	}
 
 	if (m_RenderNormalsSwapChain || m_RenderNormalsImGui) {
 		m_DebugOffscreenNormalsRenderTarget->BeginRenderPass(commandBuffer);
 	
-		Renderer::MeshSorter normalsDebugSorter(Renderer::MeshSorter::BatchType::tDefault);
-		normalsDebugSorter.SetCamera(m_Camera);
+		Renderer::SetCameraIndex(1);
+		sorter.ResetDraw();
+		sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenNormalsRenderTarget.get(), &Renderer::m_RenderNormalsPSO);
 
-		for (auto& model : m_Models) {
-			model->Render(normalsDebugSorter);
-		}
-
-		normalsDebugSorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenNormalsRenderTarget.get(), &Renderer::m_RenderNormalsPSO);
 		m_DebugOffscreenNormalsRenderTarget->EndRenderPass(commandBuffer);
 	}
 
@@ -265,9 +260,13 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox("Render Light Sources", &m_RenderLightSources);
 
 	PostEffects::RenderUI();
-	
-	m_Camera.OnUIRender();
 
+	ImGui::SeparatorText("Camera Settings");
+
+	m_Camera.OnUIRender("Main Camera - Settings");
+	m_SecondCamera.OnUIRender("Secondary Camera - Settings");
+
+	ImGui::SeparatorText("Models");
 	for (auto& model : m_Models) {
 		model->OnUIRender();
 	}
@@ -298,6 +297,7 @@ void ModelViewer::RenderUI() {
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {
 	m_Camera.Resize(width, height);
+	m_SecondCamera.Resize(width, height);
 	m_OffscreenRenderTarget->Resize(width, height);
 	m_PostEffectsRenderTarget->Resize(width, height);
 }

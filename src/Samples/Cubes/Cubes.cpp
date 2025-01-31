@@ -146,9 +146,6 @@ void Cubes::Update(float d, InputSystem::Input& input) {
 	m_Camera.OnUpdate(d, input);
 
 	m_GlobalConstants.time = d;
-	m_GlobalConstants.view = m_Camera.ViewMatrix;
-	m_GlobalConstants.proj = m_Camera.ProjectionMatrix;
-	m_GlobalConstants.cameraPosition = glm::vec4(m_Camera.Position, 1.0f);
 
 	std::vector<ModelConstants> modelConstants;
 
@@ -207,7 +204,7 @@ void Cubes::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& comm
 }
 
 void Cubes::RenderUI() {
-	m_Camera.OnUIRender();
+	m_Camera.OnUIRender("Main Camera - Settings");
 
 	for (int i = 0; i < m_Cubes.size(); i++) {
 		m_Cubes[i]->OnUIRender();

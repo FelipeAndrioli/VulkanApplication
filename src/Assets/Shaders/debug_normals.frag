@@ -84,10 +84,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float time;
 	float extra_s_2;
 	float extra_s_3;
-	vec4 camera_position;
-	vec4 extra[6];
-	mat4 view;
-	mat4 proj;
+	vec4 extra[15];
 } sceneGPUData;
 
 layout (std140, set = 0, binding = 1) uniform material_uniform {
@@ -104,6 +101,7 @@ layout (push_constant) uniform constant {
 	int material_index;
 	int model_index;
 	int light_source_index;
+	int camera_index;
 } mesh_constant;
 
 void main() {
