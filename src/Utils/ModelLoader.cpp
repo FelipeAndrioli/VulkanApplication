@@ -233,10 +233,19 @@ void CompileMesh(Assets::Model& model) {
 		int materialIndex = rm->GetMaterialIndex(mesh.MaterialName);
 
 		if (materialIndex == -1) {
-			std::string customMaterialName = "Custom_Material_" + model.Name;
-			rm->AddMaterial(Material(customMaterialName));
-			mesh.MaterialName = customMaterialName;
-			mesh.MaterialIndex = rm->GetLastMaterialIndex();
+			std::string customMaterialName = "Custom_Material";
+
+			materialIndex = rm->GetMaterialIndex(customMaterialName);
+
+			if (materialIndex == -1) {
+				rm->AddMaterial(Material(customMaterialName));
+				mesh.MaterialName = customMaterialName;
+				mesh.MaterialIndex = rm->GetLastMaterialIndex();
+			}
+			else {
+				mesh.MaterialName = customMaterialName;
+				mesh.MaterialIndex = materialIndex;
+			}
 		}
 		else {
 			mesh.MaterialIndex = materialIndex;
@@ -248,7 +257,7 @@ void CompileMesh(Assets::Model& model) {
 		indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
 		vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
 
-		if (rm->GetMaterial(materialIndex).MaterialData.Diffuse.a < 1.0f) {
+		if (rm->GetMaterial(mesh.MaterialIndex).MaterialData.Diffuse.a < 1.0f) {
 			mesh.PSOFlags |= PSOFlags::tTransparent;
 			mesh.PSOFlags |= PSOFlags::tTwoSided;
 		} else {

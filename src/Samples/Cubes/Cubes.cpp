@@ -3,7 +3,7 @@
 #include "../../src/Core/Application.h"
 #include "../../src/Core/GraphicsDevice.h"
 #include "../../src/Core/ConstantBuffers.h"
-//#include "../../src/Core/RenderPassManager.h"
+#include "../../src/Core/RenderTarget.h"
 
 #include "../../src/Core/VulkanHeader.h"
 
@@ -19,8 +19,6 @@
 #define VERTICAL_CUBES 11
 #define TOTAL_CUBES HORIZONTAL_CUBES * VERTICAL_CUBES
 
-// TODO: Fix this sample
-
 class Cubes : public Application::IScene {
 public:
 	Cubes() {
@@ -28,6 +26,9 @@ public:
 		settings.Width = 1600;
 		settings.Height = 900;
 		settings.uiEnabled = true;
+
+		m_ScreenWidth = settings.Width;
+		m_ScreenHeight = settings.Height;
 	};
 
 	virtual void StartUp() override;
@@ -45,11 +46,13 @@ private:
 
 	std::vector<std::shared_ptr<Assets::Model>> m_Cubes;
 
+	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
 	Graphics::Shader m_VertexShader = {};
 	Graphics::Shader m_FragShader = {};
 
 	Graphics::Buffer m_SceneBuffer = {};
 	Graphics::Buffer m_ModelBuffer = {};
+	Graphics::Buffer m_CameraBuffer[Graphics::FRAMES_IN_FLIGHT];
 
 	Graphics::PipelineState m_PSO = {};
 
@@ -57,14 +60,17 @@ private:
 	VkDescriptorSet m_Set[Graphics::FRAMES_IN_FLIGHT];
 
 	struct PushConstant {
-		int index;
+		int model_index;
+		int camera_index;
 	};
 
 	GlobalConstants m_GlobalConstants = {};
 };
 
 void Cubes::StartUp() {
-	
+
+	m_OffscreenRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
+
 	glm::vec3 position = glm::vec3(-0.6f, 3.2f, 38.0f);
 
 	float fov = 45.0f;
@@ -102,6 +108,10 @@ void Cubes::StartUp() {
 	m_SceneBuffer = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
 	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants) * TOTAL_CUBES);
 
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+		m_CameraBuffer[i] = gfxDevice->CreateBuffer(sizeof(CameraConstants));
+	}
+
 	Graphics::InputLayout inputLayout = {
 		.pushConstants = {
 			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstant) }
@@ -109,6 +119,7 @@ void Cubes::StartUp() {
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },			
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },		
+			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },		
 		}
 	};
 
@@ -118,13 +129,14 @@ void Cubes::StartUp() {
 	desc.fragmentShader = &m_FragShader;
 	desc.psoInputLayout.push_back(inputLayout);
 
-//	gfxDevice->CreatePipelineState(desc, m_PSO, Graphics::g_ColorRenderPass);
+	gfxDevice->CreatePipelineState(desc, m_PSO, *m_OffscreenRenderTarget.get());
 	gfxDevice->CreateDescriptorSetLayout(m_SetLayout, inputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_SetLayout, m_Set[i]);
 		gfxDevice->WriteDescriptor(inputLayout.bindings[0], m_Set[i], m_SceneBuffer);
 		gfxDevice->WriteDescriptor(inputLayout.bindings[1], m_Set[i], m_ModelBuffer);
+		gfxDevice->WriteDescriptor(inputLayout.bindings[2], m_Set[i], m_CameraBuffer[i]);
 	}
 }
 
@@ -132,6 +144,8 @@ void Cubes::CleanUp() {
 	m_Cubes.clear();
 	
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	m_OffscreenRenderTarget.reset();
 
 	gfxDevice->DestroyShader(m_VertexShader);
 	gfxDevice->DestroyShader(m_FragShader);
@@ -169,14 +183,23 @@ void Cubes::Update(float d, InputSystem::Input& input) {
 		modelConstants[i].outlineWidth = m_Cubes[i]->OutlineWidth;
 	}
 
+
+	std::array<CameraConstants, 1> cameraConstants = {};
+	cameraConstants[0].position = glm::vec4(m_Camera.Position, 1.0f);
+	cameraConstants[0].proj = m_Camera.ProjectionMatrix;
+	cameraConstants[0].view = m_Camera.ViewMatrix;
+
 	gfxDevice->UpdateBuffer(m_SceneBuffer, &m_GlobalConstants);
 	gfxDevice->UpdateBuffer(m_ModelBuffer, modelConstants.data());
+	gfxDevice->UpdateBuffer(m_CameraBuffer[gfxDevice->GetCurrentFrameIndex()], cameraConstants.data());
 
 }
 
 void Cubes::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	m_OffscreenRenderTarget->BeginRenderPass(commandBuffer);
 
 	gfxDevice->BindDescriptorSet(m_Set[currentFrame], commandBuffer, m_PSO.pipelineLayout, 0, 1);
 
@@ -188,7 +211,7 @@ void Cubes::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& comm
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_Cubes[i]->DataBuffer.Handle, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, m_Cubes[i]->DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
-		PushConstant pushConstant = { .index = i };
+		PushConstant pushConstant = { .model_index = i, .camera_index = 0 };
 		
 		for (const auto& mesh : m_Cubes[i]->Meshes) {
 			vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstant), &pushConstant);
@@ -201,6 +224,11 @@ void Cubes::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& comm
 				0);
 		}
 	}
+
+	m_OffscreenRenderTarget->EndRenderPass(commandBuffer);
+
+	m_OffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_OffscreenRenderTarget->GetColorBuffer());
 }
 
 void Cubes::RenderUI() {
@@ -215,6 +243,8 @@ void Cubes::Resize(uint32_t width, uint32_t height) {
 	m_Camera.Resize(width, height);
 	m_ScreenWidth = width;
 	m_ScreenHeight = height;
+
+	m_OffscreenRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
 }
 
-//RUN_APPLICATION(Cubes);
+RUN_APPLICATION(Cubes);
