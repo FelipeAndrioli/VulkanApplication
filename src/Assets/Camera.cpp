@@ -64,8 +64,9 @@ namespace Assets {
 		UpdateProjectionMatrix();
 	}
 
-	void Camera::OnUIRender() {
-		if (ImGui::TreeNode("Camera Settings")) {
+	void Camera::OnUIRender(const char* idCamera) {
+
+		if (ImGui::TreeNode(idCamera)) {
 			ImGui::DragFloat("Camera Near Clip", &Near, 0.002f, -1.0f, 20.0f);
 			ImGui::DragFloat("Camera Far Clip", &Far, 0.002f, 10.0f, 1000.0f);
 			ImGui::DragFloat("Camera Position X", &Position.x, 0.002f);

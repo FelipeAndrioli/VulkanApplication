@@ -21,7 +21,7 @@ namespace Assets {
 		void Init(glm::vec3 position, float fov, float yaw, float pitch, uint32_t width, uint32_t height);
 
 		void OnUpdate(float t, const InputSystem::Input& input);
-		void OnUIRender();
+		void OnUIRender(const char* idCamera);
 		void UpdateCameraVectors();
 		void Resize(uint32_t width, uint32_t height);
 		void UpdateViewMatrix();
@@ -40,10 +40,10 @@ namespace Assets {
 		glm::mat4 ProjectionMatrix = glm::mat4(1.0f);
 	
 		glm::vec3 Position = glm::vec3(0.0f);
-		glm::vec3 Front = glm::vec3(0.0f);;
+		glm::vec3 Front = glm::vec3(0.0f);
 		glm::vec3 WorldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-		glm::vec3 Up = glm::vec3(0.0f);;
-		glm::vec3 Right = glm::vec3(0.0f);;
+		glm::vec3 Up = glm::vec3(0.0f);
+		glm::vec3 Right = glm::vec3(0.0f);
 	private:
 		uint32_t m_Width = 0;
 		uint32_t m_Height = 0;
