@@ -67,18 +67,20 @@ namespace Assets {
 	void Camera::OnUIRender(const char* idCamera) {
 
 		if (ImGui::TreeNode(idCamera)) {
-			ImGui::DragFloat("Camera Near Clip", &Near, 0.002f, -1.0f, 20.0f);
-			ImGui::DragFloat("Camera Far Clip", &Far, 0.002f, 10.0f, 1000.0f);
-			ImGui::DragFloat("Camera Position X", &Position.x, 0.002f);
-			ImGui::DragFloat("Camera Position Y", &Position.y, 0.002f);
-			ImGui::DragFloat("Camera Position Z", &Position.z, 0.002f);
-			ImGui::DragFloat("Camera Yaw", &Yaw, 0.002f, -200.0f, 200.0f);
-			ImGui::DragFloat("Camera Pitch", &Pitch, 0.002f, -89.0f, 89.0f);
-			ImGui::DragFloat("Camera Movement Speed", &MovementSpeed, 0.002f);
-			ImGui::DragFloat("Sensitivity", &Sensitivity, 0.002f);
-			ImGui::DragFloat("Camera FOV", &Fov, 0.002f);
+			ImGui::DragFloat("Camera Near Clip", &Near, 0.02f, -1.0f, 20.0f);
+			ImGui::DragFloat("Camera Far Clip", &Far, 0.02f, 10.0f, 1000.0f);
+			ImGui::DragFloat("Camera Position X", &Position.x, 0.02f);
+			ImGui::DragFloat("Camera Position Y", &Position.y, 0.02f);
+			ImGui::DragFloat("Camera Position Z", &Position.z, 0.02f);
+			ImGui::DragFloat("Camera Yaw", &Yaw, 0.02f, -200.0f, 200.0f);
+			ImGui::DragFloat("Camera Pitch", &Pitch, 0.02f, -89.0f, 89.0f);
+			ImGui::DragFloat("Camera Movement Speed", &MovementSpeed, 0.02f);
+			ImGui::DragFloat("Sensitivity", &Sensitivity, 0.02f);
+			ImGui::DragFloat("Camera FOV", &Fov, 0.02f);
 			ImGui::TreePop();
 		}
+
+		UpdateCameraVectors();
 	}
 
 	void Camera::UpdateCameraVectors() {
