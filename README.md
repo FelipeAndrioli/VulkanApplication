@@ -40,12 +40,13 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	  however, the SDK version is built using MSVC compiler, not being compatible with code built
 	  using Ninja or MinGW compiler, therefore the runtime shader compilation will only work when
 	  built using MSVC compiler.
+- [x] Blending
+- [x] Framebuffers
 
 ## Next Up
-- [ ] Blending
-- [ ] Framebuffers
 - [ ] Instancing
 - [ ] Custom Anti Aliasing
+- [ ] Refactoring to Graphics Device/Backend/Command Context design
 
 ## Planning 
 - [ ] Generate Normals (Mesh Generator) 
