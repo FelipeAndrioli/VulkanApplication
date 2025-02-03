@@ -23,6 +23,7 @@ namespace InputSystem {
 		case GLFW_PRESS:
 			Keys[key].IsDown = true;
 			Keys[key].IsPressed = true;
+			m_LastPressedKey = key;
 			break;
 		case GLFW_RELEASE:
 			Keys[key].IsDown = false;
@@ -59,5 +60,13 @@ namespace InputSystem {
 	void Input::ProcessCursorOnScreen(int entered) {
 		if (entered == 1) Mouse.OnScreen = true;
 		if (entered == 0) Mouse.OnScreen = false;
+	}
+
+	void Input::Update() {
+		if (m_LastPressedKey != -1) {
+			Keys[m_LastPressedKey].IsPressed = false;
+
+			m_LastPressedKey = -1;
+		}
 	}
 }

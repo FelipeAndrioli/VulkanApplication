@@ -1,14 +1,12 @@
 #include "Application.h"
 
+#include "BufferManager.h"
+#include "ResourceManager.h"
+#include "RenderTarget.h"
+
 Application::~Application() {
 	m_UI.reset();
 	
-	m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
-	m_Framebuffers.clear();
-
-	m_GraphicsDevice->DestroyImage(m_DepthBuffer);
-	m_GraphicsDevice->DestroyImage(m_RenderTarget);
-	m_GraphicsDevice->DestroySwapChain(m_SwapChain);
 	m_GraphicsDevice->DestroyDescriptorPool();
 	m_GraphicsDevice.reset();
 
@@ -16,8 +14,8 @@ Application::~Application() {
 	m_Window.reset();
 }
 
-void Application::InitializeResources(Settings& settings) {
-	m_Window = std::make_unique<Window>(settings);
+void Application::InitializeResources(IScene& scene) {
+	m_Window = std::make_unique<Window>(scene.settings);
 	m_Input = std::make_unique<InputSystem::Input>();
 
 	m_Window->OnKeyPress = std::bind(&InputSystem::Input::ProcessKey, m_Input.get(), std::placeholders::_1, std::placeholders::_2,
@@ -30,30 +28,27 @@ void Application::InitializeResources(Settings& settings) {
 	m_GraphicsDevice = std::make_unique<Graphics::GraphicsDevice>(*m_Window.get());
 	Graphics::GetDevice() = m_GraphicsDevice.get();
 
-	bool success = m_GraphicsDevice->CreateSwapChain(*m_Window.get(), m_SwapChain);
-
-	assert(success);
-
-	m_GraphicsDevice->SetSwapChainExtent(m_SwapChain.swapChainExtent);
 	m_GraphicsDevice->CreateDescriptorPool();
-	m_GraphicsDevice->CreateRenderTarget(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height, m_SwapChain.swapChainImageFormat);
-	m_GraphicsDevice->CreateDepthBuffer(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
+	m_GraphicsDevice->CreateSwapChainRenderTarget();
 
-	m_Framebuffers.resize(m_SwapChain.swapChainImageViews.size());
-
-	for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
-		std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
-		m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->GetDefaultRenderPass(), framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
-	}
-
-	m_UI = std::make_unique<UI>(*m_Window->GetHandle());
+	if (scene.settings.uiEnabled)
+		m_UI = std::make_unique<UI>(*m_Window->GetHandle(), m_GraphicsDevice->GetSwapChain().RenderTarget->GetRenderPass());
 }
 
 void Application::RunApplication(IScene& scene) {
-	InitializeResources(scene.settings);
+
+	Timestep initStartTime = glfwGetTime();
+	InitializeResources(scene);
+	Timestep resourcesInitializedTime = glfwGetTime();
 	InitializeApplication(scene);
+	Timestep sceneInitializedTime = glfwGetTime();
+
+	std::cout << "Application initialization time: " << resourcesInitializedTime.GetSeconds() - initStartTime.GetSeconds() << " seconds." << '\n';
+	std::cout << "Scene initialization time: " << sceneInitializedTime.GetSeconds() - resourcesInitializedTime.GetSeconds() << " seconds." << '\n';
+	std::cout << "Total initialization time: " << sceneInitializedTime.GetSeconds() - initStartTime.GetSeconds() << " seconds." << '\n';
 
 	while (UpdateApplication(scene)) {
+		m_Input->Update();
 		glfwPollEvents();
 	}
 
@@ -75,32 +70,38 @@ bool Application::UpdateApplication(IScene& scene) {
 
 	if (m_ResizeApplication) {
 		m_ResizeApplication = false;
+		
 		scene.Resize(m_Window->GetFramebufferSize().width, m_Window->GetFramebufferSize().height);
 	}
 
 	if (m_Vsync && timestep.GetSeconds() < (1 / 60.0f)) return true;
-	
+
+	if (m_Input->Keys[GLFW_KEY_I].IsPressed)
+		scene.settings.uiEnabled = !scene.settings.uiEnabled;
+
 	scene.Update(timestep.GetMilliseconds(), *m_Input.get());
 
-	if (!m_GraphicsDevice->BeginFrame(m_SwapChain, m_GraphicsDevice->GetCurrentFrame()))
+	if (!m_GraphicsDevice->BeginFrame(m_GraphicsDevice->GetCurrentFrame()))
 		return true;
 
 	Graphics::Frame& frame = m_GraphicsDevice->GetCurrentFrame();
 
-	m_GraphicsDevice->BeginRenderPass(m_GraphicsDevice->GetDefaultRenderPass(), frame.commandBuffer, m_SwapChain.swapChainExtent, m_SwapChain.imageIndex, m_Framebuffers[m_SwapChain.imageIndex]);
-
 	scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
 
-	if (m_UI) {
-		m_UI->BeginFrame();
-		RenderCoreUI();
-		scene.RenderUI();
-		m_UI->EndFrame(frame.commandBuffer);
+	// SwapChain Render Pass
+	{
+		m_GraphicsDevice->GetSwapChain().RenderTarget->Begin(frame.commandBuffer);
+		if (m_UI && scene.settings.uiEnabled) {
+			m_UI->BeginFrame();
+			RenderCoreUI();
+			scene.RenderUI();
+			m_UI->EndFrame(frame.commandBuffer);
+		}
+		m_GraphicsDevice->GetSwapChain().RenderTarget->End(frame.commandBuffer);
 	}
 
-	m_GraphicsDevice->EndRenderPass(frame.commandBuffer);
-	m_GraphicsDevice->EndFrame(m_SwapChain, frame);
-	m_GraphicsDevice->PresentFrame(m_SwapChain, frame);
+	m_GraphicsDevice->EndFrame(frame);	
+	m_GraphicsDevice->PresentFrame(frame);
 
 	m_LastFrameTime = m_CurrentFrameTime;
 
@@ -116,23 +117,21 @@ void Application::InitializeApplication(IScene& scene) {
 
 void Application::TerminateApplication(IScene& scene) {
 	scene.CleanUp();
+	
+	ResourceManager::Get()->Destroy();
 }
 
 void Application::Resize(int width, int height) {
 	std::cout << "width - " << width << " height - " << height << '\n';
 
-	m_GraphicsDevice->RecreateSwapChain(*m_Window.get(), m_SwapChain);
-	m_GraphicsDevice->SetSwapChainExtent(m_SwapChain.swapChainExtent);
-
-	m_GraphicsDevice->ResizeImage(m_RenderTarget, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
-	m_GraphicsDevice->ResizeImage(m_DepthBuffer, m_SwapChain.swapChainExtent.width, m_SwapChain.swapChainExtent.height);
-
-	m_GraphicsDevice->DestroyFramebuffer(m_Framebuffers);
-
-	for (int i = 0; i < m_SwapChain.swapChainImageViews.size(); i++) {
-		std::vector<VkImageView> framebufferAttachments = { m_RenderTarget.ImageView, m_DepthBuffer.ImageView, m_SwapChain.swapChainImageViews[i] };
-		m_GraphicsDevice->CreateFramebuffer(m_GraphicsDevice->GetDefaultRenderPass(), framebufferAttachments, m_SwapChain.swapChainExtent, m_Framebuffers[i]);
-	}
+	m_GraphicsDevice->RecreateSwapChain(*m_Window.get());
 
 	m_ResizeApplication = true;
 }
+
+/*
+	Known Issues:
+		- When resizing with debug render passes enabled, if screen becomes too small the 
+		  validation layer will complain about the destination image pRegion exceeding 
+		  the destination image dimensions.
+*/

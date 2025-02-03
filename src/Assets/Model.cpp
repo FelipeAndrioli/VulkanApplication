@@ -5,7 +5,7 @@
 #include "../Core/GraphicsDevice.h"
 #include "../Core/UI.h"
 
-#include "../Renderer.h"
+#include "../ModelViewer/Renderer.h"
 
 #include "Camera.h"
 

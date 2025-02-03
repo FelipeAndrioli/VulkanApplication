@@ -3,14 +3,15 @@
 #include <vector>
 #include <string>
 
-#include "./Core/Graphics.h"
-#include "./Core/GraphicsDevice.h"
-#include "./Core/Application.h"
-#include "./Core/ConstantBuffers.h"
+#include "../Core/Graphics.h"
+#include "../Core/GraphicsDevice.h"
+#include "../Core/Application.h"
+#include "../Core/ConstantBuffers.h"
+#include "../Core/ResourceManager.h"
 
-#include "./Utils/TextureLoader.h"
-#include "./Utils/ModelLoader.h"
-#include "./Utils/Helper.h"
+#include "../Utils/TextureLoader.h"
+#include "../Utils/ModelLoader.h"
+#include "../Utils/Helper.h"
 
 #include "../Assets/Material.h"
 #include "../Assets/Model.h"
@@ -33,10 +34,13 @@ namespace Renderer {
 	Graphics::Shader m_OutlineFragShader = {};
 	Graphics::Shader m_OutlineVertShader = {};
 	Graphics::Shader m_TransparentFragShader = {};
+	Graphics::Shader m_DepthFragShader = {};
+	Graphics::Shader m_NormalsFragShader = {};
 
 	Graphics::Buffer m_ModelBuffer = {};
 	Graphics::Buffer m_SkyboxBuffer = {};
-	Graphics::Buffer m_GlobalDataBuffer = {};
+	Graphics::Buffer m_CamerasBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
+	Graphics::Buffer m_GlobalDataBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 
 	Graphics::PipelineState m_SkyboxPSO = {};
 	Graphics::PipelineState m_ColorPSO = {};
@@ -46,23 +50,27 @@ namespace Renderer {
 	Graphics::PipelineState m_LightSourcePSO = {};
 	Graphics::PipelineState m_TransparentPSO = {};
 	Graphics::PipelineState m_TransparentStencilPSO = {};
-	
+	Graphics::PipelineState m_RenderDepthPSO = {};
+	Graphics::PipelineState m_RenderNormalsPSO= {};
+
+	VkPipelineLayout m_GlobalPipelineLayout = VK_NULL_HANDLE;
+
 	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
 
 	GlobalConstants m_GlobalConstants = {};
 
-	std::vector<Material> m_Materials;
-	std::vector<Texture> m_Textures;
-
 	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
+	
 	uint32_t m_TotalModels = 0;
+
+	int m_CameraIndex = 0;
 }
 
 std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
 	if (m_TotalModels == MAX_MODELS)
 		return nullptr;
 
-	m_Models[m_TotalModels++] = ModelLoader::LoadModel(path, m_Materials, m_Textures);
+	m_Models[m_TotalModels++] = ModelLoader::LoadModel(path);
 
 	uint32_t modelIdx = m_TotalModels - 1;
 
@@ -81,13 +89,7 @@ void Renderer::Init() {
 void Renderer::Shutdown() {
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
-	for (auto texture : m_Textures) {
-		gfxDevice->DestroyImage(texture);
-	}
-
 	m_Models.fill(nullptr);
-	m_Textures.clear();
-	m_Materials.clear();
 	
 	gfxDevice->DestroyDescriptorSetLayout(m_GlobalDescriptorSetLayout);
 	gfxDevice->DestroyImage(m_Skybox);
@@ -101,6 +103,9 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyShader(m_OutlineVertShader);
 	gfxDevice->DestroyShader(m_OutlineFragShader);
 	gfxDevice->DestroyShader(m_TransparentFragShader);
+	gfxDevice->DestroyShader(m_DepthFragShader);
+	gfxDevice->DestroyShader(m_NormalsFragShader);
+
 	gfxDevice->DestroyPipeline(m_ColorPSO);
 	gfxDevice->DestroyPipeline(m_ColorStencilPSO);
 	gfxDevice->DestroyPipeline(m_OutlinePSO);
@@ -109,19 +114,25 @@ void Renderer::Shutdown() {
 	gfxDevice->DestroyPipeline(m_LightSourcePSO);
 	gfxDevice->DestroyPipeline(m_TransparentPSO);
 	gfxDevice->DestroyPipeline(m_TransparentStencilPSO);
+	gfxDevice->DestroyPipeline(m_RenderDepthPSO);
+	gfxDevice->DestroyPipeline(m_RenderNormalsPSO);
+
+	gfxDevice->DestroyPipelineLayout(m_GlobalPipelineLayout);
 
 	LightManager::Shutdown();
 
 	m_Initialized = false;
 }
 
-void Renderer::LoadResources() {
+void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 	if (!m_Initialized)
 		return;
 
 	LightManager::Init();
 
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
+
+	ResourceManager* rm = ResourceManager::Get();
 
 	// Skybox PSO
 	std::vector<std::string> cubeTextures = {
@@ -146,6 +157,8 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "../src/Assets/Shaders/outline.vert");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "../src/Assets/Shaders/outline.frag");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "../src/Assets/Shaders/transparent_ps.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader, "../src/Assets/Shaders/depth.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalsFragShader, "../src/Assets/Shaders/debug_normals.frag");
 #else 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "./Shaders/skybox_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "./Shaders/skybox_frag.spv");
@@ -157,51 +170,48 @@ void Renderer::LoadResources() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "./Shaders/outline_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "./Shaders/outline_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "./Shaders/transparent_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader, "./Shaders/depth_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalsFragShader, "./Shaders/debug_normals_frag.spv");
 #endif
 
 	InputLayout globalInputLayout = {
 		.pushConstants = {
-			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PipelinePushConstants) }
+			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PipelinePushConstants) },
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
 			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
-			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(m_Textures.size()), VK_SHADER_STAGE_FRAGMENT_BIT },
+			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(rm->GetTextures().size()), VK_SHADER_STAGE_FRAGMENT_BIT},
 			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-			{ 5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS }
+			{ 5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
+			{ 6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS }		// Multiple cameras UBO 
 		}
 	};
 
 	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants) * MAX_MODELS);
-	m_GlobalDataBuffer = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
 
-	gfxDevice->WriteBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
-
-	std::vector<MaterialData> meshMaterialData;
-
-	for (const auto& material : m_Materials) {
-		meshMaterialData.push_back(material.MaterialData);
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+		m_CamerasBuffer[i] = gfxDevice->CreateBuffer(sizeof(CameraConstants) * MAX_CAMERAS);
+		m_GlobalDataBuffer[i] = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
+		gfxDevice->WriteSubBuffer(m_GlobalDataBuffer[i], &m_GlobalConstants, sizeof(GlobalConstants));
 	}
 
-	Buffer materialBuffer = gfxDevice->CreateBuffer(sizeof(MaterialData) * m_Materials.size());
-
-	gfxDevice->WriteBuffer(materialBuffer, meshMaterialData.data());
-
+	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
+	gfxDevice->CreatePipelineLayout(m_GlobalDescriptorSetLayout, m_GlobalPipelineLayout, globalInputLayout.pushConstants);
+	
 	PipelineStateDescription colorPSODesc = {};
 	colorPSODesc.Name = "Color Pipeline";
 	colorPSODesc.vertexShader = &m_DefaultVertShader;
 	colorPSODesc.fragmentShader = &m_ColorFragShader;
-	colorPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	colorPSODesc.psoInputLayout.push_back(globalInputLayout);
-	
-	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO);
+
+	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO, renderTarget);
 
 	PipelineStateDescription colorStencilPSODesc = {};
 	colorStencilPSODesc.Name = "Color Stencil Pipeline";
 	colorStencilPSODesc.vertexShader = &m_DefaultVertShader;
 	colorStencilPSODesc.fragmentShader = &m_ColorFragShader;
-	colorStencilPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	colorStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
 	colorStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
 	colorStencilPSODesc.stencilTestEnable = true;
@@ -213,13 +223,12 @@ void Renderer::LoadResources() {
 	colorStencilPSODesc.stencilState.writeMask = 0xff;
 	colorStencilPSODesc.stencilState.reference = 1;
 	
-	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO);
+	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO, renderTarget);
 
 	PipelineStateDescription outlinePSODesc = {};
 	outlinePSODesc.Name = "Outline Pipeline";
 	outlinePSODesc.vertexShader = &m_OutlineVertShader;
 	outlinePSODesc.fragmentShader = &m_OutlineFragShader;
-	outlinePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	outlinePSODesc.psoInputLayout.push_back(globalInputLayout);
 	outlinePSODesc.stencilTestEnable = true;
 	outlinePSODesc.cullMode = VK_CULL_MODE_NONE;
@@ -232,17 +241,16 @@ void Renderer::LoadResources() {
 	outlinePSODesc.stencilState.reference = 1;
 	outlinePSODesc.depthTestEnable = true;										// change to false if want to see through walls
 	
-	gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO);
+	gfxDevice->CreatePipelineState(outlinePSODesc, m_OutlinePSO, renderTarget);
 
 	PipelineStateDescription skyboxPSODesc = {};
 	skyboxPSODesc.Name = "Skybox PSO";
 	skyboxPSODesc.vertexShader = &m_SkyboxVertexShader;
 	skyboxPSODesc.fragmentShader = &m_SkyboxFragShader;
 	skyboxPSODesc.noVertex = true;
-	skyboxPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	skyboxPSODesc.psoInputLayout.push_back(globalInputLayout);
 
-	gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO);
+	gfxDevice->CreatePipelineState(skyboxPSODesc, m_SkyboxPSO, renderTarget);
 
 	PipelineStateDescription wireframePSODesc = {};
 	wireframePSODesc.Name = "Wireframe PSO";
@@ -250,26 +258,23 @@ void Renderer::LoadResources() {
 	wireframePSODesc.fragmentShader = &m_WireframeFragShader;
 	wireframePSODesc.lineWidth = 2.0f;
 	wireframePSODesc.polygonMode = VK_POLYGON_MODE_LINE;
-	wireframePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	wireframePSODesc.psoInputLayout.push_back(globalInputLayout);
 
-	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO);
+	gfxDevice->CreatePipelineState(wireframePSODesc, m_WireframePSO, renderTarget);
 
 	PipelineStateDescription lightSourcePSODesc = {};
 	lightSourcePSODesc.Name = "Light Source PSO";
 	lightSourcePSODesc.vertexShader = &m_LightSourceVertShader;
 	lightSourcePSODesc.fragmentShader = &m_LightSourceFragShader;
 	lightSourcePSODesc.noVertex = true;
-	lightSourcePSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	lightSourcePSODesc.psoInputLayout.push_back(globalInputLayout);
 	
-	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO);
+	gfxDevice->CreatePipelineState(lightSourcePSODesc, m_LightSourcePSO, renderTarget);
 
 	PipelineStateDescription transparentPSODesc = {};
 	transparentPSODesc.Name = "Transparent PSO";
 	transparentPSODesc.vertexShader = &m_DefaultVertShader;
 	transparentPSODesc.fragmentShader = &m_TransparentFragShader;
-	transparentPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	transparentPSODesc.cullMode = VK_CULL_MODE_NONE;
 	transparentPSODesc.psoInputLayout.push_back(globalInputLayout);
 	transparentPSODesc.colorBlendingEnable = true;
@@ -281,13 +286,12 @@ void Renderer::LoadResources() {
 	transparentPSODesc.colorBlendingDesc.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	transparentPSODesc.colorBlendingDesc.alphaBlendOp = VK_BLEND_OP_ADD;
 	
-	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO);
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentPSO, renderTarget);
 
 	PipelineStateDescription transparentStencilPSODesc = {};
 	transparentStencilPSODesc.Name = "Transparent Stencil Pipeline";
 	transparentStencilPSODesc.vertexShader = &m_DefaultVertShader;
 	transparentStencilPSODesc.fragmentShader = &m_TransparentFragShader;
-	transparentStencilPSODesc.pipelineExtent = gfxDevice->GetSwapChainExtent();
 	transparentStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
 	transparentStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
 	transparentStencilPSODesc.stencilTestEnable = true;
@@ -299,18 +303,36 @@ void Renderer::LoadResources() {
 	transparentStencilPSODesc.stencilState.writeMask = 0xff;
 	transparentStencilPSODesc.stencilState.reference = 1;
 
-	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO);
+	gfxDevice->CreatePipelineState(transparentPSODesc, m_TransparentStencilPSO, renderTarget);
 
-	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
+	PipelineStateDescription renderDepthPSODesc = {};
+	renderDepthPSODesc.Name = "Render Depth";
+	renderDepthPSODesc.vertexShader = &m_DefaultVertShader;
+	renderDepthPSODesc.fragmentShader = &m_DepthFragShader;
+	renderDepthPSODesc.psoInputLayout.push_back(globalInputLayout);
+	
+	m_RenderDepthPSO.description = renderDepthPSODesc;
+
+	PipelineStateDescription renderNormalsPSODesc = {};
+	renderNormalsPSODesc.Name = "Render Normals";
+	renderNormalsPSODesc.vertexShader = &m_DefaultVertShader;
+	renderNormalsPSODesc.fragmentShader = &m_NormalsFragShader;
+	renderNormalsPSODesc.psoInputLayout.push_back(globalInputLayout);
+
+	m_RenderNormalsPSO.description = renderNormalsPSODesc;
+
+
+//	gfxDevice->CreatePipelineState(renderDepthPSODesc, m_RenderDepthPSO, renderTarget);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).bindlessSet);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer);
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, materialBuffer);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer[i]);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, rm->GetMaterialBuffer());
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, LightManager::GetLightBuffer());
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, m_Textures);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, rm->GetTextures());
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[4], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[5], gfxDevice->GetFrame(i).bindlessSet, m_ModelBuffer);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[6], gfxDevice->GetFrame(i).bindlessSet, m_CamerasBuffer[i]);
 	}
 }
 
@@ -326,21 +348,18 @@ void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
 	vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 }
 
-void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera) {
+void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras) {
 	GraphicsDevice* gfxDevice = GetDevice();
 	
-	m_GlobalConstants.view = camera.ViewMatrix;
-	m_GlobalConstants.proj = camera.ProjectionMatrix;
-	m_GlobalConstants.cameraPosition = glm::vec4(camera.Position, 1.0f);
 	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
 
-	gfxDevice->UpdateBuffer(m_GlobalDataBuffer, &m_GlobalConstants);
+	gfxDevice->UpdateBuffer(m_GlobalDataBuffer[gfxDevice->GetCurrentFrameIndex()], &m_GlobalConstants);
 
 	LightManager::UpdateBuffer();
 
 	std::array<ModelConstants, MAX_MODELS> modelConstants;
 
-	for (uint32_t i = 0; i < m_TotalModels; i++) {
+	for (size_t i = 0; i < m_TotalModels; i++) {
 		ModelConstants modelConstant = {};
 		modelConstant.model = m_Models[i]->GetModelMatrix();
 		modelConstant.normalMatrix = glm::mat4(glm::mat3(glm::transpose(glm::inverse(modelConstant.model))));
@@ -352,9 +371,21 @@ void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, con
 
 	gfxDevice->UpdateBuffer(m_ModelBuffer, modelConstants.data());
 
-	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_ColorPSO.pipelineLayout, 0, 1);
-}
+	std::array<CameraConstants, MAX_CAMERAS> cameraConstants;
 
+	for (size_t i = 0; i < cameras.size(); i++) {
+		CameraConstants cameraConstant = {};
+		cameraConstant.position = glm::vec4(cameras[i].Position, 1.0f);
+		cameraConstant.view = cameras[i].ViewMatrix;
+		cameraConstant.proj = cameras[i].ProjectionMatrix;
+
+		cameraConstants[i] = cameraConstant;
+	}
+
+	gfxDevice->UpdateBuffer(m_CamerasBuffer[gfxDevice->GetCurrentFrameIndex()], cameraConstants.data());
+
+	gfxDevice->BindDescriptorSet(gfxDevice->GetCurrentFrame().bindlessSet, commandBuffer, m_GlobalPipelineLayout, 0, 1);
+}
 
 void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model) {
 	GraphicsDevice* gfxDevice = GetDevice();
@@ -368,7 +399,8 @@ void Renderer::RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model
 	for (const auto& mesh : model.Meshes) {
 		PipelinePushConstants pushConstants = {
 			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-			.ModelIdx = static_cast<int>(model.ModelIndex)
+			.ModelIdx = static_cast<int>(model.ModelIndex),
+			.CameraIdx = m_CameraIndex
 		};
 
 		vkCmdPushConstants(
@@ -403,7 +435,8 @@ void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Mod
 	for (const auto& mesh : model.Meshes) {
 		PipelinePushConstants pushConstants = {
 			.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-			.ModelIdx = static_cast<int>(model.ModelIndex)
+			.ModelIdx = static_cast<int>(model.ModelIndex),
+			.CameraIdx = m_CameraIndex
 		};
 
 		vkCmdPushConstants(
@@ -439,7 +472,8 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 			continue;
 
 		PipelinePushConstants pushConstants = {
-			.LightSourceIdx = i
+			.LightSourceIdx = i,
+			.CameraIdx = m_CameraIndex
 		};
 
 		vkCmdPushConstants(
@@ -453,6 +487,10 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 
 		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
+}
+
+void Renderer::SetCameraIndex(int index) {
+	m_CameraIndex = index;
 }
 
 const Graphics::PipelineState& Renderer::GetPSO(uint16_t flags) {
@@ -515,31 +553,11 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 
 		if (passCount == 0)
 			continue;
-	
-		/*
-		if (m_BatchType == tDefault) {
-			switch (m_CurrentPass) {
-			case tZPass:
-				break;
-			case tOpaque:
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ColorPSO.pipeline);
-				pipeline = &m_ColorPSO;
-				break;
-			case tTransparent:
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_TransparentPSO.pipeline);
-				pipeline = &m_TransparentPSO;
-				break;
-			default:
-				break;
-			}
-		}
-		*/
 
 		const PipelineState* pipeline = nullptr;
+		const VkBuffer* geometryBuffer = nullptr;
 
 		const uint32_t lastDraw = m_CurrentDraw + passCount;
-
-		const VkBuffer* geometryBuffer = nullptr;
 
 		while (m_CurrentDraw < lastDraw) {
 			const SortKey& key = m_SortKeys[m_CurrentDraw];
@@ -567,7 +585,83 @@ void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, Dr
 
 			PipelinePushConstants pushConstants = {
 				.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
-				.ModelIdx = static_cast<int>(sortMesh.modelIndex)
+				.ModelIdx = static_cast<int>(sortMesh.modelIndex),
+				.CameraIdx = m_CameraIndex
+			};
+
+			vkCmdPushConstants(
+				commandBuffer,
+				pipeline->pipelineLayout,
+				VK_SHADER_STAGE_ALL_GRAPHICS,
+				0,
+				sizeof(PipelinePushConstants),
+				&pushConstants
+			);
+
+			vkCmdDrawIndexed(
+				commandBuffer,
+				static_cast<uint32_t>(mesh.Indices.size()),
+				1,
+				static_cast<uint32_t>(mesh.IndexOffset),
+				static_cast<int32_t>(mesh.VertexOffset),
+				0
+			);
+
+			++m_CurrentDraw;
+		}
+	}
+}
+
+void Renderer::MeshSorter::RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass, Graphics::IRenderTarget& renderTarget, Graphics::PipelineState* pso) {
+
+	GraphicsDevice* gfxDevice = GetDevice();
+	
+	for (; m_CurrentPass <= pass; m_CurrentPass = (DrawPass)(m_CurrentPass + 1)) {
+
+		const uint32_t passCount = m_PassCounts[m_CurrentPass];
+
+		if (passCount == 0)
+			continue;
+
+		if (pso->renderPass == nullptr 
+			|| pso->renderPass->Handle == VK_NULL_HANDLE 
+			|| pso->renderPass->Handle != renderTarget.GetRenderPass().Handle) {
+
+			gfxDevice->DestroyPipeline(*pso);
+			gfxDevice->CreatePipelineState(pso->description, *pso, renderTarget);
+		}
+
+		const PipelineState* pipeline = nullptr;
+		const VkBuffer* geometryBuffer = nullptr;
+
+		const uint32_t lastDraw = m_CurrentDraw + passCount;
+
+		while (m_CurrentDraw < lastDraw) {
+			const SortKey& key = m_SortKeys[m_CurrentDraw];
+			const SortMesh& sortMesh = m_SortMeshes[key.value];
+			const Assets::Mesh& mesh = *sortMesh.mesh;
+
+			if (pipeline == nullptr || pso != pipeline) {
+				pipeline = pso;
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+				assert(pipeline != nullptr);
+			}
+		
+			if (geometryBuffer == nullptr || &sortMesh.bufferPtr->Handle != geometryBuffer) {
+				geometryBuffer = &sortMesh.bufferPtr->Handle;
+
+				VkDeviceSize offsets[] = { sizeof(uint32_t) * sortMesh.totalIndices };
+
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, geometryBuffer, offsets);
+				vkCmdBindIndexBuffer(commandBuffer, *geometryBuffer, 0, VK_INDEX_TYPE_UINT32);
+			}
+
+			assert(geometryBuffer != nullptr);
+
+			PipelinePushConstants pushConstants = {
+				.MaterialIdx = static_cast<int>(mesh.MaterialIndex),
+				.ModelIdx = static_cast<int>(sortMesh.modelIndex),
+				.CameraIdx = m_CameraIndex
 			};
 
 			vkCmdPushConstants(

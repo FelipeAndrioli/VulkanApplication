@@ -13,11 +13,13 @@
 #include "VulkanHeader.h"
 #include "Window.h"
 #include "Graphics.h"
-#include "BufferManager.h"
 
 #include "../Assets/Mesh.h"
 
 namespace Graphics {
+	class IRenderTarget;
+	class SwapChainRenderTarget;
+
 	const int FRAMES_IN_FLIGHT = 2;
 	const int DEDICATED_GPU = 2;
 	const std::vector<const char*> c_DeviceExtensions = {
@@ -51,6 +53,51 @@ namespace Graphics {
 	void CreateDebugMessenger(VkInstance& instance, VkDebugUtilsMessengerEXT& debugMessenger);
 	VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
+	typedef enum RenderPassFlags : uint32_t {
+		// attachments
+		eColorAttachment			= 0x00000001,
+		eDepthAttachment			= 0x00000002,
+		eResolveAttachment			= 0x00000004,
+
+		// op operations
+		eColorLoadOpClear			= 0x00000008,
+		eColorLoadOpLoad			= 0x00000010,
+		eColorStoreOpStore			= 0x00000020,
+
+		// layouts
+		eInitialLayoutColorOptimal	= 0x00000040,
+		eFinalLayoutTransferSrc		= 0x00000080,
+		eFinalLayoutTransferDst		= 0x00000100,
+		eFinalLayoutPresent			= 0x00000200
+	} RenderPassFlags;
+
+	struct RenderPassDesc {
+		VkOffset2D offset = {};
+		VkViewport viewport = {};
+		VkExtent2D extent = {};
+		VkRect2D scissor = {};
+
+		std::vector<VkClearValue> clearValues;
+
+		// RenderPassFlags
+		uint32_t flags;
+
+		VkSampleCountFlagBits sampleCount;
+	};
+
+	struct RenderPass {
+		RenderPassDesc Description = {};
+
+		VkRenderPass Handle = VK_NULL_HANDLE;
+
+		std::vector<VkAttachmentDescription> Attachments = {};
+		std::vector<VkSubpassDependency> Dependencies = {};
+		std::vector<VkSubpassDescription> Subpasses = {};
+
+		VkImageLayout InitialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VkImageLayout FinalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	};
+
 	struct SwapChainSupportDetails {
 		VkSurfaceCapabilitiesKHR capabilities;
 		std::vector<VkSurfaceFormatKHR> formats;
@@ -58,16 +105,16 @@ namespace Graphics {
 	};
 
 	struct SwapChain {
-		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+		VkSwapchainKHR Handle = VK_NULL_HANDLE;
+		VkExtent2D Extent = { 0, 0 };
+		uint32_t ImageIndex = 0;
 
-		std::vector<VkImage> swapChainImages;
-		std::vector<VkImageView> swapChainImageViews;
+		std::vector<VkImage> Images;
+		std::vector<VkImageView> ImageViews;
+		std::vector<VkSampler> ImageSamplers;
 
-		VkFormat swapChainImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
-
-		VkExtent2D swapChainExtent = { 0, 0 };
-
-		uint32_t imageIndex = 0;
+		std::unique_ptr<SwapChainRenderTarget> RenderTarget;
+		VkFormat ImageFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
 	};
 
 	struct Shader {
@@ -138,6 +185,10 @@ namespace Graphics {
 		VkPipelineTessellationStateCreateInfo tessellationInfo = {};
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 		VkPipelineColorBlendStateCreateInfo colorBlending = {};
+
+		const RenderPass* renderPass = nullptr;
+
+		PipelineStateDescription description = {};
 	};
 
 	struct Frame {
@@ -152,13 +203,16 @@ namespace Graphics {
 		VkDescriptorSet bindlessSet;
 	};
 
+	class BufferManager;
+
 	class GraphicsDevice {
 	public:
 		GraphicsDevice(Window& window);
 		~GraphicsDevice();
 
 		bool CreateSwapChain(Window& window, SwapChain& swapChain);
-		void RecreateSwapChain(Window& window, SwapChain& swapChain);
+		void CreateSwapChainRenderTarget();
+		void RecreateSwapChain(Window& window);
 		void DestroySwapChain(SwapChain& swapChain);
 
 		void WaitIdle();
@@ -166,15 +220,15 @@ namespace Graphics {
 		void DestroyFrameResources(Frame& frame);
 		void BindViewport(const Viewport& viewport, VkCommandBuffer& commandBuffer);
 		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
-		void BeginRenderPass(const VkRenderPass& renderPass, VkCommandBuffer& commandBuffer, const VkExtent2D renderArea, uint32_t imageIndex, const VkFramebuffer& framebuffer);
-		void EndRenderPass(VkCommandBuffer& commandBuffer);
+		void BeginRenderPass(const RenderPass& renderPass, const VkCommandBuffer& commandBuffer);
+		void EndRenderPass(const VkCommandBuffer& commandBuffer);
 		
 		void BeginCommandBuffer(VkCommandBuffer& commandBuffer);
 		void EndCommandBuffer(VkCommandBuffer& commandBuffer);
 
-		bool BeginFrame(SwapChain& swapChain, Frame& frame);
-		void EndFrame(const SwapChain& swapChain, const Frame& frame);
-		void PresentFrame(const SwapChain& swapChain, const Frame& frame);
+		bool BeginFrame(Frame& frame);
+		void EndFrame(const Frame& frame);
+		void PresentFrame(const Frame& frame);
 
 		VkCommandBuffer BeginSingleTimeCommandBuffer(VkCommandPool& commandPool);
 		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer, VkCommandPool& commandPool);
@@ -186,6 +240,8 @@ namespace Graphics {
 		void AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits memoryProperty);
 		void AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty);
 
+		void TransitionImageLayout(const VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout, const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask, const VkPipelineStageFlags srcPipelineStage, const VkPipelineStageFlags dstPipelineStage);
+		void TransitionImageLayout(GPUImage& image, VkImageLayout oldLayout, VkImageLayout newLayout);
 		void TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
 		void GenerateMipMaps(GPUImage& image);
 		void CreateImageSampler(GPUImage& image);
@@ -197,8 +253,10 @@ namespace Graphics {
 		void UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer);
-		void CreateDepthBuffer(GPUImage& depthBuffer, uint32_t width, uint32_t height);
-		void CreateRenderTarget(GPUImage& renderTarget, uint32_t width, uint32_t height, VkFormat format);
+		void CreateDepthBuffer(GPUImage& depthBuffer, const RenderPassDesc& renderPassDesc);
+		void CreateDepthBuffer(GPUImage& depthBuffer, const VkExtent2D& extent, const VkSampleCountFlagBits& samples);
+		void CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format);
+		void CreateRenderTarget(GPUImage& renderTarget, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples);
 
 		template <class T>
 		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize, size_t offset);
@@ -208,7 +266,7 @@ namespace Graphics {
 		void UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, size_t dataSize);
 		void UpdateBuffer(Buffer& buffer, void* data);
 		void WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0);
-		void WriteBuffer(const Buffer& buffer, void* data);
+		void WriteSubBuffer(Buffer& buffer, void* data, size_t dataSize);
 
 		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, void* initialData, size_t dataSize);
 
@@ -216,10 +274,8 @@ namespace Graphics {
 		void AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
 		void DestroyBuffer(GPUBuffer& buffer);
 	
-		void CreateDefaultRenderPass(VkRenderPass& renderPass);
-		void CreateRenderPass(VkRenderPass& renderPass, std::vector<VkAttachmentDescription> attachments, std::vector<VkSubpassDescription> subpass, std::vector<VkSubpassDependency> dependencies);
+		void CreateRenderPass(RenderPass& renderPass);
 		void DestroyRenderPass(VkRenderPass& renderPass);
-		void RecreateDefaultRenderPass(VkRenderPass& renderPass, SwapChain& swapChain);
 		void DestroyFramebuffer(std::vector<VkFramebuffer>& framebuffers);
 
 		void CreateUI(Window& window, VkRenderPass& renderPass);
@@ -231,6 +287,7 @@ namespace Graphics {
 		void DestroyDescriptorPool();
 		void DestroyDescriptorPool(VkDescriptorPool& descriptorPool);
 		void CreatePipelineLayout(PipelineLayoutDesc desc, VkPipelineLayout& pipelineLayout);
+		void CreatePipelineLayout(const VkDescriptorSetLayout& descriptorSetLayout, VkPipelineLayout& pipelineLayout, const std::vector<VkPushConstantRange>& pushConstants);
 
 		void CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const std::vector<VkDescriptorSetLayoutBinding> bindings);
 		void CreateDescriptorSetLayout(VkDescriptorSetLayout& layout, const VkDescriptorSetLayoutCreateInfo& layoutInfo);
@@ -243,6 +300,8 @@ namespace Graphics {
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const Buffer& buffer);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture);
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUImage& image);
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const VkImageLayout& imageLayout, const VkImageView& imageView, const VkSampler& imageSampler);
 
 #ifdef RUNTIME_SHADER_COMPILATION
 		static EShLanguage FindLanguage(const Shader& shader);
@@ -252,21 +311,24 @@ namespace Graphics {
 		std::vector<char> ReadFile(const std::string& filename);
 		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
 		void DestroyShader(Shader& shader);
-		void CreateRenderPass(VkFormat colorImageFormat, VkFormat depthFormat, VkRenderPass& renderPass);
-		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso);
-		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, VkRenderPass& renderPass);
+		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget);
+		void DestroyPipelineLayout(VkPipelineLayout& pipelineLayout);
 		void DestroyPipeline(PipelineState& pso);
 
-		void SetSwapChainExtent(VkExtent2D newExtent) { m_SwapChainExtent = newExtent; }
-		VkExtent2D& GetSwapChainExtent() { return m_SwapChainExtent; }
-
 		uint32_t GetCurrentFrameIndex() { return m_CurrentFrame; }
+
+		VkExtent2D& GetSwapChainExtent() { return m_SwapChain.Extent; }
+		const SwapChain& GetSwapChain() { return m_SwapChain; }
 
 		Frame& GetCurrentFrame();
 		Frame& GetLastFrame();
 		Frame& GetFrame(int i);
 
-		VkRenderPass& GetDefaultRenderPass() { return m_DefaultRenderPass; }
+		void DestroyRenderPass(RenderPass& renderPass);
+		void ResizeRenderPass(const uint32_t width, const uint32_t height, RenderPass& renderPass);
+
+		VkFormat GetDepthFormat() { return FindDepthFormat(m_PhysicalDevice); }
+
 	public:
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
@@ -274,7 +336,6 @@ namespace Graphics {
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
 		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
 		VkCommandPool m_CommandPool = VK_NULL_HANDLE;
-		VkRenderPass m_DefaultRenderPass = VK_NULL_HANDLE;
 
 		QueueFamilyIndices m_QueueFamilyIndices;
 		VkSampleCountFlagBits m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -295,6 +356,8 @@ namespace Graphics {
 		Frame m_Frames[FRAMES_IN_FLIGHT] = {};
 		
 		std::unique_ptr<class BufferManager> m_BufferManager;
+	
+		Graphics::SwapChain m_SwapChain;
 	private:
 		VkPhysicalDevice CreatePhysicalDevice(VkInstance& instance, VkSurfaceKHR& surface);
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice& device, VkSurfaceKHR& surface);
@@ -303,7 +366,7 @@ namespace Graphics {
 		void CreateInstance(VkInstance& instance);
 		void CreateLogicalDevice(QueueFamilyIndices indices, VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice);
 		void CreateQueue(VkDevice& logicalDevice, uint32_t queueFamilyIndex, VkQueue& queue);
-		void CreateSwapChainImageViews(VkDevice& logicalDevice, SwapChain& swapChain);
+		void CreateSwapChainImageViews(SwapChain& swapChain);
 		
 		void CreateCommandPool(VkCommandPool& commandPool, uint32_t queueFamilyIndex);
 		void CreateCommandBuffer(VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);

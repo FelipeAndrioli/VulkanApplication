@@ -3,11 +3,15 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
-#include "./Core/VulkanHeader.h"
+#include "../Core/VulkanHeader.h"
+#include "../Core/RenderTarget.h"
+
 #include "glm.hpp"
 
 #define MAX_MODELS 10
+#define MAX_CAMERAS 10
 
 namespace Assets {
 	class Camera;
@@ -19,6 +23,7 @@ namespace Assets {
 namespace Graphics {
 	struct PipelineState;
 	struct GPUBuffer;
+	struct RenderPass;
 }
 
 namespace Renderer {
@@ -45,7 +50,7 @@ namespace Renderer {
 			Graphics::GPUBuffer* bufferPtr;
 
 			float distance;
-			
+
 			uint32_t modelIndex = 0;
 			uint32_t totalIndices = 0;
 		};
@@ -64,6 +69,8 @@ namespace Renderer {
 		void AddMesh(const Assets::Mesh& mesh, float distance, uint32_t modelIndex, uint32_t totalIndices, Graphics::GPUBuffer& buffer);
 		void Sort();
 		void RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass);
+		void RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass, Graphics::IRenderTarget& renderTarget, Graphics::PipelineState* pso);
+		void ResetDraw() { m_CurrentDraw = 0; m_CurrentPass = tZPass; }
 	private:
 		BatchType m_BatchType;
 		DrawPass m_CurrentPass;
@@ -81,21 +88,34 @@ namespace Renderer {
 		int MaterialIdx = 0;
 		int ModelIdx = 0;
 		int LightSourceIdx = 0;
+		int CameraIdx = 0;
 	};
+
+	extern Graphics::PipelineState m_SkyboxPSO;
+	extern Graphics::PipelineState m_ColorPSO;
+	extern Graphics::PipelineState m_ColorStencilPSO;
+	extern Graphics::PipelineState m_OutlinePSO;
+	extern Graphics::PipelineState m_WireframePSO;
+	extern Graphics::PipelineState m_LightSourcePSO;
+	extern Graphics::PipelineState m_TransparentPSO;
+	extern Graphics::PipelineState m_TransparentStencilPSO;
+	extern Graphics::PipelineState m_RenderDepthPSO;
+	extern Graphics::PipelineState m_RenderNormalsPSO;
 
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
 	void Init();
 	void Shutdown();
-	void LoadResources();
+	void LoadResources(const Graphics::IRenderTarget& renderTarget);
 	void OnUIRender();
 
-	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const Assets::Camera& camera);
+	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras);
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);
 	void RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderLightSources(const VkCommandBuffer& commandBuffer);
 	void RenderCube(const VkCommandBuffer& commandBuffer, const Graphics::PipelineState& PSO);
+	void SetCameraIndex(int index);
 
 	const Graphics::PipelineState& GetPSO(uint16_t flags);
 }

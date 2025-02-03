@@ -7,6 +7,7 @@
 
 #include "./Bitmap.h"
 #include "./UtilsCubemap.h"
+#include "./Helper.h"
 
 #include "../Core/GraphicsDevice.h"
 #include "../Core/Graphics.h"
@@ -56,6 +57,9 @@ namespace TextureLoader {
 		device->CreateTexture(desc, texture, textureType, pixels, imageSize);
 
 		stbi_image_free(pixels);
+
+		texture.Name = Helper::get_filename(texturePath);
+		texture.Type = textureType;
 		
 		return texture;
 	}

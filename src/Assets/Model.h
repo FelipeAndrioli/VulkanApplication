@@ -12,10 +12,10 @@ namespace Renderer {
 
 namespace Assets {
 	struct Transform {
-		glm::vec3 translation;
-		glm::vec3 rotation;
+		glm::vec3 translation = glm::vec3(0.0f);
+		glm::vec3 rotation = glm::vec3(0.0f);
 
-		float scaleHandler;
+		float scaleHandler = 1.0f;
 	};
 
 	class Model {

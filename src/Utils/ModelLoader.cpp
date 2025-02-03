@@ -11,41 +11,16 @@
 
 #include "../Assets/Model.h"
 #include "../Assets/Mesh.h"
+#include "../Assets/Utils/MeshGenerator.h"
 
 #include "../Core/Graphics.h"
 #include "../Core/GraphicsDevice.h"
 #include "../Core/ConstantBuffers.h"
+#include "../Core/ResourceManager.h"
 
 #include "./Helper.h"
 
 #include "./TextureLoader.h"
-
-constexpr auto UNEXISTENT = -1;
-
-int GetTextureIndex(std::vector<Texture>& loadedTextures, std::string textureName) {
-	if (loadedTextures.size() == 0) 
-		return UNEXISTENT;
-
-	for (int i = 0; i < loadedTextures.size(); i++) {
-		if (loadedTextures[i].Name == textureName) {
-			return i;
-		}
-	}
-
-	return UNEXISTENT;
-}
-
-int GetMaterialIndex(std::vector<Material>& sceneMaterials, std::string materialName) {
-	if (sceneMaterials.size() == 0)
-		return UNEXISTENT;
-
-	for (int i = 0; i < sceneMaterials.size(); i++) {
-		if (sceneMaterials[i].Name == materialName)
-			return i;
-	}
-
-	return UNEXISTENT;
-}
 
 Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 	std::vector<Assets::Vertex> vertices;
@@ -106,135 +81,94 @@ void ProcessNode(Assets::Model& model, const aiNode* node, const aiScene* scene)
 	}
 }
 
-void ValidateAndInsertTexture(
-		std::vector<Texture>& loadedTextures,
-		Texture::TextureType textureType,
-		std::string textureName,
-		std::string basePath,
-		bool flipTexturesVertically,
-		bool generateMipMaps
-	) {
+static void LoadMaterialTextures(aiMaterial* assimpMaterial, Material& material, const std::string& materialPath) {
+	ResourceManager* rm = ResourceManager::Get();
 
-	int textureIndex = GetTextureIndex(loadedTextures, textureName);
+	// TODO: Turn these arrays into constants or enums
 
-	if (textureIndex != -1)
-		return;
+	const int numTextureTypes = 5;
 
-	loadedTextures.push_back(
-		TextureLoader::LoadTexture(
-			(basePath + textureName).c_str(),
-			textureType,
-			flipTexturesVertically,
-			generateMipMaps
-		)
-	);
-
-	loadedTextures[loadedTextures.size() - 1].Name = textureName;
-}
-
-void LoadTextureToMaterial(
-	std::vector<Material>& sceneMaterials,
-	std::vector<Texture>& loadedTextures,
-	Texture::TextureType textureType,
-	std::string textureName,
-	std::string materialName
-) {
-	int materialIndex = GetMaterialIndex(sceneMaterials, materialName);
-	switch (textureType) {
-	case Texture::TextureType::AMBIENT:
-		sceneMaterials[materialIndex].MaterialData.AmbientTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
-		break;
-	case Texture::TextureType::DIFFUSE:
-		sceneMaterials[materialIndex].MaterialData.DiffuseTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
-		break;
-	case Texture::TextureType::SPECULAR:
-		sceneMaterials[materialIndex].MaterialData.SpecularTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
-		break;
-	case Texture::TextureType::BUMP:
-		sceneMaterials[materialIndex].MaterialData.BumpTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
-		break;
-	case Texture::TextureType::ROUGHNESS:
-		sceneMaterials[materialIndex].MaterialData.RoughnessTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
-		break;
-	case Texture::TextureType::METALLIC:
-		sceneMaterials[materialIndex].MaterialData.MetallicTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
-		break;
-	case Texture::TextureType::NORMAL:
-		sceneMaterials[materialIndex].MaterialData.NormalTextureIndex = static_cast<uint32_t>(GetTextureIndex(loadedTextures, textureName));
-		break;
-	default:
-		break;
+	const std::array<aiTextureType, numTextureTypes> assimpTextureTypes = {
+		aiTextureType_AMBIENT,
+		aiTextureType_DIFFUSE,
+		aiTextureType_SPECULAR,
+		aiTextureType_NORMALS,
+		aiTextureType_HEIGHT
 	};
-}
 
-void ProcessTexture(
-	std::vector<Material>& sceneMaterials,
-	std::vector<Texture>& loadedTextures,
-	Texture::TextureType textureType,
-	std::string textureName,
-	std::string basePath,
-	std::string materialName,
-	bool flipTexturesVertically,
-	bool generateMipMaps
-) {
-	std::string texName = textureName;
-	std::string path = basePath;
+	const std::array<Texture::TextureType, numTextureTypes> textureTypes = {
+		Texture::TextureType::AMBIENT,
+		Texture::TextureType::DIFFUSE,
+		Texture::TextureType::SPECULAR,
+		Texture::TextureType::NORMAL,
+		Texture::TextureType::BUMP,
+	};
 
-	if (textureName == "" || !Helper::file_exists(basePath + textureName)) {
-		std::cout << "File: " << basePath + textureName << " doesn't exists! Loading custom texture!" << '\n';
-		texName = "error_texture.jpg";
-		path = "./Textures/";
-	}
+	for (uint32_t tt = 0; tt < numTextureTypes; tt++) {
+		for (uint32_t t = 0; t < assimpMaterial->GetTextureCount(assimpTextureTypes[tt]); t++) {
+			aiString materialName;
+			aiString util;
 
-	ValidateAndInsertTexture(
-		loadedTextures, 
-		textureType, 
-		texName, 
-		path, 
-		flipTexturesVertically,
-		generateMipMaps
-	);
-	LoadTextureToMaterial(sceneMaterials, loadedTextures, textureType, texName, materialName);
-}
+			assimpMaterial->Get(AI_MATKEY_NAME, materialName);
+			assimpMaterial->GetTexture(assimpTextureTypes[tt], t, &util);
+			
+			std::string texturePath = (materialPath + util.C_Str()).c_str();
+			std::string path = materialPath;
 
-void LoadTextures(
-	Assets::Model& model, 
-	aiMaterial* material, 
-	aiTextureType textureType, 
-	Texture::TextureType customTextureType,
-	std::vector<Material>& sceneMaterials,
-	std::vector<Texture>& loadedTextures
-) {
-	
-	if (material == nullptr)
-		return;
+			if (util.C_Str()  == "" || !Helper::file_exists(texturePath)) {
+				std::cout << "File: " << texturePath << " doesn't exists! Loading custom texture!" << '\n';
+				texturePath = "error_texture.jpg";
+				path = "./Textures/";
+			}
+			else {
+			}
 
-	for (uint32_t i = 0; i < material->GetTextureCount(textureType); i++) {
-		aiString util;
+			rm->AddTexture(
+				TextureLoader::LoadTexture(
+					texturePath.c_str(),
+					textureTypes[tt],
+					false,
+					true //model.GenerateMipMaps	
+				)
+			);
 
-		material->GetTexture(textureType, i, &util);
+			int textureIndex = rm->GetTextureIndex(Helper::get_filename(texturePath));
 
-		ProcessTexture(
-			sceneMaterials, 
-			loadedTextures, 
-			customTextureType, 
-			util.C_Str(), 
-			model.MaterialPath, 
-			material->GetName().C_Str(), 
-			//model.FlipTexturesVertically, 
-			false,
-			model.GenerateMipMaps
-		);
+			switch (textureTypes[tt]) {
+			case Texture::TextureType::AMBIENT:
+				material.MaterialData.AmbientTextureIndex = textureIndex;
+				break;
+			case Texture::TextureType::DIFFUSE:
+				material.MaterialData.DiffuseTextureIndex = textureIndex;
+				break;
+			case Texture::TextureType::SPECULAR:
+				material.MaterialData.SpecularTextureIndex = textureIndex;
+				break;
+			case Texture::TextureType::BUMP:
+				material.MaterialData.BumpTextureIndex = textureIndex;
+				break;
+			case Texture::TextureType::ROUGHNESS:
+				material.MaterialData.RoughnessTextureIndex = textureIndex;
+				break;
+			case Texture::TextureType::METALLIC:
+				material.MaterialData.MetallicTextureIndex = textureIndex;
+				break;
+			case Texture::TextureType::NORMAL:
+				material.MaterialData.NormalTextureIndex = textureIndex;
+				break;
+			default:
+				break;
+			};
+
+		}
 	}
 }
 
 static void ProcessMaterials(
 	Assets::Model& model,
-	const aiScene* scene, 
-	std::vector<Material>& sceneMaterials,
-	std::vector<Texture>& loadedTextures) {
+	const aiScene* scene) {
 
-	int material_count = 0;
+	ResourceManager* rm = ResourceManager::Get();
 
 	for (size_t i = 0; i < scene->mNumMaterials; i++) {
 		aiMaterial* material = scene->mMaterials[i];
@@ -259,7 +193,7 @@ static void ProcessMaterials(
 		material->Get(AI_MATKEY_SHININESS, shininess);
 		material->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength);
 
-		if (GetMaterialIndex(sceneMaterials, materialName.C_Str()) == UNEXISTENT) {
+		if (rm->GetMaterialIndex(materialName.C_Str()) == -1) {
 			Material newMaterial = {};
 			newMaterial.Name = materialName.C_Str();
 			newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, ambientColor.a);
@@ -271,20 +205,14 @@ static void ProcessMaterials(
 			newMaterial.MaterialData.Shininess = shininess;
 			newMaterial.MaterialData.ShininessStrength = shininessStrength;
 
-			sceneMaterials.push_back(newMaterial);
-
-			material_count++;
+			LoadMaterialTextures(material, newMaterial, model.MaterialPath);
+			
+			rm->AddMaterial(newMaterial);
 		}
-
-		LoadTextures(model, material, aiTextureType_AMBIENT, Texture::TextureType::AMBIENT, sceneMaterials, loadedTextures);
-		LoadTextures(model, material, aiTextureType_DIFFUSE, Texture::TextureType::DIFFUSE, sceneMaterials, loadedTextures);
-		LoadTextures(model, material, aiTextureType_SPECULAR, Texture::TextureType::SPECULAR, sceneMaterials, loadedTextures);
-		LoadTextures(model, material, aiTextureType_NORMALS, Texture::TextureType::NORMAL, sceneMaterials, loadedTextures);
-		LoadTextures(model, material, aiTextureType_HEIGHT, Texture::TextureType::BUMP, sceneMaterials, loadedTextures);
 	}
 }
 
-void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& materials) {
+void CompileMesh(Assets::Model& model) {
 
 	std::vector<Assets::Vertex> vertices;
 	std::vector<uint32_t> indices;
@@ -298,17 +226,30 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 	float min_z = std::numeric_limits<float>::max();
 	float max_z = std::numeric_limits<float>::min();
 
+	ResourceManager* rm = ResourceManager::Get();
+
 	for (auto& mesh : model.Meshes) {
 
-		int materialIndex = GetMaterialIndex(materials, mesh.MaterialName);
+		int materialIndex = rm->GetMaterialIndex(mesh.MaterialName);
 
-		if (materialIndex == UNEXISTENT) {
-			std::string customMaterialName = "Custom_Material_" + model.Name;
-			materials.emplace_back(Material(customMaterialName));
-			mesh.MaterialName = customMaterialName;
+		if (materialIndex == -1) {
+			std::string customMaterialName = "Custom_Material";
+
+			materialIndex = rm->GetMaterialIndex(customMaterialName);
+
+			if (materialIndex == -1) {
+				rm->AddMaterial(Material(customMaterialName));
+				mesh.MaterialName = customMaterialName;
+				mesh.MaterialIndex = rm->GetLastMaterialIndex();
+			}
+			else {
+				mesh.MaterialName = customMaterialName;
+				mesh.MaterialIndex = materialIndex;
+			}
 		}
-
-		mesh.MaterialIndex = materialIndex;
+		else {
+			mesh.MaterialIndex = materialIndex;
+		}
 
 		mesh.IndexOffset = indices.size();
 		mesh.VertexOffset = vertices.size();
@@ -316,7 +257,7 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 		indices.insert(indices.end(), mesh.Indices.begin(), mesh.Indices.end());
 		vertices.insert(vertices.end(), mesh.Vertices.begin(), mesh.Vertices.end());
 
-		if (materials[mesh.MaterialIndex].MaterialData.Diffuse.a < 1.0f) {
+		if (rm->GetMaterial(mesh.MaterialIndex).MaterialData.Diffuse.a < 1.0f) {
 			mesh.PSOFlags |= PSOFlags::tTransparent;
 			mesh.PSOFlags |= PSOFlags::tTwoSided;
 		} else {
@@ -371,9 +312,9 @@ void ModelLoader::CompileMesh(Assets::Model& model, std::vector<Material>& mater
 	gfxDevice->WriteBuffer(model.DataBuffer, vertices.data(), sizeof(Assets::Vertex) * vertices.size(), sizeof(uint32_t) * indices.size());
 }
 
-std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, std::vector<Material>& materials, std::vector<Graphics::Texture>& textures) {
+std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 
-	Timestep begin = glfwGetTime();
+	Timestep geometryBegin = glfwGetTime();
 
 	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
 	model->ModelPath = path.c_str();
@@ -393,12 +334,40 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path, s
 	assert(scene && scene->HasMeshes());
 
 	ProcessNode(*model.get(), scene->mRootNode, scene);
-	ProcessMaterials(*model.get(), scene, materials, textures);
-	CompileMesh(*model.get(), materials);
+	Timestep geometryEnd = glfwGetTime();
 
-	Timestep end = glfwGetTime();
+	Timestep materialBegin = glfwGetTime();
 
-	std::cout << "Loading time: " << end.GetSeconds() - begin.GetSeconds() << " | Model: " << model->Name << '\n';
+	ProcessMaterials(*model.get(), scene);
+
+	Timestep materialEnd = glfwGetTime();
+	
+	Timestep compilingBegin = glfwGetTime();
+
+	CompileMesh(*model.get());
+
+	Timestep compilingEnd = glfwGetTime();
+
+	std::cout << "Loading time: " << compilingEnd.GetSeconds() - geometryBegin.GetSeconds() << "\t| Model: " << model->Name << '\n';
+	std::cout << "\tGeometry Loading time: " << geometryEnd.GetSeconds() - geometryBegin.GetSeconds() << '\n';
+	std::cout << "\tMaterial and Textures time: " << materialEnd.GetSeconds() - materialBegin.GetSeconds() << '\n';
+	std::cout << "\tMesh Compiling time: " << compilingEnd.GetSeconds() - compilingBegin.GetSeconds() << '\n';
 
 	return model;
+}
+
+std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::vec3 position, float size) {
+	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
+
+	if (modelType == ModelType::CUBE) {
+		static int cubeIdx = 0;
+	
+		model->Meshes = Assets::MeshGenerator::GenerateCubeMesh(position, size);
+		model->Name = "Cube_" + std::to_string(cubeIdx++);
+		model->Transformations.translation = position;
+
+		CompileMesh(*model.get());
+
+		return model;
+	}
 }

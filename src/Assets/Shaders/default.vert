@@ -1,16 +1,14 @@
 #version 450
 
 #define MAX_MODELS 10
+#define MAX_CAMERAS 10
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int total_lights;
 	float time;
 	float extra_s_2;
 	float extra_s_3;
-	vec4 camera_position;
-	vec4 extra[6];
-	mat4 view;
-	mat4 proj;
+	vec4 extra[15];
 } sceneGPUData;
 
 struct model_t {
@@ -22,6 +20,13 @@ struct model_t {
 	
 	int flip_uv_vertically;
 	float outline_width;
+};
+
+struct camera_t {
+	vec4 extra[7];
+	vec4 position;
+	mat4 view;
+	mat4 proj;
 };
 
 layout (location = 0) in vec3 inPosition;
@@ -38,16 +43,22 @@ layout (std140, set = 0, binding = 5) uniform model_uniform {
 	model_t models[MAX_MODELS];
 };
 
+layout (std140, set = 0, binding = 6) uniform camera_uniform {
+	camera_t cameras[MAX_CAMERAS];
+};
+
 layout (push_constant) uniform constant {
 	int material_index;
 	int model_index;
 	int light_source_index;
+	int camera_index;
 } mesh_constant;
 
 void main() {
 	model_t current_model = models[mesh_constant.model_index];
+	camera_t current_camera = cameras[mesh_constant.camera_index];
 
-	gl_Position = sceneGPUData.proj * sceneGPUData.view * current_model.model * vec4(inPosition, 1.0);
+	gl_Position = current_camera.proj * current_camera.view * current_model.model * vec4(inPosition, 1.0);
 	fragColor = inColor;
 
 	if (current_model.flip_uv_vertically == 1) {
