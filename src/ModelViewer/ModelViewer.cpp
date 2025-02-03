@@ -73,6 +73,13 @@ void ModelViewer::StartUp() {
 	float pitch = -13.5f;
 
 	m_Camera.Init(position, fov, yaw, pitch, m_ScreenWidth, m_ScreenHeight);
+
+	yaw = 132.770f;
+	pitch = -10.626f;
+	position.x = 5.966f;
+	position.y = -3.279f;
+	position.z = -5.785f;
+
 	m_SecondCamera.Init(position, fov, yaw, pitch, m_ScreenWidth, m_ScreenHeight);
 
 	Renderer::Init();
