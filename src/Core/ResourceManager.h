@@ -12,11 +12,11 @@ public:
 	static ResourceManager* Get();
 	void Destroy();
 
-	const int GetLastTextureIndex() { return m_Textures.size() - 1; }
-	const int GetTotalTextures() { return m_Textures.size(); }
+	const int GetLastTextureIndex()		{ return static_cast<int>(m_Textures.size() - 1);	}
+	const int GetTotalTextures()		{ return static_cast<int>(m_Textures.size());		}
 
-	const int GetLastMaterialIndex() { return m_Materials.size() - 1; }
-	const int GetTotalMaterials() { return m_Materials.size(); }
+	const int GetLastMaterialIndex()	{ return static_cast<int>(m_Materials.size() - 1);	}
+	const int GetTotalMaterials()		{ return static_cast<int>(m_Materials.size());		}
 
 	void AddMaterial(Material material);
 	void AddTexture(Graphics::Texture texture);
