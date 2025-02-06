@@ -296,6 +296,7 @@ namespace Graphics {
 		deviceFeatures.fillModeNonSolid = VK_TRUE;
 		deviceFeatures.wideLines = VK_TRUE;
 		deviceFeatures.alphaToOne = VK_TRUE;
+		deviceFeatures.geometryShader = VK_TRUE;
 
 		VkDeviceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -490,57 +491,6 @@ namespace Graphics {
 				assert(result == VK_SUCCESS);
 			}
 		}
-
-
-		/*
-		// Create swap chain depth image
-		CreateDepthBuffer(swapChain.depthImage, { width, height }, VK_SAMPLE_COUNT_1_BIT);
-
-		// Create swap chain render pass
-		{
-
-			swapChain.renderPass.Description.extent = { width, height };
-			swapChain.renderPass.Description.viewport = {
-				.x = 0,
-				.y = 0,
-				.width = static_cast<float>(width),
-				.height = static_cast<float>(height),
-				.minDepth = 0.0f,
-				.maxDepth = 1.0f
-			};
-			swapChain.renderPass.Description.scissor = {
-				.offset = {
-					.x = 0,
-					.y = 0
-				},
-				.extent = {
-					.width = width,
-					.height = height
-				}
-			};
-			swapChain.renderPass.Description.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-			swapChain.renderPass.Description.flags = eColorAttachment 
-				| eDepthAttachment 
-				| eColorLoadOpLoad 
-				| eColorStoreOpStore 
-				| eInitialLayoutColorOptimal 
-				| eFinalLayoutPresent;
-
-			CreateRenderPass(swapChain.renderPass);
-
-			swapChain.renderPass.framebuffers.resize(swapChain.ImageViews.size());
-
-			for (int i = 0; i < swapChain.ImageViews.size(); i++) {
-				std::vector<VkImageView> framebufferAttachments = { swapChain.ImageViews[i], swapChain.depthImage.ImageView };
-
-				CreateFramebuffer(
-					swapChain.renderPass.Handle, 
-					framebufferAttachments, 
-					swapChain.Extent, 
-					swapChain.renderPass.framebuffers[i]);
-			}
-		}
-		*/
 
 		return true;
 	}
@@ -2121,6 +2071,10 @@ namespace Graphics {
 			return EShLangVertex;
 		case VK_SHADER_STAGE_FRAGMENT_BIT:
 			return EShLangFragment;
+		case VK_SHADER_STAGE_GEOMETRY_BIT:
+			return EShLangGeometry;
+		case VK_SHADER_STAGE_COMPUTE_BIT:
+			return EShLangCompute;
 		default:
 			return EShLangVertex;
 		}
@@ -2390,6 +2344,9 @@ namespace Graphics {
 			shaderStages.push_back(desc.fragmentShader->shaderStageInfo);
 		if (desc.computeShader != nullptr)
 			shaderStages.push_back(desc.computeShader->shaderStageInfo);
+		if (desc.geometryShader != nullptr) {
+			shaderStages.push_back(desc.geometryShader->shaderStageInfo);
+		}
 
 		for (auto stage : shaderStages) {
 			stage.pNext = nullptr;

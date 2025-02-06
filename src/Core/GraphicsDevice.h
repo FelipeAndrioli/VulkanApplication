@@ -137,18 +137,19 @@ namespace Graphics {
 	};
 
 	struct PipelineStateDescription {
-		const Shader* vertexShader = nullptr;
-		const Shader* fragmentShader = nullptr;
-		const Shader* computeShader = nullptr;
+		const Shader* vertexShader		= nullptr;
+		const Shader* fragmentShader	= nullptr;
+		const Shader* geometryShader	= nullptr;
+		const Shader* computeShader		= nullptr;
 
-		bool noVertex = false;
+		bool noVertex					= false;
 
-		bool depthTestEnable = true;
-		bool depthWriteEnable = true;
-		bool stencilTestEnable = false;
-		bool colorBlendingEnable = false;
+		bool depthTestEnable			= true;
+		bool depthWriteEnable			= true;
+		bool stencilTestEnable			= false;
+		bool colorBlendingEnable		= false;
 
-		VkStencilOpState stencilState = {};
+		VkStencilOpState stencilState	= {};
 
 		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
