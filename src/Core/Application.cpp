@@ -79,7 +79,7 @@ bool Application::UpdateApplication(IScene& scene) {
 	if (m_Input->Keys[GLFW_KEY_I].IsPressed)
 		scene.settings.uiEnabled = !scene.settings.uiEnabled;
 
-	scene.Update(timestep.GetMilliseconds(), *m_Input.get());
+	scene.Update(m_CurrentFrameTime, timestep.GetMilliseconds(), *m_Input.get());
 
 	if (!m_GraphicsDevice->BeginFrame(m_GraphicsDevice->GetCurrentFrame()))
 		return true;

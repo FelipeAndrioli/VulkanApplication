@@ -33,7 +33,7 @@ public:
 			return input.Keys[GLFW_KEY_ESCAPE].IsPressed;
 		}
 
-		virtual void Update(float d, InputSystem::Input& input) = 0;
+		virtual void Update(const float constantT, const float deltaT, InputSystem::Input& input) = 0;
 		virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) = 0;
 		virtual void RenderUI() = 0;
 		virtual void Resize(uint32_t width, uint32_t height) = 0;

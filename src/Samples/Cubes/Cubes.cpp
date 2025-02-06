@@ -33,7 +33,7 @@ public:
 
 	virtual void StartUp() override;
 	virtual void CleanUp() override;
-	virtual void Update(float d, InputSystem::Input& input) override;
+	virtual void Update(const float constantT, const float deltaT, InputSystem::Input& input) override;
 	virtual void RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) override;
 	virtual void RenderUI() override;
 	virtual void Resize(uint32_t width, uint32_t height) override;
@@ -153,21 +153,21 @@ void Cubes::CleanUp() {
 	gfxDevice->DestroyPipeline(m_PSO);
 }
 
-void Cubes::Update(float d, InputSystem::Input& input) {
+void Cubes::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
 	
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_Camera.OnUpdate(d, input);
+	m_Camera.OnUpdate(deltaT, input);
 
-	m_GlobalConstants.time = d;
+	m_GlobalConstants.time = deltaT;
 
 	std::vector<ModelConstants> modelConstants;
 
 	for (uint32_t i = 0; i < m_Cubes.size(); i++) {
-		m_Cubes[i]->OnUpdate(d);
+		m_Cubes[i]->OnUpdate(deltaT);
 
-		m_Cubes[i]->Transformations.rotation.x += d * 0.021f;
-		m_Cubes[i]->Transformations.rotation.y += d * 0.037f;
+		m_Cubes[i]->Transformations.rotation.x += deltaT * 0.021f;
+		m_Cubes[i]->Transformations.rotation.y += deltaT * 0.037f;
 		
 		if (m_Cubes[i]->Transformations.rotation.x > 360.0f)
 			m_Cubes[i]->Transformations.rotation.x = 0.0f;
@@ -247,4 +247,4 @@ void Cubes::Resize(uint32_t width, uint32_t height) {
 	m_OffscreenRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
 }
 
-RUN_APPLICATION(Cubes);
+//RUN_APPLICATION(Cubes);
