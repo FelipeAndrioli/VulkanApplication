@@ -255,11 +255,27 @@ namespace Graphics {
 	}
 
 	void SwapChainRenderTarget::Begin(const VkCommandBuffer& commandBuffer) {
+		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+	
+		if (m_ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
+			gfxDevice->TransitionImageLayout(
+				gfxDevice->GetSwapChain().Images[gfxDevice->GetSwapChain().ImageIndex],
+				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				0,
+				VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+			);
+		}
+		
+		m_ImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		BeginRenderPass(commandBuffer);
 	}
 	
 	void SwapChainRenderTarget::End(const VkCommandBuffer& commandBuffer) {
 		EndRenderPass(commandBuffer);
+//		m_ImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		m_ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 
