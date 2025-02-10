@@ -5,9 +5,7 @@
 
 #define MAX_MATERIALS 50
 
-layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec3 fragNormal;
-layout (location = 2) in vec3 fragPos;
 layout (location = 3) in vec2 fragTexCoord;
 
 layout (location = 0) out vec4 out_color;
@@ -95,7 +93,6 @@ void main() {
 		material_specular = texture(texSampler[material.specular_texture_index], fragTexCoord);
 	}
 
-//	material_color.a = material_diffuse.a;
 	material_color = material_diffuse;
 
 	out_color = material_color;

@@ -2,7 +2,7 @@
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float time;					// 4
-	int extra_1;				// 8
+	float explode;				// 8
 	int extra_2;				// 12
 	int extra_3;				// 16
 	vec4 extra[7];				// 128
@@ -31,9 +31,11 @@ layout (location = 2) out vec3 fragPos;
 layout (location = 3) out vec2 fragTexCoord;
 
 void main() {
-	
+
+	// Change the vertex from local space, to world space (model matrix), then to view space (view matrix), then finally to clip space (projection matrix)
 	gl_Position = sceneGPUData.proj * sceneGPUData.view * modelGPUData.model * vec4(inPosition, 1.0);
 
+	// Add default vertex based color
 	fragColor = inColor;
 
 	if (modelGPUData.flip_uv_vertically == 1) {
@@ -42,6 +44,7 @@ void main() {
 		fragTexCoord = inTexCoord;	
 	}
 
+	// model normal matrix have the inverse transposed model matrix
 	fragNormal = mat3(modelGPUData.normal) * inNormal;
 	fragPos = vec3(modelGPUData.model * vec4(inPosition, 1.0));
 }

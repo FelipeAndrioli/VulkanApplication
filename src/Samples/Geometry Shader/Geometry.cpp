@@ -27,6 +27,8 @@ public:
 	virtual void RenderUI()																		override;
 	virtual void Resize(uint32_t width, uint32_t height)										override;
 private:
+	void RenderModelMeshes(const VkCommandBuffer& commandBuffer);
+private:
 
 	struct PushConstant {
 		int materialIndex;
@@ -77,10 +79,10 @@ void Geometry::StartUp() {
 	m_Width		= settings.Width;
 	m_Height	= settings.Height;
 
-
-	m_Model									= ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj");
-	m_Model->Transformations.scaleHandler	= 0.3f;
-	m_Model->FlipUvVertically				= true;
+	m_Model									= ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
+	m_Model->Transformations.scaleHandler	= 11.2f;
+	m_Model->Transformations.translation	= glm::vec3(0.6f, -1.6f, -2.5f);
+	m_Model->Transformations.rotation		= glm::vec3(0.0f, -21.5f, 0.0f);
 
 	m_Camera.Init(glm::vec3(0.0f, 0.0f, 5.0f), 45.0f, 270.0f, 0.0f, m_Width, m_Height);
 	
@@ -167,6 +169,34 @@ void Geometry::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& c
 
 	gfxDevice->GetSwapChain().RenderTarget->Begin(commandBuffer);
 
+	RenderModelMeshes(commandBuffer);
+
+	// gfxDevice->GetSwapChain().RenderTarget->End(commandBuffer); -> When using swap chain render target it should not be ended here
+}
+
+void Geometry::RenderUI() {
+	m_Camera.OnUIRender("Main Camera - Settings");
+	m_Model->OnUIRender();
+
+	ImGui::Text("Time: %f", m_SceneGPUData.time);
+
+	ImGui::Checkbox("Time (Explode Effect)", &m_ExplodeByTime);
+	ImGui::Checkbox("Manual (Explode Effect)", &m_ManualExplode);
+
+	if (m_ManualExplode)
+		ImGui::DragFloat("Amount", &m_SceneGPUData.explode, 0.002f, -1.0f, 1.0f);
+}
+
+void Geometry::Resize(uint32_t width, uint32_t height) {
+	m_Width		= width;
+	m_Height	= height;
+
+	// SwapChain Render Target is resized automatically
+}
+
+void Geometry::RenderModelMeshes(const VkCommandBuffer& commandBuffer) {
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+	
 	gfxDevice->BindDescriptorSet(m_Set, commandBuffer, m_PSO.pipelineLayout, 0, 1);
 
 	VkDeviceSize offsets[] = { sizeof(uint32_t) * m_Model->TotalIndices };
@@ -191,25 +221,15 @@ void Geometry::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& c
 		);
 	}
 
-	// gfxDevice->GetSwapChain().RenderTarget->End(commandBuffer); -> When using swap chain render target it should not be ended here
 }
 
-void Geometry::RenderUI() {
-	m_Camera.OnUIRender("Main Camera - Settings");
-	m_Model->OnUIRender();
-
-	ImGui::Text("Time: %f", m_SceneGPUData.time);
-
-	ImGui::Checkbox("Time (Explode Effect)", &m_ExplodeByTime);
-	ImGui::Checkbox("Manual (Explode Effect)", &m_ManualExplode);
-
-	if (m_ManualExplode)
-		ImGui::DragFloat("Amount", &m_SceneGPUData.explode, 0.002f, -1.0f, 1.0f);
-}
-
-void Geometry::Resize(uint32_t width, uint32_t height) {
-	m_Width		= width;
-	m_Height	= height;
-}
+/*
+	TODO's:
+		- Add simple Phong lighting
+		- Add normals rendering
+		- Add screenshots to the repo
+	Known Issues:
+		- The Vulkan Validation Layer complains about the builtin blocks being different between vertex shader output and geometry shader input.
+*/
 
 RUN_APPLICATION(Geometry);
