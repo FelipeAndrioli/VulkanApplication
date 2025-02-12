@@ -14,7 +14,7 @@
 class Geometry : public Application::IScene {
 public:
 	Geometry() {
-		settings.Title			= "Geomtry Shader.exe";
+		settings.Title			= "Geometry Shader.exe";
 		settings.Width			= 1600;
 		settings.Height			= 800;
 		settings.uiEnabled		= true;
@@ -28,6 +28,7 @@ public:
 	virtual void Resize(uint32_t width, uint32_t height)										override;
 private:
 	void RenderModelMeshes(const VkCommandBuffer& commandBuffer);
+	void RenderNormals(const VkCommandBuffer& commandBuffer);
 private:
 
 	struct PushConstant {
@@ -37,7 +38,7 @@ private:
 	struct SceneGPUData {
 		float time			= 0.0f;					// 4
 		float explode		= 0.0f;					// 8
-		int extra_2			= 0;					// 12
+		float magnitude		= 0.020f;				// 12
 		int extra_3			= 0;					// 16
 		glm::vec4 extra[7]	= {};					// 128
 		glm::mat4 view		= glm::mat4(1.0f);		// 192
@@ -61,6 +62,7 @@ private:
 
 	bool							m_ExplodeByTime		= false;
 	bool							m_ManualExplode		= false;
+	bool							m_RenderNormals		= false;
 
 	Assets::Camera					m_Camera			= {};
 
@@ -69,7 +71,11 @@ private:
 	Graphics::Shader				m_VertexShader		= {};
 	Graphics::Shader				m_GeometryShader	= {};
 	Graphics::Shader				m_FragmentShader	= {};
+	Graphics::Shader				m_NormalVertShader	= {};
+	Graphics::Shader				m_NormalGeoShader	= {};
+	Graphics::Shader				m_NormalFragShader	= {};
 	Graphics::PipelineState			m_PSO				= {};
+	Graphics::PipelineState			m_NormalRenderPSO	= {};
 	Graphics::InputLayout			m_PSOInputLayout	= {};
 
 	VkDescriptorSet					m_Set				= VK_NULL_HANDLE;
@@ -79,10 +85,18 @@ void Geometry::StartUp() {
 	m_Width		= settings.Width;
 	m_Height	= settings.Height;
 
+	/*
+	m_Model									= ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj");
+	m_Model->Transformations.scaleHandler	= 0.3f;
+	m_Model->Transformations.translation	= glm::vec3(0.0f, -3.75f, 0.0f);
+	m_Model->FlipUvVertically				= true;
+	*/
+
 	m_Model									= ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
 	m_Model->Transformations.scaleHandler	= 11.2f;
-	m_Model->Transformations.translation	= glm::vec3(0.6f, -1.6f, -2.5f);
-	m_Model->Transformations.rotation		= glm::vec3(0.0f, -21.5f, 0.0f);
+	m_Model->Transformations.translation	= glm::vec3(0.0f, 0.0f, -0.3f);
+	m_Model->Transformations.rotation		= glm::vec3(0.0f, -14.7, 0.0f);
+
 
 	m_Camera.Init(glm::vec3(0.0f, 0.0f, 5.0f), 45.0f, 270.0f, 0.0f, m_Width, m_Height);
 	
@@ -106,10 +120,18 @@ void Geometry::StartUp() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_VertexShader,		"../src/Samples/Geometry Shader/vertex.glsl");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragmentShader,	"../src/Samples/Geometry Shader/fragment.glsl");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_GEOMETRY_BIT, m_GeometryShader,	"../src/Samples/Geometry Shader/geometry.glsl");
+
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_NormalVertShader,	"../src/Samples/Geometry Shader/normal_vertex.glsl");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_GEOMETRY_BIT, m_NormalGeoShader,	"../src/Samples/Geometry Shader/normal_geometry.glsl");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalFragShader, "../src/Samples/Geometry Shader/normal_fragment.glsl");
 #else
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_VertexShader,		"shader_vert.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragmentShader,	"shader_frag.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_GEOMETRY_BIT, m_GeometryShader,	"shader_geom.spv");
+	
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_NormalVertShader,	"TODO");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_GEOMETRY_BIT, m_NormalGeoShader,	"TODO");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalFragShader, "TODO");
 #endif
 
 	m_SceneDataBuffer = gfxDevice->CreateBuffer(sizeof(SceneGPUData));
@@ -124,6 +146,15 @@ void Geometry::StartUp() {
 	desc.psoInputLayout						.push_back(m_PSOInputLayout);
 
 	gfxDevice->CreatePipelineState(desc, m_PSO, *gfxDevice->GetSwapChain().RenderTarget.get());
+
+	desc.Name								= "Render Normals Pipeline";
+	desc.vertexShader						= &m_NormalVertShader;
+	desc.geometryShader						= &m_NormalGeoShader;
+	desc.fragmentShader						= &m_NormalFragShader;
+	desc.topology							= VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+
+	gfxDevice->CreatePipelineState(desc, m_NormalRenderPSO, *gfxDevice->GetSwapChain().RenderTarget.get());
+
 	gfxDevice->CreateDescriptorSet(m_PSO.descriptorSetLayout, m_Set);
 	gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[0], m_Set, m_SceneDataBuffer);
 	gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[1], m_Set, m_ModelDataBuffer);
@@ -137,7 +168,12 @@ void Geometry::CleanUp() {
 	gfxDevice->DestroyShader(m_GeometryShader);
 	gfxDevice->DestroyShader(m_FragmentShader);
 	gfxDevice->DestroyShader(m_VertexShader);
+	gfxDevice->DestroyShader(m_NormalVertShader);
+	gfxDevice->DestroyShader(m_NormalGeoShader);
+	gfxDevice->DestroyShader(m_NormalFragShader);
+
 	gfxDevice->DestroyPipeline(m_PSO);
+	gfxDevice->DestroyPipeline(m_NormalRenderPSO);
 
 	m_Model.reset();
 }
@@ -158,7 +194,7 @@ void Geometry::Update(const float constantT, const float deltaT, InputSystem::In
 
 	m_ModelGPUData.flip_uv_vertically	= m_Model->FlipUvVertically;
 	m_ModelGPUData.model				= m_Model->GetModelMatrix();
-	m_ModelGPUData.normal				= glm::mat4(glm::mat3(glm::transpose(glm::inverse(m_ModelGPUData.model))));
+	m_ModelGPUData.normal				= glm::mat4(glm::mat3(glm::transpose(glm::inverse(m_SceneGPUData.view * m_ModelGPUData.model))));
 
 	gfxDevice->UpdateBuffer(m_SceneDataBuffer, &m_SceneGPUData);
 	gfxDevice->UpdateBuffer(m_ModelDataBuffer, &m_ModelGPUData);
@@ -171,6 +207,9 @@ void Geometry::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& c
 
 	RenderModelMeshes(commandBuffer);
 
+	if (m_RenderNormals)
+		RenderNormals(commandBuffer);
+
 	// gfxDevice->GetSwapChain().RenderTarget->End(commandBuffer); -> When using swap chain render target it should not be ended here
 }
 
@@ -178,13 +217,15 @@ void Geometry::RenderUI() {
 	m_Camera.OnUIRender("Main Camera - Settings");
 	m_Model->OnUIRender();
 
-	ImGui::Text("Time: %f", m_SceneGPUData.time);
+	ImGui::Text("Time: %f"						, m_SceneGPUData.time);
 
-	ImGui::Checkbox("Time (Explode Effect)", &m_ExplodeByTime);
-	ImGui::Checkbox("Manual (Explode Effect)", &m_ManualExplode);
+	ImGui::Checkbox("Time (Explode Effect)"		, &m_ExplodeByTime);
+	ImGui::Checkbox("Manual (Explode Effect)"	, &m_ManualExplode);
+	ImGui::Checkbox("Render Normals"			, &m_RenderNormals);
+	ImGui::DragFloat("Normal Magnitude", &m_SceneGPUData.magnitude, 0.002f, 0.0f, 1.0f);
 
 	if (m_ManualExplode)
-		ImGui::DragFloat("Amount", &m_SceneGPUData.explode, 0.002f, -1.0f, 1.0f);
+		ImGui::DragFloat("Amount", &m_SceneGPUData.explode, 0.002f, 0.0f, 2.0f);
 }
 
 void Geometry::Resize(uint32_t width, uint32_t height) {
@@ -220,14 +261,33 @@ void Geometry::RenderModelMeshes(const VkCommandBuffer& commandBuffer) {
 			0
 		);
 	}
+}
 
+void Geometry::RenderNormals(const VkCommandBuffer& commandBuffer) {
+	VkDeviceSize offsets[] = { sizeof(uint32_t) * m_Model->TotalIndices };
+
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_Model->DataBuffer.Handle, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, m_Model->DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_NormalRenderPSO.pipeline);
+
+	for (const auto& mesh : m_Model->Meshes) {
+
+		m_PushConstant.materialIndex = static_cast<int>(mesh.MaterialIndex);
+
+		vkCmdPushConstants(commandBuffer, m_NormalRenderPSO.pipelineLayout, VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PushConstant), &m_PushConstant);
+
+		vkCmdDrawIndexed(
+			commandBuffer,
+			static_cast<uint32_t>(mesh.Indices.size()),
+			1,
+			static_cast<uint32_t>(mesh.IndexOffset),
+			static_cast<int32_t>(mesh.VertexOffset),
+			0
+		);
+	}
 }
 
 /*
-	TODO's:
-		- Add simple Phong lighting
-		- Add normals rendering
-		- Add screenshots to the repo
 	Known Issues:
 		- The Vulkan Validation Layer complains about the builtin blocks being different between vertex shader output and geometry shader input.
 */
