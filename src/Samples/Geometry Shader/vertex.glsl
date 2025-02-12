@@ -33,10 +33,10 @@ layout (location = 3) out vec2 fragTexCoord;
 void main() {
 
 	// Change the vertex from local space, to world space (model matrix), then to view space (view matrix), then finally to clip space (projection matrix)
-	gl_Position = sceneGPUData.proj * sceneGPUData.view * modelGPUData.model * vec4(inPosition, 1.0);
+	gl_Position		= sceneGPUData.proj * sceneGPUData.view * modelGPUData.model * vec4(inPosition, 1.0);
 
 	// Add default vertex based color
-	fragColor = inColor;
+	fragColor		= inColor;
 
 	if (modelGPUData.flip_uv_vertically == 1) {
 		fragTexCoord = vec2(inTexCoord.x, inTexCoord.y * -1);	
@@ -45,6 +45,6 @@ void main() {
 	}
 
 	// model normal matrix have the inverse transposed model matrix
-	fragNormal = mat3(modelGPUData.normal) * inNormal;
-	fragPos = vec3(modelGPUData.model * vec4(inPosition, 1.0));
+	fragNormal		= mat3(modelGPUData.normal) * inNormal;
+	fragPos			= vec3(modelGPUData.model * vec4(inPosition, 1.0));
 }

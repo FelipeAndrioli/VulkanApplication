@@ -13,10 +13,14 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	mat4 proj;					// 256
 } sceneGPUData;
 
+layout (location = 0) in vec3 inFragColor[];
 layout (location = 1) in vec3 inFragNormal[];
+layout (location = 2) in vec3 inFragPos[]; 
 layout (location = 3) in vec2 inFragTexCoord[];
 
+layout (location = 0) out vec3 fragColor;
 layout (location = 1) out vec3 fragNormal;
+layout (location = 2) out vec3 fragPos;
 layout (location = 3) out vec2 fragTexCoord;
 
 // Generate a normal vertex based in the current triangle position 
@@ -40,18 +44,24 @@ vec4 explode(vec4 position, vec3 normal) {
 void main() {
 	
 	// Generate exploded vertices
-	vec3 normal = getNormal();
+	vec3 normal		= getNormal();
 
-	gl_Position = explode(gl_in[0].gl_Position, normal);
-	fragTexCoord = inFragTexCoord[0];
+	gl_Position		= explode(gl_in[0].gl_Position, normal);
+	fragTexCoord	= inFragTexCoord[0];
+	fragPos			= inFragPos[0];
+	fragNormal		= inFragNormal[0];
 	EmitVertex();
 
-	gl_Position = explode(gl_in[1].gl_Position, normal);
-	fragTexCoord = inFragTexCoord[1];
+	gl_Position		= explode(gl_in[1].gl_Position, normal);
+	fragTexCoord	= inFragTexCoord[1];
+	fragPos			= inFragPos[1];
+	fragNormal		= inFragNormal[1];
 	EmitVertex();
 
-	gl_Position = explode(gl_in[2].gl_Position, normal);
-	fragTexCoord = inFragTexCoord[2];
+	gl_Position		= explode(gl_in[2].gl_Position, normal);
+	fragTexCoord	= inFragTexCoord[2];
+	fragPos			= inFragPos[2];
+	fragNormal		= inFragNormal[2];
 	EmitVertex();
 
 	EndPrimitive();
