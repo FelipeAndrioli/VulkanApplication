@@ -5,7 +5,9 @@
 
 #define MAX_MATERIALS 50
 
+layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec3 fragNormal;
+layout (location = 2) in vec3 fragPos;
 layout (location = 3) in vec2 fragTexCoord;
 
 layout (location = 0) out vec4 out_color;
@@ -54,14 +56,25 @@ layout (push_constant) uniform constant {
 	int material_index;
 } constants;
 
-void main() {
-	material_t material = materials[constants.material_index];
+vec3 lightPos			= vec3(0.0, 2.0, 1.0);
+vec4 lightColor			= vec4(1.0, 1.0, 1.0, 1.0);
+float lightIntensity	= 0.8;
 
-	vec4 material_color = vec4(0.0);
-	vec4 material_ambient = vec4(1.0);
-	vec4 material_diffuse = vec4(1.0);
-	vec4 material_specular = vec4(1.0);
-	vec4 material_normal = vec4(1.0);
+vec4 phongDiffuse(vec4 material_diffuse, vec4 material_normal) {
+	vec3 lightDir	= normalize(lightPos - fragPos); 
+	float diff		= max(dot(lightDir, vec3(material_normal)), 0.0);
+
+	return material_diffuse * diff * (lightColor * lightIntensity);
+}
+
+void main() {
+	material_t material		= materials[constants.material_index];
+
+	vec4 material_color		= vec4(0.0);
+	vec4 material_ambient	= vec4(1.0);
+	vec4 material_diffuse	= vec4(1.0);
+	vec4 material_specular	= vec4(1.0);
+	vec4 material_normal	= vec4(1.0);
 
 	if (material.diffuse_texture_index == -1) {
 		material_ambient = vec4(material.diffuse);
@@ -93,7 +106,7 @@ void main() {
 		material_specular = texture(texSampler[material.specular_texture_index], fragTexCoord);
 	}
 
-	material_color = material_diffuse;
+	material_color += phongDiffuse(material_diffuse, material_normal);
 
 	out_color = material_color;
 }
