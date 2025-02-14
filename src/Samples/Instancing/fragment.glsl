@@ -7,10 +7,12 @@
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float time;					// 4
-	int extra_1;				// 8
+	float lightIntensity;		// 8
 	int extra_2;				// 12
 	int extra_3;				// 16
-	vec4 extra[7];				// 128
+	vec4 lightPosition;			// 32
+	vec4 lightColor;			// 48 
+	vec4 extra[5];				// 128
 	mat4 view;					// 192
 	mat4 proj;					// 256
 } sceneGPUData;
@@ -76,32 +78,11 @@ layout (push_constant) uniform constant {
 	int material_index;
 } constants;
 
-/*
-vec3 lightPos			= vec3(0.0, 2.0, 1.0);
-vec3 lightColor			= vec3(1.0);
-float lightIntensity	= 4.0;
-
-vec3 phongDiffuse(vec4 material_diffuse, vec4 material_normal) {
-	
-	vec3 lightDir = normalize(lightPos - fragPos);
-
-	float diff = max(dot(lightDir, vec3(material_normal)), 0.0);
-
-	vec3 diffuse = material_diffuse.rgb * diff * lightColor;
-
-	return diffuse * lightIntensity;
-}
-*/
-
-vec3 lightPos			= vec3(0.0, 2.0, 1.0);
-vec4 lightColor			= vec4(1.0, 1.0, 1.0, 1.0);
-float lightIntensity	= 1.0;
-
 vec4 phongDiffuse(vec4 material_diffuse, vec4 material_normal) {
-	vec3 lightDir	= normalize(lightPos - fragPos); 
+	vec3 lightDir	= normalize(vec3(sceneGPUData.lightPosition) - fragPos); 
 	float diff		= max(dot(lightDir, vec3(material_normal)), 0.0);
 
-	return material_diffuse * diff * (lightColor * lightIntensity);
+	return material_diffuse * diff * (sceneGPUData.lightColor * sceneGPUData.lightIntensity);
 }
 
 void main() {

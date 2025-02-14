@@ -11,6 +11,8 @@
 
 #include "../Utils/ModelLoader.h"
 
+#define MAX_MODELS 50
+
 class Instancing : public Application::IScene {
 public:
 	Instancing() {
@@ -37,10 +39,12 @@ private:
 
 	struct SceneGPUData {
 		float time				= 0.0f;				// 4
-		int extra_1				= 0;				// 8
+		float lightIntensity	= 1.0f;				// 8
 		int extra_2				= 0;				// 12
 		int extra_3				= 0;				// 16
-		glm::vec4 extra[7]		= {};				// 128
+		glm::vec4 lightPos		= glm::vec4(0.0, 4.4, 3.2, 0.0);	// 32
+		glm::vec4 lightColor	= glm::vec4(1.0);	// 48
+		glm::vec4 extra[5]		= {};				// 128
 		glm::mat4 view			= glm::mat4(1.0f);	// 192
 		glm::mat4 proj			= glm::mat4(1.0f);	// 256
 	} m_SceneGPUData;
@@ -55,31 +59,71 @@ private:
 		glm::mat4 normal		= glm::mat4(1.0f);	// 256
 	} m_ModelGPUData;
 
+	struct InstanceModelData {
+		glm::mat4 model;
+	};
+
+	std::vector<InstanceModelData> m_InstanceModelData;
+
 	std::shared_ptr<Assets::Model>	m_Model;
 
-	uint32_t						m_Width				= 0;
-	uint32_t						m_Height			= 0;
+	uint32_t	m_Width				= 0;
+	uint32_t	m_Height			= 0;
+	uint32_t	m_DrawCalls			= 0;
+	uint32_t	m_TotalVertices		= 0;
+	uint32_t	m_ModelVertices		= 0;
 
-	Assets::Camera					m_Camera			= {};
+	bool m_FirstPass				= true;
 
-	Graphics::Buffer				m_SceneDataBuffer	= {};
-	Graphics::Buffer				m_ModelDataBuffer	= {};
-	Graphics::Shader				m_VertexShader		= {};
-	Graphics::Shader				m_FragmentShader	= {};
-	Graphics::PipelineState			m_PSO				= {};
-	Graphics::InputLayout			m_PSOInputLayout	= {};
+	Assets::Camera	m_Camera		= {};
 
-	VkDescriptorSet					m_Set				= VK_NULL_HANDLE;
+	Graphics::GPUBuffer			m_StorageBuffer									= {};
+	Graphics::Buffer			m_SceneDataBuffer[Graphics::FRAMES_IN_FLIGHT]	= {};
+	Graphics::Buffer			m_ModelDataBuffer								= {};
+	Graphics::Shader			m_VertexShader									= {};
+	Graphics::Shader			m_FragmentShader								= {};
+	Graphics::PipelineState		m_PSO											= {};
+	Graphics::InputLayout		m_PSOInputLayout								= {};
+
+	VkDescriptorSet				m_Set[Graphics::FRAMES_IN_FLIGHT]				= {};
 };
 
 void Instancing::StartUp() {
 	m_Model									= ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
+//	m_Model = ModelLoader::LoadModel(ModelType::CUBE);
 	m_Model->Transformations.scaleHandler	= 11.2f;
 	m_Model->Transformations.translation	= glm::vec3(0.0f, 0.0f, -0.3f);
 	m_Model->Transformations.rotation		= glm::vec3(0.0f, -14.7, 0.0f);
 
+	m_InstanceModelData.resize(MAX_MODELS);
 
-	m_Camera.Init(glm::vec3(0.0f, 0.0f, 5.0f), 45.0f, 270.0f, 0.0f, m_Width, m_Height);
+	int num = glm::sqrt(MAX_MODELS);
+	float offset_x = static_cast<float>(-num);
+	float offset_z = static_cast<float>(-num);
+	float offset = 3.0f;
+
+	glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(11.2f));
+//	glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+
+	for (int i = 1; i < MAX_MODELS + 1; i++) {
+
+		glm::vec3 translation = glm::vec3(0.0f);
+		translation.x = offset_x;
+		translation.y = 0.0f;
+		translation.z = offset_z;
+
+		m_InstanceModelData[i - 1].model = glm::translate(glm::mat4(1.0), translation) * scale;
+
+		if (i % num == 0) {
+			offset_z += offset;
+			offset_x = static_cast<float>(-num);
+		}
+		else {
+			offset_x += offset;
+		}
+	}
+
+	m_Camera.Init(glm::vec3(-0.82f, 15.11f, 37.4f), 45.0f, 267.4f, -31.8f, m_Width, m_Height);
 	
 	ResourceManager* rm = ResourceManager::Get();
 
@@ -88,10 +132,11 @@ void Instancing::StartUp() {
 			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PushConstant) }
 		},
 		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },															// Scene GPU Data
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },								// Scene GPU Data
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },															// Model GPU Data
 			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT},															// Material Data
-			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(rm->GetTextures().size()), VK_SHADER_STAGE_FRAGMENT_BIT }		// Textures Array 
+			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(rm->GetTextures().size()), VK_SHADER_STAGE_FRAGMENT_BIT },	// Textures Array
+			{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT }																// Instance Transformation Matrices 
 		}
 	};
 	
@@ -105,8 +150,11 @@ void Instancing::StartUp() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragmentShader,	"fragment.spv");
 #endif
 
-	m_SceneDataBuffer = gfxDevice->CreateBuffer(sizeof(SceneGPUData));
-	m_ModelDataBuffer = gfxDevice->CreateBuffer(sizeof(ModelGPUData));
+
+	m_ModelDataBuffer	= gfxDevice->CreateBuffer(sizeof(ModelGPUData));
+	m_StorageBuffer		= gfxDevice->CreateStorageBuffer(MAX_MODELS * sizeof(InstanceModelData));
+
+	gfxDevice->UpdateBuffer(m_StorageBuffer, 0, m_InstanceModelData.data(), sizeof(InstanceModelData) * MAX_MODELS);
 
 	Graphics::PipelineStateDescription desc = {};
 	desc.Name								= "Color Pipeline";
@@ -117,16 +165,22 @@ void Instancing::StartUp() {
 
 	gfxDevice->CreatePipelineState(desc, m_PSO, *gfxDevice->GetSwapChain().RenderTarget.get());
 
-	gfxDevice->CreateDescriptorSet(m_PSO.descriptorSetLayout, m_Set);
-	gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[0], m_Set, m_SceneDataBuffer);
-	gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[1], m_Set, m_ModelDataBuffer);
-	gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[2], m_Set, rm->GetMaterialBuffer());
-	gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[3], m_Set, rm->GetTextures());
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+		m_SceneDataBuffer[i] = gfxDevice->CreateBuffer(sizeof(SceneGPUData));
+
+		gfxDevice->CreateDescriptorSet(m_PSO.descriptorSetLayout, m_Set[i]);
+		gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[0], m_Set[i], m_SceneDataBuffer[i]);
+		gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[1], m_Set[i], m_ModelDataBuffer);
+		gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[2], m_Set[i], rm->GetMaterialBuffer());
+		gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[3], m_Set[i], rm->GetTextures());
+		gfxDevice->WriteDescriptor(m_PSOInputLayout.bindings[4], m_Set[i], m_StorageBuffer);
+	}
 }
 
 void Instancing::CleanUp() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
+	gfxDevice->DestroyBuffer(m_StorageBuffer);
 	gfxDevice->DestroyShader(m_VertexShader);
 	gfxDevice->DestroyShader(m_FragmentShader);
 	gfxDevice->DestroyPipeline(m_PSO);
@@ -148,7 +202,7 @@ void Instancing::Update(const float constantT, const float deltaT, InputSystem::
 	m_ModelGPUData.model				= m_Model->GetModelMatrix();
 	m_ModelGPUData.normal				= glm::mat4(glm::mat3(glm::transpose(glm::inverse(m_SceneGPUData.view * m_ModelGPUData.model))));
 
-	gfxDevice->UpdateBuffer(m_SceneDataBuffer, &m_SceneGPUData);
+	gfxDevice->UpdateBuffer(m_SceneDataBuffer[gfxDevice->GetCurrentFrameIndex()], &m_SceneGPUData);
 	gfxDevice->UpdateBuffer(m_ModelDataBuffer, &m_ModelGPUData);
 }
 
@@ -156,7 +210,7 @@ void Instancing::RenderScene(const uint32_t currentFrame, const VkCommandBuffer&
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	gfxDevice->GetSwapChain().RenderTarget->Begin(commandBuffer);
-	gfxDevice->BindDescriptorSet(m_Set, commandBuffer, m_PSO.pipelineLayout, 0, 1);
+	gfxDevice->BindDescriptorSet(m_Set[currentFrame], commandBuffer, m_PSO.pipelineLayout, 0, 1);
 	
 	VkDeviceSize offsets[] = { sizeof(uint32_t) * m_Model->TotalIndices };
 
@@ -168,13 +222,33 @@ void Instancing::RenderScene(const uint32_t currentFrame, const VkCommandBuffer&
 		m_PushConstant.materialIndex = mesh.MaterialIndex;
 
 		vkCmdPushConstants	(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PushConstant), &m_PushConstant);
-		vkCmdDrawIndexed	(commandBuffer, static_cast<uint32_t>(mesh.Indices.size()), 1, static_cast<uint32_t>(mesh.IndexOffset), static_cast<int32_t>(mesh.VertexOffset), 0);
+		vkCmdDrawIndexed	(commandBuffer, static_cast<uint32_t>(mesh.Indices.size()), MAX_MODELS, static_cast<uint32_t>(mesh.IndexOffset), static_cast<int32_t>(mesh.VertexOffset), 0);
+
+		if (m_FirstPass) {
+			m_DrawCalls++;
+			m_ModelVertices += mesh.Vertices.size();
+		}
+	}
+
+	if (m_FirstPass) {
+		m_TotalVertices = m_ModelVertices * MAX_MODELS;
+		m_FirstPass = false;
 	}
 }
 
 void Instancing::RenderUI() {
 	m_Camera.OnUIRender("Main Camera Settings");
 	m_Model->OnUIRender();
+
+	ImGui::Text("Total Draw Calls: %d", m_DrawCalls);
+	ImGui::Text("Model Vertices: %d", m_ModelVertices);
+	ImGui::Text("Total Vertices: %d", m_TotalVertices);
+
+	ImGui::Separator();
+	ImGui::ColorPicker4("Light Color", (float*)&m_SceneGPUData.lightColor);
+	ImGui::DragFloat4("Light Postition", (float*)&m_SceneGPUData.lightPos, 0.002, -10.0f, 10.0f);
+
+	ImGui::DragFloat("Light Intensity", &m_SceneGPUData.lightIntensity, 0.02f, 0.0f, 1.0f);
 }
 
 void Instancing::Resize(uint32_t width, uint32_t height) {
