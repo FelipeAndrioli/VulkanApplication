@@ -283,47 +283,48 @@ namespace Graphics {
 		float queuePriority = 1.0f;
 
 		for (uint32_t queueFamily : uniqueQueueFamilies) {
-			VkDeviceQueueCreateInfo queueCreateInfo{};
-			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queueCreateInfo.queueFamilyIndex = queueFamily;
-			queueCreateInfo.queueCount = 1;
-			queueCreateInfo.pQueuePriorities = &queuePriority;
+			VkDeviceQueueCreateInfo queueCreateInfo	= {};
+			queueCreateInfo.sType					= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queueCreateInfo.queueFamilyIndex		= queueFamily;
+			queueCreateInfo.queueCount				= 1;
+			queueCreateInfo.pQueuePriorities		= &queuePriority;
 			queueCreateInfos.push_back(queueCreateInfo);
 		}
 
-		VkPhysicalDeviceFeatures deviceFeatures{};
-		deviceFeatures.samplerAnisotropy = VK_TRUE;
-		deviceFeatures.fillModeNonSolid = VK_TRUE;
-		deviceFeatures.wideLines = VK_TRUE;
-		deviceFeatures.alphaToOne = VK_TRUE;
-		deviceFeatures.geometryShader = VK_TRUE;
+		VkPhysicalDeviceFeatures deviceFeatures		= {};
+		deviceFeatures.samplerAnisotropy			= VK_TRUE;
+		deviceFeatures.fillModeNonSolid				= VK_TRUE;
+		deviceFeatures.wideLines					= VK_TRUE;
+		deviceFeatures.alphaToOne					= VK_TRUE;
+		deviceFeatures.geometryShader				= VK_TRUE;
 
-		VkDeviceCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-		createInfo.pQueueCreateInfos = queueCreateInfos.data();
+		VkDeviceCreateInfo createInfo				= {};
+		createInfo.sType							= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		createInfo.queueCreateInfoCount				= static_cast<uint32_t>(queueCreateInfos.size());
+		createInfo.pQueueCreateInfos				= queueCreateInfos.data();
 
 		//createInfo.pEnabledFeatures = &deviceFeatures;
 
-		createInfo.enabledExtensionCount = static_cast<uint32_t>(c_DeviceExtensions.size());
-		createInfo.ppEnabledExtensionNames = c_DeviceExtensions.data();
+		createInfo.enabledExtensionCount											= static_cast<uint32_t>(c_DeviceExtensions.size());
+		createInfo.ppEnabledExtensionNames											= c_DeviceExtensions.data();
 
-		VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingCreateInfo = {};
-		descriptorIndexingCreateInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-		descriptorIndexingCreateInfo.runtimeDescriptorArray = VK_TRUE;
+		VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingCreateInfo		= {};
+		descriptorIndexingCreateInfo.sType											= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+		descriptorIndexingCreateInfo.runtimeDescriptorArray							= VK_TRUE;
+		descriptorIndexingCreateInfo.pNext											= nullptr;
 
-		VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
-		deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-		deviceFeatures2.features = deviceFeatures;
-		deviceFeatures2.pNext = &descriptorIndexingCreateInfo;
+		VkPhysicalDeviceFeatures2 deviceFeatures2	= {};
+		deviceFeatures2.sType						= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		deviceFeatures2.features					= deviceFeatures;
+		deviceFeatures2.pNext						= &descriptorIndexingCreateInfo;
 
 		vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
 
 		createInfo.pNext = &deviceFeatures2;
 
 		if (c_EnableValidationLayers) {
-			createInfo.enabledLayerCount = static_cast<uint32_t>(c_ValidationLayers.size());
-			createInfo.ppEnabledLayerNames = c_ValidationLayers.data();
+			createInfo.enabledLayerCount	= static_cast<uint32_t>(c_ValidationLayers.size());
+			createInfo.ppEnabledLayerNames	= c_ValidationLayers.data();
 		}
 		else {
 			createInfo.enabledLayerCount = 0;
@@ -1330,7 +1331,7 @@ namespace Graphics {
 		assert(dataSize != 0);
 
 		BufferDescription stagingDesc = {};
-		stagingDesc.BufferSize = dataSize;
+		stagingDesc.Capacity = dataSize;
 		stagingDesc.Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		stagingDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -1517,10 +1518,6 @@ namespace Graphics {
 		EndSingleTimeCommandBuffer(commandBuffer, m_CommandPool);
 	}
 
-	void GraphicsDevice::AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk) {
-		buffer.Description.Chunks.push_back(newChunk);
-	}
-	
 	void GraphicsDevice::DestroyBuffer(GPUBuffer& buffer) {
 		vkDestroyBuffer(m_LogicalDevice, buffer.Handle, nullptr);
 		vkFreeMemory(m_LogicalDevice, buffer.Memory, nullptr);
@@ -1529,7 +1526,7 @@ namespace Graphics {
 	template <class T>
 	void GraphicsDevice::CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize, size_t offset) {
 		BufferDescription stagingDesc = {};
-		stagingDesc.BufferSize = dataSize;
+		stagingDesc.Size = dataSize;
 		stagingDesc.Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		stagingDesc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -1547,12 +1544,13 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, size_t bufferSize) {
-		desc.BufferSize = bufferSize;
+		desc.Capacity = bufferSize;
+		desc.Size = 0;
 		buffer.Description = desc;
 
 		VkBufferCreateInfo bufferInfo{};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = buffer.Description.BufferSize;
+		bufferInfo.size = buffer.Description.Capacity;
 		bufferInfo.usage = buffer.Description.Usage;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -1567,12 +1565,37 @@ namespace Graphics {
 		return m_BufferManager->SubAllocateBuffer(size);
 	}
 
+	GPUBuffer GraphicsDevice::CreateStorageBuffer(size_t size) {
+		BufferDescription desc			= {};
+		desc.Usage						= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		desc.Capacity					= size;
+		desc.Size						= 0;
+		desc.MemoryProperty				= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+		GPUBuffer buffer				= {};
+		buffer.Description = desc;
+
+		VkBufferCreateInfo bufferInfo	= {};
+		bufferInfo.sType				= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size					= buffer.Description.Capacity;
+		bufferInfo.usage				= buffer.Description.Usage;
+		bufferInfo.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+
+		VkResult result					= vkCreateBuffer(m_LogicalDevice, &bufferInfo, nullptr, &buffer.Handle);
+
+		assert(result == VK_SUCCESS);
+
+		AllocateMemory(buffer, buffer.Description.MemoryProperty);
+
+		return buffer;
+	}
+
 	// TODO: implement dynamic allocation/update/retrieval
 	void GraphicsDevice::WriteBuffer(GPUBuffer& buffer, const void* data, size_t size, size_t offset) {
 		if (data == nullptr)
 			return;
 
-		CopyDataFromStaging(buffer, data, std::min(buffer.Description.BufferSize, size), offset);
+		CopyDataFromStaging(buffer, data, std::min(buffer.Description.Capacity, size), offset);
 	}
 
 	void GraphicsDevice::WriteSubBuffer(Buffer& buffer, void* data, size_t dataSize) {
@@ -1926,6 +1949,26 @@ namespace Graphics {
 		uint32_t setCount
 	) {
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, set, setCount, &descriptorSet, 0, nullptr);
+	}
+
+	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUBuffer& buffer) {
+		VkDescriptorBufferInfo bufferInfo = {};
+		bufferInfo.buffer = buffer.Handle;
+		bufferInfo.offset = 0;
+		bufferInfo.range = buffer.Description.Capacity;
+
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = binding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = binding.descriptorType;
+		descriptorWrite.descriptorCount = binding.descriptorCount;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		descriptorWrite.pImageInfo = nullptr;
+		descriptorWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr);
 	}
 
 	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const Buffer& buffer) {

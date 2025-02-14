@@ -264,6 +264,7 @@ namespace Graphics {
 
 		void CreateBuffer(BufferDescription& desc, GPUBuffer& buffer, size_t bufferSize);
 		Buffer CreateBuffer(size_t size);
+		GPUBuffer CreateStorageBuffer(size_t size);
 		void UpdateBuffer(GPUBuffer& buffer, VkDeviceSize offset, void* data, size_t dataSize);
 		void UpdateBuffer(Buffer& buffer, void* data);
 		void WriteBuffer(GPUBuffer& buffer, const void* data, size_t size = 0, size_t offset = 0);
@@ -272,7 +273,6 @@ namespace Graphics {
 		void CreateTexture(ImageDescription& desc, Texture& texture, Texture::TextureType textureType, void* initialData, size_t dataSize);
 
 		void CopyBuffer(GPUBuffer& srcBuffer, GPUBuffer& dstBuffer, VkDeviceSize size, size_t srcOffset, size_t dstOffset);
-		void AddBufferChunk(GPUBuffer& buffer, BufferDescription::BufferChunk newChunk);
 		void DestroyBuffer(GPUBuffer& buffer);
 	
 		void CreateRenderPass(RenderPass& renderPass);
@@ -298,6 +298,7 @@ namespace Graphics {
 		void CreateDescriptorSet(VkDescriptorPool& descriptorPool, VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
 		void BindDescriptorSet(VkDescriptorSet& descriptorSet, const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout, uint32_t set, uint32_t setCount);
 
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUBuffer& buffer);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const Buffer& buffer);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, Texture& texture);
