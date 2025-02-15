@@ -104,7 +104,6 @@ void main() {
 		material_normal = texture(texSampler[material.normal_texture_index], fragTexCoord);
 
 	material_color += phongDiffuse(material_diffuse, material_normal);
-//	material_color += material_normal;
 
 	out_color = material_color;
 }

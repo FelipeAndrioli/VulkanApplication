@@ -11,7 +11,7 @@
 
 #include "../Utils/ModelLoader.h"
 
-#define MAX_MODELS 50
+#define MAX_MODELS 5000
 
 class Instancing : public Application::IScene {
 public:
@@ -38,15 +38,15 @@ private:
 	} m_PushConstant;
 
 	struct SceneGPUData {
-		float time				= 0.0f;				// 4
-		float lightIntensity	= 1.0f;				// 8
-		int extra_2				= 0;				// 12
-		int extra_3				= 0;				// 16
+		float time				= 0.0f;								// 4
+		float lightIntensity	= 1.0f;								// 8
+		int extra_2				= 0;								// 12
+		int extra_3				= 0;								// 16
 		glm::vec4 lightPos		= glm::vec4(0.0, 4.4, 3.2, 0.0);	// 32
-		glm::vec4 lightColor	= glm::vec4(1.0);	// 48
-		glm::vec4 extra[5]		= {};				// 128
-		glm::mat4 view			= glm::mat4(1.0f);	// 192
-		glm::mat4 proj			= glm::mat4(1.0f);	// 256
+		glm::vec4 lightColor	= glm::vec4(1.0);					// 48
+		glm::vec4 extra[5]		= {};								// 128
+		glm::mat4 view			= glm::mat4(1.0f);					// 192
+		glm::mat4 proj			= glm::mat4(1.0f);					// 256
 	} m_SceneGPUData;
 
 	struct ModelGPUData {
@@ -89,36 +89,52 @@ private:
 };
 
 void Instancing::StartUp() {
-	m_Model									= ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
-//	m_Model = ModelLoader::LoadModel(ModelType::CUBE);
-	m_Model->Transformations.scaleHandler	= 11.2f;
-	m_Model->Transformations.translation	= glm::vec3(0.0f, 0.0f, -0.3f);
-	m_Model->Transformations.rotation		= glm::vec3(0.0f, -14.7, 0.0f);
+	m_Model									= ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stormtrooper/scene.gltf");
+	m_Model->Transformations.scaleHandler	= 0.009f;
+	m_Model->Transformations.translation	= glm::vec3(0.0f, 0.0f, 0.0f);
+	m_Model->Transformations.rotation		= glm::vec3(-100.0f, 0.0f, 0.0f);
 
 	m_InstanceModelData.resize(MAX_MODELS);
 
-	int num = glm::sqrt(MAX_MODELS);
+	int num = 20;
 	float offset_x = static_cast<float>(-num);
+	float offset_y = static_cast<float>(-num);
 	float offset_z = static_cast<float>(-num);
-	float offset = 3.0f;
+	float offset = 5.0f;
 
-	glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(11.2f));
-//	glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+	uint32_t column_instance_index	= 1;
+	uint32_t row_instance_index		= 1;
+	uint32_t height_instance_index	= 1;
 
-	for (int i = 1; i < MAX_MODELS + 1; i++) {
+	for (int i = 0; i < MAX_MODELS; i++) {
 
 		glm::vec3 translation = glm::vec3(0.0f);
 		translation.x = offset_x;
-		translation.y = 0.0f;
+		translation.y = offset_y;
 		translation.z = offset_z;
 
-		m_InstanceModelData[i - 1].model = glm::translate(glm::mat4(1.0), translation) * scale;
+		m_InstanceModelData[i].model = glm::translate(glm::mat4(1.0f), translation) * m_Model->GetModelMatrix();
 
-		if (i % num == 0) {
-			offset_z += offset;
+		if (column_instance_index % num == 0 && row_instance_index % num == 0) {
 			offset_x = static_cast<float>(-num);
+			offset_z = static_cast<float>(-num);
+
+			column_instance_index = 1;
+			row_instance_index = 1;
+
+			height_instance_index++;
+			offset_y += offset;
+		}
+		else if (column_instance_index % num == 0) {
+			offset_x = static_cast<float>(-num);
+
+			column_instance_index = 1;
+
+			row_instance_index++;
+			offset_z += offset;
 		}
 		else {
+			column_instance_index++;
 			offset_x += offset;
 		}
 	}
@@ -256,4 +272,4 @@ void Instancing::Resize(uint32_t width, uint32_t height) {
 	m_Height	= height;
 }
 
-RUN_APPLICATION(Instancing);
+//RUN_APPLICATION(Instancing);
