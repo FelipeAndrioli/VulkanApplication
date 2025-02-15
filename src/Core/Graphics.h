@@ -55,52 +55,46 @@ namespace Graphics {
 	struct Texture : public GPUImage {
 
 		enum TextureType {
-			AMBIENT = 0,
-			DIFFUSE = 1,
-			SPECULAR = 2,
+			AMBIENT				= 0,
+			DIFFUSE				= 1,
+			SPECULAR			= 2,
 			SPECULAR_HIGHTLIGHT = 3,
-			BUMP = 4,
-			DISPLACEMENT = 5,
-			ALPHA = 6,
-			REFLECTION = 7,
-			ROUGHNESS = 8,
-			METALLIC = 9,
-			SHEEN = 10,
-			EMISSIVE = 11,
-			NORMAL = 12,
-			CUBEMAP_SINGLE = 13,
-			CUBEMAP_MULTI = 14,
-			UNKNOWN = 99
+			BUMP				= 4,
+			DISPLACEMENT		= 5,
+			ALPHA				= 6,
+			REFLECTION			= 7,
+			ROUGHNESS			= 8,
+			METALLIC			= 9,
+			SHEEN				= 10,
+			EMISSIVE			= 11,
+			NORMAL				= 12,
+			CUBEMAP_SINGLE		= 13,
+			CUBEMAP_MULTI		= 14,
+			UNKNOWN				= 99
 		} Type = TextureType::UNKNOWN;
 
 		std::string Name = "";
 	};
 
 	struct BufferDescription {
-		VkBufferUsageFlags Usage;
+		VkBufferUsageFlags Usage				= VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
 		VkMemoryPropertyFlagBits MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		size_t BufferSize = 0;
-
-		struct BufferChunk {
-			size_t DataSize;
-			size_t ChunkSize;
-		};
-
-		std::vector<BufferChunk> Chunks;
+		size_t Size								= 0;
+		size_t Capacity							= 0;
 	};
 
 	struct GPUBuffer {
-		VkBuffer Handle = VK_NULL_HANDLE;
-		VkDeviceMemory Memory = VK_NULL_HANDLE;
-		void* MemoryMapped = nullptr;
+		VkBuffer Handle					= VK_NULL_HANDLE;
+		VkDeviceMemory Memory			= VK_NULL_HANDLE;
+		void* MemoryMapped				= nullptr;
 
-		BufferDescription Description = {};
+		BufferDescription Description	= {};
 	};
 
 	struct Buffer {
-		size_t Capacity = 0;
-		size_t Size = 0;
-		size_t Offset = 0;
+		size_t Capacity		= 0;
+		size_t Size			= 0;
+		size_t Offset		= 0;
 
 		VkBuffer* Handle = nullptr;
 	};

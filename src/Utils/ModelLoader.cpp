@@ -302,11 +302,11 @@ void CompileMesh(Assets::Model& model) {
 	GraphicsDevice* gfxDevice = GetDevice();
 
 	BufferDescription desc = {};
-	desc.BufferSize = sizeof(Assets::Vertex) * vertices.size() + sizeof(uint32_t) * indices.size();
+	desc.Capacity = sizeof(Assets::Vertex) * vertices.size() + sizeof(uint32_t) * indices.size();
 	desc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	desc.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-	gfxDevice->CreateBuffer(desc, model.DataBuffer, desc.BufferSize);
+	gfxDevice->CreateBuffer(desc, model.DataBuffer, desc.Capacity);
 
 	gfxDevice->WriteBuffer(model.DataBuffer, indices.data(), sizeof(uint32_t) * indices.size(), 0);
 	gfxDevice->WriteBuffer(model.DataBuffer, vertices.data(), sizeof(Assets::Vertex) * vertices.size(), sizeof(uint32_t) * indices.size());

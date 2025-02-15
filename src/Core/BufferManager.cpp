@@ -14,12 +14,12 @@ Graphics::BufferManager::~BufferManager() {
 void Graphics::BufferManager::CreateMainBuffer() {
 
 	Graphics::BufferDescription desc = {};
-	desc.BufferSize = m_Capacity;
+	desc.Capacity = m_Capacity;
 	desc.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	desc.MemoryProperty = static_cast<VkMemoryPropertyFlagBits>(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-	gfxDevice->CreateBuffer(desc, m_MainBuffer, desc.BufferSize);
+	gfxDevice->CreateBuffer(desc, m_MainBuffer, desc.Capacity);
 
 	std::cout << "Main buffer capacity: " << m_Capacity << '\n';
 }
