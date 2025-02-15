@@ -85,13 +85,6 @@ void Geometry::StartUp() {
 	m_Width		= settings.Width;
 	m_Height	= settings.Height;
 
-	/*
-	m_Model									= ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj");
-	m_Model->Transformations.scaleHandler	= 0.3f;
-	m_Model->Transformations.translation	= glm::vec3(0.0f, -3.75f, 0.0f);
-	m_Model->FlipUvVertically				= true;
-	*/
-
 	m_Model									= ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf");
 	m_Model->Transformations.scaleHandler	= 11.2f;
 	m_Model->Transformations.translation	= glm::vec3(0.0f, 0.0f, -0.3f);
@@ -292,4 +285,4 @@ void Geometry::RenderNormals(const VkCommandBuffer& commandBuffer) {
 		- The Vulkan Validation Layer complains about the builtin blocks being different between vertex shader output and geometry shader input.
 */
 
-RUN_APPLICATION(Geometry);
+//RUN_APPLICATION(Geometry);
