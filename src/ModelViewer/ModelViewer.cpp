@@ -236,15 +236,8 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	PostEffects::Render(commandBuffer, *m_PostEffectsRenderTarget.get(), m_OffscreenRenderTarget->GetColorBuffer());
 	m_PostEffectsRenderTarget->EndRenderPass(commandBuffer);
 
-	std::vector<VkImageCopy> imagesToCopy = {};
-
-	if (PostEffects::Rendered) {
-		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_PostEffectsRenderTarget->GetColorBuffer());
-	}
-	else {
-		m_OffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_OffscreenRenderTarget->GetColorBuffer());
-	}
+	// Copy final result from post effects render target to swap chain
+	gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_PostEffectsRenderTarget->GetColorBuffer());
 
 	if (m_RenderDepthSwapChain) {
 		m_DebugOffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -307,4 +300,4 @@ void ModelViewer::Resize(uint32_t width, uint32_t height) {
 	m_PostEffectsRenderTarget	->Resize(width, height);
 }
 
-//RUN_APPLICATION(ModelViewer)
+RUN_APPLICATION(ModelViewer)
