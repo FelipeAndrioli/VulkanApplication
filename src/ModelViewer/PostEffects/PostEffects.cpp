@@ -5,8 +5,6 @@
 #include "../Core/UI.h"
 #include "../Core/RenderTarget.h"
 
-#include "./GrayScale.h"
-
 /*
 	Notes:
 
@@ -17,7 +15,7 @@
 
 namespace PostEffects {
 
-	VkDescriptorSet						m_DescriptorSet[Graphics::FRAMES_IN_FLIGHT];
+	VkDescriptorSet						m_DescriptorSet			= VK_NULL_HANDLE;
 	
 	bool								Initialized				= false;
 	bool								GrayScaleEnabled		= false;
@@ -85,19 +83,16 @@ void PostEffects::Render(const VkCommandBuffer& commandBuffer, const Graphics::P
 
 	if (m_PostEffectsPSO.pipeline == VK_NULL_HANDLE || m_PostEffectsPSO.renderPass != &renderTarget.GetRenderPass()) {
 		gfxDevice->CreatePipelineState(m_PostEffectsPSODesc, m_PostEffectsPSO, renderTarget);
-		
-		for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-			gfxDevice->CreateDescriptorSet(m_PostEffectsPSO.descriptorSetLayout, m_DescriptorSet[i]);
-			gfxDevice->WriteDescriptor(m_InputLayout.bindings[0], m_DescriptorSet[i], colorBuffer);
-			gfxDevice->WriteDescriptor(m_InputLayout.bindings[1], m_DescriptorSet[i], m_UniformBuffer);
-		}
+		gfxDevice->CreateDescriptorSet(m_PostEffectsPSO.descriptorSetLayout, m_DescriptorSet);
+		gfxDevice->WriteDescriptor(m_InputLayout.bindings[0], m_DescriptorSet, colorBuffer);
+		gfxDevice->WriteDescriptor(m_InputLayout.bindings[1], m_DescriptorSet, m_UniformBuffer);
 	}
 
 	m_PostEffectsGPUData.GrayScaleEnabled		= GrayScaleEnabled ? 1 : 0;
 	m_PostEffectsGPUData.GammaCorrectionEnabled = GammaCorrectionEnabled ? 1 : 0;
 
 	gfxDevice->UpdateBuffer(m_UniformBuffer, &m_PostEffectsGPUData);
-	gfxDevice->BindDescriptorSet(m_DescriptorSet[gfxDevice->GetCurrentFrameIndex()], commandBuffer, m_PostEffectsPSO.pipelineLayout, 0, 1);
+	gfxDevice->BindDescriptorSet(m_DescriptorSet, commandBuffer, m_PostEffectsPSO.pipelineLayout, 0, 1);
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PostEffectsPSO.pipeline);
 	vkCmdDraw(commandBuffer, 6, 1, 0, 0);
