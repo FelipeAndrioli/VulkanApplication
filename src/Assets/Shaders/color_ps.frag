@@ -220,7 +220,11 @@ void main() {
 	if (current_material.normal_texture_index == -1) {
 		material_normal = vec4(normalize(fragNormal), 1.0);
 	} else {
+		// normal map in range [0, 1]
 		material_normal = texture(texSampler[current_material.normal_texture_index], fragTexCoord);
+
+		// transform normal to range [-1, 1]
+		material_normal = normalize(material_normal * 2.0 - 1.0);
 	}
 
 	if (current_material.specular_texture_index == -1) {
