@@ -199,7 +199,7 @@ void Cubes::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& comm
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_OffscreenRenderTarget->BeginRenderPass(commandBuffer);
+	m_OffscreenRenderTarget->Begin(commandBuffer);
 
 	gfxDevice->BindDescriptorSet(m_Set[currentFrame], commandBuffer, m_PSO.pipelineLayout, 0, 1);
 
@@ -225,7 +225,7 @@ void Cubes::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& comm
 		}
 	}
 
-	m_OffscreenRenderTarget->EndRenderPass(commandBuffer);
+	m_OffscreenRenderTarget->End(commandBuffer);
 
 	m_OffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_OffscreenRenderTarget->GetColorBuffer());

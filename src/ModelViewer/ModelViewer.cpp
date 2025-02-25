@@ -53,10 +53,10 @@ private:
 	bool m_RenderNormalsSwapChain	= false;
 	bool m_RenderNormalsImGui		= false;
 
-	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
-	std::unique_ptr<Graphics::OffscreenRenderTarget> m_DebugOffscreenRenderTarget;
-	std::unique_ptr<Graphics::OffscreenRenderTarget> m_DebugOffscreenNormalsRenderTarget;
-	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
+	std::unique_ptr<Graphics::OffscreenRenderTarget>	m_OffscreenRenderTarget;
+	std::unique_ptr<Graphics::OffscreenRenderTarget>	m_DebugOffscreenRenderTarget;
+	std::unique_ptr<Graphics::OffscreenRenderTarget>	m_DebugOffscreenNormalsRenderTarget;
+	std::unique_ptr<Graphics::PostEffectsRenderTarget>	m_PostEffectsRenderTarget;
 
 	VkDescriptorSet m_DebugOffscreenDescriptorSet			= VK_NULL_HANDLE;
 	VkDescriptorSet m_DebugOffscreenNormalDescriptorSet		= VK_NULL_HANDLE;
@@ -188,7 +188,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	sorter.Sort();
 
-	m_OffscreenRenderTarget->BeginRenderPass(commandBuffer);
+	m_OffscreenRenderTarget->Begin(commandBuffer);
 
 	Renderer::SetCameraIndex(0);
 	sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent);
@@ -212,31 +212,34 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 			Renderer::RenderOutline(commandBuffer, *model.get());
 	}
 
-	m_OffscreenRenderTarget->EndRenderPass(commandBuffer);
+	m_OffscreenRenderTarget->End(commandBuffer);
 
 	if (m_RenderDepthSwapChain || m_RenderDepthImGui) {
-		m_DebugOffscreenRenderTarget->BeginRenderPass(commandBuffer);
+		m_DebugOffscreenRenderTarget->Begin(commandBuffer);
 
+		Renderer::SetCameraIndex(1);
 		sorter.ResetDraw();
 		sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenRenderTarget.get(), &Renderer::m_RenderDepthPSO);
-		m_DebugOffscreenRenderTarget->EndRenderPass(commandBuffer);
+		m_DebugOffscreenRenderTarget->End(commandBuffer);
 	}
 
 	if (m_RenderNormalsSwapChain || m_RenderNormalsImGui) {
-		m_DebugOffscreenNormalsRenderTarget->BeginRenderPass(commandBuffer);
+		m_DebugOffscreenNormalsRenderTarget->Begin(commandBuffer);
 	
-		Renderer::SetCameraIndex(1);
+		Renderer::SetCameraIndex(0);
 		sorter.ResetDraw();
 		sorter.RenderMeshes(commandBuffer, Renderer::MeshSorter::DrawPass::tTransparent, *m_DebugOffscreenNormalsRenderTarget.get(), &Renderer::m_RenderNormalsPSO);
 
-		m_DebugOffscreenNormalsRenderTarget->EndRenderPass(commandBuffer);
+		m_DebugOffscreenNormalsRenderTarget->End(commandBuffer);
 	}
 
-	m_PostEffectsRenderTarget->BeginRenderPass(commandBuffer);
+	m_PostEffectsRenderTarget->Begin(commandBuffer);
 	PostEffects::Render(commandBuffer, *m_PostEffectsRenderTarget.get(), m_OffscreenRenderTarget->GetColorBuffer());
-	m_PostEffectsRenderTarget->EndRenderPass(commandBuffer);
+//	m_PostEffectsRenderTarget->EndRenderPass(commandBuffer);
+	m_PostEffectsRenderTarget->End(commandBuffer);
 
 	// Copy final result from post effects render target to swap chain
+	m_PostEffectsRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_PostEffectsRenderTarget->GetColorBuffer());
 
 	if (m_RenderDepthSwapChain) {

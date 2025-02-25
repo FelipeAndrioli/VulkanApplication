@@ -1146,6 +1146,13 @@ namespace Graphics {
 
 			sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		} 
 		else if (image.ImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 			barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -1437,29 +1444,27 @@ namespace Graphics {
 
 	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples) {
 
-		ImageDescription renderTargetDesc = {};
-		renderTargetDesc.Width = extent.width;
-		renderTargetDesc.Height = extent.height;
-		renderTargetDesc.MipLevels = 1;
-		renderTargetDesc.MsaaSamples = samples;
-		renderTargetDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		renderTargetDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-		renderTargetDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		renderTargetDesc.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-		renderTargetDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;
-		renderTargetDesc.LayerCount = 1;
-		renderTargetDesc.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		renderTargetDesc.Format = format;
-		renderTargetDesc.ImageType = VK_IMAGE_TYPE_2D;
+		ImageDescription renderTargetDesc	= {};
+		renderTargetDesc.Width				= extent.width;
+		renderTargetDesc.Height				= extent.height;
+		renderTargetDesc.MipLevels			= 1;
+		renderTargetDesc.MsaaSamples		= samples;
+		renderTargetDesc.Tiling				= VK_IMAGE_TILING_OPTIMAL;
+		renderTargetDesc.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		renderTargetDesc.MemoryProperty		= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		renderTargetDesc.AspectFlags		= VK_IMAGE_ASPECT_COLOR_BIT;
+		renderTargetDesc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
+		renderTargetDesc.LayerCount			= 1;
+		renderTargetDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		renderTargetDesc.Format				= format;
+		renderTargetDesc.ImageType			= VK_IMAGE_TYPE_2D;
 
-		renderTarget.Description = renderTargetDesc;
+		renderTarget.Description			= renderTargetDesc;
 
-		CreateImage(renderTarget);
-		CreateImageView(renderTarget);
+		CreateImage		(renderTarget);
+		CreateImageView	(renderTarget);
 
-		renderTarget.ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-		TransitionImageLayout(renderTarget, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		renderTarget.ImageLayout			= VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 
 	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format) {
@@ -1714,7 +1719,6 @@ namespace Graphics {
 				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			else
 				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-//			resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 			renderPass.Attachments.emplace_back(resolveAttachment);
 
