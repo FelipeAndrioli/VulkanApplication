@@ -13,14 +13,14 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	mat4 proj;					// 256
 } sceneGPUData;
 
-layout (location = 0) in vec3 inFragColor[];
+layout (location = 0) in vec3 inFragPos[]; 
 layout (location = 1) in vec3 inFragNormal[];
-layout (location = 2) in vec3 inFragPos[]; 
+layout (location = 2) in vec3 inFragColor[];
 layout (location = 3) in vec2 inFragTexCoord[];
 
-layout (location = 0) out vec3 fragColor;
+layout (location = 0) out vec3 fragPos;
 layout (location = 1) out vec3 fragNormal;
-layout (location = 2) out vec3 fragPos;
+layout (location = 2) out vec3 fragColor;
 layout (location = 3) out vec2 fragTexCoord;
 
 // Generate a normal vertex based in the current triangle position 
