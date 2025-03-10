@@ -70,7 +70,9 @@ namespace Renderer {
 		void Sort();
 		void RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass);
 		void RenderMeshes(const VkCommandBuffer& commandBuffer, DrawPass pass, Graphics::IRenderTarget& renderTarget, Graphics::PipelineState* pso);
-		void ResetDraw() { m_CurrentDraw = 0; m_CurrentPass = tZPass; }
+		void SetCurrentPass(DrawPass pass)	{ m_CurrentPass = pass; }
+		void SetCurrentDraw(uint32_t draw)	{ m_CurrentDraw = draw; }
+		void ResetDraw()					{ SetCurrentDraw(0); SetCurrentPass(tZPass); }
 	private:
 		BatchType m_BatchType;
 		DrawPass m_CurrentPass;
