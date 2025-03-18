@@ -2,6 +2,31 @@
 #include "../Mesh.h"
 
 namespace Assets {
+	glm::vec3 MeshGenerator::GenerateTangentVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 uv1, glm::vec2 uv2, glm::vec2 uv3) {
+		
+		glm::vec3 edge1 = p2 - p1;
+		glm::vec3 edge2 = p3 - p1;
+
+		glm::vec2 deltaUv1 = uv2 - uv1;
+		glm::vec2 deltaUv2 = uv3 - uv1;
+
+		float f = 1 / (deltaUv1.x * deltaUv2.y - deltaUv1.y * deltaUv2.x);
+
+		return (f * (deltaUv2.y * edge1 - deltaUv1.y * edge2));
+	}
+
+	glm::vec3 MeshGenerator::GenerateBiTangentVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 uv1, glm::vec2 uv2, glm::vec2 uv3) {
+		glm::vec3 edge1 = p2 - p1;
+		glm::vec3 edge2 = p3 - p1;
+
+		glm::vec2 deltaUv1 = uv2 - uv1;
+		glm::vec2 deltaUv2 = uv3 - uv1;
+
+		float f = 1 / (deltaUv1.x * deltaUv2.y - deltaUv1.y * deltaUv2.x);
+
+		return (f * (deltaUv1.x * edge2 - deltaUv2.x * edge1));
+	}
+
 	std::vector<Mesh> MeshGenerator::GenerateSinglePlaneMesh(glm::vec3 pos, float cellSize) {
 		Assets::Mesh mesh = Assets::Mesh();
 
@@ -214,5 +239,65 @@ namespace Assets {
 		std::vector<Assets::Mesh> customMesh = { mesh };
 
 		return customMesh;
+	}
+
+	std::vector<Mesh> MeshGenerator::GenerateQuadMesh(const glm::vec3 pos, const float size) {
+		Assets::Mesh mesh = {};
+
+		mesh.Vertices.resize(4);
+
+		mesh.Vertices[0].pos = glm::vec3(pos.x, pos.y, pos.z);
+		mesh.Vertices[1].pos = glm::vec3(pos.x, pos.y + size, pos.z);
+		mesh.Vertices[2].pos = glm::vec3(pos.x + size, pos.y + size, pos.z);
+		mesh.Vertices[3].pos = glm::vec3(pos.x + size, pos.y, pos.z);
+
+		mesh.Vertices[0].texCoord = glm::vec2(0.0f, 0.0f);
+		mesh.Vertices[1].texCoord = glm::vec2(0.0f, 1.0f);
+		mesh.Vertices[2].texCoord = glm::vec2(1.0f, 1.0f);
+		mesh.Vertices[3].texCoord = glm::vec2(1.0f, 0.0f);
+
+		glm::vec3 normal = glm::vec3(0.0f, 0.0f, -1.0f);
+
+		mesh.Vertices[0].normal = normal;
+		mesh.Vertices[1].normal = normal;
+		mesh.Vertices[2].normal = normal;
+		mesh.Vertices[3].normal = normal;
+
+		mesh.Indices.resize(6);
+
+		mesh.Indices[0] = 0;
+		mesh.Indices[1] = 1;
+		mesh.Indices[2] = 2;
+		mesh.Indices[3] = 0;
+		mesh.Indices[4] = 2;
+		mesh.Indices[5] = 3;
+
+		glm::vec3 tangent = GenerateTangentVector(
+			mesh.Vertices[0].pos, 
+			mesh.Vertices[1].pos, 
+			mesh.Vertices[2].pos, 
+			mesh.Vertices[0].texCoord, 
+			mesh.Vertices[1].texCoord, 
+			mesh.Vertices[2].texCoord);
+
+		mesh.Vertices[0].tangent = tangent;
+		mesh.Vertices[1].tangent = tangent;
+		mesh.Vertices[2].tangent = tangent;
+
+		tangent = GenerateTangentVector(
+			mesh.Vertices[0].pos, 
+			mesh.Vertices[2].pos, 
+			mesh.Vertices[3].pos, 
+			mesh.Vertices[0].texCoord, 
+			mesh.Vertices[2].texCoord, 
+			mesh.Vertices[3].texCoord);
+
+		mesh.Vertices[0].tangent = tangent;
+		mesh.Vertices[2].tangent = tangent;
+		mesh.Vertices[3].tangent = tangent;
+
+		std::vector<Assets::Mesh> quadMesh = { mesh };
+
+		return quadMesh;
 	}
 }
