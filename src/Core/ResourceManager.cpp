@@ -45,19 +45,21 @@ Graphics::Buffer& ResourceManager::GetMaterialBuffer() {
 	return m_MaterialUBO;
 }
 
-void ResourceManager::AddTexture(Graphics::Texture texture) {
+int ResourceManager::AddTexture(Graphics::Texture texture) {
 	// TODO: Use hash code instead of Name
 
 	if (m_Textures.size() < TEXTURES_LIMIT) {
 		m_Textures.push_back(texture);
+
+		return m_Textures.size() - 1;
 	}
 	else {
 		std::cout << "Textures out of space!" << '\n';
-		return;
+		return -1;
 	}
 }
 
-void ResourceManager::AddMaterial(Material material) {
+int ResourceManager::AddMaterial(Material material) {
 
 	// TODO: Update buffer when inserting a new material
 	// TODO: Use hash code instead of Name
@@ -68,10 +70,12 @@ void ResourceManager::AddMaterial(Material material) {
 		m_Materials.push_back(material);
 
 		gfxDevice->WriteSubBuffer(m_MaterialUBO, &material.MaterialData, sizeof(MaterialData));
+
+		return m_Materials.size() - 1;
 	}
 	else {
 		std::cout << "Materials out of space!" << '\n';
-		return;
+		return -1;
 	}
 }
 
