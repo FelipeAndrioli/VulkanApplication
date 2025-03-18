@@ -7,9 +7,13 @@
 #include "../Core/Application.h"
 #include "../Core/GraphicsDevice.h"
 #include "../Core/Settings.h"
+#include "../Core/ResourceManager.h"
 
 #include "../Assets/Camera.h"
 #include "../Assets/Model.h"
+
+#include "../Utils/ModelLoader.h"
+#include "../Utils/TextureLoader.h"
 
 #include "./PostEffects/PostEffects.h"
 #include "./Renderer.h"
@@ -52,6 +56,7 @@ private:
 	bool m_RenderDepthImGui			= false;
 	bool m_RenderNormalsSwapChain	= false;
 	bool m_RenderNormalsImGui		= false;
+	bool m_RenderNormalMap			= true;
 
 	std::unique_ptr<Graphics::OffscreenRenderTarget>	m_OffscreenRenderTarget;
 	std::unique_ptr<Graphics::OffscreenRenderTarget>	m_DebugOffscreenRenderTarget;
@@ -124,15 +129,35 @@ void ModelViewer::StartUp() {
 		m_DebugOffscreenNormalsRenderTarget->GetRenderPass().FinalLayout
 	);
 
-	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
-	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
-	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(2.5f, -3.75f, -2.5f);
-	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+	m_Models.emplace_back(Renderer::LoadModel(ModelType::QUAD));
+	m_Models[m_Models.size() - 1]->Transformations.rotation.y = 170.0f;
+
+	ResourceManager* rm = ResourceManager::Get();
+
+	int diffuseTextureIndex = rm->AddTexture(TextureLoader::LoadTexture("C:/Users/Felipe/Documents/current_projects/models/textures/brickwall.jpg", Texture::TextureType::DIFFUSE, false, false));
+	int normalTextureIndex	= rm->AddTexture(TextureLoader::LoadTexture("C:/Users/Felipe/Documents/current_projects/models/textures/normal_mapping.png", Texture::TextureType::NORMAL, false, false));
+
+	Material material							= {};
+	material.Name								= "Normal Map Testing";
+	material.MaterialData.DiffuseTextureIndex	= diffuseTextureIndex;
+	material.MaterialData.NormalTextureIndex	= normalTextureIndex;
+
+	int materialIndex = rm->AddMaterial(material);
+
+	for (auto& mesh : m_Models[m_Models.size() - 1]->Meshes) {
+		mesh.MaterialName	= material.Name;
+		mesh.MaterialIndex	= materialIndex;
+	}
 
 	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj"));
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.3f;
 	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(0.0f, -3.75f, 0.0f);
 	m_Models[m_Models.size() - 1]->FlipUvVertically					= true;
+	
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(2.5f, -3.75f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
 
 	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj"));
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.008f;
@@ -177,7 +202,7 @@ void ModelViewer::Update(const float constantT, const float deltaT, InputSystem:
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	Renderer::UpdateGlobalDescriptors(commandBuffer, { m_Camera, m_SecondCamera });
+	Renderer::UpdateGlobalDescriptors(commandBuffer, { m_Camera, m_SecondCamera }, m_RenderNormalMap);
 
 	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
 	sorter.SetCamera(m_Camera);
@@ -257,6 +282,7 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox				("Render Wireframe",		&m_RenderWireframe);
 	ImGui::Checkbox				("Render Skybox",			&m_RenderSkybox);
 	ImGui::Checkbox				("Render Light Sources",	&m_RenderLightSources);
+	ImGui::Checkbox				("Render Normal Map",		&m_RenderNormalMap);
 
 	PostEffects::RenderUI();
 
