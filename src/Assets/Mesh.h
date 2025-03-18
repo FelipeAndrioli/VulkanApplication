@@ -92,7 +92,7 @@ namespace PSOFlags {
 		tTransparent	= 0x002,
 		tTwoSided		= 0x004,
 		tStencilTest	= 0x008,
-		tHasTangent		= 0x016,
+//		tHasTangent		= 0x0016,
 	};
 }
 
