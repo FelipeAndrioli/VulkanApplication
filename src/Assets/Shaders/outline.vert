@@ -43,12 +43,6 @@ layout (location = 2) in vec3 inColor;
 layout (location = 3) in vec3 inTangent;
 layout (location = 4) in vec2 inTexCoord;
 
-layout (location = 0) out vec3 fragPos;
-layout (location = 1) out vec3 fragNormal;
-layout (location = 2) out vec3 fragColor;
-layout (location = 3) out vec3 fragTangent;
-layout (location = 4) out vec2 fragTexCoord;
-
 layout (push_constant) uniform constant {
 	int material_index;
 	int model_index;

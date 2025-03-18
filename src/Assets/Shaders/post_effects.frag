@@ -1,5 +1,7 @@
 #version 450
 
+#extension GL_KHR_vulkan_glsl : enable
+
 layout (set = 0, binding = 0) uniform sampler2D render_target;
 
 layout (std140, set = 0, binding = 1) uniform PostEffectsGPUData {
