@@ -1,5 +1,7 @@
 #version 460
 
+#extension GL_KHR_vulkan_glsl : enable
+
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float time;					// 4
 	float lightIntensity;		// 8
