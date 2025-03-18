@@ -6,7 +6,7 @@
 struct MaterialData {
 	glm::vec4 Ambient = glm::vec4(0.5f);						// ignore w
 	glm::vec4 Diffuse = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);		// ignore w
-	glm::vec4 Specular = glm::vec4(1.0f);						// ignore w
+	glm::vec4 Specular = glm::vec4(0.1f);						// ignore w
 	glm::vec4 Transparency = glm::vec4(1.0f);					// ignore w
 	glm::vec4 Emission = glm::vec4(1.0f);						// ignore w
 	glm::vec4 extra[6];
