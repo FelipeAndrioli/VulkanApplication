@@ -22,24 +22,6 @@
 
 #include "./TextureLoader.h"
 
-glm::vec3 GenerateTangentVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 uv1, glm::vec2 uv2, glm::vec2 uv3, glm::vec3 normal) {
-	glm::vec3 tangent = glm::vec3(1.0f);
-	
-	glm::vec3 edge1 = p1 - p2;
-	glm::vec3 edge2 = p3 - p2;
-
-	glm::vec2 deltaUv1 = uv1 - uv2;
-	glm::vec2 deltaUv2 = uv3 - uv2;
-
-	float f = 1 / (deltaUv1.x * deltaUv2.y - deltaUv2.x * deltaUv1.y);
-
-	tangent.x = f * (deltaUv2.y * edge1.x - deltaUv1.y * edge2.x);
-	tangent.y = f * (deltaUv2.y * edge1.y - deltaUv1.y * edge2.y);
-	tangent.z = f * (deltaUv2.y * edge1.z - deltaUv1.y * edge2.z);
-
-	return tangent;
-}
-
 Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 	std::vector<Assets::Vertex> vertices;
 	std::vector<uint32_t> indices;
@@ -81,9 +63,17 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 					glm::vec2 uv1 = glm::vec2(mesh->mTextureCoords[0][face.mIndices[0]].x, mesh->mTextureCoords[0][face.mIndices[0]].y);
 					glm::vec2 uv2 = glm::vec2(mesh->mTextureCoords[0][face.mIndices[1]].x, mesh->mTextureCoords[0][face.mIndices[1]].y);
 					glm::vec2 uv3 = glm::vec2(mesh->mTextureCoords[0][face.mIndices[2]].x, mesh->mTextureCoords[0][face.mIndices[2]].y);
-
-					vertex.tangent = GenerateTangentVector(p1, p2, p3, uv1, uv2, uv3, vertex.normal);
 				}
+			}
+
+			if (mesh->HasTangentsAndBitangents()) {
+				glm::vec3 tangent = glm::vec3(0.0f);
+
+				tangent.x = mesh->mTangents[face.mIndices[j]].x;
+				tangent.y = mesh->mTangents[face.mIndices[j]].y;
+				tangent.z = mesh->mTangents[face.mIndices[j]].z;
+
+				vertex.tangent = tangent;
 			}
 
 			if (uniqueVertices.count(vertex) == 0) {
@@ -317,6 +307,9 @@ void CompileMesh(Assets::Model& model) {
 			mesh_min_x = std::min(vertex.pos.x, mesh_min_x);
 			mesh_min_y = std::min(vertex.pos.y, mesh_min_y);
 			mesh_min_z = std::min(vertex.pos.z, mesh_min_z);
+
+//			if (vertex.tangent.x != 0.0f || vertex.tangent.y != 0.0f || vertex.tangent.z != 0.0f)
+//				mesh.PSOFlags |= PSOFlags::tHasTangent;
 		}
 
 		mesh.PivotVector = glm::vec3((mesh_max_x + mesh_min_x) / 2, (mesh_max_y + mesh_min_y) / 2, (mesh_max_z + mesh_min_z) / 2);
@@ -355,7 +348,7 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 		
 	loadedFileNames[model->Name]++;
 
-	const aiScene* scene = aiImportFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
+	const aiScene* scene = aiImportFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 
 	assert(scene && scene->HasMeshes());
 
@@ -390,6 +383,17 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::
 	
 		model->Meshes = Assets::MeshGenerator::GenerateCubeMesh(position, size);
 		model->Name = "Cube_" + std::to_string(cubeIdx++);
+		model->Transformations.translation = position;
+
+		CompileMesh(*model.get());
+
+		return model;
+	}
+	else if (modelType == ModelType::QUAD) {
+		static int quadIdx = 0;
+
+		model->Meshes = Assets::MeshGenerator::GenerateQuadMesh(position, size);
+		model->Name = "Quad_" + std::to_string(quadIdx++);
 		model->Transformations.translation = position;
 
 		CompileMesh(*model.get());
