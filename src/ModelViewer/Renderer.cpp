@@ -66,6 +66,20 @@ namespace Renderer {
 	int m_CameraIndex		= 0;
 }
 
+std::shared_ptr<Assets::Model> Renderer::LoadModel(ModelType modelType) {
+	if (m_TotalModels == MAX_MODELS)
+		return nullptr;
+
+	m_Models[m_TotalModels++] = ModelLoader::LoadModel(modelType);
+
+	uint32_t modelIdx = m_TotalModels - 1;
+
+	m_Models[modelIdx]->ModelIndex = modelIdx;
+
+	return m_Models[modelIdx];
+
+}
+
 std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
 	if (m_TotalModels == MAX_MODELS)
 		return nullptr;
@@ -349,10 +363,11 @@ void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
 	vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 }
 
-void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras) {
+void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap) {
 	GraphicsDevice* gfxDevice = GetDevice();
 	
 	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
+	m_GlobalConstants.renderNormalMap = static_cast<int>(renderNormalMap);
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer[gfxDevice->GetCurrentFrameIndex()], &m_GlobalConstants);
 

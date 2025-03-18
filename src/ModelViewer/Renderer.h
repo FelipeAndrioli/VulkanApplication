@@ -26,6 +26,8 @@ namespace Graphics {
 	struct RenderPass;
 }
 
+enum ModelType;
+
 namespace Renderer {
 
 	class MeshSorter {
@@ -104,6 +106,7 @@ namespace Renderer {
 	extern Graphics::PipelineState m_RenderDepthPSO;
 	extern Graphics::PipelineState m_RenderNormalsPSO;
 
+	std::shared_ptr<Assets::Model> LoadModel(ModelType modelType);
 	std::shared_ptr<Assets::Model> LoadModel(const std::string& path);
 
 	void Init();
@@ -111,7 +114,7 @@ namespace Renderer {
 	void LoadResources(const Graphics::IRenderTarget& renderTarget);
 	void OnUIRender();
 
-	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras);
+	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap);
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);
 	void RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model);
