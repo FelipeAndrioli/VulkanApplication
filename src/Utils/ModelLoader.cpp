@@ -31,7 +31,7 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 	for (size_t i = 0; i < mesh->mNumFaces; i++) {
 
 		const aiFace face = mesh->mFaces[i];
-
+		
 		for (size_t j = 0; j < face.mNumIndices; j++) {
 			Assets::Vertex vertex = {};
 			
@@ -54,6 +54,18 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 					mesh->mNormals[face.mIndices[j]].y,
 					mesh->mNormals[face.mIndices[j]].z
 				};
+
+				if (mesh->mTextureCoords[0]) {
+					glm::vec3 p1 = glm::vec3(mesh->mVertices[face.mIndices[0]].x, mesh->mVertices[face.mIndices[0]].y, mesh->mVertices[face.mIndices[0]].z);
+					glm::vec3 p2 = glm::vec3(mesh->mVertices[face.mIndices[1]].x, mesh->mVertices[face.mIndices[1]].y, mesh->mVertices[face.mIndices[1]].z);
+					glm::vec3 p3 = glm::vec3(mesh->mVertices[face.mIndices[2]].x, mesh->mVertices[face.mIndices[2]].y, mesh->mVertices[face.mIndices[2]].z);
+
+					glm::vec2 uv1 = glm::vec2(mesh->mTextureCoords[0][face.mIndices[0]].x, mesh->mTextureCoords[0][face.mIndices[0]].y);
+					glm::vec2 uv2 = glm::vec2(mesh->mTextureCoords[0][face.mIndices[1]].x, mesh->mTextureCoords[0][face.mIndices[1]].y);
+					glm::vec2 uv3 = glm::vec2(mesh->mTextureCoords[0][face.mIndices[2]].x, mesh->mTextureCoords[0][face.mIndices[2]].y);
+
+					vertex.tangent = Assets::MeshGenerator::GenerateTangentVector(p1, p2, p3, uv1, uv2, uv3);
+				}
 			}
 
 			if (uniqueVertices.count(vertex) == 0) {
@@ -164,46 +176,44 @@ static void LoadMaterialTextures(aiMaterial* assimpMaterial, Material& material,
 	}
 }
 
-static void ProcessMaterials(
-	Assets::Model& model,
-	const aiScene* scene) {
+static void ProcessMaterials(Assets::Model& model, const aiScene* scene) {
 
 	ResourceManager* rm = ResourceManager::Get();
 
 	for (size_t i = 0; i < scene->mNumMaterials; i++) {
 		aiMaterial* material = scene->mMaterials[i];
 
-		aiString materialName;
-		aiColor4D diffuseColor;
-		aiColor4D specularColor;
-		aiColor4D ambientColor;
-		aiColor4D emissiveColor;
-		aiColor4D transparentColor;
-		float opacity;
-		float shininess;
-		float shininessStrength;
+		aiString	materialName;
+		aiColor4D	diffuseColor;
+		aiColor4D	specularColor;
+		aiColor4D	ambientColor;
+		aiColor4D	emissiveColor;
+		aiColor4D	transparentColor;
+		float		opacity;
+		float		shininess;
+		float		shininessStrength;
 
-		material->Get(AI_MATKEY_NAME, materialName);
-		material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
-		material->Get(AI_MATKEY_COLOR_SPECULAR, specularColor);
-		material->Get(AI_MATKEY_COLOR_AMBIENT, ambientColor);
-		material->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor);
-		material->Get(AI_MATKEY_COLOR_TRANSPARENT, transparentColor);
-		material->Get(AI_MATKEY_OPACITY, opacity);
-		material->Get(AI_MATKEY_SHININESS, shininess);
+		material->Get(AI_MATKEY_NAME,				materialName);
+		material->Get(AI_MATKEY_COLOR_DIFFUSE,		diffuseColor);
+		material->Get(AI_MATKEY_COLOR_SPECULAR,		specularColor);
+		material->Get(AI_MATKEY_COLOR_AMBIENT,		ambientColor);
+		material->Get(AI_MATKEY_COLOR_EMISSIVE,		emissiveColor);
+		material->Get(AI_MATKEY_COLOR_TRANSPARENT,	transparentColor);
+		material->Get(AI_MATKEY_OPACITY,			opacity);
+		material->Get(AI_MATKEY_SHININESS,			shininess);
 		material->Get(AI_MATKEY_SHININESS_STRENGTH, shininessStrength);
 
 		if (rm->GetMaterialIndex(materialName.C_Str()) == -1) {
-			Material newMaterial = {};
-			newMaterial.Name = materialName.C_Str();
-			newMaterial.MaterialData.Ambient = glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, ambientColor.a);
-			newMaterial.MaterialData.Diffuse = glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, diffuseColor.a);
-			newMaterial.MaterialData.Specular = glm::vec4(specularColor.r, specularColor.g, specularColor.b, specularColor.a);
-			newMaterial.MaterialData.Emission = glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, emissiveColor.a);
-			newMaterial.MaterialData.Transparency = glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, transparentColor.a);
-			newMaterial.MaterialData.Opacity = opacity;
-			newMaterial.MaterialData.Shininess = shininess;
-			newMaterial.MaterialData.ShininessStrength = shininessStrength;
+			Material newMaterial						= {};
+			newMaterial.Name							= materialName.C_Str();
+			newMaterial.MaterialData.Ambient			= glm::vec4(ambientColor.r, ambientColor.g, ambientColor.b, ambientColor.a);
+			newMaterial.MaterialData.Diffuse			= glm::vec4(diffuseColor.r, diffuseColor.g, diffuseColor.b, diffuseColor.a);
+			newMaterial.MaterialData.Specular			= glm::vec4(specularColor.r, specularColor.g, specularColor.b, specularColor.a);
+			newMaterial.MaterialData.Emission			= glm::vec4(emissiveColor.r, emissiveColor.g, emissiveColor.b, emissiveColor.a);
+			newMaterial.MaterialData.Transparency		= glm::vec4(transparentColor.r, transparentColor.g, transparentColor.b, transparentColor.a);
+			newMaterial.MaterialData.Opacity			= opacity;
+			newMaterial.MaterialData.Shininess			= shininess;
+			newMaterial.MaterialData.ShininessStrength	= shininessStrength;
 
 			LoadMaterialTextures(material, newMaterial, model.MaterialPath);
 			
@@ -215,7 +225,7 @@ static void ProcessMaterials(
 void CompileMesh(Assets::Model& model) {
 
 	std::vector<Assets::Vertex> vertices;
-	std::vector<uint32_t> indices;
+	std::vector<uint32_t>		indices;
 
 	float min_x = std::numeric_limits<float>::max();
 	float max_x = std::numeric_limits<float>::min();
@@ -289,27 +299,28 @@ void CompileMesh(Assets::Model& model) {
 			mesh_min_x = std::min(vertex.pos.x, mesh_min_x);
 			mesh_min_y = std::min(vertex.pos.y, mesh_min_y);
 			mesh_min_z = std::min(vertex.pos.z, mesh_min_z);
+
+//			if (vertex.tangent.x != 0.0f || vertex.tangent.y != 0.0f || vertex.tangent.z != 0.0f)
+//				mesh.PSOFlags |= PSOFlags::tHasTangent;
 		}
 
 		mesh.PivotVector = glm::vec3((mesh_max_x + mesh_min_x) / 2, (mesh_max_y + mesh_min_y) / 2, (mesh_max_z + mesh_min_z) / 2);
 	}
 
-	model.PivotVector = glm::vec3((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2);
-
+	model.PivotVector	= glm::vec3((max_x + min_x) / 2, (max_y + min_y) / 2, (max_z + min_z) / 2);
 	model.TotalVertices = vertices.size();
-	model.TotalIndices = indices.size();
+	model.TotalIndices	= indices.size();
 
 	GraphicsDevice* gfxDevice = GetDevice();
 
-	BufferDescription desc = {};
-	desc.Capacity = sizeof(Assets::Vertex) * vertices.size() + sizeof(uint32_t) * indices.size();
-	desc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	desc.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	BufferDescription desc	= {};
+	desc.Capacity			= sizeof(Assets::Vertex) * vertices.size() + sizeof(uint32_t) * indices.size();
+	desc.MemoryProperty		= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	desc.Usage				= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-	gfxDevice->CreateBuffer(desc, model.DataBuffer, desc.Capacity);
-
-	gfxDevice->WriteBuffer(model.DataBuffer, indices.data(), sizeof(uint32_t) * indices.size(), 0);
-	gfxDevice->WriteBuffer(model.DataBuffer, vertices.data(), sizeof(Assets::Vertex) * vertices.size(), sizeof(uint32_t) * indices.size());
+	gfxDevice->CreateBuffer	(desc, model.DataBuffer, desc.Capacity);
+	gfxDevice->WriteBuffer	(model.DataBuffer, indices.data(), sizeof(uint32_t) * indices.size(), 0);
+	gfxDevice->WriteBuffer	(model.DataBuffer, vertices.data(), sizeof(Assets::Vertex) * vertices.size(), sizeof(uint32_t) * indices.size());
 }
 
 std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
@@ -364,6 +375,17 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::
 	
 		model->Meshes = Assets::MeshGenerator::GenerateCubeMesh(position, size);
 		model->Name = "Cube_" + std::to_string(cubeIdx++);
+		model->Transformations.translation = position;
+
+		CompileMesh(*model.get());
+
+		return model;
+	}
+	else if (modelType == ModelType::QUAD) {
+		static int quadIdx = 0;
+
+		model->Meshes = Assets::MeshGenerator::GenerateQuadMesh(position, size);
+		model->Name = "Quad_" + std::to_string(quadIdx++);
 		model->Transformations.translation = position;
 
 		CompileMesh(*model.get());

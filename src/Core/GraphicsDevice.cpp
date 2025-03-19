@@ -1146,6 +1146,13 @@ namespace Graphics {
 
 			sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		} 
 		else if (image.ImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 			barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -1437,29 +1444,27 @@ namespace Graphics {
 
 	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples) {
 
-		ImageDescription renderTargetDesc = {};
-		renderTargetDesc.Width = extent.width;
-		renderTargetDesc.Height = extent.height;
-		renderTargetDesc.MipLevels = 1;
-		renderTargetDesc.MsaaSamples = samples;
-		renderTargetDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		renderTargetDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-		renderTargetDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		renderTargetDesc.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-		renderTargetDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;
-		renderTargetDesc.LayerCount = 1;
-		renderTargetDesc.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		renderTargetDesc.Format = format;
-		renderTargetDesc.ImageType = VK_IMAGE_TYPE_2D;
+		ImageDescription renderTargetDesc	= {};
+		renderTargetDesc.Width				= extent.width;
+		renderTargetDesc.Height				= extent.height;
+		renderTargetDesc.MipLevels			= 1;
+		renderTargetDesc.MsaaSamples		= samples;
+		renderTargetDesc.Tiling				= VK_IMAGE_TILING_OPTIMAL;
+		renderTargetDesc.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		renderTargetDesc.MemoryProperty		= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		renderTargetDesc.AspectFlags		= VK_IMAGE_ASPECT_COLOR_BIT;
+		renderTargetDesc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
+		renderTargetDesc.LayerCount			= 1;
+		renderTargetDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		renderTargetDesc.Format				= format;
+		renderTargetDesc.ImageType			= VK_IMAGE_TYPE_2D;
 
-		renderTarget.Description = renderTargetDesc;
+		renderTarget.Description			= renderTargetDesc;
 
-		CreateImage(renderTarget);
-		CreateImageView(renderTarget);
+		CreateImage		(renderTarget);
+		CreateImageView	(renderTarget);
 
-		renderTarget.ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-		TransitionImageLayout(renderTarget, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		renderTarget.ImageLayout			= VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 
 	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format) {
@@ -1714,7 +1719,6 @@ namespace Graphics {
 				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			else
 				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-//			resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 			renderPass.Attachments.emplace_back(resolveAttachment);
 
@@ -2303,48 +2307,48 @@ namespace Graphics {
 
 	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget) {
 	
-		pso.inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		pso.inputAssembly.topology = desc.topology;
-		pso.inputAssembly.primitiveRestartEnable = VK_FALSE;
+		pso.inputAssembly.sType						= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		pso.inputAssembly.topology					= desc.topology;
+		pso.inputAssembly.primitiveRestartEnable	= VK_FALSE;
 
-		VkExtent2D psoExtent = renderTarget.GetExtent();
-		VkViewport viewport = renderTarget.GetRenderPass().Description.viewport;
-		VkRect2D scissor = renderTarget.GetRenderPass().Description.scissor;
+		VkExtent2D psoExtent	= renderTarget.GetExtent();
+		VkViewport viewport		= renderTarget.GetRenderPass().Description.viewport;
+		VkRect2D scissor		= renderTarget.GetRenderPass().Description.scissor;
 
-		pso.viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		pso.viewportState.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		pso.viewportState.viewportCount = 1;
-		pso.viewportState.pViewports = &viewport;
-		pso.viewportState.scissorCount = 1;
-		pso.viewportState.pScissors = &scissor;
+		pso.viewportState.pViewports	= &viewport;
+		pso.viewportState.scissorCount	= 1;
+		pso.viewportState.pScissors		= &scissor;
 
-		pso.rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		pso.rasterizer.depthClampEnable = VK_FALSE;
-		pso.rasterizer.rasterizerDiscardEnable = VK_FALSE;
-		pso.rasterizer.polygonMode = desc.polygonMode;
-		pso.rasterizer.lineWidth = desc.lineWidth;
-		pso.rasterizer.cullMode = desc.cullMode;
-		pso.rasterizer.frontFace = desc.frontFace;
-		pso.rasterizer.depthBiasEnable = VK_FALSE;
-		pso.rasterizer.depthBiasConstantFactor = 0.0f;
-		pso.rasterizer.depthBiasClamp = 0.0f;
-		pso.rasterizer.depthBiasSlopeFactor = 0.0f;
+		pso.rasterizer.sType					= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		pso.rasterizer.depthClampEnable			= VK_FALSE;
+		pso.rasterizer.rasterizerDiscardEnable	= VK_FALSE;
+		pso.rasterizer.polygonMode				= desc.polygonMode;
+		pso.rasterizer.lineWidth				= desc.lineWidth;
+		pso.rasterizer.cullMode					= desc.cullMode;
+		pso.rasterizer.frontFace				= desc.frontFace;
+		pso.rasterizer.depthBiasEnable			= VK_FALSE;
+		pso.rasterizer.depthBiasConstantFactor	= 0.0f;
+		pso.rasterizer.depthBiasClamp			= 0.0f;
+		pso.rasterizer.depthBiasSlopeFactor		= 0.0f;
 
-		pso.multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		pso.multisampling.sampleShadingEnable = VK_FALSE;
-		//pso.multisampling.rasterizationSamples = m_MsaaSamples;
-		pso.multisampling.rasterizationSamples = renderTarget.GetRenderPass().Description.sampleCount;
-		pso.multisampling.minSampleShading = 1.0f;
-		pso.multisampling.pSampleMask = nullptr;
-		pso.multisampling.alphaToCoverageEnable = desc.colorBlendingEnable;
-		pso.multisampling.alphaToOneEnable = desc.colorBlendingEnable;
+		pso.multisampling.sType						= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		pso.multisampling.sampleShadingEnable		= VK_FALSE;
+		//pso.multisampling.rasterizationSamples	= m_MsaaSamples;
+		pso.multisampling.rasterizationSamples		= renderTarget.GetRenderPass().Description.sampleCount;
+		pso.multisampling.minSampleShading			= 1.0f;
+		pso.multisampling.pSampleMask				= nullptr;
+		pso.multisampling.alphaToCoverageEnable		= desc.colorBlendingEnable;
+		pso.multisampling.alphaToOneEnable			= desc.colorBlendingEnable;
 
-		desc.colorBlendingDesc.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		desc.colorBlendingDesc.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 		
-		pso.colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		pso.colorBlending.logicOpEnable = VK_FALSE;
-		pso.colorBlending.logicOp = VK_LOGIC_OP_COPY;
-		pso.colorBlending.attachmentCount = 1;
-		pso.colorBlending.pAttachments = &desc.colorBlendingDesc;
+		pso.colorBlending.sType				= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		pso.colorBlending.logicOpEnable		= VK_FALSE;
+		pso.colorBlending.logicOp			= VK_LOGIC_OP_COPY;
+		pso.colorBlending.attachmentCount	= 1;
+		pso.colorBlending.pAttachments		= &desc.colorBlendingDesc;
 		pso.colorBlending.blendConstants[0] = 0.0f;
 		pso.colorBlending.blendConstants[1] = 0.0f;
 		pso.colorBlending.blendConstants[2] = 0.0f;
@@ -2355,15 +2359,15 @@ namespace Graphics {
 			VK_DYNAMIC_STATE_SCISSOR
 		};
 
-		VkPipelineDynamicStateCreateInfo dynamicState = {};
-		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-		dynamicState.pDynamicStates = dynamicStates.data();
+		VkPipelineDynamicStateCreateInfo dynamicState	= {};
+		dynamicState.sType								= VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicState.dynamicStateCount					= static_cast<uint32_t>(dynamicStates.size());
+		dynamicState.pDynamicStates						= dynamicStates.data();
 
 		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
-		auto bindingDescription = desc.vertexShader->BindingDescription;
-		auto attributeDescriptions = desc.vertexShader->AttributeDescriptions;
+		VkVertexInputBindingDescription bindingDescription						= Assets::Vertex::GetBindingDescription();
+		std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions	= Assets::Vertex::GetAttributeDescriptions();
 
 		if (desc.vertexShader != nullptr) {
 
@@ -2373,10 +2377,10 @@ namespace Graphics {
 				pso.vertexInputInfo.vertexBindingDescriptionCount = 0;
 			}
 			else {
-				pso.vertexInputInfo.vertexBindingDescriptionCount = 1;
-				pso.vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+				pso.vertexInputInfo.vertexBindingDescriptionCount	= 1;
+				pso.vertexInputInfo.pVertexBindingDescriptions		= &bindingDescription;
 				pso.vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-				pso.vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+				pso.vertexInputInfo.pVertexAttributeDescriptions	= attributeDescriptions.data();
 			}
 			pso.pipelineInfo.pVertexInputState = &pso.vertexInputInfo;
 			
@@ -2387,9 +2391,8 @@ namespace Graphics {
 			shaderStages.push_back(desc.fragmentShader->shaderStageInfo);
 		if (desc.computeShader != nullptr)
 			shaderStages.push_back(desc.computeShader->shaderStageInfo);
-		if (desc.geometryShader != nullptr) {
+		if (desc.geometryShader != nullptr)
 			shaderStages.push_back(desc.geometryShader->shaderStageInfo);
-		}
 
 		for (auto stage : shaderStages) {
 			stage.pNext = nullptr;
@@ -2436,34 +2439,34 @@ namespace Graphics {
 			*/
 		}
 
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(pso.descriptorSetLayout.size());
-		pipelineLayoutInfo.pSetLayouts = pso.descriptorSetLayout.data();
-		pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pso.pushConstants.size());
-		pipelineLayoutInfo.pPushConstantRanges = pso.pushConstants.data();
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo	= {};
+		pipelineLayoutInfo.sType						= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount				= static_cast<uint32_t>(pso.descriptorSetLayout.size());
+		pipelineLayoutInfo.pSetLayouts					= pso.descriptorSetLayout.data();
+		pipelineLayoutInfo.pushConstantRangeCount		= static_cast<uint32_t>(pso.pushConstants.size());
+		pipelineLayoutInfo.pPushConstantRanges			= pso.pushConstants.data();
 
 		VkResult result = vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &pso.pipelineLayout);
 		assert(result == VK_SUCCESS);
 
 
-		pso.pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pso.pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-		pso.pipelineInfo.pStages = shaderStages.data();
-		pso.pipelineInfo.pInputAssemblyState = &pso.inputAssembly;
-		pso.pipelineInfo.pViewportState = &pso.viewportState;
-		pso.pipelineInfo.pRasterizationState = &pso.rasterizer;
-		pso.pipelineInfo.pMultisampleState = &pso.multisampling;
-		pso.pipelineInfo.pDepthStencilState = &pso.depthStencil;
-		pso.pipelineInfo.pColorBlendState = &pso.colorBlending;
-		pso.pipelineInfo.pDynamicState = &dynamicState;
-		pso.pipelineInfo.layout = pso.pipelineLayout;
-		pso.pipelineInfo.renderPass = renderTarget.GetRenderPass().Handle;
-		pso.pipelineInfo.subpass = 0;
-		pso.pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-		//pipelineInfo.basePipelineIndex = -1;
+		pso.pipelineInfo.sType					= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pso.pipelineInfo.stageCount				= static_cast<uint32_t>(shaderStages.size());
+		pso.pipelineInfo.pStages				= shaderStages.data();
+		pso.pipelineInfo.pInputAssemblyState	= &pso.inputAssembly;
+		pso.pipelineInfo.pViewportState			= &pso.viewportState;
+		pso.pipelineInfo.pRasterizationState	= &pso.rasterizer;
+		pso.pipelineInfo.pMultisampleState		= &pso.multisampling;
+		pso.pipelineInfo.pDepthStencilState		= &pso.depthStencil;
+		pso.pipelineInfo.pColorBlendState		= &pso.colorBlending;
+		pso.pipelineInfo.pDynamicState			= &dynamicState;
+		pso.pipelineInfo.layout					= pso.pipelineLayout;
+		pso.pipelineInfo.renderPass				= renderTarget.GetRenderPass().Handle;
+		pso.pipelineInfo.subpass				= 0;
+		pso.pipelineInfo.basePipelineHandle		= VK_NULL_HANDLE;
+		//pipelineInfo.basePipelineIndex		= -1;
 
-		pso.renderPass = &renderTarget.GetRenderPass();
+		pso.renderPass							= &renderTarget.GetRenderPass();
 
 		result = vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pso.pipelineInfo, nullptr, &pso.pipeline);
 		assert(result == VK_SUCCESS);

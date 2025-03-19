@@ -1,5 +1,6 @@
 #version 450
 
+#extension GL_KHR_vulkan_glsl : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_ARB_shading_language_420pack : enable
 
@@ -7,10 +8,12 @@
 #define MAX_LIGHTS 5
 #define MAX_CAMERAS 10
 
-layout (location = 0) in vec3 fragColor;
+layout (location = 0) in vec3 fragPos;
 layout (location = 1) in vec3 fragNormal;
-layout (location = 2) in vec2 fragTexCoord;
-layout (location = 3) in vec3 fragPos;
+layout (location = 2) in vec3 fragColor;
+layout (location = 3) in vec3 fragTangent;
+layout (location = 4) in vec3 fragBiTangent;
+layout (location = 5) in vec2 fragTexCoord;
 
 layout (location = 0) out vec4 out_color;
 
@@ -242,5 +245,5 @@ void main() {
 	}
 
 	material_color.a = material_diffuse.a;	
-	out_color = material_color;
+	out_color = vec4(material_color);
 }

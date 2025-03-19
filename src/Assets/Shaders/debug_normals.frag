@@ -1,15 +1,18 @@
 #version 450
 
+#extension GL_KHR_vulkan_glsl : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_ARB_shading_language_420pack : enable
 
 #define MAX_MATERIALS 50
 #define MAX_LIGHTS 5
 
-layout (location = 0) in vec3 fragColor;
+layout (location = 0) in vec3 fragPos;
 layout (location = 1) in vec3 fragNormal;
-layout (location = 2) in vec2 fragTexCoord;
-layout (location = 3) in vec3 fragPos;
+layout (location = 2) in vec3 fragColor;
+layout (location = 3) in vec3 fragTangent;
+layout (location = 4) in vec3 fragBiTangent;
+layout (location = 5) in vec2 fragTexCoord;
 
 layout (location = 0) out vec4 out_color;
 
@@ -81,8 +84,8 @@ struct light_t {
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int total_lights;
+	int render_normal_map;
 	float time;
-	float extra_s_2;
 	float extra_s_3;
 	vec4 extra[15];
 } sceneGPUData;
@@ -110,11 +113,14 @@ void main() {
 
 	vec4 material_normal = vec4(1.0);
 
-	if (current_material.normal_texture_index == -1) {
-		material_normal = vec4(normalize(fragNormal), 1.0);	
+	if (current_material.normal_texture_index == -1 || sceneGPUData.render_normal_map == 0) {
+		material_normal = vec4(fragNormal, 1.0);	
 	} else {
-		material_normal = texture(texSampler[current_material.normal_texture_index], fragTexCoord);	
+		material_normal = normalize(texture(texSampler[current_material.normal_texture_index], fragTexCoord) * 2.0 - 1.0);
+		mat3 tbn = mat3(fragTangent, fragBiTangent, fragNormal);
+		material_normal = vec4(normalize(tbn * vec3(material_normal)), 1.0);
 	}
+
 
 	out_color = material_normal;
 }

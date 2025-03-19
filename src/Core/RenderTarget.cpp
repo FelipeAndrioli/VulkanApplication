@@ -360,6 +360,7 @@ namespace Graphics {
 				gfxDevice->GetSwapChain().ImageFormat,
 				GetExtent(),
 				gfxDevice->m_MsaaSamples);
+			gfxDevice->TransitionImageLayout(m_Images[m_ResolveIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			gfxDevice->CreateImageSampler(m_Images[m_ResolveIndex]);
 		}
 
@@ -372,7 +373,7 @@ namespace Graphics {
 			gfxDevice->GetSwapChain().ImageFormat,
 			GetExtent(),
 			VK_SAMPLE_COUNT_1_BIT);
-
+		gfxDevice->TransitionImageLayout(m_Images[m_ColorIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		gfxDevice->CreateImageSampler(m_Images[m_ColorIndex]);
 
 		std::vector<VkImageView> views = {};
@@ -392,7 +393,21 @@ namespace Graphics {
 	void OffscreenRenderTarget::ChangeLayout(VkImageLayout newLayout) {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-		gfxDevice->TransitionImageLayout(m_Images[m_ColorIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, newLayout);
+		if (m_Images[m_ColorIndex].ImageLayout != newLayout)
+			gfxDevice->TransitionImageLayout(m_Images[m_ColorIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, newLayout);
+	}
+
+	void OffscreenRenderTarget::Begin(const VkCommandBuffer& commandBuffer) {
+		BeginRenderPass(commandBuffer);
+	}
+	
+	void OffscreenRenderTarget::End(const VkCommandBuffer& commandBuffer) {
+		EndRenderPass(commandBuffer);
+
+		m_Images[m_ColorIndex].ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+		if (m_RenderPass.Description.flags & eResolveAttachment)
+			m_Images[m_ResolveIndex].ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
 	/* ========================== Offscreen Render Target Implementation End ========================== */
@@ -432,18 +447,16 @@ namespace Graphics {
 				.height = m_Height
 			}
 		};
+
 		m_RenderPass.Description.sampleCount = VK_SAMPLE_COUNT_1_BIT;
 		m_RenderPass.Description.flags = eColorAttachment | eColorLoadOpClear | eColorStoreOpStore | eFinalLayoutTransferSrc;
 
 		gfxDevice->CreateRenderPass(m_RenderPass);
 
 		m_ColorIndex = m_TotalImages++;
-		gfxDevice->CreateRenderTarget(
-			m_Images[m_ColorIndex],
-			gfxDevice->GetSwapChain().ImageFormat,
-			GetExtent(),
-			VK_SAMPLE_COUNT_1_BIT);
 
+		gfxDevice->CreateRenderTarget(m_Images[m_ColorIndex], gfxDevice->GetSwapChain().ImageFormat, GetExtent(), VK_SAMPLE_COUNT_1_BIT);
+		gfxDevice->TransitionImageLayout(m_Images[m_ColorIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		gfxDevice->CreateImageSampler(m_Images[m_ColorIndex]);
 
 		std::vector<VkImageView> views = { m_Images[m_ColorIndex].ImageView };
@@ -451,6 +464,21 @@ namespace Graphics {
 		for (int i = 0; i < m_Framebuffers.size(); i++) {
 			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, views, GetExtent(), m_Framebuffers[i]);
 		}
+	}
+
+	void PostEffectsRenderTarget::ChangeLayout(VkImageLayout newLayout) {
+		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+		if (m_Images[m_ColorIndex].ImageLayout != newLayout)
+			gfxDevice->TransitionImageLayout(m_Images[m_ColorIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, newLayout);
+	}
+
+	void PostEffectsRenderTarget::Begin(const VkCommandBuffer& commandBuffer) {
+		BeginRenderPass(commandBuffer);
+	}
+	
+	void PostEffectsRenderTarget::End(const VkCommandBuffer& commandBuffer) {
+		EndRenderPass(commandBuffer);
 	}
 
 	/* ========================== Post Effects Render Target Implementation End ========================== */

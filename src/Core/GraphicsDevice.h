@@ -124,9 +124,6 @@ namespace Graphics {
 		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		VkPipelineShaderStageCreateInfo shaderStageInfo;
 
-		VkVertexInputBindingDescription BindingDescription = Assets::Vertex::getBindingDescription();
-		std::array<VkVertexInputAttributeDescription, 4> AttributeDescriptions = Assets::Vertex::getAttributeDescriptions();
-
 		std::vector<char> sourceCode;
 		std::vector<unsigned int> spirv;
 	};
@@ -143,7 +140,6 @@ namespace Graphics {
 		const Shader* computeShader		= nullptr;
 
 		bool noVertex					= false;
-
 		bool depthTestEnable			= true;
 		bool depthWriteEnable			= true;
 		bool stencilTestEnable			= false;
@@ -151,14 +147,15 @@ namespace Graphics {
 
 		VkStencilOpState stencilState	= {};
 
-		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
-		VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
-		VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-		VkExtent2D pipelineExtent = {};
-		VkPipelineColorBlendAttachmentState colorBlendingDesc = {};
+		VkPrimitiveTopology topology	= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		VkPolygonMode polygonMode		= VK_POLYGON_MODE_FILL;
+		VkCullModeFlags cullMode		= VK_CULL_MODE_BACK_BIT;
+		VkFrontFace frontFace			= VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		VkExtent2D pipelineExtent		= {};
 
-		float lineWidth = 1.0f;
+		float lineWidth					= 1.0f;
+		
+		VkPipelineColorBlendAttachmentState colorBlendingDesc = {};
 
 		std::vector<InputLayout> psoInputLayout;
 

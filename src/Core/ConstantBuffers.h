@@ -6,8 +6,8 @@
 
 struct GlobalConstants {
 	alignas(4) int totalLights = 0;
+	alignas(4) int renderNormalMap = 0;
 	alignas(4) float time = 0.0f;
-	alignas(4) float extra_s_2 = 0.0f;
 	alignas(4) float extra_s_3 = 0.0f;
 	glm::vec4 extra[15];
 //	glm::vec4 cameraPosition;

@@ -24,46 +24,60 @@ namespace Renderer {
 
 	Graphics::Texture m_Skybox;
 
-	Graphics::Shader m_SkyboxVertexShader = {};
-	Graphics::Shader m_SkyboxFragShader = {};
-	Graphics::Shader m_DefaultVertShader = {};
-	Graphics::Shader m_ColorFragShader = {};
-	Graphics::Shader m_WireframeFragShader = {};
-	Graphics::Shader m_LightSourceFragShader = {};
-	Graphics::Shader m_LightSourceVertShader = {};
-	Graphics::Shader m_OutlineFragShader = {};
-	Graphics::Shader m_OutlineVertShader = {};
-	Graphics::Shader m_TransparentFragShader = {};
-	Graphics::Shader m_DepthFragShader = {};
-	Graphics::Shader m_NormalsFragShader = {};
+	Graphics::Shader m_SkyboxVertexShader		= {};
+	Graphics::Shader m_SkyboxFragShader			= {};
+	Graphics::Shader m_DefaultVertShader		= {};
+	Graphics::Shader m_ColorFragShader			= {};
+	Graphics::Shader m_WireframeFragShader		= {};
+	Graphics::Shader m_LightSourceFragShader	= {};
+	Graphics::Shader m_LightSourceVertShader	= {};
+	Graphics::Shader m_OutlineFragShader		= {};
+	Graphics::Shader m_OutlineVertShader		= {};
+	Graphics::Shader m_TransparentFragShader	= {};
+	Graphics::Shader m_DepthFragShader			= {};
+	Graphics::Shader m_NormalsFragShader		= {};
 
-	Graphics::Buffer m_ModelBuffer = {};
-	Graphics::Buffer m_SkyboxBuffer = {};
-	Graphics::Buffer m_CamerasBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
-	Graphics::Buffer m_GlobalDataBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
+	Graphics::Buffer m_ModelBuffer				= {};
+	Graphics::Buffer m_SkyboxBuffer				= {};
+	Graphics::Buffer m_CamerasBuffer[Graphics::FRAMES_IN_FLIGHT]		= {};
+	Graphics::Buffer m_GlobalDataBuffer[Graphics::FRAMES_IN_FLIGHT]		= {};
 
-	Graphics::PipelineState m_SkyboxPSO = {};
-	Graphics::PipelineState m_ColorPSO = {};
-	Graphics::PipelineState m_ColorStencilPSO = {};
-	Graphics::PipelineState m_OutlinePSO = {};
-	Graphics::PipelineState m_WireframePSO = {};
-	Graphics::PipelineState m_LightSourcePSO = {};
-	Graphics::PipelineState m_TransparentPSO = {};
+	Graphics::PipelineState m_SkyboxPSO				= {};
+	Graphics::PipelineState m_ColorPSO				= {};
+	Graphics::PipelineState m_ColorStencilPSO		= {};
+	Graphics::PipelineState m_OutlinePSO			= {};
+	Graphics::PipelineState m_WireframePSO			= {};
+	Graphics::PipelineState m_LightSourcePSO		= {};
+	Graphics::PipelineState m_TransparentPSO		= {};
 	Graphics::PipelineState m_TransparentStencilPSO = {};
-	Graphics::PipelineState m_RenderDepthPSO = {};
-	Graphics::PipelineState m_RenderNormalsPSO= {};
+	Graphics::PipelineState m_RenderDepthPSO		= {};
+	Graphics::PipelineState m_RenderNormalsPSO		= {};
 
-	VkPipelineLayout m_GlobalPipelineLayout = VK_NULL_HANDLE;
+	GlobalConstants m_GlobalConstants				= {};
 
-	VkDescriptorSetLayout m_GlobalDescriptorSetLayout = VK_NULL_HANDLE;
+	VkPipelineLayout m_GlobalPipelineLayout				= VK_NULL_HANDLE;
+	VkDescriptorSetLayout m_GlobalDescriptorSetLayout	= VK_NULL_HANDLE;
 
-	GlobalConstants m_GlobalConstants = {};
 
 	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
 	
-	uint32_t m_TotalModels = 0;
+	uint32_t m_TotalModels	= 0;
 
-	int m_CameraIndex = 0;
+	int m_CameraIndex		= 0;
+}
+
+std::shared_ptr<Assets::Model> Renderer::LoadModel(ModelType modelType) {
+	if (m_TotalModels == MAX_MODELS)
+		return nullptr;
+
+	m_Models[m_TotalModels++] = ModelLoader::LoadModel(modelType);
+
+	uint32_t modelIdx = m_TotalModels - 1;
+
+	m_Models[modelIdx]->ModelIndex = modelIdx;
+
+	return m_Models[modelIdx];
+
 }
 
 std::shared_ptr<Assets::Model> Renderer::LoadModel(const std::string& path) {
@@ -147,31 +161,31 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 	m_Skybox = TextureLoader::LoadCubemapTexture("./Textures/immenstadter_horn_2k.hdr");
 
 #ifdef RUNTIME_SHADER_COMPILATION
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "../src/Assets/Shaders/skybox.vert");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "../src/Assets/Shaders/skybox.frag");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_DefaultVertShader, "../src/Assets/Shaders/default.vert");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_ColorFragShader, "../src/Assets/Shaders/color_ps.frag");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_WireframeFragShader, "../src/Assets/Shaders/wireframe.frag");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertShader, "../src/Assets/Shaders/light_source.vert");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "../src/Assets/Shaders/light_source.frag");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "../src/Assets/Shaders/outline.vert");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "../src/Assets/Shaders/outline.frag");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "../src/Assets/Shaders/transparent_ps.frag");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader, "../src/Assets/Shaders/depth.frag");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalsFragShader, "../src/Assets/Shaders/debug_normals.frag");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_SkyboxVertexShader,		"../src/Assets/Shaders/skybox.vert"			);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader,			"../src/Assets/Shaders/skybox.frag"			);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_DefaultVertShader,		"../src/Assets/Shaders/default.vert"		);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_ColorFragShader,			"../src/Assets/Shaders/color_ps.frag"		);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_WireframeFragShader,		"../src/Assets/Shaders/wireframe.frag"		);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_LightSourceVertShader,	"../src/Assets/Shaders/light_source.vert"	);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader,	"../src/Assets/Shaders/light_source.frag"	);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_OutlineVertShader,		"../src/Assets/Shaders/outline.vert"		);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader,		"../src/Assets/Shaders/outline.frag"		);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader,	"../src/Assets/Shaders/transparent_ps.frag"	);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader,			"../src/Assets/Shaders/depth.frag"			);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalsFragShader,		"../src/Assets/Shaders/debug_normals.frag"	);
 #else 
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "./Shaders/skybox_vert.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader, "./Shaders/skybox_frag.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_DefaultVertShader, "./Shaders/default_vert.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_ColorFragShader, "./Shaders/color_ps.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_WireframeFragShader, "./Shaders/wireframe_frag.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertShader, "./Shaders/light_source_vert.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader, "./Shaders/light_source_frag.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_OutlineVertShader, "./Shaders/outline_vert.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader, "./Shaders/outline_frag.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader, "./Shaders/transparent_frag.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader, "./Shaders/depth_frag.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalsFragShader, "./Shaders/debug_normals_frag.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_SkyboxVertexShader,		"./Shaders/skybox_vert.spv"					);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragShader,			"./Shaders/skybox_frag.spv"					);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_DefaultVertShader,		"./Shaders/default_vert.spv"				);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_ColorFragShader,			"./Shaders/color_ps.spv"					);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_WireframeFragShader,		"./Shaders/wireframe_frag.spv"				);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_LightSourceVertShader,	"./Shaders/light_source_vert.spv"			);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragShader,	"./Shaders/light_source_frag.spv"			);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_OutlineVertShader,		"./Shaders/outline_vert.spv"				);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_OutlineFragShader,		"./Shaders/outline_frag.spv"				);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_TransparentFragShader,	"./Shaders/transparent_frag.spv"			);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_DepthFragShader,			"./Shaders/depth_frag.spv"					);
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_NormalsFragShader,		"./Shaders/debug_normals_frag.spv"			);
 #endif
 
 	InputLayout globalInputLayout = {
@@ -192,36 +206,37 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 	m_ModelBuffer = gfxDevice->CreateBuffer(sizeof(ModelConstants) * MAX_MODELS);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-		m_CamerasBuffer[i] = gfxDevice->CreateBuffer(sizeof(CameraConstants) * MAX_CAMERAS);
-		m_GlobalDataBuffer[i] = gfxDevice->CreateBuffer(sizeof(GlobalConstants));
+		m_CamerasBuffer[i]		= gfxDevice->CreateBuffer(sizeof(CameraConstants) * MAX_CAMERAS);
+		m_GlobalDataBuffer[i]	= gfxDevice->CreateBuffer(sizeof(GlobalConstants));
+
 		gfxDevice->WriteSubBuffer(m_GlobalDataBuffer[i], &m_GlobalConstants, sizeof(GlobalConstants));
 	}
 
 	gfxDevice->CreateDescriptorSetLayout(m_GlobalDescriptorSetLayout, globalInputLayout.bindings);
-	gfxDevice->CreatePipelineLayout(m_GlobalDescriptorSetLayout, m_GlobalPipelineLayout, globalInputLayout.pushConstants);
+	gfxDevice->CreatePipelineLayout		(m_GlobalDescriptorSetLayout, m_GlobalPipelineLayout, globalInputLayout.pushConstants);
 	
-	PipelineStateDescription colorPSODesc = {};
-	colorPSODesc.Name = "Color Pipeline";
-	colorPSODesc.vertexShader = &m_DefaultVertShader;
-	colorPSODesc.fragmentShader = &m_ColorFragShader;
-	colorPSODesc.psoInputLayout.push_back(globalInputLayout);
+	PipelineStateDescription colorPSODesc			= {};
+	colorPSODesc.Name								= "Color Pipeline";
+	colorPSODesc.vertexShader						= &m_DefaultVertShader;
+	colorPSODesc.fragmentShader						= &m_ColorFragShader;
+	colorPSODesc.psoInputLayout						.push_back(globalInputLayout);
 
 	gfxDevice->CreatePipelineState(colorPSODesc, m_ColorPSO, renderTarget);
 
-	PipelineStateDescription colorStencilPSODesc = {};
-	colorStencilPSODesc.Name = "Color Stencil Pipeline";
-	colorStencilPSODesc.vertexShader = &m_DefaultVertShader;
-	colorStencilPSODesc.fragmentShader = &m_ColorFragShader;
-	colorStencilPSODesc.psoInputLayout.push_back(globalInputLayout);
-	colorStencilPSODesc.cullMode = VK_CULL_MODE_NONE;
-	colorStencilPSODesc.stencilTestEnable = true;
-	colorStencilPSODesc.stencilState.compareOp = VK_COMPARE_OP_ALWAYS;
-	colorStencilPSODesc.stencilState.failOp = VK_STENCIL_OP_REPLACE;
-	colorStencilPSODesc.stencilState.depthFailOp = VK_STENCIL_OP_REPLACE;
-	colorStencilPSODesc.stencilState.passOp = VK_STENCIL_OP_REPLACE;
-	colorStencilPSODesc.stencilState.compareMask = 0xff;
-	colorStencilPSODesc.stencilState.writeMask = 0xff;
-	colorStencilPSODesc.stencilState.reference = 1;
+	PipelineStateDescription colorStencilPSODesc	= {};
+	colorStencilPSODesc.Name						= "Color Stencil Pipeline";
+	colorStencilPSODesc.vertexShader				= &m_DefaultVertShader;
+	colorStencilPSODesc.fragmentShader				= &m_ColorFragShader;
+	colorStencilPSODesc.psoInputLayout				.push_back(globalInputLayout);
+	colorStencilPSODesc.cullMode					= VK_CULL_MODE_NONE;
+	colorStencilPSODesc.stencilTestEnable			= true;
+	colorStencilPSODesc.stencilState.compareOp		= VK_COMPARE_OP_ALWAYS;
+	colorStencilPSODesc.stencilState.failOp			= VK_STENCIL_OP_REPLACE;
+	colorStencilPSODesc.stencilState.depthFailOp	= VK_STENCIL_OP_REPLACE;
+	colorStencilPSODesc.stencilState.passOp			= VK_STENCIL_OP_REPLACE;
+	colorStencilPSODesc.stencilState.compareMask	= 0xff;
+	colorStencilPSODesc.stencilState.writeMask		= 0xff;
+	colorStencilPSODesc.stencilState.reference		= 1;
 	
 	gfxDevice->CreatePipelineState(colorStencilPSODesc, m_ColorStencilPSO, renderTarget);
 
@@ -348,10 +363,11 @@ void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
 	vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 }
 
-void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras) {
+void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap) {
 	GraphicsDevice* gfxDevice = GetDevice();
 	
 	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
+	m_GlobalConstants.renderNormalMap = static_cast<int>(renderNormalMap);
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer[gfxDevice->GetCurrentFrameIndex()], &m_GlobalConstants);
 

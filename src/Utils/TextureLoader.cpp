@@ -15,7 +15,18 @@
 using namespace Utils;
 
 namespace TextureLoader {
-	 Texture LoadTexture(const char* texturePath, Texture::TextureType textureType, bool flipTextureVertically, bool generateMipMaps) {
+
+	VkFormat GetTextureFormat(Texture::TextureType textureType) {
+		switch (textureType) {
+			case Texture::TextureType::NORMAL:
+			case Texture::TextureType::BUMP:
+				return VK_FORMAT_R8G8B8A8_UNORM;
+			default:
+				return VK_FORMAT_R8G8B8A8_SRGB;
+		}
+	}
+
+	Texture LoadTexture(const char* texturePath, Texture::TextureType textureType, bool flipTextureVertically, bool generateMipMaps) {
 
 		Texture texture = {};
 
@@ -38,19 +49,19 @@ namespace TextureLoader {
 		}
 
 		ImageDescription desc = {
-			.Width = static_cast<uint32_t>(texWidth),
-			.Height = static_cast<uint32_t>(texHeight),
-			.MipLevels = static_cast<uint32_t>(mipLevels),
-			.LayerCount = 1,
-			.Format = VK_FORMAT_R8G8B8A8_SRGB,
-			.Tiling = VK_IMAGE_TILING_OPTIMAL,
-			.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
-			.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
-			.ViewType = VK_IMAGE_VIEW_TYPE_2D,
-			.MsaaSamples = VK_SAMPLE_COUNT_1_BIT,
-			.ImageType = VK_IMAGE_TYPE_2D,
-			.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT
+			.Width				= static_cast<uint32_t>(texWidth),
+			.Height				= static_cast<uint32_t>(texHeight),
+			.MipLevels			= static_cast<uint32_t>(mipLevels),
+			.LayerCount			= 1,
+			.Format				= GetTextureFormat(textureType),
+			.Tiling				= VK_IMAGE_TILING_OPTIMAL,
+			.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+			.MemoryProperty		= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			.AspectFlags		= VK_IMAGE_ASPECT_COLOR_BIT,
+			.ViewType			= VK_IMAGE_VIEW_TYPE_2D,
+			.MsaaSamples		= VK_SAMPLE_COUNT_1_BIT,
+			.ImageType			= VK_IMAGE_TYPE_2D,
+			.AddressMode		= VK_SAMPLER_ADDRESS_MODE_REPEAT
 		};
 
 		GraphicsDevice* device = GetDevice();

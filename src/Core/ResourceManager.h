@@ -18,8 +18,8 @@ public:
 	const int GetLastMaterialIndex()	{ return static_cast<int>(m_Materials.size() - 1);	}
 	const int GetTotalMaterials()		{ return static_cast<int>(m_Materials.size());		}
 
-	void AddMaterial(Material material);
-	void AddTexture(Graphics::Texture texture);
+	int AddMaterial(Material material);
+	int AddTexture(Graphics::Texture texture);
 
 	int GetMaterialIndex(const std::string& materialName);
 	int GetTextureIndex(const std::string& textureName);
