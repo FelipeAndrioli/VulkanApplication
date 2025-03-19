@@ -63,17 +63,9 @@ Assets::Mesh ProcessMesh(const aiMesh* mesh, const aiScene* scene) {
 					glm::vec2 uv1 = glm::vec2(mesh->mTextureCoords[0][face.mIndices[0]].x, mesh->mTextureCoords[0][face.mIndices[0]].y);
 					glm::vec2 uv2 = glm::vec2(mesh->mTextureCoords[0][face.mIndices[1]].x, mesh->mTextureCoords[0][face.mIndices[1]].y);
 					glm::vec2 uv3 = glm::vec2(mesh->mTextureCoords[0][face.mIndices[2]].x, mesh->mTextureCoords[0][face.mIndices[2]].y);
+
+					vertex.tangent = Assets::MeshGenerator::GenerateTangentVector(p1, p2, p3, uv1, uv2, uv3);
 				}
-			}
-
-			if (mesh->HasTangentsAndBitangents()) {
-				glm::vec3 tangent = glm::vec3(0.0f);
-
-				tangent.x = mesh->mTangents[face.mIndices[j]].x;
-				tangent.y = mesh->mTangents[face.mIndices[j]].y;
-				tangent.z = mesh->mTangents[face.mIndices[j]].z;
-
-				vertex.tangent = tangent;
 			}
 
 			if (uniqueVertices.count(vertex) == 0) {
@@ -348,7 +340,7 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 		
 	loadedFileNames[model->Name]++;
 
-	const aiScene* scene = aiImportFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+	const aiScene* scene = aiImportFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
 
 	assert(scene && scene->HasMeshes());
 
