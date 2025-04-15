@@ -80,4 +80,15 @@ namespace Graphics {
 		void ChangeLayout			(VkImageLayout newLayout);
 		GPUImage& GetColorBuffer	()										{ return m_Images[m_ColorIndex]; }
 	};
+
+	class DepthOnlyRenderTarget : public IRenderTarget {
+	public:
+		DepthOnlyRenderTarget			(uint32_t width, uint32_t height, uint32_t precision);
+		void Create						()														override;
+		void Begin						(const VkCommandBuffer& commandBuffer)					override;
+		void End						(const VkCommandBuffer& commandBuffer)					override;
+		const GPUImage& GetDepthBuffer	()														{ return m_Images[m_DepthIndex]; }
+	private:
+		uint32_t m_Precision;
+	};
 }
