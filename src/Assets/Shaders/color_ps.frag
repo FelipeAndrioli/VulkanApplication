@@ -207,19 +207,35 @@ float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position) {
 
 	// perspective divide
 	// [-1, 1]
-	vec3 projCoords = light_space_frag_pos.xyz / light_space_frag_pos.w;
+	vec3 proj_coords = light_space_frag_pos.xyz / light_space_frag_pos.w;
 
 	// [0, 1]
-	projCoords = projCoords * 0.5 + 0.5;
+	proj_coords = proj_coords * 0.5 + 0.5;
 
-	float closestDepth = texture(shadow_mapping, projCoords.xy).r;
-	float currentDepth = projCoords.z;
+//	float closest_depth = texture(shadow_mapping, proj_coords.xy).r;
+	float current_depth = proj_coords.z;
 
 //	float bias = max(0.05 * (1.0 - dot(normal.xyz, light_dir)), 0.005); // original bias
 	float bias = max(sceneGPUData.max_shadow_bias * (1.0 - dot(normal.xyz, light_dir)), sceneGPUData.min_shadow_bias);
-	float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.5;
 
-	if (projCoords.z > 1.0)
+	float shadow = 0.0;
+
+	// textureSize returns a vec2 of the width and height of the given sampler texture at mipmap level 0.
+	// 1 divided over the texture size returns the size of a single texel that we use to offset the texture coords.
+	vec2 texel_size = 1.0 / textureSize(shadow_mapping, 0);
+	
+	// PCF (percentage-closer filtering)
+	// sample the surrounding texels of the depth map and average the results to produce less blocky/hard shadows
+	for (int x = -1; x <= 1; ++x) {
+		for (int y = -1; y <= 1; ++y) {
+			float pcf_depth = texture(shadow_mapping, proj_coords.xy + vec2(x, y) * texel_size).r;
+			shadow += current_depth - bias > pcf_depth ? 1.0 : 0.5;
+		}
+	}
+
+	shadow /= 9.0;
+
+	if (proj_coords.z > 1.0)
 		shadow = 0.0;
 
 	return shadow;
