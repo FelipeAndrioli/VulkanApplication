@@ -25,6 +25,7 @@
 
 /*
 	TODO's:
+		[ ] - Fix Release Build
 		[ ] - Fix Resizing
 */
 

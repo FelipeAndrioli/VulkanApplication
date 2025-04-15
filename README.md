@@ -42,10 +42,13 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	  built using MSVC compiler.
 - [x] Blending
 - [x] Framebuffers
+- [x] Instancing
 
 ## Next Up
-- [ ] Instancing
-- [ ] Custom Anti Aliasing
+- [ ] Shadows
+	- [ ] Directional
+	- [ ] Spot
+	- [ ] Point
 - [ ] Refactoring to Graphics Device/Backend/Command Context design
 
 ## Planning 
