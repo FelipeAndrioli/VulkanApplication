@@ -24,9 +24,10 @@ struct LightData {
 	glm::vec4 position = glm::vec4(0.0f);
 	glm::vec4 direction = glm::vec4(0.0f);
 	glm::vec4 color = glm::vec4(1.0f);			// w -> light intensity
-	glm::vec4 extra[6];
+	glm::vec4 extra[2];
 
 	glm::mat4 model = glm::mat4(1.0f);
+	glm::mat4 viewProj = glm::mat4(1.0f);
 
 	alignas(4) LightType type = LightType::Undefined;
 	alignas(4) int extra_0 = 0;

@@ -719,6 +719,10 @@ namespace Graphics {
 		);
 	}
 
+	VkFormat GraphicsDevice::FindDepthOnlyFormat() {
+		return FindSupportedFormat(m_PhysicalDevice, { VK_FORMAT_D32_SFLOAT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	}
+
 	VkFormat GraphicsDevice::FindSupportedFormat(VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling,
 		VkFormatFeatureFlags features) {
 
@@ -922,11 +926,11 @@ namespace Graphics {
 			std::array<VkClearValue, 3> clearValues = {};
 			int clearValuesCount = 0;
 
-			if (renderPass.Description.flags & eColorAttachment)
+			if (renderPass.Description.Flags & eColorAttachment)
 				clearValues[clearValuesCount++] = { .color{0.0f, 0.0f, 0.0f, 1.0f} };
-			if (renderPass.Description.flags & eDepthAttachment)
+			if (renderPass.Description.Flags & eDepthAttachment)
 				clearValues[clearValuesCount++] = { .depthStencil{ 1.0f, 0 } };
-			if (renderPass.Description.flags & eResolveAttachment)
+			if (renderPass.Description.Flags & eResolveAttachment)
 				clearValues[clearValuesCount++] = { .color{0.0f, 0.0f, 0.0f, 1.0f} };
 
 			renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValuesCount);
@@ -1024,18 +1028,18 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::CreateImageView(GPUImage& image) {
-		VkImageViewCreateInfo viewCreateInfo{};
-		viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		viewCreateInfo.image = image.Image;
-		viewCreateInfo.viewType = image.Description.ViewType;
-		viewCreateInfo.format = image.Description.Format;
-		viewCreateInfo.subresourceRange.aspectMask = (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? VK_IMAGE_ASPECT_COLOR_BIT : image.Description.AspectFlags);
-		viewCreateInfo.subresourceRange.baseMipLevel = 0;
-		viewCreateInfo.subresourceRange.levelCount = image.Description.MipLevels;
-		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		viewCreateInfo.subresourceRange.layerCount = image.Description.LayerCount;
+		VkImageViewCreateInfo viewCreateInfo			= {};
+		viewCreateInfo.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewCreateInfo.image							= image.Image;
+		viewCreateInfo.viewType							= image.Description.ViewType;
+		viewCreateInfo.format							= image.Description.Format;
+		viewCreateInfo.subresourceRange.aspectMask		= (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? VK_IMAGE_ASPECT_COLOR_BIT : image.Description.AspectFlags);
+		viewCreateInfo.subresourceRange.baseMipLevel	= 0;
+		viewCreateInfo.subresourceRange.levelCount		= image.Description.MipLevels;
+		viewCreateInfo.subresourceRange.baseArrayLayer	= 0;
+		viewCreateInfo.subresourceRange.layerCount		= image.Description.LayerCount;
 
-		if (HasStencilComponent(image.Description.Format)) {
+		if (image.Description.AspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT && HasStencilComponent(image.Description.Format)) {
 			viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 		}
 
@@ -1122,7 +1126,7 @@ namespace Graphics {
 		VkPipelineStageFlags sourceStage;
 		VkPipelineStageFlags dstStage;
 
-		if (HasStencilComponent(image.Description.Format)) {
+		if (image.Description.AspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT && HasStencilComponent(image.Description.Format)) {
 			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 		}
 
@@ -1181,6 +1185,34 @@ namespace Graphics {
 
 			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			dstStage	= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) {
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			dstStage	= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL) {
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			dstStage	= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dstStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		}
 		else {
 			throw std::invalid_argument("Unsupported layout transition!");
@@ -1287,7 +1319,8 @@ namespace Graphics {
 		vkGetPhysicalDeviceProperties(m_PhysicalDevice, &properties);
 	
 		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+//		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 		samplerInfo.compareEnable = VK_FALSE;
 		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
@@ -1394,52 +1427,78 @@ namespace Graphics {
 
 	void GraphicsDevice::CreateDepthBuffer(GPUImage& depthBuffer, const RenderPassDesc& renderPassDesc) {
 
-		ImageDescription depthDesc = {};
-		depthDesc.Width = renderPassDesc.extent.width;
-		depthDesc.Height = renderPassDesc.extent.height;
-		depthDesc.MipLevels = 1;
-		//depthDesc.MsaaSamples = m_MsaaSamples;
-		//depthDesc.MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-		depthDesc.MsaaSamples = renderPassDesc.sampleCount;
-		depthDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		depthDesc.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		depthDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		depthDesc.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-		depthDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;
-		depthDesc.LayerCount = 1;
-		depthDesc.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		depthDesc.Format = FindDepthFormat(m_PhysicalDevice);
-		depthDesc.ImageType = VK_IMAGE_TYPE_2D;
+		// Depth + Stencil
+
+		ImageDescription depthDesc	= {};
+		depthDesc.Width				= renderPassDesc.Extent.width;
+		depthDesc.Height			= renderPassDesc.Extent.height;
+		depthDesc.MipLevels			= 1;
+		depthDesc.MsaaSamples		= renderPassDesc.SampleCount;
+		depthDesc.Tiling			= VK_IMAGE_TILING_OPTIMAL;
+		depthDesc.Usage				= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		depthDesc.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		depthDesc.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		depthDesc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
+		depthDesc.LayerCount		= 1;
+		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		depthDesc.Format			= FindDepthFormat(m_PhysicalDevice);
+		depthDesc.ImageType			= VK_IMAGE_TYPE_2D;
 
 		depthBuffer.Description = depthDesc;
 
-		CreateImage(depthBuffer);
-		CreateImageView(depthBuffer);
+		CreateImage		(depthBuffer);
+		CreateImageView	(depthBuffer);
 	}
 
 	void GraphicsDevice::CreateDepthBuffer(GPUImage& depthBuffer, const VkExtent2D& extent, const VkSampleCountFlagBits& samples) {
 
-		ImageDescription depthDesc = {};
-		depthDesc.Width = extent.width;
-		depthDesc.Height = extent.height;
-		depthDesc.MipLevels = 1;
-		//depthDesc.MsaaSamples = m_MsaaSamples;
-		//depthDesc.MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-		depthDesc.MsaaSamples = samples;
-		depthDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
-		depthDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-		depthDesc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		depthDesc.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-		depthDesc.ViewType = VK_IMAGE_VIEW_TYPE_2D;
-		depthDesc.LayerCount = 1;
-		depthDesc.AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		depthDesc.Format = FindDepthFormat(m_PhysicalDevice);
-		depthDesc.ImageType = VK_IMAGE_TYPE_2D;
+		ImageDescription depthDesc	= {};
+		depthDesc.Width				= extent.width;
+		depthDesc.Height			= extent.height;
+		depthDesc.MipLevels			= 1;
+		depthDesc.MsaaSamples		= samples;
+		depthDesc.Tiling			= VK_IMAGE_TILING_OPTIMAL;
+		depthDesc.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		depthDesc.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		depthDesc.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		depthDesc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
+		depthDesc.LayerCount		= 1;
+		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		depthDesc.Format			= FindDepthFormat(m_PhysicalDevice);
+		depthDesc.ImageType			= VK_IMAGE_TYPE_2D;
+
+		depthBuffer.Description		= depthDesc;
+
+		CreateImage		(depthBuffer);
+		CreateImageView	(depthBuffer);
+	}
+
+	void GraphicsDevice::CreateDepthOnlyBuffer(GPUImage& depthBuffer, const VkExtent2D extent, const VkSampleCountFlagBits sampleCount) {
+
+		ImageDescription depthDesc	= {};
+		depthDesc.Width				= extent.width;
+		depthDesc.Height			= extent.height;
+		depthDesc.MipLevels			= 1;
+		depthDesc.MsaaSamples		= sampleCount;
+		depthDesc.Tiling			= VK_IMAGE_TILING_OPTIMAL;
+		depthDesc.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+		depthDesc.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		depthDesc.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT;// | VK_IMAGE_ASPECT_STENCIL_BIT; // testing stencil bit
+		depthDesc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
+		depthDesc.LayerCount		= 1;
+//		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+//		depthDesc.Format			= FindDepthFormat(m_PhysicalDevice);
+//		depthDesc.Format			= FindDepthOnlyFormat();
+		depthDesc.Format			= VK_FORMAT_D32_SFLOAT;
+		depthDesc.ImageType			= VK_IMAGE_TYPE_2D;
 
 		depthBuffer.Description = depthDesc;
 
-		CreateImage(depthBuffer);
-		CreateImageView(depthBuffer);
+		CreateImage		(depthBuffer);
+		CreateImageView	(depthBuffer);
+		
+		depthBuffer.ImageLayout		= VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 
 	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples) {
@@ -1470,12 +1529,12 @@ namespace Graphics {
 	void GraphicsDevice::CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format) {
 
 		ImageDescription renderTargetDesc = {};
-		renderTargetDesc.Width = renderPassDesc.extent.width;
-		renderTargetDesc.Height = renderPassDesc.extent.height;
+		renderTargetDesc.Width = renderPassDesc.Extent.width;
+		renderTargetDesc.Height = renderPassDesc.Extent.height;
 		renderTargetDesc.MipLevels = 1;
 		//renderTargetDesc.MsaaSamples = m_MsaaSamples;
 		//renderTargetDesc.MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-		renderTargetDesc.MsaaSamples = renderPassDesc.sampleCount;
+		renderTargetDesc.MsaaSamples = renderPassDesc.SampleCount;
 		renderTargetDesc.Tiling = VK_IMAGE_TILING_OPTIMAL;
 		//renderTargetDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 		renderTargetDesc.Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
@@ -1634,19 +1693,20 @@ namespace Graphics {
 		std::vector<VkAttachmentReference> depthAttachmentReferences;
 		std::vector<VkAttachmentReference> resolveAttachmentReferences;
 
-		if (renderPass.Description.flags & eColorAttachment) {
+		if (renderPass.Description.Flags & eColorAttachment) {
 			VkAttachmentDescription colorAttachment = {};
-			colorAttachment.format = m_SwapChain.ImageFormat;
-			colorAttachment.samples = renderPass.Description.sampleCount;
+//			colorAttachment.format = m_SwapChain.ImageFormat;
+			colorAttachment.format	= renderPass.Description.ColorImageFormat;
+			colorAttachment.samples = renderPass.Description.SampleCount;
 
-			if (renderPass.Description.flags & eColorLoadOpLoad)
+			if (renderPass.Description.Flags & eColorLoadOpLoad)
 				colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-			else if (renderPass.Description.flags & eColorLoadOpClear)
+			else if (renderPass.Description.Flags & eColorLoadOpClear)
 				colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			else
 				colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 
-			if (renderPass.Description.flags & eColorStoreOpStore)
+			if (renderPass.Description.Flags & eColorStoreOpStore)
 				colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			else
 				colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1654,16 +1714,16 @@ namespace Graphics {
 			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-			if (renderPass.Description.flags & eInitialLayoutColorOptimal)
+			if (renderPass.Description.Flags & eInitialLayoutColorOptimal)
 				colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			else
 				colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-			if (renderPass.Description.flags & eFinalLayoutTransferSrc)
+			if (renderPass.Description.Flags & eFinalLayoutTransferSrc)
 				colorAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			else if (renderPass.Description.flags & eFinalLayoutTransferDst)
+			else if (renderPass.Description.Flags & eFinalLayoutTransferDst)
 				colorAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			else if (renderPass.Description.flags & eFinalLayoutPresent)
+			else if (renderPass.Description.Flags & eFinalLayoutPresent)
 				colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			else
 				colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1680,16 +1740,19 @@ namespace Graphics {
 			renderPass.FinalLayout = colorAttachment.finalLayout;
 		}
 
-		if (renderPass.Description.flags & eDepthAttachment) {
+		if (renderPass.Description.Flags & eDepthAttachment) {
 			VkAttachmentDescription depthAttachment = {};
-			depthAttachment.format = GetDepthFormat();
-			depthAttachment.samples = renderPass.Description.sampleCount;
+//			depthAttachment.format = GetDepthFormat();
+			depthAttachment.format	= renderPass.Description.DepthImageFormat;
+			depthAttachment.samples = renderPass.Description.SampleCount;
 			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+//			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+//			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
 			renderPass.Attachments.emplace_back(depthAttachment);
 
@@ -1700,9 +1763,10 @@ namespace Graphics {
 			depthAttachmentReferences.emplace_back(depthAttachRef);
 		}
 
-		if (renderPass.Description.flags & eResolveAttachment) {
+		if (renderPass.Description.Flags & eResolveAttachment) {
 			VkAttachmentDescription resolveAttachment = {};
-			resolveAttachment.format = m_SwapChain.ImageFormat;
+//			resolveAttachment.format = m_SwapChain.ImageFormat;
+			resolveAttachment.format = renderPass.Description.ColorImageFormat;
 			resolveAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			resolveAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			resolveAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1711,11 +1775,11 @@ namespace Graphics {
 			resolveAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 
-			if (renderPass.Description.flags & eFinalLayoutTransferSrc)
+			if (renderPass.Description.Flags & eFinalLayoutTransferSrc)
 				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			else if (renderPass.Description.flags & eFinalLayoutTransferDst)
+			else if (renderPass.Description.Flags & eFinalLayoutTransferDst)
 				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			else if (renderPass.Description.flags & eFinalLayoutPresent)
+			else if (renderPass.Description.Flags & eFinalLayoutPresent)
 				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			else
 				resolveAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1733,7 +1797,7 @@ namespace Graphics {
 			renderPass.FinalLayout = resolveAttachment.finalLayout;
 		}
 
-		if (renderPass.Description.flags & eFinalLayoutPresent) {
+		if (renderPass.Description.Flags & eFinalLayoutPresent) {
 			VkSubpassDependency depthStencilDependency = {};
 			depthStencilDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 			depthStencilDependency.dstSubpass = 0;
@@ -1757,7 +1821,7 @@ namespace Graphics {
 			renderPass.Dependencies.emplace_back(colorDependency);
 		}
 		else {
-			if (renderPass.Description.flags & eDepthAttachment) {
+			if (renderPass.Description.Flags & eDepthAttachment) {
 				VkSubpassDependency dependency = {};
 				dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 				dependency.dstSubpass = 0;
@@ -1771,7 +1835,7 @@ namespace Graphics {
 
 			}
 
-			if (renderPass.Description.flags & eColorAttachment || renderPass.Description.flags & eFinalLayoutPresent) {
+			if (renderPass.Description.Flags & eColorAttachment || renderPass.Description.Flags & eFinalLayoutPresent) {
 				VkSubpassDependency dependency = {};
 				dependency.srcSubpass = 0;
 				dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
@@ -2044,21 +2108,21 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUImage& image) {
+		VkDescriptorImageInfo newImageInfo	= {};
 
-		VkDescriptorImageInfo newImageInfo = {};
-		//newImageInfo.imageLayout = image.ImageLayout;
-		newImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		newImageInfo.imageView = image.ImageView;
-		newImageInfo.sampler = image.ImageSampler;
+		newImageInfo.imageLayout			= image.Description.AspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//		newImageInfo.imageLayout			= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		newImageInfo.imageView				= image.ImageView;
+		newImageInfo.sampler				= image.ImageSampler;
 
-		VkWriteDescriptorSet descriptorWrite = {};
-		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite.dstSet = descriptorSet;
-		descriptorWrite.dstBinding = binding.binding;
-		descriptorWrite.dstArrayElement = 0;
-		descriptorWrite.descriptorType = binding.descriptorType;
-		descriptorWrite.descriptorCount = 1;
-		descriptorWrite.pImageInfo = &newImageInfo;
+		VkWriteDescriptorSet descriptorWrite	= {};
+		descriptorWrite.sType					= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet					= descriptorSet;
+		descriptorWrite.dstBinding				= binding.binding;
+		descriptorWrite.dstArrayElement			= 0;
+		descriptorWrite.descriptorType			= binding.descriptorType;
+		descriptorWrite.descriptorCount			= 1;
+		descriptorWrite.pImageInfo				= &newImageInfo;
 		
 		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr); 
 	}
@@ -2302,6 +2366,9 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::DestroyShader(Shader& shader) {
+		if (shader.shaderModule == VK_NULL_HANDLE)
+			return;
+
 		vkDestroyShaderModule(m_LogicalDevice, shader.shaderModule, nullptr);
 	}
 
@@ -2312,8 +2379,8 @@ namespace Graphics {
 		pso.inputAssembly.primitiveRestartEnable	= VK_FALSE;
 
 		VkExtent2D psoExtent	= renderTarget.GetExtent();
-		VkViewport viewport		= renderTarget.GetRenderPass().Description.viewport;
-		VkRect2D scissor		= renderTarget.GetRenderPass().Description.scissor;
+		VkViewport viewport		= renderTarget.GetRenderPass().Description.Viewport;
+		VkRect2D scissor		= renderTarget.GetRenderPass().Description.Scissor;
 
 		pso.viewportState.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		pso.viewportState.viewportCount = 1;
@@ -2336,7 +2403,7 @@ namespace Graphics {
 		pso.multisampling.sType						= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		pso.multisampling.sampleShadingEnable		= VK_FALSE;
 		//pso.multisampling.rasterizationSamples	= m_MsaaSamples;
-		pso.multisampling.rasterizationSamples		= renderTarget.GetRenderPass().Description.sampleCount;
+		pso.multisampling.rasterizationSamples		= renderTarget.GetRenderPass().Description.SampleCount;
 		pso.multisampling.minSampleShading			= 1.0f;
 		pso.multisampling.pSampleMask				= nullptr;
 		pso.multisampling.alphaToCoverageEnable		= desc.colorBlendingEnable;
@@ -2475,7 +2542,6 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::DestroyPipelineLayout(VkPipelineLayout& pipelineLayout) {
-
 		if (pipelineLayout == VK_NULL_HANDLE)
 			return;
 
@@ -2545,11 +2611,11 @@ namespace Graphics {
 		for (int i = 0; i < renderPass.framebuffers.size(); i++) {
 			std::vector<VkImageView> framebufferAttachments = {};
 
-			if (renderPass.Description.flags & RenderPass::tColorAttachment)
+			if (renderPass.Description.Flags & RenderPass::tColorAttachment)
 				framebufferAttachments.emplace_back(Graphics::g_SceneColor);
-			if (renderPass.Description.flags & RenderPass::tDepthAttachment)
+			if (renderPass.Description.Flags & RenderPass::tDepthAttachment)
 				framebufferAttachments.emplace_back(Graphics::g_SceneDepth);
-			if (renderPass.Description.flags & RenderPass::tColorResolveAttachment)
+			if (renderPass.Description.Flags & RenderPass::tColorResolveAttachment)
 				framebufferAttachments.emplace_back(m_SwapChain.ImageViews[i]);
 
 			CreateFramebuffer(

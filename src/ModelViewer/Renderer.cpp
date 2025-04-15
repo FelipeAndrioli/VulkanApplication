@@ -138,7 +138,7 @@ void Renderer::Shutdown() {
 	m_Initialized = false;
 }
 
-void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
+void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget, const Graphics::GPUImage& shadowMappingImage) {
 	if (!m_Initialized)
 		return;
 
@@ -195,11 +195,12 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
+			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },			// Lights Data UBO
 			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(rm->GetTextures().size()), VK_SHADER_STAGE_FRAGMENT_BIT},
 			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
 			{ 5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },
-			{ 6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS }		// Multiple cameras UBO 
+			{ 6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL_GRAPHICS },			// Multiple cameras UBO 
+			{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }	// Shadow Mapping
 		}
 	};
 
@@ -348,6 +349,7 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget) {
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[4], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[5], gfxDevice->GetFrame(i).bindlessSet, m_ModelBuffer);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[6], gfxDevice->GetFrame(i).bindlessSet, m_CamerasBuffer[i]);
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[7], gfxDevice->GetFrame(i).bindlessSet, shadowMappingImage);
 	}
 }
 
@@ -363,11 +365,14 @@ void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
 	vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 }
 
-void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap) {
+// TODO: refactor this function
+void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap, float minShadowBias, float maxShadowBias) {
 	GraphicsDevice* gfxDevice = GetDevice();
 	
 	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
 	m_GlobalConstants.renderNormalMap = static_cast<int>(renderNormalMap);
+	m_GlobalConstants.minShadowBias = minShadowBias;
+	m_GlobalConstants.maxShadowBias = maxShadowBias;
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer[gfxDevice->GetCurrentFrameIndex()], &m_GlobalConstants);
 

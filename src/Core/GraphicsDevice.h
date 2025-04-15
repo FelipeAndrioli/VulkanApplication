@@ -72,17 +72,16 @@ namespace Graphics {
 	} RenderPassFlags;
 
 	struct RenderPassDesc {
-		VkOffset2D offset = {};
-		VkViewport viewport = {};
-		VkExtent2D extent = {};
-		VkRect2D scissor = {};
+		VkOffset2D					Offset				= {};
+		VkViewport					Viewport			= {};
+		VkExtent2D					Extent				= {};
+		VkRect2D					Scissor				= {};
+		VkSampleCountFlagBits		SampleCount			= VK_SAMPLE_COUNT_1_BIT;
+		uint32_t					Flags				= 0;
+		VkFormat					ColorImageFormat	= {};
+		VkFormat					DepthImageFormat	= {};
 
-		std::vector<VkClearValue> clearValues;
-
-		// RenderPassFlags
-		uint32_t flags;
-
-		VkSampleCountFlagBits sampleCount;
+		std::vector<VkClearValue>	ClearValues;
 	};
 
 	struct RenderPass {
@@ -129,8 +128,8 @@ namespace Graphics {
 	};
 
 	struct InputLayout {
-		std::vector<VkPushConstantRange> pushConstants;
-		std::vector<VkDescriptorSetLayoutBinding> bindings;
+		std::vector<VkPushConstantRange>			pushConstants;
+		std::vector<VkDescriptorSetLayoutBinding>	bindings;
 	};
 
 	struct PipelineStateDescription {
@@ -253,6 +252,7 @@ namespace Graphics {
 		void CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer);
 		void CreateDepthBuffer(GPUImage& depthBuffer, const RenderPassDesc& renderPassDesc);
 		void CreateDepthBuffer(GPUImage& depthBuffer, const VkExtent2D& extent, const VkSampleCountFlagBits& samples);
+		void CreateDepthOnlyBuffer(GPUImage& depthBuffer, const VkExtent2D extent, const VkSampleCountFlagBits sampleCount);
 		void CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format);
 		void CreateRenderTarget(GPUImage& renderTarget, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples);
 
@@ -326,15 +326,16 @@ namespace Graphics {
 		void DestroyRenderPass(RenderPass& renderPass);
 		void ResizeRenderPass(const uint32_t width, const uint32_t height, RenderPass& renderPass);
 
-		VkFormat GetDepthFormat() { return FindDepthFormat(m_PhysicalDevice); }
+		VkFormat GetDepthFormat()		{ return FindDepthFormat(m_PhysicalDevice); }
+		VkFormat GetDepthOnlyFormat()	{ return VK_FORMAT_D32_SFLOAT; }
 
 	public:
-		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
-		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
-		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
-		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
-		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
-		VkCommandPool m_CommandPool = VK_NULL_HANDLE;
+		VkDevice					m_LogicalDevice		= VK_NULL_HANDLE;
+		VkPhysicalDevice			m_PhysicalDevice	= VK_NULL_HANDLE;
+		VkSurfaceKHR				m_Surface			= VK_NULL_HANDLE;
+		VkInstance					m_VulkanInstance	= VK_NULL_HANDLE;
+		VkCommandPool				m_CommandPool		= VK_NULL_HANDLE;
+		VkDebugUtilsMessengerEXT	m_DebugMessenger	= VK_NULL_HANDLE;
 
 		QueueFamilyIndices m_QueueFamilyIndices;
 		VkSampleCountFlagBits m_MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -378,6 +379,7 @@ namespace Graphics {
 		VkFormat FindSupportedFormat(VkPhysicalDevice& physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 		bool HasStencilComponent(VkFormat format);
 		VkFormat FindDepthFormat(VkPhysicalDevice& physicalDevice);
+		VkFormat FindDepthOnlyFormat();
 		void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 		void CreateImage(GPUImage& image);
 	};

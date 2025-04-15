@@ -111,10 +111,10 @@ namespace Renderer {
 
 	void Init();
 	void Shutdown();
-	void LoadResources(const Graphics::IRenderTarget& renderTarget);
+	void LoadResources(const Graphics::IRenderTarget& renderTarget, const Graphics::GPUImage& shadowMappingImage);
 	void OnUIRender();
 
-	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap);
+	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap, float minShadowBias, float maxShadowBias);
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);
 	void RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model);

@@ -86,9 +86,9 @@ void LightManager::OnUIRender() {
 			}
 
 			if (light.type == LightType::Directional || light.type == LightType::SpotLight) {
-				ImGui::DragFloat("Direction X", &light.direction.x, 0.002f, -1.0f, 1.0f, "%.03f");
-				ImGui::DragFloat("Direction Y", &light.direction.y, 0.002f, -1.0f, 1.0f, "%.03f");
-				ImGui::DragFloat("Direction Z", &light.direction.z, 0.002f, -1.0f, 1.0f, "%.03f");
+				ImGui::DragFloat("Direction X", &light.direction.x, 0.02f, -90.0f, 90.0f, "%.03f");
+				ImGui::DragFloat("Direction Y", &light.direction.y, 0.02f, -90.0f, 90.0f, "%.03f");
+				ImGui::DragFloat("Direction Z", &light.direction.z, 0.02f, -90.0f, 90.0f, "%.03f");
 			} 
 
 			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {
