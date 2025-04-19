@@ -1486,8 +1486,8 @@ namespace Graphics {
 		depthDesc.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT;// | VK_IMAGE_ASPECT_STENCIL_BIT; // testing stencil bit
 		depthDesc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
 		depthDesc.LayerCount		= 1;
-//		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+//		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 //		depthDesc.Format			= FindDepthFormat(m_PhysicalDevice);
 //		depthDesc.Format			= FindDepthOnlyFormat();
 		depthDesc.Format			= VK_FORMAT_D32_SFLOAT;

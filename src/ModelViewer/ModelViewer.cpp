@@ -152,32 +152,33 @@ void ModelViewer::StartUp() {
 		m_DebugOffscreenNormalsRenderTarget->GetRenderPass().FinalLayout
 	);
 
-	/*
 	// Shadow mapping test scene - Begin
+	/*
 	m_Models.emplace_back(Renderer::LoadModel(ModelType::QUAD)); // Ground
 	m_Models[m_Models.size() - 1]->Transformations.rotation.x = 90.0f;
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 20.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.y = -1.0f;
 
 	m_Models.emplace_back(Renderer::LoadModel(ModelType::CUBE));
-	m_Models[m_Models.size() - 1]->Transformations.translation.x = 7.3f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.y = 1.3f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.z = 5.5f;
-	m_Models[m_Models.size() - 1]->Transformations.rotation.z = 90.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.x = 0.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.y = 1.5f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.z = 0.0f;
+	m_Models[m_Models.size() - 1]->Transformations.rotation.z = 0.0f;
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.5f;
 
 	m_Models.emplace_back(Renderer::LoadModel(ModelType::CUBE));
-	m_Models[m_Models.size() - 1]->Transformations.translation.x = -6.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.y = 1.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.z = -4.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.x = 2.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.y = 0.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.z = 1.0f;
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.5f;
 
 	m_Models.emplace_back(Renderer::LoadModel(ModelType::CUBE));
-	m_Models[m_Models.size() - 1]->Transformations.translation.x = -2.6f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.y = 1.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.z = 7.6f;
-
-	m_Models.emplace_back(Renderer::LoadModel(ModelType::CUBE));
-	m_Models[m_Models.size() - 1]->Transformations.translation.x = 9.3f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.y = 1.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.z = -4.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.x = -1.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.y = 0.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.z = 2.0f;
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.25f;
+	m_Models[m_Models.size() - 1]->Transformations.rotation.x = glm::radians(60.0f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation.z = glm::radians(60.0f);
 
 	ResourceManager* rm = ResourceManager::Get();
 
@@ -193,13 +194,41 @@ void ModelViewer::StartUp() {
 			mesh.MaterialIndex	= materialIndex;
 		}
 	}
-
-	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj"));
-	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.3f;
-	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(0.0f, 1.00f, 0.0f);
-	m_Models[m_Models.size() - 1]->FlipUvVertically					= true;
-	// Shadow mapping test scene - End 
 	*/
+
+	/*
+	m_Models.emplace_back(Renderer::LoadModel(ModelType::QUAD)); // Ground
+	m_Models[m_Models.size() - 1]->Transformations.rotation.x = 90.0f;
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 20.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.y = -0.75f;
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(-4.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(-2.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(0.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(2.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(4.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+
+	*/
+	// Shadow mapping test scene - End 
 
 	m_Models.emplace_back(Renderer::LoadModel(ModelType::QUAD));
 	m_Models[m_Models.size() - 1]->Transformations.rotation.y = 170.0f;
@@ -251,7 +280,7 @@ void ModelViewer::StartUp() {
 	m_ShadowDebugRenderer = QuadRenderer("Shadow Debug Renderer", "../src/Assets/Shaders/quad.vert", "../src/Assets/Shaders/depth_viewer.frag", 400, 250);
 	m_ShadowDebugRenderer.StartUp();
 
-	m_ShadowCamera	= Assets::ShadowCamera(20, -70.0f, 12.5f);
+	m_ShadowCamera	= Assets::ShadowCamera(20, -40.0f, 20.0f);
 
 	m_DebugShadowDescriptorSet = ImGui_ImplVulkan_AddTexture(
 		m_ShadowDebugRenderer.GetColorBuffer().ImageSampler,

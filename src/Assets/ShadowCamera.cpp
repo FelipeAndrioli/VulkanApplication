@@ -19,7 +19,7 @@ namespace Assets {
 			ImGui::DragFloat("Camera Position X", &Position.x, 0.02f);
 			ImGui::DragFloat("Camera Position Y", &Position.y, 0.02f);
 			ImGui::DragFloat("Camera Position Z", &Position.z, 0.02f);
-
+			
 			int selectedCameraType = m_ProjectionType;
 
 			if (ImGui::Combo("Camera Type", &selectedCameraType, m_CameraTypes, IM_ARRAYSIZE(m_CameraTypes))) {

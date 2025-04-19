@@ -127,95 +127,22 @@ layout (push_constant) uniform constant {
 	int camera_index;
 } mesh_constant;
 
-vec3 calc_directional_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal, float shadow) {
-	vec3 light_dir = normalize(light.direction.xyz);
-
-	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
-
-	vec3 ambient = material_ambient.rgb * vec3(light.ambient);
-	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse);
-
-	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
-
-	//Phong specular model
-	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
-	//float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
-	
-	//Blinn-Phong specular model
-	vec3 halfway_dir = normalize(light_dir + view_dir);
-	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
-
-	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
-
-	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
-}
-
-vec3 calc_point_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal, float shadow) {
-	float d = length(fragPos - light.position.xyz);
-	float constant_attenuation = 1.0;
-	float light_attenuation = 1 / (constant_attenuation + light.linear_attenuation * d + light.quadratic_attenuation * (d * d));
-
-	vec3 light_dir = normalize(light.position.xyz - fragPos);
-
-	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
-
-	vec3 ambient = material_ambient.rgb * vec3(light.ambient) * light_attenuation;
-	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse) * light_attenuation;
-
-	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
-
-	// Phong specular model
-	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
-	//float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
-
-	// Blinn-Phong specular model
-	vec3 halfway_dir = normalize(light_dir + view_dir);
-	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
-
-	vec3 specular = material_specular.rgb * spec * vec3(light.specular) * light_attenuation;
-
-	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
-}
-
-vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal, float shadow) {
-	vec3 light_dir = normalize(light.position.xyz - fragPos);
-
-	float theta = dot(light_dir, normalize(-light.direction.xyz));
-	float epsilon = light.cut_off_angle - light.outer_cut_off_angle;
-	float intensity = clamp((theta - light.outer_cut_off_angle) / epsilon, 0.0, 1.0);
-	
-	vec3 result = calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal, shadow);
-
-	return result * intensity;
-}
-
-float linearize_depth(float depth, float near, float far) {
-	float z = depth * 2.0 - 1.0; // back to NDC
-	return (2.0 * near * far) / (far + near - z * (far - near));
-}
-
-vec4 render_depth() {
-	float near = 0.1;
-	float far = 200.0;
-	float depth = linearize_depth(gl_FragCoord.z, near, far) / far;
-	return vec4(vec3(depth), 1.0);
-}
-
 float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position) {
 
 	vec3 light_dir = normalize(light_position.xyz - light_space_frag_pos.xyz);
 
-	// perspective divide
+	// the pipeline transition between vertex to fragment shader automatically perform the perspective divide in gl_Position,
+	// in order to compare it with the light space frag position we must perform the perspective divide on it. It has no
+	// impact when using orthographic projection, but it's essential to linearize perspective projection.
 	// [-1, 1]
 	vec3 proj_coords = light_space_frag_pos.xyz / light_space_frag_pos.w;
 
 	// [0, 1]
-	proj_coords = proj_coords * 0.5 + 0.5;
+	// Differently than OpenGL, Vulkan has its depth coordinate range already in [0, 1], therefore the conversion can be skipped.
+	proj_coords = vec3(proj_coords.xy * 0.5 + 0.5, proj_coords.z);
 
-//	float closest_depth = texture(shadow_mapping, proj_coords.xy).r;
 	float current_depth = proj_coords.z;
 
-//	float bias = max(0.05 * (1.0 - dot(normal.xyz, light_dir)), 0.005); // original bias
 	float bias = max(sceneGPUData.max_shadow_bias * (1.0 - dot(normal.xyz, light_dir)), sceneGPUData.min_shadow_bias);
 
 	float shadow = 0.0;
@@ -239,6 +166,84 @@ float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position) {
 		shadow = 0.0;
 
 	return shadow;
+}
+
+vec3 calc_directional_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
+	vec3 light_dir = normalize(light.direction.xyz);
+
+	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
+
+	vec3 ambient = material_ambient.rgb * vec3(light.ambient);
+	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse);
+
+	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
+
+	//Phong specular model
+	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
+	//float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
+	
+	//Blinn-Phong specular model
+	vec3 halfway_dir = normalize(light_dir + view_dir);
+	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
+
+	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
+
+	float shadow = calc_shadow(fragPosLightSpace, material_normal, light.direction);
+
+	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
+}
+
+vec3 calc_point_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
+	float d = length(fragPos - light.position.xyz);
+	float constant_attenuation = 1.0;
+	float light_attenuation = 1 / (constant_attenuation + light.linear_attenuation * d + light.quadratic_attenuation * (d * d));
+
+	vec3 light_dir = normalize(light.position.xyz - fragPos);
+
+	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
+
+	vec3 ambient = material_ambient.rgb * vec3(light.ambient) * light_attenuation;
+	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse) * light_attenuation;
+
+	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
+
+	// Phong specular model
+	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
+	//float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
+
+	// Blinn-Phong specular model
+	vec3 halfway_dir = normalize(light_dir + view_dir);
+	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
+
+	vec3 specular = material_specular.rgb * spec * vec3(light.specular) * light_attenuation;
+
+	float shadow = 0.0;
+
+	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
+}
+
+vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
+	vec3 light_dir = normalize(light.position.xyz - fragPos);
+
+	float theta = dot(light_dir, normalize(-light.direction.xyz));
+	float epsilon = light.cut_off_angle - light.outer_cut_off_angle;
+	float intensity = clamp((theta - light.outer_cut_off_angle) / epsilon, 0.0, 1.0);
+	
+	vec3 result = calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
+
+	return result * intensity;
+}
+
+float linearize_depth(float depth, float near, float far) {
+	float z = depth * 2.0 - 1.0; // back to NDC
+	return (2.0 * near * far) / (far + near - z * (far - near));
+}
+
+vec4 render_depth() {
+	float near = 0.1;
+	float far = 200.0;
+	float depth = linearize_depth(gl_FragCoord.z, near, far) / far;
+	return vec4(vec3(depth), 1.0);
 }
 
 void main() {
@@ -300,17 +305,15 @@ void main() {
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
 		light_t light = lights[i];
 
-		float shadow = i == 0 ? calc_shadow(fragPosLightSpace, material_normal, lights[0].position) : 1;
-
 		switch (light.type) {
 			case 0:
-				material_color.rgb += calc_directional_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal, shadow);
+				material_color.rgb += calc_directional_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
 				break;
 			case 1:
-				material_color.rgb += calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal, shadow);
+				material_color.rgb += calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
 				break;
 			case 2:
-				material_color.rgb += calc_spot_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal, shadow);
+				material_color.rgb += calc_spot_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
 				break;
 			default:
 				break;
