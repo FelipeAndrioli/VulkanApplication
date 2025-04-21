@@ -531,9 +531,6 @@ namespace Graphics {
 
 		gfxDevice->CreateDepthOnlyBuffer(m_Images[m_DepthIndex], GetExtent(), VK_SAMPLE_COUNT_1_BIT);
 		// transition to depth/stencil attachment optimal? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-//		gfxDevice->TransitionImageLayout(m_Images[m_DepthIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-//		gfxDevice->TransitionImageLayout(m_Images[m_DepthIndex], VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-//		gfxDevice->TransitionImageLayout(m_Images[m_DepthIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		gfxDevice->CreateImageSampler	(m_Images[m_DepthIndex]);
 
 		std::vector<VkImageView> views = { m_Images[m_DepthIndex].ImageView };
@@ -550,11 +547,7 @@ namespace Graphics {
 
 	void DepthOnlyRenderTarget::End(const VkCommandBuffer& commandBuffer) {
 		EndRenderPass(commandBuffer);
-//		m_Images[m_DepthIndex].ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		m_Images[m_DepthIndex].ImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-
-//		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-//		gfxDevice->TransitionImageLayout(m_Images[m_DepthIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 
 	/*  ========================== Depth Only Render Target Implementation End ========================== */
