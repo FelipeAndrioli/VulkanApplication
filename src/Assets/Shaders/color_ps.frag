@@ -118,7 +118,8 @@ layout (std140, set = 0, binding = 6) uniform camera_uniform {
 	camera_t cameras[MAX_CAMERAS];
 };
 
-layout (set = 0, binding = 7) uniform sampler2D shadow_mapping;	// sampler2DShadow???
+layout (set = 0, binding = 7) uniform sampler2D shadow_mapping;				// retrieves texels from a texture receiving a vec2
+//layout (set = 0, binding = 7) uniform sampler2DShadow shadow_mapping;		// retrieves texels from a texture receiving a vec3
 
 layout (push_constant) uniform constant {
 	int material_index;
@@ -126,6 +127,33 @@ layout (push_constant) uniform constant {
 	int light_source_index;
 	int camera_index;
 } mesh_constant;
+
+vec2 poisson_disk[16] = vec2[]( 
+   vec2( -0.94201624, -0.39906216 ), 
+   vec2( 0.94558609, -0.76890725 ), 
+   vec2( -0.094184101, -0.92938870 ), 
+   vec2( 0.34495938, 0.29387760 ), 
+   vec2( -0.91588581, 0.45771432 ), 
+   vec2( -0.81544232, -0.87912464 ), 
+   vec2( -0.38277543, 0.27676845 ), 
+   vec2( 0.97484398, 0.75648379 ), 
+   vec2( 0.44323325, -0.97511554 ), 
+   vec2( 0.53742981, -0.47373420 ), 
+   vec2( -0.26496911, -0.41893023 ), 
+   vec2( 0.79197514, 0.19090188 ), 
+   vec2( -0.24188840, 0.99706507 ), 
+   vec2( -0.81409955, 0.91437590 ), 
+   vec2( 0.19984126, 0.78641367 ), 
+   vec2( 0.14383161, -0.14100790 ) 
+);
+
+
+float random(vec3 seed, int i) {
+	vec4 seed4 = vec4(seed, i);
+	float dot_product = dot(seed4, vec4(12.9898, 78.233, 45.164, 94.673));
+
+	return fract(sin(dot_product) * 43758.5453);
+}
 
 float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position) {
 
@@ -153,14 +181,15 @@ float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position) {
 	
 	// PCF (percentage-closer filtering)
 	// sample the surrounding texels of the depth map and average the results to produce less blocky/hard shadows
-	for (int x = -1; x <= 1; ++x) {
-		for (int y = -1; y <= 1; ++y) {
+	for (int x = -2; x <= 2; ++x) {
+		for (int y = -2; y <= 2; ++y) {
 			float pcf_depth = texture(shadow_mapping, proj_coords.xy + vec2(x, y) * texel_size).r;
-			shadow += current_depth - bias > pcf_depth ? 1.0 : 0.5;
+			shadow += current_depth - bias > pcf_depth ? 1.0 : 0.2;
 		}
 	}
 
-	shadow /= 9.0;
+//	shadow /= 9.0;
+	shadow /= 25.0;
 
 	if (proj_coords.z > 1.0)
 		shadow = 0.0;
@@ -191,6 +220,7 @@ vec3 calc_directional_light(light_t light, material_t current_material, vec4 mat
 	float shadow = calc_shadow(fragPosLightSpace, material_normal, light.direction);
 
 	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
+//	return vec3(ambient + shadow * (diffuse + specular)) * light.color.rgb;
 }
 
 vec3 calc_point_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
