@@ -25,8 +25,10 @@ namespace Assets {
 			m_ProjectionType	= Assets::Camera::ProjectionType::ORTHOGRAPHIC;
 		};
 
-		void UpdateDirectionalLightShadowMatrix (const glm::vec3 lightDirection);
+		void UpdateDirectionalLightShadowMatrix (const glm::vec3& lightDirection);
+		void UpdateSpotLightShadowMatrix		(const glm::vec3& lightPosition, const glm::vec3& lightDirection);
 		void OnUIRender							(const char* idCamera) override;
+		void Resize								(uint32_t width, uint32_t height) override;
 
 		inline const glm::mat4& GetShadowMatrix	() const { return m_ShadowMatrix; }
 
