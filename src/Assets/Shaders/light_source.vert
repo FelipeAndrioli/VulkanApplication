@@ -8,13 +8,22 @@
 #define MAX_LIGHTS 5
 #define MAX_CAMERAS 10
 
+/* light type
+
+Undefined = -1,
+Directional = 0,
+PointLight = 1,
+SpotLight = 2
+*/
+
 struct light_t {
 	vec4 position;
 	vec4 direction;
 	vec4 color;
-	vec4 extra[6];
-	
+	vec4 extra[2];
+
 	mat4 model;
+	mat4 viewProj;	
 
 	int type;
 	int extra_0;
@@ -61,37 +70,34 @@ layout (std140, set = 0, binding = 6) uniform camera_uniform {
 	camera_t cameras[MAX_CAMERAS];
 };
 
-layout (location = 0) out vec4 light_dir;
-layout (location = 1) out vec4 color;
-layout (location = 2) out vec4 frag_pos;
-layout (location = 3) out int light_type;
+layout (location = 0) out vec4 color;
 
 // hardcoded cube
 const vec3 pos[8] = vec3[8](
-	vec3(-1.0,-1.0, 1.0),
-	vec3( 1.0,-1.0, 1.0),
-	vec3( 1.0, 1.0, 1.0),
-	vec3(-1.0, 1.0, 1.0),
+	vec3(-1.0,-1.0, -1.0 ),
+	vec3(-1.0, 1.0, -1.0 ),
+	vec3( 1.0, 1.0, -1.0 ),
+	vec3( 1.0, -1.0, -1.0),
 
-	vec3(-1.0,-1.0,-1.0),
-	vec3( 1.0,-1.0,-1.0),
-	vec3( 1.0, 1.0,-1.0),
-	vec3(-1.0, 1.0,-1.0)
+	vec3(-1.0,-1.0, 1.0),
+	vec3(-1.0, 1.0, 1.0),
+	vec3( 1.0, 1.0, 1.0),
+	vec3( 1.0,-1.0, 1.0)
 );
 
 const int indices[36] = int[36](
 	// front
 	0, 1, 2, 0, 2, 3,
 	// right
-	1, 5, 6, 2, 1, 6,
+	3, 2, 6, 3, 6, 7,
 	// back
-	6, 5, 7, 4, 7, 5,
+	4, 6, 5, 4, 7, 6,
 	// left
-	0, 3, 4, 7, 4, 3,
+	4, 5, 1, 4, 1, 0,
 	// bottom
-	5, 1, 4, 0, 4, 1,
+	3, 7, 4, 3, 4, 0,
 	// top
-	2, 6, 3, 7, 3, 6
+	1, 5, 6, 1, 6, 2
 );
 
 void main() {
@@ -101,9 +107,5 @@ void main() {
 	light_t light = lights[light_constant.light_source_index];
 
 	gl_Position = current_camera.proj * current_camera.view * light.model * vec4(pos[idx], 1.0);
-	frag_pos = light.model * vec4(pos[idx], 1.0);
-	light_dir = light.direction;
-	light_type = light.type;
-
 	color = light.color;
 }
