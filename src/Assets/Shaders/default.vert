@@ -113,7 +113,9 @@ void main() {
 	fragNormal			= normalize(vec3(current_model.normal_matrix * vec4(inNormal, 0.0)));
 	fragTangent			= normalize(fragTangent - fragNormal * dot(fragNormal, fragTangent));
 	fragBiTangent		= cross(fragTangent, fragNormal);	
-	fragPosLightSpace	= lights[0].viewProj * vec4(fragPos, 1.0);
+
+	// TODO: fix hardcoded light
+	fragPosLightSpace	= lights[1].viewProj * vec4(fragPos, 1.0);
 
 	if (dot(cross(fragNormal, fragTangent), fragBiTangent) < 0.0)
 		fragTangent = fragTangent * -1.0;

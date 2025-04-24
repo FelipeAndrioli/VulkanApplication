@@ -181,15 +181,14 @@ float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position) {
 	
 	// PCF (percentage-closer filtering)
 	// sample the surrounding texels of the depth map and average the results to produce less blocky/hard shadows
-	for (int x = -2; x <= 2; ++x) {
-		for (int y = -2; y <= 2; ++y) {
+	for (int x = -1; x < 2; ++x) {
+		for (int y = -1; y < 2; ++y) {
 			float pcf_depth = texture(shadow_mapping, proj_coords.xy + vec2(x, y) * texel_size).r;
 			shadow += current_depth - bias > pcf_depth ? 1.0 : 0.2;
 		}
 	}
 
-//	shadow /= 9.0;
-	shadow /= 25.0;
+	shadow /= 9.0;
 
 	if (proj_coords.z > 1.0)
 		shadow = 0.0;
@@ -217,10 +216,11 @@ vec3 calc_directional_light(light_t light, material_t current_material, vec4 mat
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
 
-	float shadow = calc_shadow(fragPosLightSpace, material_normal, light.direction);
+	// TODO: uncomment when the hardcoded light is fixed
+//	float shadow = calc_shadow(fragPosLightSpace, material_normal, light.direction);
+	float shadow = 0.0;
 
 	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
-//	return vec3(ambient + shadow * (diffuse + specular)) * light.color.rgb;
 }
 
 vec3 calc_point_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
@@ -258,8 +258,32 @@ vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_a
 	float theta = dot(light_dir, normalize(-light.direction.xyz));
 	float epsilon = light.cut_off_angle - light.outer_cut_off_angle;
 	float intensity = clamp((theta - light.outer_cut_off_angle) / epsilon, 0.0, 1.0);
-	
-	vec3 result = calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
+
+	float d = length(fragPos - light.position.xyz);
+	float constant_attenuation = 1.0;
+	float light_attenuation = 1 / (constant_attenuation + light.linear_attenuation * d + light.quadratic_attenuation * (d * d));
+
+	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
+
+	vec3 ambient = material_ambient.rgb * vec3(light.ambient) * light_attenuation;
+	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse) * light_attenuation;
+
+	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
+
+	// Phong specular model
+	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
+	//float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
+
+	// Blinn-Phong specular model
+	vec3 halfway_dir = normalize(light_dir + view_dir);
+	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
+
+	vec3 specular = material_specular.rgb * spec * vec3(light.specular) * light_attenuation;
+
+	float shadow = calc_shadow(fragPosLightSpace, material_normal, light.position);
+//	float shadow = 0.0;
+
+	vec3 result = vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
 
 	return result * intensity;
 }

@@ -487,7 +487,7 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 
 	for (int i = 0; i < LightManager::GetLights().size(); i++) {
 
-		LightData light = LightManager::GetLights().at(i);
+		const LightData& light = LightManager::GetLights().at(i);
 
 		if (light.type == LightType::Directional)
 			continue;

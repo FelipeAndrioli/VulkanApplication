@@ -41,13 +41,8 @@ TODO's:
 
 Known Issues:
 	
-	- Some models are still casting shadows to themselves when they shouldn't, despite the added bias. Manipulating bias values didn't help.
-
-	- Some models still have the shadow acne, despite the added bias. Manipulating bias values didn't help.
-
 	- Some double buffering is missing to the shadow image, when the light direction changes it's possible see many artifacts.
-
-	- The current shadow/shadow camera settings break the scene when light direction is changed, even slightly changes in the direction are causing issues.
+	- To use other precision formats other than 32 we must enable stencil to the buffer as well.
 */
 
 public:
@@ -66,23 +61,23 @@ public:
 
 	const Graphics::GPUImage& GetDepthBuffer();
 
+private:
+	void LoadResources();
+private:
+
 	struct ModelGPUData {
 		glm::vec4 extra[12] = {};
-		glm::mat4 Model = glm::mat4(1.0f);
+		glm::mat4 Model		= glm::mat4(1.0f);
 	};
 
 	struct ShadowMappingGPUData {
 		glm::vec4 extra[12] = {};
-		glm::mat4 Light = glm::mat4(1.0f);
+		glm::mat4 Light		= glm::mat4(1.0f);
 	} m_ShadowMappingGPUData;
 
 	struct PushConstant {
 		int ModelIndex;
 	};
-
-private:
-	void LoadResources();
-private:
 
 	uint32_t							m_Width													= 800;
 	uint32_t							m_Height												= 600;

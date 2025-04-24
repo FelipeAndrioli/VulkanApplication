@@ -26,7 +26,10 @@
 /*
 	TODO's:
 		[ ] - Fix Release Build
-		[ ] - Fix Resizing
+
+	Issues:
+		- Light Sources (their format) are being distorted when changing direction/position.
+		- Spot Light Shadows are not correct.
 */
 
 class ModelViewer : public Application::IScene {
@@ -60,8 +63,15 @@ private:
 	uint32_t m_ScreenWidth			= 0;
 	uint32_t m_ScreenHeight			= 0;
 
+	// Spot Light Settings
+	float m_MinShadowBias = 0.001f;
+	float m_MaxShadowBias = 0.01f;
+	
+	/*
+	// Directional Light Settings
 	float m_MinShadowBias = 0.005f;
 	float m_MaxShadowBias = 0.05f;
+	*/
 
 	bool m_RenderSkybox				= false;
 	bool m_RenderWireframe			= false;
@@ -106,20 +116,34 @@ void ModelViewer::StartUp() {
 
 	m_SecondCamera.Init(position, fov, yaw, pitch, m_ScreenWidth, m_ScreenHeight);
 
+	// Spot Light Settings
+	m_ShadowCamera = Assets::ShadowCamera(20.0f, 0.5f, 200.0f);
 	m_ShadowCamera.Resize(m_ScreenWidth, m_ScreenHeight);
+	m_ShadowCamera.Fov = 90.0f;
 
+	/* 
+	// Directional Light Settings
+	m_ShadowCamera = Assets::ShadowCamera(20.0f, -40.0f, 20.0f);
+	m_ShadowCamera.Resize(m_ScreenWidth, m_ScreenHeight);
+	*/
+	
 	Renderer::Init();
 
 	LightData sunLight			= {};
 	sunLight.position			= glm::vec4(0.0f);
 	sunLight.direction			= glm::vec4(-0.020f, 4.0f, 0.0f, 1.0f);
 	sunLight.type				= LightType::Directional;
-	sunLight.ambient			= 0.2f;
-	sunLight.diffuse			= 0.2f;
+	
+//	sunLight.ambient			= 0.2f;
+//	sunLight.diffuse			= 0.2f;
+
+	sunLight.ambient			= 0.01f;
+	sunLight.diffuse			= 0.01f;
 	sunLight.specular			= 0.0f;
 	sunLight.scale				= 0.2f;
 	sunLight.color				= glm::vec4(1.0f);
 
+	/*
 	LightData light				= {};
 	light.position				= glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 	light.direction				= glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
@@ -131,7 +155,20 @@ void ModelViewer::StartUp() {
 	light.specular				= 0.5f;
 	light.scale					= 0.2f;
 	light.color					= glm::vec4(1.0f);
+	*/
 	
+	LightData light				= {};
+	light.position				= glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	light.direction				= glm::vec4(0.1f, -90.0f, 0.0f, 0.0f);
+	light.type					= LightType::SpotLight;
+	light.linearAttenuation		= 0.006f;
+	light.quadraticAttenuation	= 0.007f;
+	light.ambient				= 0.0f;
+	light.diffuse				= 0.5f;
+	light.specular				= 0.5f;
+	light.scale					= 0.2f;
+	light.color					= glm::vec4(1.0f);
+
 	LightManager::AddLight(sunLight);
 	LightManager::AddLight(light);
 
@@ -153,49 +190,6 @@ void ModelViewer::StartUp() {
 	);
 
 	// Shadow mapping test scene - Begin
-	/*
-	m_Models.emplace_back(Renderer::LoadModel(ModelType::QUAD)); // Ground
-	m_Models[m_Models.size() - 1]->Transformations.rotation.x = 90.0f;
-	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 20.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.y = -1.0f;
-
-	m_Models.emplace_back(Renderer::LoadModel(ModelType::CUBE));
-	m_Models[m_Models.size() - 1]->Transformations.translation.x = 0.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.y = 1.5f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.z = 0.0f;
-	m_Models[m_Models.size() - 1]->Transformations.rotation.z = 0.0f;
-	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.5f;
-
-	m_Models.emplace_back(Renderer::LoadModel(ModelType::CUBE));
-	m_Models[m_Models.size() - 1]->Transformations.translation.x = 2.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.y = 0.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.z = 1.0f;
-	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.5f;
-
-	m_Models.emplace_back(Renderer::LoadModel(ModelType::CUBE));
-	m_Models[m_Models.size() - 1]->Transformations.translation.x = -1.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.y = 0.0f;
-	m_Models[m_Models.size() - 1]->Transformations.translation.z = 2.0f;
-	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 0.25f;
-	m_Models[m_Models.size() - 1]->Transformations.rotation.x = glm::radians(60.0f);
-	m_Models[m_Models.size() - 1]->Transformations.rotation.z = glm::radians(60.0f);
-
-	ResourceManager* rm = ResourceManager::Get();
-
-	Material material							= {};
-	material.Name								= "Custom Material";
-	material.MaterialData.Diffuse				= glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
-
-	int materialIndex = rm->AddMaterial(material);
-
-	for (int i = 1; i < m_Models.size(); i++) {
-		for (auto& mesh : m_Models[i]->Meshes) {
-			mesh.MaterialName	= material.Name;
-			mesh.MaterialIndex	= materialIndex;
-		}
-	}
-	*/
-
 	/*
 	m_Models.emplace_back(Renderer::LoadModel(ModelType::QUAD)); // Ground
 	m_Models[m_Models.size() - 1]->Transformations.rotation.x = 90.0f;
@@ -226,7 +220,6 @@ void ModelViewer::StartUp() {
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
 	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(4.5f, 0.2f, -2.5f);
 	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
-
 	*/
 	// Shadow mapping test scene - End 
 
@@ -280,8 +273,6 @@ void ModelViewer::StartUp() {
 	m_ShadowDebugRenderer = QuadRenderer("Shadow Debug Renderer", "../src/Assets/Shaders/quad.vert", "../src/Assets/Shaders/depth_viewer.frag", 400, 250);
 	m_ShadowDebugRenderer.StartUp();
 
-	m_ShadowCamera	= Assets::ShadowCamera(20, -40.0f, 20.0f);
-
 	m_DebugShadowDescriptorSet = ImGui_ImplVulkan_AddTexture(
 		m_ShadowDebugRenderer.GetColorBuffer().ImageSampler,
 		m_ShadowDebugRenderer.GetColorBuffer().ImageView,
@@ -319,10 +310,12 @@ void ModelViewer::Update(const float constantT, const float deltaT, InputSystem:
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_ShadowCamera.UpdateDirectionalLightShadowMatrix(LightManager::GetLights()[0].direction);
-	LightManager::GetLights()[0].viewProj = m_ShadowCamera.GetShadowMatrix();
+	// TODO: get rid of hardcoded lights later
+//	m_ShadowCamera.UpdateDirectionalLightShadowMatrix(LightManager::GetLights()[0].direction);
+	m_ShadowCamera.UpdateSpotLightShadowMatrix(LightManager::GetLights()[1].position, LightManager::GetLights()[1].direction);
+	LightManager::GetLights()[1].viewProj = m_ShadowCamera.GetShadowMatrix();
 
-	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights()[0].viewProj);
+	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights()[1].viewProj);
 
 	if (m_RenderShadowDebugImGui) {
 		m_ShadowDebugRenderer.Render(commandBuffer, m_ShadowRenderer.GetDepthBuffer());
