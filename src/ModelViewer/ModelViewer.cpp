@@ -116,16 +116,9 @@ void ModelViewer::StartUp() {
 
 	m_SecondCamera.Init(position, fov, yaw, pitch, m_ScreenWidth, m_ScreenHeight);
 
-	// Spot Light Settings
-	m_ShadowCamera = Assets::ShadowCamera(20.0f, 0.5f, 200.0f);
-	m_ShadowCamera.Resize(m_ScreenWidth, m_ScreenHeight);
-	m_ShadowCamera.Fov = 90.0f;
-
-	/* 
-	// Directional Light Settings
-	m_ShadowCamera = Assets::ShadowCamera(20.0f, -40.0f, 20.0f);
-	m_ShadowCamera.Resize(m_ScreenWidth, m_ScreenHeight);
-	*/
+	m_ShadowCamera = Assets::ShadowCamera(m_ScreenWidth, m_ScreenHeight);
+	m_ShadowCamera.SetSpotLightSettings	(0.5f, 200.0f, 90.0f);
+	m_ShadowCamera.SetDirLightSettings	(-40.0f, 20.0f, 20.0f);
 	
 	Renderer::Init();
 
@@ -311,10 +304,14 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	// TODO: get rid of hardcoded lights later
-//	m_ShadowCamera.UpdateDirectionalLightShadowMatrix(LightManager::GetLights()[0].direction);
+	/*
+	m_ShadowCamera.UpdateDirectionalLightShadowMatrix(LightManager::GetLights()[0].direction);
+	LightManager::GetLights()[0].viewProj = m_ShadowCamera.GetShadowMatrix();
+	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights()[0].viewProj);
+	*/
+	
 	m_ShadowCamera.UpdateSpotLightShadowMatrix(LightManager::GetLights()[1].position, LightManager::GetLights()[1].direction);
 	LightManager::GetLights()[1].viewProj = m_ShadowCamera.GetShadowMatrix();
-
 	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights()[1].viewProj);
 
 	if (m_RenderShadowDebugImGui) {

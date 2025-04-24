@@ -9,32 +9,29 @@
 namespace Assets {
 	class ShadowCamera : public Camera {
 	public:
-		ShadowCamera(float frustumSize, float near, float far) : LightFrustumSize(frustumSize) {
-			Near				= near;
-			Far					= far;
-			Fov					= 45.0f;
-			Position			= glm::vec3(0.0f, 0.0f, 0.0f);
-			m_ProjectionType	= Assets::Camera::ProjectionType::ORTHOGRAPHIC;
-		}
+		ShadowCamera() {}
 
-		ShadowCamera() {
-			Near				= 30.0f;
-			Far					= -30.0f;
-			Fov					= 45.0f;
-			Position			= glm::vec3(0.0f, 0.0f, 0.0f);
-			m_ProjectionType	= Assets::Camera::ProjectionType::ORTHOGRAPHIC;
-		};
+		ShadowCamera(uint32_t width, uint32_t height) {
+			m_Width		= width;
+			m_Height	= height;
+		}
 
 		void UpdateDirectionalLightShadowMatrix (const glm::vec3& lightDirection);
 		void UpdateSpotLightShadowMatrix		(const glm::vec3& lightPosition, const glm::vec3& lightDirection);
-		void OnUIRender							(const char* idCamera) override;
-		void Resize								(uint32_t width, uint32_t height) override;
+		void OnUIRender							(const char* idCamera)													override;
+		void Resize								(uint32_t width, uint32_t height)										override;
+		void SetSpotLightSettings				(float near, float far, float fov);
+		void SetDirLightSettings				(float near, float far, float frustumSize);
 
 		inline const glm::mat4& GetShadowMatrix	() const { return m_ShadowMatrix; }
-
-	public:
-		float LightFrustumSize = 20.0f;
 	private:
 		glm::mat4 m_ShadowMatrix = glm::mat4(1.0f);
+
+		float m_SpotLightNear		= 0.0f;
+		float m_SpotLightFar		= 0.0f;
+		float m_SpotLightFov		= 0.0f;
+		float m_DirLightNear		= 0.0f;
+		float m_DirLightFar			= 0.0f;
+		float m_DirLightFrustumSize = 0.0f;
 	};
 }
