@@ -6,7 +6,6 @@
 
 void ShadowRenderer::StartUp() {
 	LoadResources();
-//	m_ShadowCamera.Resize(m_Width, m_Height);
 }
 
 void ShadowRenderer::CleanUp() {
@@ -37,21 +36,15 @@ void ShadowRenderer::SetExtent(uint32_t width, uint32_t height) {
 	m_Width		= width;
 	m_Height	= height;
 
-//	m_ShadowCamera.Resize(m_Width, m_Height);
 }
 
 void ShadowRenderer::SetPrecision(uint32_t precision) {
 	m_Precision = precision;
 }
 
-// Directional/Spot lights shadow mapping
-//const Graphics::GPUImage& Render(const VkCommandBuffer& commandBuffer, glm::vec3 lightPosition, glm::vec3 lightDirection) {
-	
 void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, const glm::mat4& lightViewProj) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-//	m_ShadowCamera.UpdateMatrix(lightPosition, lightDirection, m_Width, m_Height, m_Precision);
-//	m_ShadowMappingGPUData.Light = m_ShadowCamera.GetShadowMatrix();
 	m_ShadowMappingGPUData.Light = lightViewProj;
 
 	m_RenderTarget->Begin(commandBuffer);
@@ -104,7 +97,7 @@ void ShadowRenderer::LoadResources() {
 			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PushConstant) }
 		},
 		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },			// Shadow Camera
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },			// Light Matrix Array
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },			// Model Matrix Array 
 		}
 	};

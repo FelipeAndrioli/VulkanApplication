@@ -8,6 +8,7 @@
 #include "../Core/Application.h"
 #include "../Core/ConstantBuffers.h"
 #include "../Core/ResourceManager.h"
+#include "../Core/SceneComponents.h"
 
 #include "../Utils/TextureLoader.h"
 #include "../Utils/ModelLoader.h"
@@ -487,9 +488,9 @@ void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
 
 	for (int i = 0; i < LightManager::GetLights().size(); i++) {
 
-		const LightData& light = LightManager::GetLights().at(i);
+		const Scene::LightComponent& light = LightManager::GetLights().at(i);
 
-		if (light.type == LightType::Directional)
+		if (light.type == Scene::LightComponent::LightType::DIRECTIONAL)
 			continue;
 
 		PipelinePushConstants pushConstants = {

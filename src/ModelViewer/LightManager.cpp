@@ -8,7 +8,7 @@
 namespace LightManager {
 	bool m_Initialized = false;
 
-	std::vector<LightData> m_Lights;
+	std::vector<Scene::LightComponent> m_Lights;
 
 	Graphics::Buffer m_LightBuffer;	
 }
@@ -19,7 +19,7 @@ void LightManager::Init() {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(LightData) * MAX_LIGHTS);
+	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(Scene::LightComponent) * MAX_LIGHTS);
 
 	m_Initialized = true;
 }
@@ -31,7 +31,7 @@ void LightManager::Shutdown() {
 	m_Lights.clear();
 }
 
-void LightManager::AddLight(LightData& light) {
+void LightManager::AddLight(Scene::LightComponent& light) {
 	if (m_Lights.size() + 1 == MAX_LIGHTS) {
 		std::cout << "Max num of lights reached!" << '\n';
 		return;
@@ -69,6 +69,8 @@ void LightManager::OnUIRender() {
 	if (!m_Initialized)
 		return;
 
+	using namespace Scene;
+
 	ImGui::SeparatorText("Light Manager");
 	
 	for (int i = 0; i < m_Lights.size(); i++) {
@@ -82,16 +84,16 @@ void LightManager::OnUIRender() {
 			int selected = light.type;
 
 			if (ImGui::Combo("Light Type", &selected, lightTypes, IM_ARRAYSIZE(lightTypes))) {
-				light.type = static_cast<LightType>(selected);
+				light.type = static_cast<LightComponent::LightType>(selected);
 			}
 
-			if (light.type == LightType::Directional || light.type == LightType::SpotLight) {
+			if (light.type == LightComponent::LightType::DIRECTIONAL || light.type == LightComponent::LightType::SPOT) {
 				ImGui::DragFloat("Direction X", &light.direction.x, 0.02f, -90.0f, 90.0f, "%.03f");
 				ImGui::DragFloat("Direction Y", &light.direction.y, 0.02f, -90.0f, 90.0f, "%.03f");
 				ImGui::DragFloat("Direction Z", &light.direction.z, 0.02f, -90.0f, 90.0f, "%.03f");
 			} 
 
-			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {
+			if (light.type == LightComponent::LightType::POINT || light.type == LightComponent::LightType::SPOT) {
 				ImGui::DragFloat("Position X", &light.position.x, 0.1f, -50.0f, 50.0f, "%0.3f");
 				ImGui::DragFloat("Position Y", &light.position.y, 0.1f, -50.0f, 50.0f, "%0.3f");
 				ImGui::DragFloat("Position Z", &light.position.z, 0.1f, -50.0f, 50.0f, "%0.3f");
@@ -101,12 +103,12 @@ void LightManager::OnUIRender() {
 			ImGui::DragFloat("Diffuse", &light.diffuse, 0.002f, 0.0f, 1.0f, "%0.3f");
 			ImGui::DragFloat("Specular", &light.specular, 0.002f, 0.0f, 1.0f, "%0.3f");
 
-			if (light.type == LightType::SpotLight) {
+			if (light.type == LightComponent::LightType::SPOT) {
 				ImGui::DragFloat("Cut Off Angle", &light.rawCutOffAngle, 0.002f, 0.0f, 90.0f, "%0.3f");
 				ImGui::DragFloat("Outer Cut Off Angle", &light.rawOuterCutOffAngle, 0.002f, 0.0f, 90.0f, "%0.3f");
 			}
 
-			if (light.type == LightType::PointLight || light.type == LightType::SpotLight) {
+			if (light.type == LightComponent::LightType::POINT || light.type == LightComponent::LightType::SPOT) {
 				ImGui::DragFloat("Linear Attenuation", &light.linearAttenuation, 0.002f);
 				ImGui::DragFloat("Quadratic Attenuation", &light.quadraticAttenuation, 0.002f);
 			}
@@ -126,6 +128,6 @@ Graphics::Buffer& LightManager::GetLightBuffer() {
 	return m_LightBuffer;
 }
 
-std::vector<LightData>& LightManager::GetLights() {
+std::vector<Scene::LightComponent>& LightManager::GetLights() {
 	return m_Lights;
 }

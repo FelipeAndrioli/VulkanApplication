@@ -8,6 +8,7 @@
 #include "../Core/GraphicsDevice.h"
 #include "../Core/Settings.h"
 #include "../Core/ResourceManager.h"
+#include "../Core/SceneComponents.h"
 
 #include "../Core/Renderer/ShadowRenderer.h"
 #include "../Core/Renderer/QuadRenderer.h"
@@ -122,19 +123,16 @@ void ModelViewer::StartUp() {
 	
 	Renderer::Init();
 
-	LightData sunLight			= {};
-	sunLight.position			= glm::vec4(0.0f);
-	sunLight.direction			= glm::vec4(-0.020f, 4.0f, 0.0f, 1.0f);
-	sunLight.type				= LightType::Directional;
+	Scene::LightComponent sun	= {};
+	sun.position				= glm::vec4(0.0f);
+	sun.direction				= glm::vec4(-0.020f, 4.0f, 0.0f, 1.0f);
+	sun.type					= Scene::LightComponent::LightType::DIRECTIONAL;
 	
-//	sunLight.ambient			= 0.2f;
-//	sunLight.diffuse			= 0.2f;
-
-	sunLight.ambient			= 0.01f;
-	sunLight.diffuse			= 0.01f;
-	sunLight.specular			= 0.0f;
-	sunLight.scale				= 0.2f;
-	sunLight.color				= glm::vec4(1.0f);
+	sun.ambient					= 0.01f;
+	sun.diffuse					= 0.01f;
+	sun.specular				= 0.0f;
+	sun.scale					= 0.2f;
+	sun.color					= glm::vec4(1.0f);
 
 	/*
 	LightData light				= {};
@@ -150,19 +148,21 @@ void ModelViewer::StartUp() {
 	light.color					= glm::vec4(1.0f);
 	*/
 	
-	LightData light				= {};
+	Scene::LightComponent light	= {};
 	light.position				= glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 	light.direction				= glm::vec4(0.1f, -90.0f, 0.0f, 0.0f);
-	light.type					= LightType::SpotLight;
+	light.type					= Scene::LightComponent::LightType::SPOT;
 	light.linearAttenuation		= 0.006f;
 	light.quadraticAttenuation	= 0.007f;
 	light.ambient				= 0.0f;
 	light.diffuse				= 0.5f;
 	light.specular				= 0.5f;
 	light.scale					= 0.2f;
+	light.rawCutOffAngle		= 28.0f;
+	light.rawOuterCutOffAngle	= 32.0f;
 	light.color					= glm::vec4(1.0f);
 
-	LightManager::AddLight(sunLight);
+	LightManager::AddLight(sun);
 	LightManager::AddLight(light);
 
 	m_OffscreenRenderTarget					= std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
