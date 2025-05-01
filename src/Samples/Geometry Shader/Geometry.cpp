@@ -282,7 +282,8 @@ void Geometry::RenderNormals(const VkCommandBuffer& commandBuffer) {
 
 /*
 	Known Issues:
-		- The Vulkan Validation Layer complains about the builtin blocks being different between vertex shader output and geometry shader input.
+		- The Vulkan Validation Layer complains about the builtin blocks being different between vertex shader output and 
+			geometry shader input, changing shader version to 450 fixes the issue.
 */
 
 RUN_APPLICATION(Geometry);
