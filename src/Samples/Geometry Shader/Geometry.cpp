@@ -286,4 +286,4 @@ void Geometry::RenderNormals(const VkCommandBuffer& commandBuffer) {
 			geometry shader input, changing shader version to 450 fixes the issue.
 */
 
-RUN_APPLICATION(Geometry);
+//RUN_APPLICATION(Geometry);
