@@ -43,17 +43,21 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 - [x] Blending
 - [x] Framebuffers
 - [x] Instancing
-
-## Next Up
 - [ ] Shadows
 	- [x] Directional
-	- [ ] Spot
+	- [x] Spot
 	- [ ] Point
 	- [ ] Multiple Lights
+		- [x] Spot
+		- [x] Directional
+		- [ ] Point
 	- [ ] Automatic light frustum
+
+## Next Up
 - [ ] Refactoring to Graphics Device/Backend/Command Context design
 
 ## Planning 
+- [ ] Shader Include
 - [ ] Soft Shadows
 - [ ] Generate Normals (Mesh Generator) 
 - [ ] Compute Shaders
