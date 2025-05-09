@@ -12,7 +12,7 @@
 #include "../Core/VulkanHeader.h"
 #include "../Core/ConstantBuffers.h"
 
-#define MAX_LIGHTS 5
+#define MAX_LIGHT_SOURCES 5
 
 namespace Assets {
 	class ShadowCamera;

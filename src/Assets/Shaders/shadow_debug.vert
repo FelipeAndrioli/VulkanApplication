@@ -1,7 +1,6 @@
 #version 450
 
 #define MAX_MODELS 10
-#define MAX_LIGHTS 5
 #define MAX_CAMERAS 10
 
 struct model_t {

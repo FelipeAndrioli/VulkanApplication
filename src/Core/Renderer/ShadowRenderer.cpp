@@ -140,11 +140,11 @@ void ShadowRenderer::LoadResources() {
 
 #ifdef RUNTIME_SHADER_COMPILATION
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_VertexShader,		"../src/Assets/Shaders/shadow_mapping.vert");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_GEOMETRY_BIT, m_GeometryShader,	"../src/Assets/Shaders/multilayer_framebuffer.geom");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_GEOMETRY_BIT, m_GeometryShader,	"../src/Assets/Shaders/shadow_mapping.geom");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragmentShader,	"../src/Assets/Shaders/shadow_mapping.frag");
 #else
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT,	m_VertexShader,		"../src/Assets/Shaders/shadow_mapping_vert.spv");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_GEOMETRY_BIT, m_GeometryShader,	"../src/Assets/Shaders/multilayer_framebuffer_geom.spv");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_GEOMETRY_BIT, m_GeometryShader,	"../src/Assets/Shaders/shadow_mapping_geom.spv");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragmentShader,	"../src/Assets/Shaders/shadow_mapping_frag.spv");
 #endif
 

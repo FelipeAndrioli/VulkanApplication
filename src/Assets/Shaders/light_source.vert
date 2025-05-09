@@ -5,7 +5,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 #define MAX_MATERIALS 26
-#define MAX_LIGHTS 5
+#define MAX_LIGHT_SOURCES 5
 #define MAX_CAMERAS 10
 
 /* light type
@@ -49,7 +49,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 } sceneGPUData;
 
 layout (set = 0, binding = 2) uniform light_uniform {
-	light_t lights[MAX_LIGHTS];
+	light_t lights[MAX_LIGHT_SOURCES];
 };
 
 layout (push_constant) uniform constant {

@@ -1,7 +1,7 @@
 #version 450
 
 #define MAX_MODELS 10
-#define MAX_LIGHTS 5
+#define MAX_LIGHT_SOURCES 5
 
 layout (location = 0) in vec3 inPosition;
 layout (location = 1) in vec3 inNormal;
@@ -20,7 +20,7 @@ struct light_t {
 };
 
 layout (std140, set = 0, binding = 0) uniform ShadowMappingGPUData {
-	light_t lights[MAX_LIGHTS];
+	light_t lights[MAX_LIGHT_SOURCES];
 } shadow_mapping_uniform;
 
 layout (std140, set = 0, binding = 1) uniform ModelGPUData {

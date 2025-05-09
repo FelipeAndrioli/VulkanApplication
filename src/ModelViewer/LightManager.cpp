@@ -21,7 +21,7 @@ void LightManager::Init() {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(Scene::LightComponent) * MAX_LIGHTS);
+	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(Scene::LightComponent) * MAX_LIGHT_SOURCES);
 
 	m_Initialized = true;
 }
@@ -34,7 +34,7 @@ void LightManager::Shutdown() {
 }
 
 void LightManager::AddLight(Scene::LightComponent& light) {
-	if (m_Lights.size() + 1 == MAX_LIGHTS) {
+	if (m_Lights.size() + 1 == MAX_LIGHT_SOURCES) {
 		std::cout << "Max num of lights reached!" << '\n';
 		return;
 	}

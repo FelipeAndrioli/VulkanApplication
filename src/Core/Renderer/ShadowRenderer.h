@@ -9,7 +9,7 @@
 #include "../SceneComponents.h"
 
 #define MAX_MODELS 10
-#define MAX_LIGHT_SOURCES 2
+#define MAX_LIGHT_SOURCES 5
 
 namespace Assets {
 	class Model;

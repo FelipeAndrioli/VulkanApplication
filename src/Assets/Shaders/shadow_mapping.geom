@@ -2,7 +2,7 @@
 
 #extension GL_ARB_geometry_shader4 : enable
 
-#define MAX_LIGHT_SOURCES 2
+#define MAX_LIGHT_SOURCES 5
 #define MAX_MODELS 10
 
 layout (triangles) in;
