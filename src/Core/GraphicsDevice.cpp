@@ -2373,7 +2373,9 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget) {
-	
+
+		std::cout << "PSO Name: " << desc.Name << '\n';
+
 		pso.inputAssembly.sType						= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		pso.inputAssembly.topology					= desc.topology;
 		pso.inputAssembly.primitiveRestartEnable	= VK_FALSE;
