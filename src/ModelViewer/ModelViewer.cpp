@@ -27,10 +27,7 @@
 /*
 	TODO's:
 		[ ] - Fix Release Build
-
-	Issues:
-		- Light Sources (their format) are being distorted when changing direction/position.
-		- Spot Light Shadows are not correct.
+		[ ] - Fix Shadow Map debug view
 */
 
 class ModelViewer : public Application::IScene {
@@ -260,7 +257,7 @@ void ModelViewer::StartUp() {
 	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -20.0f, 0.0f);
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.214f;
 
-	m_ShadowRenderer = ShadowRenderer(settings.Width * 2, settings.Width * 2, 32);
+	m_ShadowRenderer = ShadowRenderer(settings.Width * 2, settings.Width * 2, 32, 2);
 	m_ShadowRenderer.StartUp();
 
 	m_ShadowDebugRenderer = QuadRenderer("Shadow Debug Renderer", "../src/Assets/Shaders/quad.vert", "../src/Assets/Shaders/depth_viewer.frag", 400, 250);
@@ -308,11 +305,14 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	m_ShadowCamera.UpdateDirectionalLightShadowMatrix(LightManager::GetLights()[0].direction);
 	LightManager::GetLights()[0].viewProj = m_ShadowCamera.GetShadowMatrix();
 	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights()[0].viewProj);
-	*/
 	
 	m_ShadowCamera.UpdateSpotLightShadowMatrix(LightManager::GetLights()[1].position, LightManager::GetLights()[1].direction);
 	LightManager::GetLights()[1].viewProj = m_ShadowCamera.GetShadowMatrix();
-	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights()[1].viewProj);
+	*/
+	
+	LightManager::Update(m_ShadowCamera);
+
+	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights());
 
 	if (m_RenderShadowDebugImGui) {
 		m_ShadowDebugRenderer.Render(commandBuffer, m_ShadowRenderer.GetDepthBuffer());

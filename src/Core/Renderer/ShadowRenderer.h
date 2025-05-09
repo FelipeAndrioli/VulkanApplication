@@ -6,8 +6,10 @@
 #include <memory>
 
 #include "../../Assets/ShadowCamera.h"
+#include "../SceneComponents.h"
 
 #define MAX_MODELS 10
+#define MAX_LIGHT_SOURCES 2
 
 namespace Assets {
 	class Model;
@@ -18,12 +20,6 @@ namespace Graphics {
 	class DepthOnlyRenderTarget;
 }
 
-/*
-	Point		Light - doesn't have direction
-	Directional Light - has direction
-	Spot		Light - has direction
-*/
-
 class ShadowRenderer : public IRenderer {
 
 /*
@@ -32,32 +28,38 @@ TODO's:
 	[ ] - Re-setting the extent
 	[ ] - Re-setting the precision
 	[ ] - Better handling of model array
-	[ ] - Directional Light Shadow
-	[ ] - Spot Light Shadow
+	[x] - Directional Light Shadow
+	[x] - Spot Light Shadow
 	[ ] - Point Light Shadow
 	[ ] - Multiple Lights
+		[x] - Spot
+		[x] - Directional
+		[ ] - Point
 	[ ] - Atlas optimization
-	[ ] - Set initial/final image layouts to the render pass using the description struct
+	[ ] - Remove geometry shader
 
 Known Issues:
-	
 	- Some double buffering is missing to the shadow image, when the light direction changes it's possible see many artifacts.
-	- To use other precision formats other than 32 we must enable stencil to the buffer as well.
 */
 
 public:
-	ShadowRenderer() {};
-	ShadowRenderer(uint32_t width, uint32_t height, uint32_t precision) : m_Width(width), m_Height(height), m_Precision(precision) {};
+	ShadowRenderer() : m_Layers(1) {};
+	ShadowRenderer(uint32_t maxLights) : m_Layers(maxLights > MAX_LIGHT_SOURCES ? MAX_LIGHT_SOURCES : maxLights) {};
+	ShadowRenderer(uint32_t width, uint32_t height, uint32_t precision, uint32_t maxLights) 
+		: m_Width(width), 
+		m_Height(height), 
+		m_Precision(precision), 
+		m_Layers(maxLights > MAX_LIGHT_SOURCES ? MAX_LIGHT_SOURCES : maxLights) {};
 
-	void StartUp						()																override;
-	void CleanUp						()																override;
-	void Update							(const float d, const float c, const InputSystem::Input& input) override;
-	void Render							(const VkCommandBuffer& commandBuffer)							override;
-	void RenderUI						()																override;
-	void SetExtent						(uint32_t width, uint32_t height);
-	void SetPrecision					(uint32_t precision);
-
-	void Render(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, const glm::mat4& lightViewProj);
+	void StartUp		()																override;
+	void CleanUp		()																override;
+	void Update			(const float d, const float c, const InputSystem::Input& input) override;
+	void Render			(const VkCommandBuffer& commandBuffer)							override;
+	void RenderUI		()																override;
+	void SetExtent		(uint32_t width, uint32_t height);
+	void SetPrecision	(uint32_t precision);
+	void Render			(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, const glm::mat4& lightViewProj);
+	void Render			(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, const std::vector<Scene::LightComponent>& lights);
 
 	const Graphics::GPUImage& GetDepthBuffer();
 
@@ -73,27 +75,31 @@ private:
 	struct ShadowMappingGPUData {
 		glm::vec4 extra[12] = {};
 		glm::mat4 Light		= glm::mat4(1.0f);
-	} m_ShadowMappingGPUData;
-
-	struct PushConstant {
-		int ModelIndex;
 	};
 
-	uint32_t							m_Width													= 800;
-	uint32_t							m_Height												= 600;
-	uint32_t							m_Precision												= 16;
+	struct PushConstants {
+		int ModelIndex;
+		int ActiveLightSources;
+	} m_PushConstants;
 
-	Graphics::InputLayout				m_PSOInputLayout										= {};
-	Graphics::Buffer					m_ModelUBO[Graphics::FRAMES_IN_FLIGHT]					= {};
-	Graphics::Buffer					m_ShadowMappingUBO[Graphics::FRAMES_IN_FLIGHT]			= {};
-	Graphics::PipelineStateDescription	m_PSODesc												= {};
-	Graphics::PipelineState				m_PSO													= {};
-	Graphics::Shader					m_VertexShader											= {};
-	Graphics::Shader					m_FragmentShader										= {};
+	uint32_t							m_Width											= 800;
+	uint32_t							m_Height										= 600;
+	uint32_t							m_Precision										= 16;
+	uint32_t							m_Layers										= 0;
+
+	Graphics::InputLayout				m_PSOInputLayout								= {};
+	Graphics::Buffer					m_ModelUBO[Graphics::FRAMES_IN_FLIGHT]			= {};
+	Graphics::Buffer					m_ShadowMappingUBO[Graphics::FRAMES_IN_FLIGHT]	= {};
+	Graphics::PipelineStateDescription	m_PSODesc										= {};
+	Graphics::PipelineState				m_PSO											= {};
+	Graphics::Shader					m_VertexShader									= {};
+	Graphics::Shader					m_GeometryShader								= {};	// for multilayer rendering
+	Graphics::Shader					m_FragmentShader								= {};
 
 	std::unique_ptr<Graphics::DepthOnlyRenderTarget> m_RenderTarget;
 	
 	std::array<ModelGPUData, MAX_MODELS> m_ModelGPUData;
+	std::array<ShadowMappingGPUData, MAX_LIGHT_SOURCES> m_ShadowMappingGPUData;
 
 	VkDescriptorSet m_Set = VK_NULL_HANDLE;
 };

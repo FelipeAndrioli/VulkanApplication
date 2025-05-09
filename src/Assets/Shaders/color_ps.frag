@@ -5,7 +5,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 #define MAX_MATERIALS 50
-#define MAX_LIGHTS 5
+#define MAX_LIGHTS 2
 #define MAX_CAMERAS 10
 
 layout (location = 0) in vec3 fragPos;
@@ -14,7 +14,8 @@ layout (location = 2) in vec3 fragColor;
 layout (location = 3) in vec3 fragTangent;
 layout (location = 4) in vec3 fragBiTangent;
 layout (location = 5) in vec2 fragTexCoord;
-layout (location = 6) in vec4 fragPosLightSpace;
+//layout (location = 6) in vec4 fragPosLightSpace;
+layout (location = 6) in vec4 fragPosLightSpace[MAX_LIGHTS];
 
 layout (location = 0) out vec4 out_color;
 
@@ -71,7 +72,7 @@ struct light_t {
 	mat4 viewProj;	
 
 	int type;
-	int extra_0;
+	int index;
 	
 	float outer_cut_off_angle;
 	float cut_off_angle;
@@ -118,8 +119,7 @@ layout (std140, set = 0, binding = 6) uniform camera_uniform {
 	camera_t cameras[MAX_CAMERAS];
 };
 
-layout (set = 0, binding = 7) uniform sampler2D shadow_mapping;				// retrieves texels from a texture receiving a vec2
-//layout (set = 0, binding = 7) uniform sampler2DShadow shadow_mapping;		// retrieves texels from a texture receiving a vec3
+layout (set = 0, binding = 7) uniform sampler2DArray shadow_mapping;		// retrieves texels from a texture array receiving a vec2 and a layer index
 
 layout (push_constant) uniform constant {
 	int material_index;
@@ -155,7 +155,7 @@ float random(vec3 seed, int i) {
 	return fract(sin(dot_product) * 43758.5453);
 }
 
-float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position) {
+float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position, int light_index) {
 
 	vec3 light_dir = normalize(light_position.xyz - light_space_frag_pos.xyz);
 
@@ -177,13 +177,13 @@ float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position) {
 
 	// textureSize returns a vec2 of the width and height of the given sampler texture at mipmap level 0.
 	// 1 divided over the texture size returns the size of a single texel that we use to offset the texture coords.
-	vec2 texel_size = 1.0 / textureSize(shadow_mapping, 0);
+	vec2 texel_size = vec3(1.0 / textureSize(shadow_mapping, 0)).xy;
 	
 	// PCF (percentage-closer filtering)
 	// sample the surrounding texels of the depth map and average the results to produce less blocky/hard shadows
 	for (int x = -1; x < 2; ++x) {
 		for (int y = -1; y < 2; ++y) {
-			float pcf_depth = texture(shadow_mapping, proj_coords.xy + vec2(x, y) * texel_size).r;
+			float pcf_depth = texture(shadow_mapping, vec3(proj_coords.xy + vec2(x, y) * texel_size, light_index)).r;
 			shadow += current_depth - bias > pcf_depth ? 1.0 : 0.2;
 		}
 	}
@@ -215,10 +215,7 @@ vec3 calc_directional_light(light_t light, material_t current_material, vec4 mat
 	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
-
-	// TODO: uncomment when the hardcoded light is fixed
-//	float shadow = calc_shadow(fragPosLightSpace, material_normal, light.direction);
-	float shadow = 0.0;
+	float shadow = calc_shadow(fragPosLightSpace[light.index], material_normal, light.direction, light.index);
 
 	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
 }
@@ -280,8 +277,7 @@ vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_a
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular) * light_attenuation;
 
-	float shadow = calc_shadow(fragPosLightSpace, material_normal, light.position);
-//	float shadow = 0.0;
+	float shadow = calc_shadow(fragPosLightSpace[light.index], material_normal, light.position, light.index);
 
 	vec3 result = vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
 
@@ -358,6 +354,7 @@ void main() {
 
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
 		light_t light = lights[i];
+		light.index = i;
 
 		switch (light.type) {
 			case 0:

@@ -1,7 +1,7 @@
 #version 450
 
 #define MAX_MODELS 10
-#define MAX_LIGHTS 5
+#define MAX_LIGHTS 2
 #define MAX_CAMERAS 10
 
 struct model_t {
@@ -34,7 +34,8 @@ layout (location = 2) out vec3 fragColor;
 layout (location = 3) out vec3 fragTangent;
 layout (location = 4) out vec3 fragBiTangent;
 layout (location = 5) out vec2 fragTexCoord;
-layout (location = 6) out vec4 fragPosLightSpace;
+//layout (location = 6) out vec4 fragPosLightSpace;
+layout (location = 6) out vec4 fragPosLightSpace[MAX_LIGHTS];
 
 /* light type
 
@@ -114,8 +115,11 @@ void main() {
 	fragTangent			= normalize(fragTangent - fragNormal * dot(fragNormal, fragTangent));
 	fragBiTangent		= cross(fragTangent, fragNormal);	
 
-	// TODO: fix hardcoded light
-	fragPosLightSpace	= lights[1].viewProj * vec4(fragPos, 1.0);
+	int total_lights = min(sceneGPUData.total_lights, MAX_LIGHTS);
+
+	for (int i = 0; i < total_lights; i++) {
+		fragPosLightSpace[i] = lights[i].viewProj * vec4(fragPos, 1.0);
+	}
 
 	if (dot(cross(fragNormal, fragTangent), fragBiTangent) < 0.0)
 		fragTangent = fragTangent * -1.0;

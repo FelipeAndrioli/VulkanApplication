@@ -83,12 +83,13 @@ namespace Graphics {
 
 	class DepthOnlyRenderTarget : public IRenderTarget {
 	public:
-		DepthOnlyRenderTarget			(uint32_t width, uint32_t height, uint32_t precision);
+		DepthOnlyRenderTarget			(uint32_t width, uint32_t height, uint32_t precision, uint32_t layers);
 		void Create						()														override;
 		void Begin						(const VkCommandBuffer& commandBuffer)					override;
 		void End						(const VkCommandBuffer& commandBuffer)					override;
 		const GPUImage& GetDepthBuffer	()														{ return m_Images[m_DepthIndex]; }
 	private:
-		uint32_t m_Precision;
+		uint32_t m_Precision	= 0;
+		uint32_t m_Layers		= 0;
 	};
 }

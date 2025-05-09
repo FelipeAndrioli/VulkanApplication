@@ -14,6 +14,10 @@
 
 #define MAX_LIGHTS 5
 
+namespace Assets {
+	class ShadowCamera;
+};
+
 namespace LightManager {
 	extern Graphics::Buffer m_LightBuffer;
 
@@ -22,6 +26,7 @@ namespace LightManager {
 
 	void AddLight(Scene::LightComponent& light);
 	void UpdateBuffer();
+	void Update(Assets::ShadowCamera& camera);
 	void OnUIRender();
 
 	int GetTotalLights();

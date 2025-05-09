@@ -14,9 +14,13 @@ struct model_t {
 	mat4 model;
 };
 
-layout (std140, set = 0, binding = 0) uniform ShadowMappingGPUData{
+struct light_t {
 	vec4 extra[12];
-	mat4 light_vp;
+	mat4 view_proj;
+};
+
+layout (std140, set = 0, binding = 0) uniform ShadowMappingGPUData {
+	light_t lights[MAX_LIGHTS];
 } shadow_mapping_uniform;
 
 layout (std140, set = 0, binding = 1) uniform ModelGPUData {
@@ -25,11 +29,9 @@ layout (std140, set = 0, binding = 1) uniform ModelGPUData {
 
 layout (push_constant) uniform PushConstants {
 	int model_index;
+	int active_light_sources;
 } push_constants;
 
 void main() {
-
-	model_t model = models_uniform.models[push_constants.model_index];
-	
-	gl_Position = shadow_mapping_uniform.light_vp * model.model * vec4(inPosition, 1.0);
+	gl_Position = vec4(inPosition, 1.0);
 }

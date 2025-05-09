@@ -24,7 +24,7 @@ namespace Scene {
 		glm::mat4 viewProj						= glm::mat4(1.0f);			// shadow map 
 
 		alignas(4) LightType type				= LightType::POINT;
-		alignas(4) int extra_0					= 0;
+		alignas(4) int index					= 0;						// only used by shaders, should match the order of its layers in sampler2DArray
 
 		alignas(4) float outerCutOffAngle		= 0.0f;
 		alignas(4) float cutOffAngle			= 0.0f;		

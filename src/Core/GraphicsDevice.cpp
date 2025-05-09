@@ -691,7 +691,7 @@ namespace Graphics {
 		imageCreateInfo.extent.height = image.Description.Height;
 		imageCreateInfo.extent.depth = 1;
 		imageCreateInfo.mipLevels = image.Description.MipLevels;
-		imageCreateInfo.arrayLayers = (uint32_t)(image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6 : 1);
+		imageCreateInfo.arrayLayers = (uint32_t)(image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6 : image.Description.LayerCount);
 
 		if (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
 			imageCreateInfo.flags = image.Description.AspectFlags;
@@ -1005,7 +1005,7 @@ namespace Graphics {
 		m_CurrentFrame = (m_CurrentFrame + 1) % FRAMES_IN_FLIGHT;
 	}
 
-	void GraphicsDevice::CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer) {
+	void GraphicsDevice::CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer, const uint32_t layers) {
 
 		std::vector<VkImageView> attachments;
 
@@ -1020,7 +1020,7 @@ namespace Graphics {
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = extent.width;
 		framebufferInfo.height = extent.height;
-		framebufferInfo.layers = 1;
+		framebufferInfo.layers = layers;
 
 		VkResult result = vkCreateFramebuffer(m_LogicalDevice, &framebufferInfo, nullptr, &framebuffer);
 		assert(result == VK_SUCCESS);
@@ -1473,7 +1473,7 @@ namespace Graphics {
 		CreateImageView	(depthBuffer);
 	}
 
-	void GraphicsDevice::CreateDepthOnlyBuffer(GPUImage& depthBuffer, const VkExtent2D extent, const VkSampleCountFlagBits sampleCount) {
+	void GraphicsDevice::CreateDepthOnlyBuffer(GPUImage& depthBuffer, const VkExtent2D extent, const VkSampleCountFlagBits sampleCount, const uint32_t layers) {
 
 		ImageDescription depthDesc	= {};
 		depthDesc.Width				= extent.width;
@@ -1484,8 +1484,8 @@ namespace Graphics {
 		depthDesc.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 		depthDesc.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		depthDesc.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT;// | VK_IMAGE_ASPECT_STENCIL_BIT; // testing stencil bit
-		depthDesc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
-		depthDesc.LayerCount		= 1;
+		depthDesc.ViewType			= layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+		depthDesc.LayerCount		= layers;
 		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 //		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 //		depthDesc.Format			= FindDepthFormat(m_PhysicalDevice);

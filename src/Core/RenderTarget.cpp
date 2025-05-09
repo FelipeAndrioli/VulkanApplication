@@ -488,10 +488,11 @@ namespace Graphics {
 
 	/*  ========================== Depth Only Render Target Implementation Begin ========================== */
 
-	DepthOnlyRenderTarget::DepthOnlyRenderTarget(uint32_t width, uint32_t height, uint32_t precision) {
+	DepthOnlyRenderTarget::DepthOnlyRenderTarget(uint32_t width, uint32_t height, uint32_t precision, uint32_t layers) {
 		m_Width		= width;
 		m_Height	= height;
 		m_Precision = precision;
+		m_Layers	= layers;
 
 		Create();
 	}
@@ -529,16 +530,15 @@ namespace Graphics {
 
 		m_DepthIndex = m_TotalImages++;
 
-		gfxDevice->CreateDepthOnlyBuffer(m_Images[m_DepthIndex], GetExtent(), VK_SAMPLE_COUNT_1_BIT);
+		gfxDevice->CreateDepthOnlyBuffer(m_Images[m_DepthIndex], GetExtent(), VK_SAMPLE_COUNT_1_BIT, m_Layers);
 		// transition to depth/stencil attachment optimal? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 		gfxDevice->CreateImageSampler	(m_Images[m_DepthIndex]);
 
 		std::vector<VkImageView> views = { m_Images[m_DepthIndex].ImageView };
 
 		for (int i = 0; i < m_Framebuffers.size(); i++) {
-			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, views, GetExtent(), m_Framebuffers[i]);
+			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, views, GetExtent(), m_Framebuffers[i], m_Layers);
 		}
-
 	}
 
 	void DepthOnlyRenderTarget::Begin(const VkCommandBuffer& commandBuffer) {

@@ -3,6 +3,8 @@
 #include "../Core/UI.h"
 #include "../Core/ConstantBuffers.h"
 
+#include "../Assets/ShadowCamera.h"
+
 #include "./Renderer.h"
 
 namespace LightManager {
@@ -40,14 +42,9 @@ void LightManager::AddLight(Scene::LightComponent& light) {
 	m_Lights.push_back(light);
 }
 
-void LightManager::UpdateBuffer() {
-	if (!m_Initialized)
-		return;
+void LightManager::Update(Assets::ShadowCamera& camera) {
 
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
-	for (auto& light : m_Lights) {	
-
+	for (auto& light : m_Lights) {
 		// the light source cube has hardcoded vertices in vertex shader around 
 		// the origin (0, 0, 0), therefore the pivot vector can also be hardcoded
 		// to the origin.
@@ -59,8 +56,30 @@ void LightManager::UpdateBuffer() {
 		light.model = toPosition * scale * toOrigin;
 
 		light.cutOffAngle = glm::cos(glm::radians(light.rawCutOffAngle));
-		light.outerCutOffAngle = glm::cos(glm::radians(light.rawOuterCutOffAngle));
+		light.outerCutOffAngle = glm::cos(glm::radians(light.rawOuterCutOffAngle));	
+
+		if (light.type == Scene::LightComponent::LightType::DIRECTIONAL) {
+			camera.UpdateDirectionalLightShadowMatrix(light.direction);
+			light.viewProj = camera.GetShadowMatrix();
+		}
+
+		if (light.type == Scene::LightComponent::LightType::SPOT) {
+			camera.UpdateSpotLightShadowMatrix(light.position, light.direction);
+			light.viewProj = camera.GetShadowMatrix();
+		}
+
+
+		if (light.type == Scene::LightComponent::LightType::POINT) {
+			light.viewProj = glm::mat4(1.0f);
+		}
 	}
+}
+
+void LightManager::UpdateBuffer() {
+	if (!m_Initialized)
+		return;
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
 }
