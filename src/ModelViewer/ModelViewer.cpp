@@ -92,6 +92,10 @@ private:
 
 	ShadowRenderer m_ShadowRenderer;
 	QuadRenderer   m_ShadowDebugRenderer;
+
+	struct ShadowDebugPushConstants {
+		int shadowMapLayer;
+	} m_ShadowDebugPushConstants;
 };
 
 void ModelViewer::StartUp() {
@@ -247,13 +251,8 @@ void ModelViewer::StartUp() {
 	m_ShadowRenderer.StartUp();
 
 	m_ShadowDebugRenderer = QuadRenderer("Shadow Debug Renderer", "../src/Assets/Shaders/quad.vert", "../src/Assets/Shaders/depth_viewer.frag", 400, 250);
+	m_ShadowDebugRenderer.SetPushConstants(sizeof(ShadowDebugPushConstants), &m_ShadowDebugPushConstants);
 	m_ShadowDebugRenderer.StartUp();
-
-	m_DebugShadowDescriptorSet = ImGui_ImplVulkan_AddTexture(
-		m_ShadowDebugRenderer.GetColorBuffer().ImageSampler,
-		m_ShadowDebugRenderer.GetColorBuffer().ImageView,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL	
-	);
 
 	Renderer::LoadResources(*m_OffscreenRenderTarget, m_ShadowRenderer.GetDepthBuffer());
 	PostEffects::Initialize();
@@ -290,7 +289,17 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 
 	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights());
 
-	if (m_RenderShadowDebugImGui) {
+	if (m_RenderShadowDebugImGui && LightManager::GetLightShadowDebugIndex() != -1) {
+		
+		m_ShadowDebugPushConstants.shadowMapLayer = LightManager::GetLightShadowDebugIndex();
+		m_ShadowDebugRenderer.UpdatePushConstants(&m_ShadowDebugPushConstants);
+
+		m_DebugShadowDescriptorSet = ImGui_ImplVulkan_AddTexture(
+			m_ShadowDebugRenderer.GetColorBuffer().ImageSampler,
+			m_ShadowDebugRenderer.GetColorBuffer().ImageView,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL	
+		);
+
 		m_ShadowDebugRenderer.Render(commandBuffer, m_ShadowRenderer.GetDepthBuffer());
 	}
 
@@ -413,7 +422,7 @@ void ModelViewer::RenderUI() {
 		ImGui::End();
 	}
 
-	if (m_RenderShadowDebugImGui) {
+	if (m_RenderShadowDebugImGui && LightManager::GetLightShadowDebugIndex() != -1) {
 		ImGui::Begin(m_ShadowDebugRenderer.GetID());
 		ImGui::Image((ImTextureID)m_DebugShadowDescriptorSet, ImVec2(m_ShadowDebugRenderer.GetWidth(), m_ShadowDebugRenderer.GetHeight()));
 		ImGui::End();

@@ -34,7 +34,7 @@ void QuadRenderer::StartUp() {
 	};
 
 	if (m_PushConstant) {
-		VkPushConstantRange pushConstant = { .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS, .offset = 0, .size = m_PushConstantSize };
+		VkPushConstantRange pushConstant = { .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .offset = 0, .size = m_PushConstantSize };
 		m_PSOInputLayout.pushConstants.push_back(pushConstant);
 	}
 
@@ -82,7 +82,7 @@ void QuadRenderer::Render(const VkCommandBuffer& commandBuffer, const Graphics::
 	gfxDevice->BindDescriptorSet(m_Set[gfxDevice->GetCurrentFrameIndex()], commandBuffer, m_PSO.pipelineLayout, 0, 1);
 
 	if (m_PushConstant) {
-		vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL_GRAPHICS, 0, m_PushConstantSize, m_PushConstant);
+		vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, m_PushConstantSize, m_PushConstant);
 	}
 
 	vkCmdBindPipeline	(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PSO.pipeline);
@@ -91,9 +91,13 @@ void QuadRenderer::Render(const VkCommandBuffer& commandBuffer, const Graphics::
 	m_RenderTarget->End(commandBuffer);
 }
 
-void QuadRenderer::SetPushConstant(size_t size, void* pushConstant) {
+void QuadRenderer::SetPushConstants(size_t size, void* pushConstants) {
 	m_PushConstantSize	= size;
-	m_PushConstant		= pushConstant;
+	m_PushConstant		= pushConstants;
+}
+
+void QuadRenderer::UpdatePushConstants(void* pushConstants) {
+	m_PushConstant = pushConstants;
 }
 
 const Graphics::GPUImage& QuadRenderer::GetColorBuffer() {

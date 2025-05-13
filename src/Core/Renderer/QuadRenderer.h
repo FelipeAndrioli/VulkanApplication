@@ -36,13 +36,14 @@ public:
 
 	~QuadRenderer();
 
-	void StartUp		()																		override;
-	void CleanUp		()																		override;
-	void Update			(const float d, const float c, const InputSystem::Input& input)			override;
-	void RenderUI		()																		override;
-	void Render			(const VkCommandBuffer& commandBuffer, const Graphics::GPUImage& image);
-	void Resize			(uint32_t width, uint32_t height);
-	void SetPushConstant(size_t size, void* pushConstant);
+	void StartUp			()																		override;
+	void CleanUp			()																		override;
+	void Update				(const float d, const float c, const InputSystem::Input& input)			override;
+	void RenderUI			()																		override;
+	void Render				(const VkCommandBuffer& commandBuffer, const Graphics::GPUImage& image); 
+	void Resize				(uint32_t width, uint32_t height);
+	void SetPushConstants	(size_t size, void* pushConstants);
+	void UpdatePushConstants(void* pushConstants);
 
 	const Graphics::GPUImage& GetColorBuffer();
 

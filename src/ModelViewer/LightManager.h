@@ -31,6 +31,7 @@ namespace LightManager {
 	void OnUIRender		();
 	
 	int GetTotalLights	();
+	int GetLightShadowDebugIndex();
 
 	Graphics::Buffer& GetLightBuffer();
 

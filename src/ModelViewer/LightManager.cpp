@@ -9,6 +9,8 @@
 
 namespace LightManager {
 	bool m_Initialized = false;
+	
+	int m_LightShadowRenderDebugIndex = -1;
 
 	std::vector<Scene::LightComponent> m_Lights;
 
@@ -48,16 +50,15 @@ void LightManager::DeleteLight(Scene::LightComponent& light) {
 	if (!m_Initialized)
 		return;
 
-	m_Lights.erase(m_Lights.begin() + light.index);
-
-	for (int i = 0; i < m_Lights.size(); i++) {
-		m_Lights[i].index = i;
-	}
+	DeleteLight(light.index);
 }
 
 void LightManager::DeleteLight(int lightIndex) {
 	if (!m_Initialized)
 		return;
+
+	if (m_LightShadowRenderDebugIndex == lightIndex)
+		m_LightShadowRenderDebugIndex = -1;
 
 	m_Lights.erase(m_Lights.begin() + lightIndex);
 
@@ -177,6 +178,10 @@ void LightManager::OnUIRender() {
 			ImGui::ColorPicker4("Color", (float*)&light.color);
 			ImGui::DragFloat("Scale", &light.scale, 0.002f);
 
+			if (ImGui::Button("Render Debug Shadow")) {
+				m_LightShadowRenderDebugIndex = i;
+			}
+
 			if (ImGui::Button("Delete Light")) {
 				DeleteLight(i);
 			}
@@ -188,6 +193,10 @@ void LightManager::OnUIRender() {
 
 int LightManager::GetTotalLights() {
 	return m_Lights.size();
+}
+
+int LightManager::GetLightShadowDebugIndex() {
+	return m_LightShadowRenderDebugIndex;
 }
 
 Graphics::Buffer& LightManager::GetLightBuffer() {
