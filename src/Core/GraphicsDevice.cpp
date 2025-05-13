@@ -2370,6 +2370,12 @@ namespace Graphics {
 			return;
 
 		vkDestroyShaderModule(m_LogicalDevice, shader.shaderModule, nullptr);
+
+		shader.sourceCode.clear();
+		shader.spirv.clear();
+
+		shader.shaderModule = VK_NULL_HANDLE;
+		shader.shaderStageInfo.module = VK_NULL_HANDLE;
 	}
 
 	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget) {
