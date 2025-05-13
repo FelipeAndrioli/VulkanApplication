@@ -63,6 +63,9 @@ void LightManager::DeleteLight(int lightIndex) {
 	m_Lights.erase(m_Lights.begin() + lightIndex);
 
 	for (int i = 0; i < m_Lights.size(); i++) {
+		if (m_LightShadowRenderDebugIndex == m_Lights[i].index)
+			m_LightShadowRenderDebugIndex = i;
+
 		m_Lights[i].index = i;
 	}
 }

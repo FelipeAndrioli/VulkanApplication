@@ -5,7 +5,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 #define MAX_MATERIALS 50
-#define MAX_LIGHTS 2
+#define MAX_LIGHT_SOURCES 5
 
 layout (location = 0) in vec3 fragPos;
 layout (location = 1) in vec3 fragNormal;
@@ -13,7 +13,7 @@ layout (location = 2) in vec3 fragColor;
 layout (location = 3) in vec3 fragTangent;
 layout (location = 4) in vec3 fragBiTangent;
 layout (location = 5) in vec2 fragTexCoord;
-layout (location = 6) in vec4 fragPosLightSpace[MAX_LIGHTS];
+layout (location = 6) in vec4 fragPosLightSpace[MAX_LIGHT_SOURCES];
 
 layout (location = 0) out vec4 out_color;
 
@@ -96,7 +96,7 @@ layout (std140, set = 0, binding = 1) uniform material_uniform {
 };
 
 layout (set = 0, binding = 2) uniform light_uniform {
-	light_t lights[MAX_LIGHTS];
+	light_t lights[MAX_LIGHT_SOURCES];
 };
 
 layout (set = 0, binding = 3) uniform sampler2D texSampler[];
