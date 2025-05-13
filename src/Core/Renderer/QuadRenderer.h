@@ -36,13 +36,13 @@ public:
 
 	~QuadRenderer();
 
-	void StartUp()																		override;
-	void CleanUp()																		override;
-	void Update(const float d, const float c, const InputSystem::Input& input)			override;
-	void RenderUI()																		override;
-	void Render(const VkCommandBuffer& commandBuffer, const Graphics::GPUImage& image);
-
-	void Resize(uint32_t width, uint32_t height);
+	void StartUp		()																		override;
+	void CleanUp		()																		override;
+	void Update			(const float d, const float c, const InputSystem::Input& input)			override;
+	void RenderUI		()																		override;
+	void Render			(const VkCommandBuffer& commandBuffer, const Graphics::GPUImage& image);
+	void Resize			(uint32_t width, uint32_t height);
+	void SetPushConstant(size_t size, void* pushConstant);
 
 	const Graphics::GPUImage& GetColorBuffer();
 
@@ -64,6 +64,9 @@ private:
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_RenderTarget;
 	
 	VkDescriptorSet m_Set[Graphics::FRAMES_IN_FLIGHT] = {};
+
+	void* m_PushConstant		= nullptr;
+	uint32_t m_PushConstantSize	= 0;
 
 	const char* m_VertexShaderPath;
 	const char* m_FragShaderPath;

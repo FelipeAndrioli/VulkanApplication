@@ -15,8 +15,12 @@ struct model_t {
 };
 
 struct light_t {
-	vec4 extra[12];
-	mat4 view_proj;
+	int extra_0;
+	int extra_1;
+	int extra_2;
+	int index;
+    vec4 extra[11];
+    mat4 light_vp;
 };
 
 layout (std140, set = 0, binding = 0) uniform ShadowMappingGPUData {

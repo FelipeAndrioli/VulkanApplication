@@ -73,8 +73,12 @@ private:
 	};
 
 	struct ShadowMappingGPUData {
-		glm::vec4 extra[12] = {};
-		glm::mat4 Light		= glm::mat4(1.0f);
+		alignas(4) int extra_0	= 0;
+		alignas(4) int extra_1	= 0;
+		alignas(4) int extra_2	= 0;
+		alignas(4) int Index	= 0;
+		glm::vec4 extra[11]		= {};
+		glm::mat4 Light			= glm::mat4(1.0f);
 	};
 
 	struct PushConstants {

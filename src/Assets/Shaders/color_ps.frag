@@ -351,7 +351,6 @@ void main() {
 
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
 		light_t light = lights[i];
-		light.index = i;
 
 		switch (light.type) {
 			case 0:

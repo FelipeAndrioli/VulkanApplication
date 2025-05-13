@@ -47,6 +47,7 @@ void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vec
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	m_ShadowMappingGPUData[0].Light = lightViewProj;
+	m_ShadowMappingGPUData[0].Index = 0;
 
 	m_RenderTarget->Begin(commandBuffer);
 
@@ -92,6 +93,7 @@ void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vec
 
 	for (int i = 0; i < lights.size(); i++) {
 		m_ShadowMappingGPUData[i].Light = lights[i].viewProj;
+		m_ShadowMappingGPUData[i].Index = lights[i].index;
 	}
 
 	m_RenderTarget->Begin(commandBuffer);

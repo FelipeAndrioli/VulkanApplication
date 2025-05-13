@@ -34,12 +34,36 @@ void LightManager::Shutdown() {
 }
 
 void LightManager::AddLight(Scene::LightComponent& light) {
-	if (m_Lights.size() + 1 == MAX_LIGHT_SOURCES) {
+	if (m_Lights.size() + 1 > MAX_LIGHT_SOURCES) {
 		std::cout << "Max num of lights reached!" << '\n';
 		return;
 	}
 
+	light.index = m_Lights.size();
+
 	m_Lights.push_back(light);
+}
+
+void LightManager::DeleteLight(Scene::LightComponent& light) {
+	if (!m_Initialized)
+		return;
+
+	m_Lights.erase(m_Lights.begin() + light.index);
+
+	for (int i = 0; i < m_Lights.size(); i++) {
+		m_Lights[i].index = i;
+	}
+}
+
+void LightManager::DeleteLight(int lightIndex) {
+	if (!m_Initialized)
+		return;
+
+	m_Lights.erase(m_Lights.begin() + lightIndex);
+
+	for (int i = 0; i < m_Lights.size(); i++) {
+		m_Lights[i].index = i;
+	}
 }
 
 void LightManager::Update(Assets::ShadowCamera& camera) {
@@ -91,7 +115,25 @@ void LightManager::OnUIRender() {
 	using namespace Scene;
 
 	ImGui::SeparatorText("Light Manager");
-	
+
+	if (ImGui::Button("Add Light")) {
+		Scene::LightComponent light = {};
+		light.type					= Scene::LightComponent::LightType::POINT;
+		light.position				= glm::vec4(0.0f);
+		light.direction				= glm::vec4(0.0f);
+		light.color					= glm::vec4(1.0f);
+		light.ambient				= 0.0f;
+		light.diffuse				= 0.5f;
+		light.specular				= 0.5f;
+		light.linearAttenuation		= 0.006f;
+		light.quadraticAttenuation	= 0.007f;
+		light.rawCutOffAngle		= 28.0f;
+		light.rawOuterCutOffAngle	= 32.0f;
+		light.scale					= 0.5f;
+
+		AddLight(light);
+	}
+
 	for (int i = 0; i < m_Lights.size(); i++) {
 		auto& light = m_Lights[i];
 
@@ -134,6 +176,11 @@ void LightManager::OnUIRender() {
 
 			ImGui::ColorPicker4("Color", (float*)&light.color);
 			ImGui::DragFloat("Scale", &light.scale, 0.002f);
+
+			if (ImGui::Button("Delete Light")) {
+				DeleteLight(i);
+			}
+
 			ImGui::TreePop();
 		}
 	}

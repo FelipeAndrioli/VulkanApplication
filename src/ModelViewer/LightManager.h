@@ -21,15 +21,16 @@ namespace Assets {
 namespace LightManager {
 	extern Graphics::Buffer m_LightBuffer;
 
-	void Init();
-	void Shutdown();
-
-	void AddLight(Scene::LightComponent& light);
-	void UpdateBuffer();
-	void Update(Assets::ShadowCamera& camera);
-	void OnUIRender();
-
-	int GetTotalLights();
+	void Init			();
+	void Shutdown		();
+	void AddLight		(Scene::LightComponent& light);
+	void DeleteLight	(Scene::LightComponent& light);
+	void DeleteLight	(int lightIndex);
+	void UpdateBuffer	();
+	void Update			(Assets::ShadowCamera& camera);
+	void OnUIRender		();
+	
+	int GetTotalLights	();
 
 	Graphics::Buffer& GetLightBuffer();
 

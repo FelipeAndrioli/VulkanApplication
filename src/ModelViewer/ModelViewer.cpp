@@ -131,20 +131,6 @@ void ModelViewer::StartUp() {
 	sun.scale					= 0.2f;
 	sun.color					= glm::vec4(1.0f);
 
-	/*
-	LightData light				= {};
-	light.position				= glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
-	light.direction				= glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-	light.type					= LightType::PointLight;
-	light.linearAttenuation		= 0.006f;
-	light.quadraticAttenuation	= 0.007f;
-	light.ambient				= 0.1f;
-	light.diffuse				= 0.5f;
-	light.specular				= 0.5f;
-	light.scale					= 0.2f;
-	light.color					= glm::vec4(1.0f);
-	*/
-	
 	Scene::LightComponent light	= {};
 	light.position				= glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 	light.direction				= glm::vec4(0.1f, -90.0f, 0.0f, 0.0f);

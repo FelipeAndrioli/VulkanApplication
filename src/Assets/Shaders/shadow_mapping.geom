@@ -14,7 +14,11 @@ struct model_t {
 };
 
 struct light_t {
-    vec4 extra[12];
+	int extra_0;
+	int extra_1;
+	int extra_2;
+	int index;
+    vec4 extra[11];
     mat4 light_vp;
 };
 
@@ -38,15 +42,15 @@ void main() {
     for (int i = 0; i < push_constants.active_light_sources; i++) {
 		light_t light = shadow_mapping_uniform.lights[i];
 
-		gl_Layer    = i;
+		gl_Layer    = light.index;
 		gl_Position = light.light_vp * model.model * gl_in[0].gl_Position;
 		EmitVertex();
 
-		gl_Layer    = i;
+		gl_Layer    = light.index;
 		gl_Position = light.light_vp * model.model * gl_in[1].gl_Position;
 		EmitVertex();
 
-		gl_Layer    = i;
+		gl_Layer    = light.index;
 		gl_Position = light.light_vp * model.model * gl_in[2].gl_Position;
 		EmitVertex();
 
