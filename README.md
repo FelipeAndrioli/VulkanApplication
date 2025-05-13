@@ -52,13 +52,13 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 		- [x] Directional
 		- [ ] Point
 	- [ ] Automatic light frustum
+	- [ ] Soft Shadows
 
 ## Next Up
 - [ ] Refactoring to Graphics Device/Backend/Command Context design
 
 ## Planning 
 - [ ] Shader Include
-- [ ] Soft Shadows
 - [ ] Generate Normals (Mesh Generator) 
 - [ ] Compute Shaders
 - [ ] GPU Driven Rendering
