@@ -55,7 +55,13 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	- [ ] Soft Shadows
 
 ## Next Up
-- [ ] Refactoring to Graphics Device/Backend/Command Context design
+- [ ] Parallax Mapping
+- [ ] HDR
+- [ ] Bloom
+- [ ] Defferred Shading
+- [ ] SSAO
+- [ ] PRB
+- [ ] Refactoring
 
 ## Planning 
 - [ ] Shader Include
