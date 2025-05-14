@@ -5,16 +5,14 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 #define MAX_MATERIALS 50
-#define MAX_LIGHT_SOURCES 5
-#define MAX_CAMERAS 10
+#define MAX_LIGHTS 5
 
-layout (location = 0) in vec3 fragPos;
+layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec3 fragNormal;
-layout (location = 2) in vec3 fragColor;
+layout (location = 2) in vec3 fragPos;
 layout (location = 3) in vec3 fragTangent;
 layout (location = 4) in vec3 fragBiTangent;
 layout (location = 5) in vec2 fragTexCoord;
-layout (location = 6) in vec4 fragPosLightSpace[MAX_LIGHT_SOURCES];
 
 layout (location = 0) out vec4 out_color;
 
@@ -89,35 +87,24 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float time;
 	float extra_s_2;
 	float extra_s_3;
-	vec4 extra[15];
+	vec4 camera_position;
+	vec4 extra[6];
+	mat4 view;
+	mat4 proj;
 } sceneGPUData;
 
-layout (std140, set = 0, binding = 1) uniform material_uniform {
-	material_t materials[MAX_MATERIALS];
+layout (set = 0, binding = 1) uniform light_uniform {
+	light_t lights[MAX_LIGHTS];
 };
 
-layout (set = 0, binding = 2) uniform light_uniform {
-	light_t lights[MAX_LIGHT_SOURCES];
+layout (std140, set = 0, binding = 2) uniform material_uniform {
+	material_t materials[MAX_MATERIALS];
 };
 
 layout (set = 0, binding = 3) uniform sampler2D texSampler[];
 
-struct camera_t {
-	vec4 extra[7];
-	vec4 position;
-	mat4 view;
-	mat4 proj;
-};
-
-layout (std140, set = 0, binding = 6) uniform camera_uniform {
-	camera_t cameras[MAX_CAMERAS];
-};
-
 layout (push_constant) uniform constant {
 	int material_index;
-	int model_index;
-	int light_source_index;
-	int camera_index;
 } mesh_constant;
 
 vec3 calc_directional_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
@@ -128,7 +115,7 @@ vec3 calc_directional_light(light_t light, material_t current_material, vec4 mat
 	vec3 ambient = material_ambient.rgb * vec3(light.ambient);
 	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse);
 
-	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
+	vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
 
 	//Phong specular model
 	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
@@ -155,7 +142,7 @@ vec3 calc_point_light(light_t light, material_t current_material, vec4 material_
 	vec3 ambient = material_ambient.rgb * vec3(light.ambient) * light_attenuation;
 	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse) * light_attenuation;
 
-	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
+	vec3 view_dir = normalize(vec3(sceneGPUData.camera_position) - fragPos);
 
 	// Phong specular model
 	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
@@ -195,24 +182,32 @@ vec4 render_depth() {
 }
 
 void main() {
-	material_t current_material = materials[mesh_constant.material_index];
-
 	vec4 material_color = vec4(0.0);
 	vec4 material_ambient = vec4(1.0);
 	vec4 material_diffuse = vec4(1.0);
 	vec4 material_specular = vec4(1.0);
 	vec4 material_normal = vec4(1.0);
 
+	material_t current_material = materials[mesh_constant.material_index];
+
+	current_material = materials[mesh_constant.material_index];
+
 	if (current_material.diffuse_texture_index == -1) {
 		material_ambient = vec4(current_material.diffuse);
 	} else {
 		material_ambient = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+		if (material_ambient.a < 0.1) {
+			discard;
+		}
 	}
 
 	if (current_material.diffuse_texture_index == -1) {
 		material_diffuse = vec4(current_material.diffuse);
 	} else {
 		material_diffuse = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+		if (material_diffuse.a < 0.1) {
+			discard;
+		}
 	}
 
 	if (current_material.normal_texture_index == -1) {
@@ -244,7 +239,8 @@ void main() {
 				break;
 		}
 	}
+	
+	material_color.a = material_diffuse.a;
 
-	material_color.a = material_diffuse.a;	
-	out_color = vec4(material_color);
+	out_color = material_color;
 }

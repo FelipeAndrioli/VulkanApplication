@@ -5,7 +5,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 #define MAX_MATERIALS 50
-#define MAX_LIGHTS 5
+#define MAX_LIGHT_SOURCES 5
 #define MAX_CAMERAS 10
 
 layout (location = 0) in vec3 fragPos;
@@ -14,6 +14,7 @@ layout (location = 2) in vec3 fragColor;
 layout (location = 3) in vec3 fragTangent;
 layout (location = 4) in vec3 fragBiTangent;
 layout (location = 5) in vec2 fragTexCoord;
+layout (location = 6) in vec4 fragPosLightSpace[MAX_LIGHT_SOURCES];
 
 layout (location = 0) out vec4 out_color;
 
@@ -64,12 +65,13 @@ struct light_t {
 	vec4 position;
 	vec4 direction;
 	vec4 color;
-	vec4 extra[6];
-	
+	vec4 extra[2];
+
 	mat4 model;
+	mat4 viewProj;	
 
 	int type;
-	int extra_0;
+	int index;
 	
 	float outer_cut_off_angle;
 	float cut_off_angle;
@@ -94,8 +96,12 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int total_lights;
 	int render_normal_map;
 	float time;
+	float min_shadow_bias;
+	float max_shadow_bias;
+	float extra_s_1;
+	float extra_s_2;
 	float extra_s_3;
-	vec4 extra[15];
+	vec4 extra[14];
 } sceneGPUData;
 
 layout (std140, set = 0, binding = 1) uniform material_uniform {
@@ -103,7 +109,7 @@ layout (std140, set = 0, binding = 1) uniform material_uniform {
 };
 
 layout (set = 0, binding = 2) uniform light_uniform {
-	light_t lights[MAX_LIGHTS];
+	light_t lights[MAX_LIGHT_SOURCES];
 };
 
 layout (set = 0, binding = 3) uniform sampler2D texSampler[];
@@ -112,6 +118,8 @@ layout (std140, set = 0, binding = 6) uniform camera_uniform {
 	camera_t cameras[MAX_CAMERAS];
 };
 
+layout (set = 0, binding = 7) uniform sampler2DArray shadow_mapping;		// retrieves texels from a texture array receiving a vec2 and a layer index
+
 layout (push_constant) uniform constant {
 	int material_index;
 	int model_index;
@@ -119,8 +127,75 @@ layout (push_constant) uniform constant {
 	int camera_index;
 } mesh_constant;
 
+vec2 poisson_disk[16] = vec2[]( 
+   vec2( -0.94201624, -0.39906216 ), 
+   vec2( 0.94558609, -0.76890725 ), 
+   vec2( -0.094184101, -0.92938870 ), 
+   vec2( 0.34495938, 0.29387760 ), 
+   vec2( -0.91588581, 0.45771432 ), 
+   vec2( -0.81544232, -0.87912464 ), 
+   vec2( -0.38277543, 0.27676845 ), 
+   vec2( 0.97484398, 0.75648379 ), 
+   vec2( 0.44323325, -0.97511554 ), 
+   vec2( 0.53742981, -0.47373420 ), 
+   vec2( -0.26496911, -0.41893023 ), 
+   vec2( 0.79197514, 0.19090188 ), 
+   vec2( -0.24188840, 0.99706507 ), 
+   vec2( -0.81409955, 0.91437590 ), 
+   vec2( 0.19984126, 0.78641367 ), 
+   vec2( 0.14383161, -0.14100790 ) 
+);
+
+float random(vec3 seed, int i) {
+	vec4 seed4 = vec4(seed, i);
+	float dot_product = dot(seed4, vec4(12.9898, 78.233, 45.164, 94.673));
+
+	return fract(sin(dot_product) * 43758.5453);
+}
+
+float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position, int light_index) {
+
+	vec3 light_dir = normalize(light_position.xyz - light_space_frag_pos.xyz);
+
+	// the pipeline transition between vertex to fragment shader automatically perform the perspective divide in gl_Position,
+	// in order to compare it with the light space frag position we must perform the perspective divide on it. It has no
+	// impact when using orthographic projection, but it's essential to linearize perspective projection.
+	// [-1, 1]
+	vec3 proj_coords = light_space_frag_pos.xyz / light_space_frag_pos.w;
+
+	// [0, 1]
+	// Differently than OpenGL, Vulkan has its depth coordinate range already in [0, 1], therefore the conversion can be skipped.
+	proj_coords = vec3(proj_coords.xy * 0.5 + 0.5, proj_coords.z);
+
+	float current_depth = proj_coords.z;
+
+	float bias = max(sceneGPUData.max_shadow_bias * (1.0 - dot(normal.xyz, light_dir)), sceneGPUData.min_shadow_bias);
+
+	float shadow = 0.0;
+
+	// textureSize returns a vec2 of the width and height of the given sampler texture at mipmap level 0.
+	// 1 divided over the texture size returns the size of a single texel that we use to offset the texture coords.
+	vec2 texel_size = vec3(1.0 / textureSize(shadow_mapping, 0)).xy;
+	
+	// PCF (percentage-closer filtering)
+	// sample the surrounding texels of the depth map and average the results to produce less blocky/hard shadows
+	for (int x = -1; x < 2; ++x) {
+		for (int y = -1; y < 2; ++y) {
+			float pcf_depth = texture(shadow_mapping, vec3(proj_coords.xy + vec2(x, y) * texel_size, light_index)).r;
+			shadow += current_depth - bias > pcf_depth ? 1.0 : 0.2;
+		}
+	}
+
+	shadow /= 9.0;
+
+	if (proj_coords.z > 1.0)
+		shadow = 0.0;
+
+	return shadow;
+}
+
 vec3 calc_directional_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
-	vec3 light_dir = normalize(-light.direction.xyz);
+	vec3 light_dir = normalize(light.direction.xyz);
 
 	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
 
@@ -138,8 +213,9 @@ vec3 calc_directional_light(light_t light, material_t current_material, vec4 mat
 	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
+	float shadow = calc_shadow(fragPosLightSpace[light.index], material_normal, light.direction, light.index);
 
-	return vec3(ambient + diffuse + specular) * light.color.rgb;
+	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
 }
 
 vec3 calc_point_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
@@ -166,7 +242,9 @@ vec3 calc_point_light(light_t light, material_t current_material, vec4 material_
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular) * light_attenuation;
 
-	return vec3(ambient + diffuse + specular) * light.color.rgb;
+	float shadow = 0.0;
+
+	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
 }
 
 vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
@@ -175,8 +253,31 @@ vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_a
 	float theta = dot(light_dir, normalize(-light.direction.xyz));
 	float epsilon = light.cut_off_angle - light.outer_cut_off_angle;
 	float intensity = clamp((theta - light.outer_cut_off_angle) / epsilon, 0.0, 1.0);
-	
-	vec3 result = calc_point_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
+
+	float d = length(fragPos - light.position.xyz);
+	float constant_attenuation = 1.0;
+	float light_attenuation = 1 / (constant_attenuation + light.linear_attenuation * d + light.quadratic_attenuation * (d * d));
+
+	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
+
+	vec3 ambient = material_ambient.rgb * vec3(light.ambient) * light_attenuation;
+	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse) * light_attenuation;
+
+	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
+
+	// Phong specular model
+	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
+	//float spec = pow(max(dot(view_dir, reflect_dir), 0.0), max(1.0, current_material.shininess));
+
+	// Blinn-Phong specular model
+	vec3 halfway_dir = normalize(light_dir + view_dir);
+	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
+
+	vec3 specular = material_specular.rgb * spec * vec3(light.specular) * light_attenuation;
+
+	float shadow = calc_shadow(fragPosLightSpace[light.index], material_normal, light.position, light.index);
+
+	vec3 result = vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
 
 	return result * intensity;
 }

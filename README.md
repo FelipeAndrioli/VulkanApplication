@@ -42,13 +42,29 @@ Once the engine is in a acceptable (ish) kind of state, I will change the whole 
 	  built using MSVC compiler.
 - [x] Blending
 - [x] Framebuffers
+- [x] Instancing
+- [ ] Shadows
+	- [x] Directional
+	- [x] Spot
+	- [ ] Point
+	- [ ] Multiple Lights
+		- [x] Spot
+		- [x] Directional
+		- [ ] Point
+	- [ ] Automatic light frustum
+	- [ ] Soft Shadows
 
 ## Next Up
-- [ ] Instancing
-- [ ] Custom Anti Aliasing
-- [ ] Refactoring to Graphics Device/Backend/Command Context design
+- [ ] Parallax Mapping
+- [ ] HDR
+- [ ] Bloom
+- [ ] Defferred Shading
+- [ ] SSAO
+- [ ] PRB
+- [ ] Refactoring
 
 ## Planning 
+- [ ] Shader Include
 - [ ] Generate Normals (Mesh Generator) 
 - [ ] Compute Shaders
 - [ ] GPU Driven Rendering

@@ -33,7 +33,7 @@ UI::UI(GLFWwindow& window, const Graphics::RenderPass& uiRenderPass) {
 	init_info.MinImageCount = Graphics::FRAMES_IN_FLIGHT;
 	init_info.ImageCount = Graphics::FRAMES_IN_FLIGHT;
 	//init_info.MSAASamples = gfxDevice->m_MsaaSamples;
-	init_info.MSAASamples = uiRenderPass.Description.sampleCount;
+	init_info.MSAASamples = uiRenderPass.Description.SampleCount;
 	init_info.Allocator = nullptr;
 	init_info.CheckVkResultFn = check_vk_result;
 	//ImGui_ImplVulkan_Init(&init_info, gfxDevice->GetDefaultRenderPass());

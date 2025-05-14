@@ -53,7 +53,7 @@ namespace Assets {
 
 		float OutlineWidth = 0.0f;
 
-		uint32_t ModelIndex = 0;
+		int ModelIndex = 0;
 
 		std::string ModelPath;
 		std::string MaterialPath;

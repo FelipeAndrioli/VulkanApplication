@@ -18,12 +18,11 @@ void Application::InitializeResources(IScene& scene) {
 	m_Window = std::make_unique<Window>(scene.settings);
 	m_Input = std::make_unique<InputSystem::Input>();
 
-	m_Window->OnKeyPress = std::bind(&InputSystem::Input::ProcessKey, m_Input.get(), std::placeholders::_1, std::placeholders::_2,
-		std::placeholders::_3, std::placeholders::_4);
-	m_Window->OnResize = std::bind(&Application::Resize, this, std::placeholders::_1, std::placeholders::_2);
-	m_Window->OnMouseClick = std::bind(&InputSystem::Input::ProcessMouseClick, m_Input.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	m_Window->OnCursorMove = std::bind(&InputSystem::Input::ProcessCursorMove, m_Input.get(), std::placeholders::_1, std::placeholders::_2);
-	m_Window->OnCursorOnScreen = std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
+	m_Window->OnKeyPress		= std::bind(&InputSystem::Input::ProcessKey, m_Input.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+	m_Window->OnResize			= std::bind(&Application::Resize, this, std::placeholders::_1, std::placeholders::_2);
+	m_Window->OnMouseClick		= std::bind(&InputSystem::Input::ProcessMouseClick, m_Input.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+	m_Window->OnCursorMove		= std::bind(&InputSystem::Input::ProcessCursorMove, m_Input.get(), std::placeholders::_1, std::placeholders::_2);
+	m_Window->OnCursorOnScreen	= std::bind(&InputSystem::Input::ProcessCursorOnScreen, m_Input.get(), std::placeholders::_1);
 
 	m_GraphicsDevice = std::make_unique<Graphics::GraphicsDevice>(*m_Window.get());
 	Graphics::GetDevice() = m_GraphicsDevice.get();

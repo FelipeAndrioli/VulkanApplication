@@ -20,6 +20,8 @@ namespace PostEffects {
 	bool								Initialized				= false;
 	bool								GrayScaleEnabled		= false;
 	bool								GammaCorrectionEnabled	= false;
+	uint32_t							m_Width					= 0;
+	uint32_t							m_Height				= 0;
 	PostEffectsGPUData					m_PostEffectsGPUData	= {};
 	Graphics::Shader					m_QuadVertexShader		= {};
 	Graphics::Shader					m_PostEffectsFragShader = {};
@@ -81,7 +83,17 @@ void PostEffects::Render(const VkCommandBuffer& commandBuffer, const Graphics::P
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	if (m_PostEffectsPSO.pipeline == VK_NULL_HANDLE || m_PostEffectsPSO.renderPass != &renderTarget.GetRenderPass()) {
+	if (m_PostEffectsPSO.pipeline == VK_NULL_HANDLE 
+		|| m_PostEffectsPSO.renderPass != &renderTarget.GetRenderPass() 
+		|| colorBuffer.Description.Width != m_Width
+		|| colorBuffer.Description.Height != m_Height) {
+
+		m_Width		= colorBuffer.Description.Width;
+		m_Height	= colorBuffer.Description.Height;
+
+		if (m_PostEffectsPSO.pipeline != VK_NULL_HANDLE)
+			gfxDevice->DestroyPipeline(m_PostEffectsPSO);
+
 		gfxDevice->CreatePipelineState(m_PostEffectsPSODesc, m_PostEffectsPSO, renderTarget);
 		gfxDevice->CreateDescriptorSet(m_PostEffectsPSO.descriptorSetLayout, m_DescriptorSet);
 		gfxDevice->WriteDescriptor(m_InputLayout.bindings[0], m_DescriptorSet, colorBuffer);

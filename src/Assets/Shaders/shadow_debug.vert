@@ -1,7 +1,6 @@
 #version 450
 
 #define MAX_MODELS 10
-#define MAX_LIGHT_SOURCES 5
 #define MAX_CAMERAS 10
 
 struct model_t {
@@ -34,39 +33,6 @@ layout (location = 2) out vec3 fragColor;
 layout (location = 3) out vec3 fragTangent;
 layout (location = 4) out vec3 fragBiTangent;
 layout (location = 5) out vec2 fragTexCoord;
-layout (location = 6) out vec4 fragPosLightSpace[MAX_LIGHT_SOURCES];
-
-/* light type
-
-Undefined = -1,
-Directional = 0,
-PointLight = 1,
-SpotLight = 2
-*/
-
-struct light_t {
-	vec4 position;
-	vec4 direction;
-	vec4 color;
-	vec4 extra[2];
-
-	mat4 model;
-	mat4 viewProj;	
-
-	int type;
-	int extra_0;
-	
-	float outer_cut_off_angle;
-	float cut_off_angle;
-	float raw_cut_off_angle;
-	float raw_outer_cut_off_angle;
-	float linear_attenuation;
-	float quadratic_attenuation;
-	float scale;
-	float ambient;
-	float diffuse;
-	float specular;
-};
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int total_lights;
@@ -75,10 +41,6 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	float extra_s_3;
 	vec4 extra[15];
 } sceneGPUData;
-
-layout (set = 0, binding = 2) uniform light_uniform {
-	light_t lights[MAX_LIGHT_SOURCES];
-};
 
 layout (std140, set = 0, binding = 5) uniform model_uniform {
 	model_t models[MAX_MODELS];
@@ -100,29 +62,5 @@ void main() {
 	camera_t current_camera = cameras[mesh_constant.camera_index];
 
 	gl_Position = current_camera.proj * current_camera.view * current_model.model * vec4(inPosition, 1.0);
-	fragColor = inColor;
-
-	if (current_model.flip_uv_vertically == 1) {
-		fragTexCoord = vec2(inTexCoord.x, inTexCoord.y * -1);
-	} else {
-		fragTexCoord = inTexCoord;
-	}
-
-	fragPos				= vec3(current_model.model * vec4(inPosition, 1.0));
-	fragTangent			= normalize(vec3(current_model.normal_matrix * vec4(inTangent, 0.0)));
-	fragNormal			= normalize(vec3(current_model.normal_matrix * vec4(inNormal, 0.0)));
-	fragTangent			= normalize(fragTangent - fragNormal * dot(fragNormal, fragTangent));
-	fragBiTangent		= cross(fragTangent, fragNormal);	
-
-	for (int i = 0; i < sceneGPUData.total_lights; i++) {
-		fragPosLightSpace[i] = lights[i].viewProj * vec4(fragPos, 1.0);
-	}
-
-	if (dot(cross(fragNormal, fragTangent), fragBiTangent) < 0.0)
-		fragTangent = fragTangent * -1.0;
 }
-
-/*
-	TODO: Create separated vertex shader for pipelines that doesn't require so much resoruces
-*/
 

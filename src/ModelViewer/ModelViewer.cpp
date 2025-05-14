@@ -8,8 +8,13 @@
 #include "../Core/GraphicsDevice.h"
 #include "../Core/Settings.h"
 #include "../Core/ResourceManager.h"
+#include "../Core/SceneComponents.h"
+
+#include "../Core/Renderer/ShadowRenderer.h"
+#include "../Core/Renderer/QuadRenderer.h"
 
 #include "../Assets/Camera.h"
+#include "../Assets/ShadowCamera.h"
 #include "../Assets/Model.h"
 
 #include "../Utils/ModelLoader.h"
@@ -18,6 +23,12 @@
 #include "./PostEffects/PostEffects.h"
 #include "./Renderer.h"
 #include "./LightManager.h"
+
+/*
+	TODO's:
+		[ ] - Fix Release Build
+		[ ] - Fix Shadow Map debug view
+*/
 
 class ModelViewer : public Application::IScene {
 public:
@@ -35,8 +46,9 @@ public:
 	virtual void RenderUI	()																		override;
 	virtual void Resize		(uint32_t width, uint32_t height)										override;
 private:
-	Assets::Camera m_Camera			= {};
-	Assets::Camera m_SecondCamera	= {};
+	Assets::Camera			m_Camera		= {};
+	Assets::Camera			m_SecondCamera	= {};
+	Assets::ShadowCamera	m_ShadowCamera	= {};
 
 	std::shared_ptr<Assets::Model> m_Dragon;
 	std::shared_ptr<Assets::Model> m_Sponza;
@@ -49,6 +61,16 @@ private:
 	uint32_t m_ScreenWidth			= 0;
 	uint32_t m_ScreenHeight			= 0;
 
+	// Spot Light Settings
+	float m_MinShadowBias = 0.001f;
+	float m_MaxShadowBias = 0.01f;
+	
+	/*
+	// Directional Light Settings
+	float m_MinShadowBias = 0.005f;
+	float m_MaxShadowBias = 0.05f;
+	*/
+
 	bool m_RenderSkybox				= false;
 	bool m_RenderWireframe			= false;
 	bool m_RenderLightSources		= false;
@@ -57,6 +79,7 @@ private:
 	bool m_RenderNormalsSwapChain	= false;
 	bool m_RenderNormalsImGui		= false;
 	bool m_RenderNormalMap			= true;
+	bool m_RenderShadowDebugImGui	= false;
 
 	std::unique_ptr<Graphics::OffscreenRenderTarget>	m_OffscreenRenderTarget;
 	std::unique_ptr<Graphics::OffscreenRenderTarget>	m_DebugOffscreenRenderTarget;
@@ -65,6 +88,14 @@ private:
 
 	VkDescriptorSet m_DebugOffscreenDescriptorSet			= VK_NULL_HANDLE;
 	VkDescriptorSet m_DebugOffscreenNormalDescriptorSet		= VK_NULL_HANDLE;
+	VkDescriptorSet m_DebugShadowDescriptorSet				= VK_NULL_HANDLE;
+
+	ShadowRenderer m_ShadowRenderer;
+	QuadRenderer   m_ShadowDebugRenderer;
+
+	struct ShadowDebugPushConstants {
+		int shadowMapLayer;
+	} m_ShadowDebugPushConstants;
 };
 
 void ModelViewer::StartUp() {
@@ -87,29 +118,38 @@ void ModelViewer::StartUp() {
 
 	m_SecondCamera.Init(position, fov, yaw, pitch, m_ScreenWidth, m_ScreenHeight);
 
+	m_ShadowCamera = Assets::ShadowCamera(m_ScreenWidth, m_ScreenHeight);
+	m_ShadowCamera.SetSpotLightSettings	(0.5f, 200.0f, 90.0f);
+	m_ShadowCamera.SetDirLightSettings	(-40.0f, 20.0f, 20.0f);
+	
 	Renderer::Init();
 
-	LightData sunLight			= {};
-	sunLight.direction			= glm::vec4(0.0f, -1.0f, 0.0f, 1.0f);
-	sunLight.type				= LightType::Directional;
-	sunLight.ambient			= 0.2f;
-	sunLight.diffuse			= 0.2f;
-	sunLight.specular			= 0.0f;
-	sunLight.scale				= 0.2f;
-	sunLight.color				= glm::vec4(1.0f);
+	Scene::LightComponent sun	= {};
+	sun.position				= glm::vec4(0.0f);
+	sun.direction				= glm::vec4(-0.020f, 4.0f, 0.0f, 1.0f);
+	sun.type					= Scene::LightComponent::LightType::DIRECTIONAL;
+	
+	sun.ambient					= 0.01f;
+	sun.diffuse					= 0.01f;
+	sun.specular				= 0.0f;
+	sun.scale					= 0.2f;
+	sun.color					= glm::vec4(1.0f);
 
-	LightData light				= {};
-    light.position				= glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
-	light.type					= LightType::PointLight;
+	Scene::LightComponent light	= {};
+	light.position				= glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	light.direction				= glm::vec4(0.1f, -90.0f, 0.0f, 0.0f);
+	light.type					= Scene::LightComponent::LightType::SPOT;
 	light.linearAttenuation		= 0.006f;
 	light.quadraticAttenuation	= 0.007f;
-	light.ambient				= 0.1f;
+	light.ambient				= 0.0f;
 	light.diffuse				= 0.5f;
 	light.specular				= 0.5f;
 	light.scale					= 0.2f;
+	light.rawCutOffAngle		= 28.0f;
+	light.rawOuterCutOffAngle	= 32.0f;
 	light.color					= glm::vec4(1.0f);
-	
-	LightManager::AddLight(sunLight);
+
+	LightManager::AddLight(sun);
 	LightManager::AddLight(light);
 
 	m_OffscreenRenderTarget					= std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
@@ -129,9 +169,43 @@ void ModelViewer::StartUp() {
 		m_DebugOffscreenNormalsRenderTarget->GetRenderPass().FinalLayout
 	);
 
+	// Shadow mapping test scene - Begin
+	/*
+	m_Models.emplace_back(Renderer::LoadModel(ModelType::QUAD)); // Ground
+	m_Models[m_Models.size() - 1]->Transformations.rotation.x = 90.0f;
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler = 20.0f;
+	m_Models[m_Models.size() - 1]->Transformations.translation.y = -0.75f;
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(-4.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(-2.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(0.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(2.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
+	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(4.5f, 0.2f, -2.5f);
+	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
+	*/
+	// Shadow mapping test scene - End 
+
 	m_Models.emplace_back(Renderer::LoadModel(ModelType::QUAD));
 	m_Models[m_Models.size() - 1]->Transformations.rotation.y = 170.0f;
-
+	
 	ResourceManager* rm = ResourceManager::Get();
 
 	int diffuseTextureIndex = rm->AddTexture(TextureLoader::LoadTexture("C:/Users/Felipe/Documents/current_projects/models/textures/brickwall.jpg", Texture::TextureType::DIFFUSE, false, false));
@@ -172,8 +246,15 @@ void ModelViewer::StartUp() {
 	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(2.822f, -3.3f, -3.9f);
 	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -20.0f, 0.0f);
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.214f;
-	
-	Renderer::LoadResources(*m_OffscreenRenderTarget);
+
+	m_ShadowRenderer = ShadowRenderer(settings.Width * 2, settings.Width * 2, 32, 10);
+	m_ShadowRenderer.StartUp();
+
+	m_ShadowDebugRenderer = QuadRenderer("Shadow Debug Renderer", "../src/Assets/Shaders/quad.vert", "../src/Assets/Shaders/depth_viewer.frag", 400, 250);
+	m_ShadowDebugRenderer.SetPushConstants(sizeof(ShadowDebugPushConstants), &m_ShadowDebugPushConstants);
+	m_ShadowDebugRenderer.StartUp();
+
+	Renderer::LoadResources(*m_OffscreenRenderTarget, m_ShadowRenderer.GetDepthBuffer());
 	PostEffects::Initialize();
 }
 
@@ -188,6 +269,8 @@ void ModelViewer::CleanUp() {
 	m_Models							.clear();
 	Renderer							::Shutdown();
 	PostEffects							::Shutdown();
+
+	m_ShadowRenderer					.CleanUp();
 }
 
 void ModelViewer::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
@@ -202,8 +285,26 @@ void ModelViewer::Update(const float constantT, const float deltaT, InputSystem:
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	Renderer::UpdateGlobalDescriptors(commandBuffer, { m_Camera, m_SecondCamera }, m_RenderNormalMap);
+	LightManager::Update(m_ShadowCamera);
 
+	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights());
+
+	if (m_RenderShadowDebugImGui && LightManager::GetLightShadowDebugIndex() != -1) {
+		
+		m_ShadowDebugPushConstants.shadowMapLayer = LightManager::GetLightShadowDebugIndex();
+		m_ShadowDebugRenderer.UpdatePushConstants(&m_ShadowDebugPushConstants);
+
+		m_DebugShadowDescriptorSet = ImGui_ImplVulkan_AddTexture(
+			m_ShadowDebugRenderer.GetColorBuffer().ImageSampler,
+			m_ShadowDebugRenderer.GetColorBuffer().ImageView,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL	
+		);
+
+		m_ShadowDebugRenderer.Render(commandBuffer, m_ShadowRenderer.GetDepthBuffer());
+	}
+
+	Renderer::UpdateGlobalDescriptors(commandBuffer, { m_Camera, m_SecondCamera }, m_RenderNormalMap, m_MinShadowBias, m_MaxShadowBias);
+	
 	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
 	sorter.SetCamera(m_Camera);
 
@@ -283,13 +384,16 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox				("Render Skybox",			&m_RenderSkybox);
 	ImGui::Checkbox				("Render Light Sources",	&m_RenderLightSources);
 	ImGui::Checkbox				("Render Normal Map",		&m_RenderNormalMap);
+	ImGui::DragFloat			("Min Shadow Bias",			&m_MinShadowBias, 0.002f, -2.0f, 2.0f);
+	ImGui::DragFloat			("Max Shadow Bias",			&m_MaxShadowBias, 0.002f, -2.0f, 2.0f);
 
 	PostEffects::RenderUI();
 
 	ImGui::SeparatorText		("Camera Settings");
 
-	m_Camera.OnUIRender			("Main Camera - Settings");
-	m_SecondCamera.OnUIRender	("Secondary Camera - Settings");
+	m_Camera		.OnUIRender("Main Camera - Settings");
+	m_SecondCamera	.OnUIRender("Secondary Camera - Settings");
+	m_ShadowCamera	.OnUIRender("Shadow Camera - Settings");
 
 	ImGui::SeparatorText		("Models");
 	for (auto& model : m_Models) {
@@ -304,6 +408,7 @@ void ModelViewer::RenderUI() {
 
 	ImGui::Checkbox			("Render Depth (ImGui Debug)",			&m_RenderDepthImGui);
 	ImGui::Checkbox			("Render Normals (ImGui Debug)",		&m_RenderNormalsImGui);
+	ImGui::Checkbox			("Render Shadow Debug (ImGui Debug)",	&m_RenderShadowDebugImGui);
 
 	if (m_RenderDepthImGui) {
 		ImGui::Begin("Render Depth");
@@ -316,11 +421,18 @@ void ModelViewer::RenderUI() {
 		ImGui::Image((ImTextureID)m_DebugOffscreenNormalDescriptorSet, ImVec2(m_DebugOffscreenNormalsRenderTarget->GetExtent().width, m_DebugOffscreenNormalsRenderTarget->GetExtent().height));
 		ImGui::End();
 	}
+
+	if (m_RenderShadowDebugImGui && LightManager::GetLightShadowDebugIndex() != -1) {
+		ImGui::Begin(m_ShadowDebugRenderer.GetID());
+		ImGui::Image((ImTextureID)m_DebugShadowDescriptorSet, ImVec2(m_ShadowDebugRenderer.GetWidth(), m_ShadowDebugRenderer.GetHeight()));
+		ImGui::End();
+	}
 }
 
 void ModelViewer::Resize(uint32_t width, uint32_t height) {
 	m_Camera					.Resize(width, height);
 	m_SecondCamera				.Resize(width, height);
+	m_ShadowCamera				.Resize(width, height);
 	m_OffscreenRenderTarget		->Resize(width, height);
 	m_PostEffectsRenderTarget	->Resize(width, height);
 }

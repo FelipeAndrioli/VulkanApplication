@@ -1,4 +1,4 @@
-#version 420
+#version 450
 
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3) out;
@@ -16,12 +16,14 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 layout (location = 0) in vec3 inFragPos[]; 
 layout (location = 1) in vec3 inFragNormal[];
 layout (location = 2) in vec3 inFragColor[];
-layout (location = 3) in vec2 inFragTexCoord[];
+layout (location = 3) in vec3 inFragTangent[];
+layout (location = 4) in vec2 inFragTexCoord[];
 
 layout (location = 0) out vec3 fragPos;
 layout (location = 1) out vec3 fragNormal;
 layout (location = 2) out vec3 fragColor;
-layout (location = 3) out vec2 fragTexCoord;
+layout (location = 3) out vec3 fragTangent;
+layout (location = 4) out vec2 fragTexCoord;
 
 // Generate a normal vertex based in the current triangle position 
 vec3 getNormal() {
@@ -50,18 +52,21 @@ void main() {
 	fragTexCoord	= inFragTexCoord[0];
 	fragPos			= inFragPos[0];
 	fragNormal		= inFragNormal[0];
+	fragTangent		= inFragTangent[0];
 	EmitVertex();
 
 	gl_Position		= explode(gl_in[1].gl_Position, normal);
 	fragTexCoord	= inFragTexCoord[1];
 	fragPos			= inFragPos[1];
 	fragNormal		= inFragNormal[1];
+	fragTangent		= inFragTangent[1];
 	EmitVertex();
 
 	gl_Position		= explode(gl_in[2].gl_Position, normal);
 	fragTexCoord	= inFragTexCoord[2];
 	fragPos			= inFragPos[2];
 	fragNormal		= inFragNormal[2];
+	fragTangent		= inFragTangent[1];
 	EmitVertex();
 
 	EndPrimitive();

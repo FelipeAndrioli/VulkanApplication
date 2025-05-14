@@ -23,10 +23,10 @@ namespace Graphics {
 		m_Width = width;
 		m_Height = height;
 
-		m_RenderPass.Description.viewport.width = width;
-		m_RenderPass.Description.viewport.height = height;
-		m_RenderPass.Description.extent = GetExtent();
-		m_RenderPass.Description.scissor.extent = GetExtent();
+		m_RenderPass.Description.Viewport.width = width;
+		m_RenderPass.Description.Viewport.height = height;
+		m_RenderPass.Description.Extent = GetExtent();
+		m_RenderPass.Description.Scissor.extent = GetExtent();
 
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -74,35 +74,35 @@ namespace Graphics {
 		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassBeginInfo.renderPass = m_RenderPass.Handle;
 		renderPassBeginInfo.framebuffer = m_Framebuffers[gfxDevice->GetSwapChain().ImageIndex];
-		renderPassBeginInfo.renderArea.offset = m_RenderPass.Description.offset;
-		renderPassBeginInfo.renderArea.extent = m_RenderPass.Description.extent;
+		renderPassBeginInfo.renderArea.offset = m_RenderPass.Description.Offset;
+		renderPassBeginInfo.renderArea.extent = m_RenderPass.Description.Extent;
 		renderPassBeginInfo.pNext = nullptr;
 
-		if (m_RenderPass.Description.clearValues.size() == 0) {
+		if (m_RenderPass.Description.ClearValues.size() == 0) {
 			std::array<VkClearValue, 3> clearValues = {};
 			int clearValuesCount = 0;
 
-			if (m_RenderPass.Description.flags & eColorAttachment)
+			if (m_RenderPass.Description.Flags & eColorAttachment)
 				clearValues[clearValuesCount++] = { .color{0.0f, 0.0f, 0.0f, 1.0f} };
-			if (m_RenderPass.Description.flags & eDepthAttachment)
+			if (m_RenderPass.Description.Flags & eDepthAttachment)
 				clearValues[clearValuesCount++] = { .depthStencil{ 1.0f, 0 } };
-			if (m_RenderPass.Description.flags & eResolveAttachment)
+			if (m_RenderPass.Description.Flags & eResolveAttachment)
 				clearValues[clearValuesCount++] = { .color{0.0f, 0.0f, 0.0f, 1.0f} };
 
 			renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValuesCount);
 			renderPassBeginInfo.pClearValues = clearValues.data();
 		}
 		else {
-			renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(m_RenderPass.Description.clearValues.size());
-			renderPassBeginInfo.pClearValues = m_RenderPass.Description.clearValues.data();
+			renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(m_RenderPass.Description.ClearValues.size());
+			renderPassBeginInfo.pClearValues = m_RenderPass.Description.ClearValues.data();
 		}
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		VkViewport viewport = m_RenderPass.Description.viewport;
+		VkViewport viewport = m_RenderPass.Description.Viewport;
 		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-		VkRect2D scissor = m_RenderPass.Description.scissor;
+		VkRect2D scissor = m_RenderPass.Description.Scissor;
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 		m_Started = true;
@@ -129,12 +129,8 @@ namespace Graphics {
 	/* ========================== SwapChain Render Target Implementation Begin ========================== */
 
 	SwapChainRenderTarget::SwapChainRenderTarget(uint32_t width, uint32_t height) {
-		m_Width = width;
-		m_Height = height;
-
-		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
-		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
+		m_Width		= width;
+		m_Height	= height;
 
 		Create();
 	}
@@ -142,10 +138,12 @@ namespace Graphics {
 	void SwapChainRenderTarget::Create() {
 
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+		
+		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
 
 		// Create swap chain render pass
-		m_RenderPass.Description.extent = GetExtent();
-		m_RenderPass.Description.viewport = {
+		m_RenderPass.Description.Extent = GetExtent();
+		m_RenderPass.Description.Viewport = {
 			.x = 0,
 			.y = 0,
 			.width = static_cast<float>(m_Width),
@@ -153,7 +151,7 @@ namespace Graphics {
 			.minDepth = 0.0f,
 			.maxDepth = 1.0f
 		};
-		m_RenderPass.Description.scissor = {
+		m_RenderPass.Description.Scissor = {
 			.offset = {
 				.x = 0,
 				.y = 0
@@ -163,13 +161,15 @@ namespace Graphics {
 				.height = m_Height
 			}
 		};
-		m_RenderPass.Description.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-		m_RenderPass.Description.flags = eColorAttachment
+		m_RenderPass.Description.SampleCount = VK_SAMPLE_COUNT_1_BIT;
+		m_RenderPass.Description.Flags = eColorAttachment
 			| eDepthAttachment
 			| eColorLoadOpLoad
 			| eColorStoreOpStore
 			| eInitialLayoutColorOptimal
 			| eFinalLayoutPresent;
+		m_RenderPass.Description.ColorImageFormat = gfxDevice->GetSwapChain().ImageFormat;
+		m_RenderPass.Description.DepthImageFormat = gfxDevice->GetDepthFormat();
 
 		gfxDevice->CreateRenderPass(m_RenderPass);
 
@@ -283,10 +283,10 @@ namespace Graphics {
 		m_Width = width;
 		m_Height = height;
 
-		m_RenderPass.Description.viewport.width = width;
-		m_RenderPass.Description.viewport.height = height;
-		m_RenderPass.Description.extent = GetExtent();
-		m_RenderPass.Description.scissor.extent = GetExtent();
+		m_RenderPass.Description.Viewport.width = width;
+		m_RenderPass.Description.Viewport.height = height;
+		m_RenderPass.Description.Extent = GetExtent();
+		m_RenderPass.Description.Scissor.extent = GetExtent();
 
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -325,8 +325,8 @@ namespace Graphics {
 	void OffscreenRenderTarget::Create() {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-		m_RenderPass.Description.extent = GetExtent();
-		m_RenderPass.Description.viewport = {
+		m_RenderPass.Description.Extent = GetExtent();
+		m_RenderPass.Description.Viewport = {
 			.x = 0, 
 			.y = 0,
 			.width = static_cast<float>(m_Width),
@@ -334,7 +334,7 @@ namespace Graphics {
 			.minDepth = 0.0f,
 			.maxDepth = 1.0f
 		};
-		m_RenderPass.Description.scissor = {
+		m_RenderPass.Description.Scissor = {
 			.offset = {
 				.x = 0, 
 				.y = 0 
@@ -344,15 +344,17 @@ namespace Graphics {
 				.height = m_Height
 			}
 		};
-		m_RenderPass.Description.sampleCount = gfxDevice->m_MsaaSamples;
-		m_RenderPass.Description.flags = eColorAttachment | eDepthAttachment | eColorLoadOpClear | eColorStoreOpStore;
+		m_RenderPass.Description.SampleCount = gfxDevice->m_MsaaSamples;
+		m_RenderPass.Description.Flags = eColorAttachment | eDepthAttachment | eColorLoadOpClear | eColorStoreOpStore;
+		m_RenderPass.Description.ColorImageFormat = gfxDevice->GetSwapChain().ImageFormat;
+		m_RenderPass.Description.DepthImageFormat = gfxDevice->GetDepthFormat();
 
 		if (!(gfxDevice->m_MsaaSamples & VK_SAMPLE_COUNT_1_BIT))
-			m_RenderPass.Description.flags |= eResolveAttachment;
+			m_RenderPass.Description.Flags |= eResolveAttachment;
 
 		gfxDevice->CreateRenderPass(m_RenderPass);
 
-		if (m_RenderPass.Description.flags & eResolveAttachment) {
+		if (m_RenderPass.Description.Flags & eResolveAttachment) {
 			m_ResolveIndex = m_TotalImages++;
 
 			gfxDevice->CreateRenderTarget(
@@ -378,7 +380,7 @@ namespace Graphics {
 
 		std::vector<VkImageView> views = {};
 
-		if (m_RenderPass.Description.flags & eResolveAttachment) {
+		if (m_RenderPass.Description.Flags & eResolveAttachment) {
 			views.emplace_back(m_Images[m_ResolveIndex].ImageView);
 		}
 
@@ -406,7 +408,7 @@ namespace Graphics {
 
 		m_Images[m_ColorIndex].ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		if (m_RenderPass.Description.flags & eResolveAttachment)
+		if (m_RenderPass.Description.Flags & eResolveAttachment)
 			m_Images[m_ResolveIndex].ImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
@@ -428,8 +430,8 @@ namespace Graphics {
 	void PostEffectsRenderTarget::Create() {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-		m_RenderPass.Description.extent = GetExtent();
-		m_RenderPass.Description.viewport = {
+		m_RenderPass.Description.Extent = GetExtent();
+		m_RenderPass.Description.Viewport = {
 			.x = 0,
 			.y = 0,
 			.width = static_cast<float>(m_Width),
@@ -437,7 +439,7 @@ namespace Graphics {
 			.minDepth = 0.0f,
 			.maxDepth = 1.0f
 		};
-		m_RenderPass.Description.scissor = {
+		m_RenderPass.Description.Scissor = {
 			.offset = {
 				.x = 0,
 				.y = 0
@@ -448,8 +450,9 @@ namespace Graphics {
 			}
 		};
 
-		m_RenderPass.Description.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-		m_RenderPass.Description.flags = eColorAttachment | eColorLoadOpClear | eColorStoreOpStore | eFinalLayoutTransferSrc;
+		m_RenderPass.Description.SampleCount = VK_SAMPLE_COUNT_1_BIT;
+		m_RenderPass.Description.Flags = eColorAttachment | eColorLoadOpClear | eColorStoreOpStore | eFinalLayoutTransferSrc;
+		m_RenderPass.Description.ColorImageFormat = gfxDevice->GetSwapChain().ImageFormat;
 
 		gfxDevice->CreateRenderPass(m_RenderPass);
 
@@ -482,4 +485,70 @@ namespace Graphics {
 	}
 
 	/* ========================== Post Effects Render Target Implementation End ========================== */
+
+	/*  ========================== Depth Only Render Target Implementation Begin ========================== */
+
+	DepthOnlyRenderTarget::DepthOnlyRenderTarget(uint32_t width, uint32_t height, uint32_t precision, uint32_t layers) {
+		m_Width		= width;
+		m_Height	= height;
+		m_Precision = precision;
+		m_Layers	= layers;
+
+		Create();
+	}
+
+	void DepthOnlyRenderTarget::Create() {
+		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
+
+		m_RenderPass.Description.Extent		= GetExtent();
+		m_RenderPass.Description.Viewport	= {
+			.x			= 0,
+			.y			= 0,
+			.width		= static_cast<float>(m_Width),
+			.height		= static_cast<float>(m_Height),
+			.minDepth	= 0.0f,
+			.maxDepth	= 1.0f
+		};
+		m_RenderPass.Description.Scissor	= {
+			.offset = {
+				.x = 0,
+				.y = 0
+			},
+			.extent = {
+				.width	= m_Width,
+				.height = m_Height
+			}
+		};
+
+		m_RenderPass.Description.SampleCount		= VK_SAMPLE_COUNT_1_BIT;
+		m_RenderPass.Description.Flags				= eDepthAttachment | eColorLoadOpClear | eColorStoreOpStore;
+		m_RenderPass.Description.DepthImageFormat	= gfxDevice->GetDepthOnlyFormat();
+
+		gfxDevice->CreateRenderPass(m_RenderPass);
+
+		m_DepthIndex = m_TotalImages++;
+
+		gfxDevice->CreateDepthOnlyBuffer(m_Images[m_DepthIndex], GetExtent(), VK_SAMPLE_COUNT_1_BIT, m_Layers);
+		// transition to depth/stencil attachment optimal? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+		gfxDevice->CreateImageSampler	(m_Images[m_DepthIndex]);
+
+		std::vector<VkImageView> views = { m_Images[m_DepthIndex].ImageView };
+
+		for (int i = 0; i < m_Framebuffers.size(); i++) {
+			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, views, GetExtent(), m_Framebuffers[i], m_Layers);
+		}
+	}
+
+	void DepthOnlyRenderTarget::Begin(const VkCommandBuffer& commandBuffer) {
+		BeginRenderPass(commandBuffer);
+	}
+
+	void DepthOnlyRenderTarget::End(const VkCommandBuffer& commandBuffer) {
+		EndRenderPass(commandBuffer);
+		m_Images[m_DepthIndex].ImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+	}
+
+	/*  ========================== Depth Only Render Target Implementation End ========================== */
 }
