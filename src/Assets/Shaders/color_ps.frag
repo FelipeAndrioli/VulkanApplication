@@ -65,14 +65,18 @@ struct light_t {
 	vec4 position;
 	vec4 direction;
 	vec4 color;
-	vec4 extra[2];
+	vec4 extra;
 
 	mat4 model;
-	mat4 viewProj;	
+	mat4 view_proj;	
 
 	int type;
+	int flags;
 	int index;
-	
+	int pcf_samples;
+
+	float min_bias;
+	float sps_spread;
 	float outer_cut_off_angle;
 	float cut_off_angle;
 	float raw_cut_off_angle;
@@ -153,7 +157,22 @@ float random(vec3 seed, int i) {
 	return fract(sin(dot_product) * 43758.5453);
 }
 
-float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position, int light_index) {
+float calc_shadow(vec4 normal, vec4 light_position, light_t light) {
+
+	int mask = (1 << 1);
+	
+	bool shadow_map_enabled = bool(light.flags & mask);
+
+	mask = (1 << 2);
+	bool pcf_enabled = bool(light.flags & mask);
+	
+	mask = (1 << 3);
+	bool sps_enabled = bool(light.flags & mask);
+
+	if (!shadow_map_enabled)
+		return 0.0;
+
+	vec4 light_space_frag_pos = fragPosLightSpace[light.index];
 
 	vec3 light_dir = normalize(light_position.xyz - light_space_frag_pos.xyz);
 
@@ -169,24 +188,74 @@ float calc_shadow(vec4 light_space_frag_pos, vec4 normal, vec4 light_position, i
 
 	float current_depth = proj_coords.z;
 
-	float bias = max(sceneGPUData.max_shadow_bias * (1.0 - dot(normal.xyz, light_dir)), sceneGPUData.min_shadow_bias);
+	float bias = max(sceneGPUData.max_shadow_bias * (1.0 - dot(normal.xyz, light_dir)), light.min_bias);
 
 	float shadow = 0.0;
 
 	// textureSize returns a vec2 of the width and height of the given sampler texture at mipmap level 0.
 	// 1 divided over the texture size returns the size of a single texel that we use to offset the texture coords.
 	vec2 texel_size = vec3(1.0 / textureSize(shadow_mapping, 0)).xy;
-	
-	// PCF (percentage-closer filtering)
-	// sample the surrounding texels of the depth map and average the results to produce less blocky/hard shadows
-	for (int x = -1; x < 2; ++x) {
-		for (int y = -1; y < 2; ++y) {
-			float pcf_depth = texture(shadow_mapping, vec3(proj_coords.xy + vec2(x, y) * texel_size, light_index)).r;
-			shadow += current_depth - bias > pcf_depth ? 1.0 : 0.2;
-		}
-	}
 
-	shadow /= 9.0;
+	if (pcf_enabled && sps_enabled) {	
+		// PCF (percentage-closer filtering)
+		// sample the surrounding texels of the depth map and average the results to produce less blocky/hard shadows
+		int pcf_samples = light.pcf_samples;
+		int total_pcf_samples = pcf_samples * pcf_samples;
+		int pcf_begin = int(floor((pcf_samples * 0.5) * -1));
+		int pcf_end = int(pcf_samples * 0.5);
+
+		float spread = light.sps_spread;
+
+		for (int x = pcf_begin; x < pcf_end; ++x) {
+			for (int y = pcf_begin; y < pcf_end; ++y) {
+				vec2 shadow_coords = proj_coords.xy + vec2(x, y) * texel_size;
+
+				// Stratified Poisson Sampling - Randonly displace the pixel in a predefined disk-like format increasing the
+				// Soft Shadow visual. If the spread is too low we have aliasing, if it's too high we get a banding effect.
+				int poinsson_disk_index = int(total_pcf_samples * random(gl_FragCoord.xyy, x + y)) % total_pcf_samples;
+				shadow_coords += poisson_disk[poinsson_disk_index] / spread;
+
+				float pcf_depth = texture(shadow_mapping, vec3(shadow_coords, light.index)).r;
+				shadow += current_depth - bias > pcf_depth ? 1.0 : 0.2;
+			}
+		}
+
+		shadow /= total_pcf_samples;
+
+	} else if (pcf_enabled && !sps_enabled) {
+		// PCF (percentage-closer filtering)
+		// sample the surrounding texels of the depth map and average the results to produce less blocky/hard shadows
+		int pcf_samples = light.pcf_samples;
+		int total_pcf_samples = pcf_samples * pcf_samples;
+		int pcf_begin = int(floor((pcf_samples * 0.5) * -1));
+		int pcf_end = int(pcf_samples * 0.5);
+
+		for (int x = pcf_begin; x < pcf_end; ++x) {
+			for (int y = pcf_begin; y < pcf_end; ++y) {
+				vec2 shadow_coords = proj_coords.xy + vec2(x, y) * texel_size;
+				float pcf_depth = texture(shadow_mapping, vec3(shadow_coords, light.index)).r;
+				shadow += current_depth - bias > pcf_depth ? 1.0 : 0.2;
+			}
+		}
+
+		shadow /= total_pcf_samples;
+
+	} else if (sps_enabled && !pcf_enabled) {
+		float spread = light.sps_spread;
+
+		for (int i = 0; i < light.pcf_samples; i++) {
+			int poisson_disk_index = int(light.pcf_samples * random(gl_FragCoord.xyy, i)) % light.pcf_samples;
+			vec2 shadow_coords = proj_coords.xy + (poisson_disk[poisson_disk_index] / spread);
+			float depth = texture(shadow_mapping, vec3(shadow_coords, light.index)).r;
+			shadow += current_depth - bias > depth ? 1.0 : 0.2;
+		}
+
+		shadow /= 4;
+	} else {
+		vec2 shadow_coords = proj_coords.xy;
+		float depth = texture(shadow_mapping, vec3(shadow_coords, light.index)).r;
+		shadow += current_depth - bias > depth ? 1.0 : 0.2;
+	}
 
 	if (proj_coords.z > 1.0)
 		shadow = 0.0;
@@ -213,7 +282,7 @@ vec3 calc_directional_light(light_t light, material_t current_material, vec4 mat
 	float spec = pow(max(dot(material_normal.xyz, halfway_dir), 0.0), 16.0);
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular);
-	float shadow = calc_shadow(fragPosLightSpace[light.index], material_normal, light.direction, light.index);
+	float shadow = calc_shadow(material_normal, light.direction, light);
 
 	return vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
 }
@@ -275,7 +344,7 @@ vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_a
 
 	vec3 specular = material_specular.rgb * spec * vec3(light.specular) * light_attenuation;
 
-	float shadow = calc_shadow(fragPosLightSpace[light.index], material_normal, light.position, light.index);
+	float shadow = calc_shadow(material_normal, light.position, light);
 
 	vec3 result = vec3(ambient + (1.0 - shadow) * (diffuse + specular)) * light.color.rgb;
 

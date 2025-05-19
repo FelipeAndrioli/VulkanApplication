@@ -64,13 +64,18 @@ struct light_t {
 	vec4 position;
 	vec4 direction;
 	vec4 color;
-	vec4 extra[6];
-	
+	vec4 extra;
+
 	mat4 model;
+	mat4 view_proj;	
 
 	int type;
-	int extra_0;
-	
+	int flags;
+	int index;
+	int pcf_samples;
+
+	float minBias;
+	float sps_spread;
 	float outer_cut_off_angle;
 	float cut_off_angle;
 	float raw_cut_off_angle;

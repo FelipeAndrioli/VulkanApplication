@@ -134,6 +134,7 @@ void LightManager::OnUIRender() {
 		light.rawCutOffAngle		= 28.0f;
 		light.rawOuterCutOffAngle	= 32.0f;
 		light.scale					= 0.5f;
+		light.minBias				= 0.005f;
 
 		AddLight(light);
 	}
@@ -181,8 +182,37 @@ void LightManager::OnUIRender() {
 			ImGui::ColorPicker4("Color", (float*)&light.color);
 			ImGui::DragFloat("Scale", &light.scale, 0.002f);
 
-			if (ImGui::Button("Render Debug Shadow")) {
-				m_LightShadowRenderDebugIndex = i;
+			{	// shadow settings
+			
+				ImGui::DragFloat("Min Bias", &light.minBias, 0.002f);
+
+				unsigned mask = (1 << 1);
+				bool shadowMapEnabled = (light.flags & mask);
+
+				mask = (1 << 2);
+				bool pcfFeatureEnabled = (light.flags & mask);
+
+				mask = (1 << 3);
+				bool stratifiedPoissionSamplingEnabled = (light.flags & mask);
+
+				if (pcfFeatureEnabled)
+					ImGui::DragInt("PCF Samples (sqrt)", &light.pcfSamples, 1, 1, 6);
+
+				if (stratifiedPoissionSamplingEnabled)
+					ImGui::DragFloat("Stratified Poisson Sampling Spread", &light.spsSpread, 1.0f, 0.0f, 2000.0f);
+
+				ImGui::Checkbox("Shadow Map Enabled", &shadowMapEnabled);
+
+				if (shadowMapEnabled) {
+					ImGui::Checkbox("PCF Enabled", &pcfFeatureEnabled);
+					ImGui::Checkbox("Stratified Poisson Sampling Enabled", &stratifiedPoissionSamplingEnabled);
+				}
+
+				light.flags = (stratifiedPoissionSamplingEnabled << 3) | (pcfFeatureEnabled << 2) | (shadowMapEnabled << 1);
+
+				if (ImGui::Button("Render Debug Shadow")) {
+					m_LightShadowRenderDebugIndex = i;
+				}
 			}
 
 			if (ImGui::Button("Delete Light")) {

@@ -367,12 +367,11 @@ void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
 }
 
 // TODO: refactor this function
-void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap, float minShadowBias, float maxShadowBias) {
+void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap, float maxShadowBias) {
 	GraphicsDevice* gfxDevice = GetDevice();
 	
 	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
 	m_GlobalConstants.renderNormalMap = static_cast<int>(renderNormalMap);
-	m_GlobalConstants.minShadowBias = minShadowBias;
 	m_GlobalConstants.maxShadowBias = maxShadowBias;
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer[gfxDevice->GetCurrentFrameIndex()], &m_GlobalConstants);

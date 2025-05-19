@@ -91,7 +91,16 @@ void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vec
 void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, const std::vector<Scene::LightComponent>& lights) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
+	int activeShadowLights = 0;
+
 	for (int i = 0; i < lights.size(); i++) {
+		unsigned mask = (1 << 1);
+		bool shadowMapEnabled = (lights[i].flags & mask);
+
+		if (!shadowMapEnabled)
+			continue;
+
+		activeShadowLights++;
 		m_ShadowMappingGPUData[i].Light = lights[i].viewProj;
 		m_ShadowMappingGPUData[i].Index = lights[i].index;
 	}
@@ -118,7 +127,7 @@ void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vec
 		vkCmdBindIndexBuffer	(commandBuffer, model->DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
 		m_PushConstants.ModelIndex = model->ModelIndex;
-		m_PushConstants.ActiveLightSources = (int)lights.size();
+		m_PushConstants.ActiveLightSources = (int)activeShadowLights;
 
 		vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PushConstants), &m_PushConstants);
 

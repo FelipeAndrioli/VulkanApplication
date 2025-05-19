@@ -62,12 +62,10 @@ private:
 	uint32_t m_ScreenHeight			= 0;
 
 	// Spot Light Settings
-	float m_MinShadowBias = 0.001f;
 	float m_MaxShadowBias = 0.01f;
 	
 	/*
 	// Directional Light Settings
-	float m_MinShadowBias = 0.005f;
 	float m_MaxShadowBias = 0.05f;
 	*/
 
@@ -128,29 +126,17 @@ void ModelViewer::StartUp() {
 	sun.position				= glm::vec4(0.0f);
 	sun.direction				= glm::vec4(-0.020f, 4.0f, 0.0f, 1.0f);
 	sun.type					= Scene::LightComponent::LightType::DIRECTIONAL;
-	
-	sun.ambient					= 0.01f;
-	sun.diffuse					= 0.01f;
-	sun.specular				= 0.0f;
+	sun.ambient					= 0.02f;
+	sun.diffuse					= 0.285f;
+	sun.specular				= 0.05f;
 	sun.scale					= 0.2f;
 	sun.color					= glm::vec4(1.0f);
-
-	Scene::LightComponent light	= {};
-	light.position				= glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
-	light.direction				= glm::vec4(0.1f, -90.0f, 0.0f, 0.0f);
-	light.type					= Scene::LightComponent::LightType::SPOT;
-	light.linearAttenuation		= 0.006f;
-	light.quadraticAttenuation	= 0.007f;
-	light.ambient				= 0.0f;
-	light.diffuse				= 0.5f;
-	light.specular				= 0.5f;
-	light.scale					= 0.2f;
-	light.rawCutOffAngle		= 28.0f;
-	light.rawOuterCutOffAngle	= 32.0f;
-	light.color					= glm::vec4(1.0f);
+	sun.flags					= (1 << 3) | (1 << 2) | (1 << 1);		// enabled shadows, pcf, and stratified poisson sampling
+	sun.pcfSamples				= 4;
+	sun.spsSpread				= 5000;
+	sun.minBias					= 0.008f;
 
 	LightManager::AddLight(sun);
-	LightManager::AddLight(light);
 
 	m_OffscreenRenderTarget					= std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 	m_DebugOffscreenRenderTarget			= std::make_unique<Graphics::OffscreenRenderTarget>(400, 250);
@@ -254,6 +240,12 @@ void ModelViewer::StartUp() {
 	m_ShadowDebugRenderer.SetPushConstants(sizeof(ShadowDebugPushConstants), &m_ShadowDebugPushConstants);
 	m_ShadowDebugRenderer.StartUp();
 
+	m_DebugShadowDescriptorSet = ImGui_ImplVulkan_AddTexture(
+		m_ShadowDebugRenderer.GetColorBuffer().ImageSampler,
+		m_ShadowDebugRenderer.GetColorBuffer().ImageView,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL	
+	);
+
 	Renderer::LoadResources(*m_OffscreenRenderTarget, m_ShadowRenderer.GetDepthBuffer());
 	PostEffects::Initialize();
 }
@@ -293,17 +285,10 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 		
 		m_ShadowDebugPushConstants.shadowMapLayer = LightManager::GetLightShadowDebugIndex();
 		m_ShadowDebugRenderer.UpdatePushConstants(&m_ShadowDebugPushConstants);
-
-		m_DebugShadowDescriptorSet = ImGui_ImplVulkan_AddTexture(
-			m_ShadowDebugRenderer.GetColorBuffer().ImageSampler,
-			m_ShadowDebugRenderer.GetColorBuffer().ImageView,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL	
-		);
-
 		m_ShadowDebugRenderer.Render(commandBuffer, m_ShadowRenderer.GetDepthBuffer());
 	}
 
-	Renderer::UpdateGlobalDescriptors(commandBuffer, { m_Camera, m_SecondCamera }, m_RenderNormalMap, m_MinShadowBias, m_MaxShadowBias);
+	Renderer::UpdateGlobalDescriptors(commandBuffer, { m_Camera, m_SecondCamera }, m_RenderNormalMap, m_MaxShadowBias);
 	
 	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
 	sorter.SetCamera(m_Camera);
@@ -384,7 +369,6 @@ void ModelViewer::RenderUI() {
 	ImGui::Checkbox				("Render Skybox",			&m_RenderSkybox);
 	ImGui::Checkbox				("Render Light Sources",	&m_RenderLightSources);
 	ImGui::Checkbox				("Render Normal Map",		&m_RenderNormalMap);
-	ImGui::DragFloat			("Min Shadow Bias",			&m_MinShadowBias, 0.002f, -2.0f, 2.0f);
 	ImGui::DragFloat			("Max Shadow Bias",			&m_MaxShadowBias, 0.002f, -2.0f, 2.0f);
 
 	PostEffects::RenderUI();
