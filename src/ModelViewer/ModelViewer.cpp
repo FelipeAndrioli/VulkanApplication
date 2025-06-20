@@ -61,14 +61,8 @@ private:
 	uint32_t m_ScreenWidth			= 0;
 	uint32_t m_ScreenHeight			= 0;
 
-	// Spot Light Settings
 	float m_MaxShadowBias = 0.01f;
 	
-	/*
-	// Directional Light Settings
-	float m_MaxShadowBias = 0.05f;
-	*/
-
 	bool m_RenderSkybox				= false;
 	bool m_RenderWireframe			= false;
 	bool m_RenderLightSources		= false;
@@ -90,6 +84,8 @@ private:
 
 	ShadowRenderer m_ShadowRenderer;
 	QuadRenderer   m_ShadowDebugRenderer;
+
+	LightManager m_LightManager;
 
 	struct ShadowDebugPushConstants {
 		int shadowMapLayer;
@@ -121,6 +117,7 @@ void ModelViewer::StartUp() {
 	m_ShadowCamera.SetDirLightSettings	(-40.0f, 20.0f, 20.0f);
 	
 	Renderer::Init();
+	m_LightManager.Init();
 
 	Scene::LightComponent sun	= {};
 	sun.position				= glm::vec4(0.0f);
@@ -131,12 +128,12 @@ void ModelViewer::StartUp() {
 	sun.specular				= 0.05f;
 	sun.scale					= 0.2f;
 	sun.color					= glm::vec4(1.0f);
-	sun.flags					= (1 << 3) | (1 << 2) | (1 << 1);		// enabled shadows, pcf, and stratified poisson sampling
+	sun.flags					= (1 << 4 ) | (1 << 3) | (1 << 2) | (1 << 1);		// enabled shadows, pcf, and stratified poisson sampling
 	sun.pcfSamples				= 4;
 	sun.spsSpread				= 5000;
 	sun.minBias					= 0.008f;
 
-	LightManager::AddLight(sun);
+	m_LightManager.AddLight(sun, sun.flags);
 
 	m_OffscreenRenderTarget					= std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 	m_DebugOffscreenRenderTarget			= std::make_unique<Graphics::OffscreenRenderTarget>(400, 250);
@@ -233,7 +230,7 @@ void ModelViewer::StartUp() {
 	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -20.0f, 0.0f);
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.214f;
 
-	m_ShadowRenderer = ShadowRenderer(settings.Width * 2, settings.Width * 2, 32, 10);
+	m_ShadowRenderer = ShadowRenderer(settings.Width * 2, settings.Width * 2, 32);
 	m_ShadowRenderer.StartUp();
 
 	m_ShadowDebugRenderer = QuadRenderer("Shadow Debug Renderer", "../src/Assets/Shaders/quad.vert", "../src/Assets/Shaders/depth_viewer.frag", 400, 250);
@@ -246,7 +243,7 @@ void ModelViewer::StartUp() {
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL	
 	);
 
-	Renderer::LoadResources(*m_OffscreenRenderTarget, m_ShadowRenderer.GetDepthBuffer());
+	Renderer::LoadResources(*m_OffscreenRenderTarget, m_ShadowRenderer.GetDepthBuffer(), m_LightManager.LightBuffer);
 	PostEffects::Initialize();
 }
 
@@ -277,18 +274,18 @@ void ModelViewer::Update(const float constantT, const float deltaT, InputSystem:
 void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	LightManager::Update(m_ShadowCamera);
+	m_LightManager.Update(m_ShadowCamera);
 
-	m_ShadowRenderer.Render(commandBuffer, m_Models, LightManager::GetLights());
+	m_ShadowRenderer.Render(commandBuffer, m_Models, m_LightManager.TotalLights, m_LightManager.Lights);
 
-	if (m_RenderShadowDebugImGui && LightManager::GetLightShadowDebugIndex() != -1) {
+	if (m_RenderShadowDebugImGui && m_LightManager.LightShadowRenderDebugIndex != -1) {
 		
-		m_ShadowDebugPushConstants.shadowMapLayer = LightManager::GetLightShadowDebugIndex();
+		m_ShadowDebugPushConstants.shadowMapLayer = m_LightManager.LightShadowRenderDebugIndex;
 		m_ShadowDebugRenderer.UpdatePushConstants(&m_ShadowDebugPushConstants);
 		m_ShadowDebugRenderer.Render(commandBuffer, m_ShadowRenderer.GetDepthBuffer());
 	}
 
-	Renderer::UpdateGlobalDescriptors(commandBuffer, { m_Camera, m_SecondCamera }, m_RenderNormalMap, m_MaxShadowBias);
+	Renderer::UpdateGlobalDescriptors(commandBuffer, { m_Camera, m_SecondCamera }, m_RenderNormalMap, m_MaxShadowBias, m_LightManager.TotalLights);
 	
 	Renderer::MeshSorter sorter(Renderer::MeshSorter::BatchType::tDefault);
 	sorter.SetCamera(m_Camera);
@@ -309,7 +306,7 @@ void ModelViewer::RenderScene(const uint32_t currentFrame, const VkCommandBuffer
 	}
 
 	if (m_RenderLightSources) {
-		Renderer::RenderLightSources(commandBuffer);
+		Renderer::RenderLightSources(commandBuffer, m_LightManager.TotalLights, m_LightManager.Lights);
 	}
 
 	if (m_RenderWireframe) {
@@ -384,6 +381,7 @@ void ModelViewer::RenderUI() {
 		model->OnUIRender();
 	}
 
+	m_LightManager.OnUIRender();
 	Renderer::OnUIRender();
 	
 	ImGui::SeparatorText	("Debug");
@@ -406,7 +404,7 @@ void ModelViewer::RenderUI() {
 		ImGui::End();
 	}
 
-	if (m_RenderShadowDebugImGui && LightManager::GetLightShadowDebugIndex() != -1) {
+	if (m_RenderShadowDebugImGui && m_LightManager.LightShadowRenderDebugIndex != -1) {
 		ImGui::Begin(m_ShadowDebugRenderer.GetID());
 		ImGui::Image((ImTextureID)m_DebugShadowDescriptorSet, ImVec2(m_ShadowDebugRenderer.GetWidth(), m_ShadowDebugRenderer.GetHeight()));
 		ImGui::End();

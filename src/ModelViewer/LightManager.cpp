@@ -7,72 +7,137 @@
 
 #include "./Renderer.h"
 
-namespace LightManager {
-	bool m_Initialized = false;
-	
-	int m_LightShadowRenderDebugIndex = -1;
-
-	std::vector<Scene::LightComponent> m_Lights;
-
-	Graphics::Buffer m_LightBuffer;	
-}
-
 void LightManager::Init() {
-	if (m_Initialized)
-		return;
-
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(Scene::LightComponent) * MAX_LIGHT_SOURCES);
+	LightBuffer = gfxDevice->CreateBuffer(sizeof(Scene::LightComponent) * MAX_LIGHT_SOURCES);
 
-	m_Initialized = true;
+	memset(LightCount, 0, Scene::LightComponent::LightType::TYPE_COUNT * sizeof(uint32_t));
+	memset(ExternalToInternal, UINT32_MAX, MAX_LIGHT_SOURCES * sizeof(uint32_t));
+	memset(InternalToExternal, UINT32_MAX, MAX_LIGHT_SOURCES * sizeof(uint32_t));
 }
 
 void LightManager::Shutdown() {
-	if (!m_Initialized)
-		return;
+	LightShadowRenderDebugIndex = -1;
 
-	m_Lights.clear();
+	memset(LightCount, 0, Scene::LightComponent::LightType::TYPE_COUNT * sizeof(uint32_t));
+	memset(ExternalToInternal, UINT32_MAX, MAX_LIGHT_SOURCES * sizeof(uint32_t));
+	memset(InternalToExternal, UINT32_MAX, MAX_LIGHT_SOURCES * sizeof(uint32_t));
 }
 
-void LightManager::AddLight(Scene::LightComponent& light) {
-	if (m_Lights.size() + 1 > MAX_LIGHT_SOURCES) {
-		std::cout << "Max num of lights reached!" << '\n';
-		return;
+Scene::LightComponent* LightManager::GetLight(uint32_t index) {
+	if (index >= NextExternalIndex)
+		return nullptr;
+
+	uint32_t internalIndex = ExternalToInternal[index];
+
+	if (internalIndex >= MAX_LIGHT_SOURCES || !(Lights[internalIndex].IsActive()))
+		return nullptr;
+
+	return &Lights[internalIndex];
+}
+
+uint32_t LightManager::FindNextSuitableExternalPosition() {
+	for (uint32_t i = 0; i < TotalLights; i++) {
+		if (ExternalToInternal[i] == UINT32_MAX)
+			return i;
 	}
 
-	light.index = m_Lights.size();
-
-	m_Lights.push_back(light);
+	return UINT32_MAX;
 }
 
-void LightManager::DeleteLight(Scene::LightComponent& light) {
-	if (!m_Initialized)
-		return;
+uint32_t LightManager::AddLight(const Scene::LightComponent& light, uint32_t flags) {
 
-	DeleteLight(light.index);
-}
+	if (LightCount[light.type] >= LightLimits[light.type])
+		return UINT32_MAX;
 
-void LightManager::DeleteLight(int lightIndex) {
-	if (!m_Initialized)
-		return;
+	uint32_t externalIndex = UINT32_MAX;
 
-	if (m_LightShadowRenderDebugIndex == lightIndex)
-		m_LightShadowRenderDebugIndex = -1;
+	if (NextExternalIndex + 1 >= TotalLights) {
+		NextExternalIndex = FindNextSuitableExternalPosition();
 
-	m_Lights.erase(m_Lights.begin() + lightIndex);
+		if (NextExternalIndex == UINT32_MAX)
+			return UINT32_MAX;
 
-	for (int i = 0; i < m_Lights.size(); i++) {
-		if (m_LightShadowRenderDebugIndex == m_Lights[i].index)
-			m_LightShadowRenderDebugIndex = i;
-
-		m_Lights[i].index = i;
+		externalIndex = NextExternalIndex;
+		NextExternalIndex = UINT32_MAX;
 	}
+	else {
+		externalIndex = NextExternalIndex++;
+	}
+
+	uint32_t internalIndex = LightOffsets[light.type] + LightCount[light.type]++;
+
+	Lights[internalIndex] = light;
+	Lights[internalIndex].flags = flags;
+	Lights[internalIndex].index = internalIndex;
+
+	ExternalToInternal[externalIndex] = internalIndex;
+	InternalToExternal[internalIndex] = externalIndex;
+
+	return externalIndex;
+}
+
+void LightManager::RemoveLight(uint32_t index) {
+
+	if (index >= NextExternalIndex)
+		return;
+
+	uint32_t internalIndex = ExternalToInternal[index];
+
+	if (!(Lights[internalIndex].IsActive()))
+		return;
+
+	Scene::LightComponent::LightType type = Lights[internalIndex].type;
+	uint32_t lastInternalIndex = LightOffsets[type] + LightCount[type] - 1;
+	uint32_t lastExternalIndex = InternalToExternal[lastInternalIndex];
+
+	Lights[internalIndex] = Lights[lastInternalIndex];
+	Lights[internalIndex].index = internalIndex;
+
+	ExternalToInternal[lastExternalIndex] = internalIndex;
+	InternalToExternal[internalIndex] = lastExternalIndex;
+
+	Lights[lastInternalIndex].flags &= ~(1 << 4);
+
+	ExternalToInternal[index] = UINT32_MAX;
+	InternalToExternal[lastInternalIndex] = UINT32_MAX;
+
+	LightCount[type]--;
+}
+
+void LightManager::ChangeLightType(uint32_t index, Scene::LightComponent::LightType type) {
+
+	if (index > TotalLights || LightCount[type] + 1 > LightLimits[type])
+		return;
+
+	uint32_t internalIndex = ExternalToInternal[index];
+
+	if (!Lights[internalIndex].IsActive())
+		return;
+
+	uint32_t newInternalIndex = LightOffsets[type] + LightCount[type]++;
+
+	Lights[newInternalIndex] = Lights[internalIndex];
+	Lights[newInternalIndex].index = newInternalIndex;
+	Lights[newInternalIndex].type = type;
+
+	LightCount[Lights[internalIndex].type]--;
+	Lights[internalIndex].flags &= ~(1 << 4);
+
+	ExternalToInternal[index] = newInternalIndex;
+	InternalToExternal[newInternalIndex] = index;
+	InternalToExternal[internalIndex] = UINT32_MAX;
 }
 
 void LightManager::Update(Assets::ShadowCamera& camera) {
+	for (uint32_t i = 0; i < TotalLights; i++) {
 
-	for (auto& light : m_Lights) {
+		Scene::LightComponent& light = Lights[i];
+
+		if (!light.IsActive())
+			continue;
+
 		// the light source cube has hardcoded vertices in vertex shader around 
 		// the origin (0, 0, 0), therefore the pivot vector can also be hardcoded
 		// to the origin.
@@ -80,7 +145,6 @@ void LightManager::Update(Assets::ShadowCamera& camera) {
 		glm::mat4 toOrigin = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 		glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(light.scale));
 		glm::mat4 toPosition = glm::translate(glm::mat4(1.0f), glm::vec3(light.position));
-
 		light.model = toPosition * scale * toOrigin;
 
 		light.cutOffAngle = glm::cos(glm::radians(light.rawCutOffAngle));
@@ -101,23 +165,13 @@ void LightManager::Update(Assets::ShadowCamera& camera) {
 			light.viewProj = glm::mat4(1.0f);
 		}
 	}
-}
-
-void LightManager::UpdateBuffer() {
-	if (!m_Initialized)
-		return;
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
+	gfxDevice->UpdateBuffer(LightBuffer, Lights);
 }
 
 void LightManager::OnUIRender() {
-	if (!m_Initialized)
-		return;
-
-	using namespace Scene;
-
 	ImGui::SeparatorText("Light Manager");
 
 	if (ImGui::Button("Add Light")) {
@@ -139,27 +193,55 @@ void LightManager::OnUIRender() {
 		AddLight(light);
 	}
 
-	for (int i = 0; i < m_Lights.size(); i++) {
-		auto& light = m_Lights[i];
+	static const char* lightTypes[] = { "Directional", "Point", "Spot" };
 
-		std::string light_id = "light_";
-		light_id += std::to_string(i);
+	for (int i = 0; i < Scene::LightComponent::LightType::TYPE_COUNT; i++) {
+		std::string lightType = "";
+
+		if (i == Scene::LightComponent::LightType::SPOT)
+			lightType = "spot";
+		if (i == Scene::LightComponent::LightType::DIRECTIONAL)
+			lightType = "directional";
+		if (i == Scene::LightComponent::LightType::POINT)
+			lightType = "point";
+
+		std::string lightCountInfo = lightType + " (" + std::to_string(LightCount[i]) + "/" + std::to_string(LightLimits[i]) + ")";
+		ImGui::Text(lightCountInfo.c_str());
+	}
+
+	for (int i = 0; i < TotalLights; i++) {
+		Scene::LightComponent& light = Lights[i];
+
+		if (!light.IsActive())
+			continue;
+
+		std::string light_type = "";
+
+		if (light.type == Scene::LightComponent::LightType::SPOT)
+			light_type = "spot";
+		if (light.type == Scene::LightComponent::LightType::DIRECTIONAL)
+			light_type = "directional";
+		if (light.type == Scene::LightComponent::LightType::POINT)
+			light_type = "point";
+
+		std::string light_id = "light_" + light_type + "_" + std::to_string(light.index);
 
 		if (ImGui::TreeNode(light_id.c_str())) {
-			static const char* lightTypes[] = { "Directional", "Point", "Spot" };
 			int selected = light.type;
 
 			if (ImGui::Combo("Light Type", &selected, lightTypes, IM_ARRAYSIZE(lightTypes))) {
-				light.type = static_cast<LightComponent::LightType>(selected);
+				Scene::LightComponent::LightType type = static_cast<Scene::LightComponent::LightType>(selected);
+
+				ChangeLightType(InternalToExternal[light.index], type);
 			}
 
-			if (light.type == LightComponent::LightType::DIRECTIONAL || light.type == LightComponent::LightType::SPOT) {
+			if (light.type == Scene::LightComponent::LightType::DIRECTIONAL || light.type == Scene::LightComponent::LightType::SPOT) {
 				ImGui::DragFloat("Direction X", &light.direction.x, 0.02f, -90.0f, 90.0f, "%.03f");
 				ImGui::DragFloat("Direction Y", &light.direction.y, 0.02f, -90.0f, 90.0f, "%.03f");
 				ImGui::DragFloat("Direction Z", &light.direction.z, 0.02f, -90.0f, 90.0f, "%.03f");
 			} 
 
-			if (light.type == LightComponent::LightType::POINT || light.type == LightComponent::LightType::SPOT) {
+			if (light.type == Scene::LightComponent::LightType::POINT || light.type == Scene::LightComponent::LightType::SPOT) {
 				ImGui::DragFloat("Position X", &light.position.x, 0.1f, -50.0f, 50.0f, "%0.3f");
 				ImGui::DragFloat("Position Y", &light.position.y, 0.1f, -50.0f, 50.0f, "%0.3f");
 				ImGui::DragFloat("Position Z", &light.position.z, 0.1f, -50.0f, 50.0f, "%0.3f");
@@ -169,12 +251,12 @@ void LightManager::OnUIRender() {
 			ImGui::DragFloat("Diffuse", &light.diffuse, 0.002f, 0.0f, 1.0f, "%0.3f");
 			ImGui::DragFloat("Specular", &light.specular, 0.002f, 0.0f, 1.0f, "%0.3f");
 
-			if (light.type == LightComponent::LightType::SPOT) {
+			if (light.type == Scene::LightComponent::LightType::SPOT) {
 				ImGui::DragFloat("Cut Off Angle", &light.rawCutOffAngle, 0.002f, 0.0f, 90.0f, "%0.3f");
 				ImGui::DragFloat("Outer Cut Off Angle", &light.rawOuterCutOffAngle, 0.002f, 0.0f, 90.0f, "%0.3f");
 			}
 
-			if (light.type == LightComponent::LightType::POINT || light.type == LightComponent::LightType::SPOT) {
+			if (light.type == Scene::LightComponent::LightType::POINT || light.type == Scene::LightComponent::LightType::SPOT) {
 				ImGui::DragFloat("Linear Attenuation", &light.linearAttenuation, 0.002f);
 				ImGui::DragFloat("Quadratic Attenuation", &light.quadraticAttenuation, 0.002f);
 			}
@@ -195,6 +277,9 @@ void LightManager::OnUIRender() {
 				mask = (1 << 3);
 				bool stratifiedPoissionSamplingEnabled = (light.flags & mask);
 
+				mask = (1 << 4);
+				bool isLightEnabled = (light.flags & mask);
+
 				if (pcfFeatureEnabled)
 					ImGui::DragInt("PCF Samples (sqrt)", &light.pcfSamples, 1, 1, 6);
 
@@ -208,34 +293,18 @@ void LightManager::OnUIRender() {
 					ImGui::Checkbox("Stratified Poisson Sampling Enabled", &stratifiedPoissionSamplingEnabled);
 				}
 
-				light.flags = (stratifiedPoissionSamplingEnabled << 3) | (pcfFeatureEnabled << 2) | (shadowMapEnabled << 1);
+				light.flags = (isLightEnabled << 4) | (stratifiedPoissionSamplingEnabled << 3) | (pcfFeatureEnabled << 2) | (shadowMapEnabled << 1);
 
 				if (ImGui::Button("Render Debug Shadow")) {
-					m_LightShadowRenderDebugIndex = i;
+					LightShadowRenderDebugIndex = i;
 				}
 			}
 
 			if (ImGui::Button("Delete Light")) {
-				DeleteLight(i);
+				RemoveLight(InternalToExternal[light.index]);
 			}
 
 			ImGui::TreePop();
 		}
 	}
-}
-
-int LightManager::GetTotalLights() {
-	return m_Lights.size();
-}
-
-int LightManager::GetLightShadowDebugIndex() {
-	return m_LightShadowRenderDebugIndex;
-}
-
-Graphics::Buffer& LightManager::GetLightBuffer() {
-	return m_LightBuffer;
-}
-
-std::vector<Scene::LightComponent>& LightManager::GetLights() {
-	return m_Lights;
 }
