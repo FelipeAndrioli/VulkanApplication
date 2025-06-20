@@ -421,6 +421,12 @@ void main() {
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
 		light_t light = lights[i];
 
+		int active_mask = 1 << 4;
+		bool is_light_active = bool(light.flags & active_mask);
+
+		if (!is_light_active)
+			continue;
+
 		switch (light.type) {
 			case 0:
 				material_color.rgb += calc_directional_light(light, current_material, material_ambient, material_diffuse, material_specular, material_normal);
