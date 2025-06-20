@@ -12,7 +12,9 @@ namespace Scene {
 		enum LightType {
 			DIRECTIONAL = 0,
 			POINT,
-			SPOT	
+			SPOT,
+
+			TYPE_COUNT
 		};
 
 		glm::vec4 position						= glm::vec4(0.0f);
@@ -24,7 +26,7 @@ namespace Scene {
 		glm::mat4 viewProj						= glm::mat4(1.0f);			// shadow map 
 
 		alignas(4) LightType type				= LightType::POINT;
-		alignas(4) uint32_t flags				= (1 << 1);					// flags for all purposes such as enabled features, 1 bit only | stratified disk sampling | pcf | shadow map (enabled by default)
+		alignas(4) uint32_t flags				= 0;					// flags for all purposes such as enabled features, 1 bit only | stratified disk sampling | pcf | shadow map (enabled by default)
 		alignas(4) int index					= 0;
 		alignas(4) int pcfSamples				= 0;
 
@@ -41,5 +43,13 @@ namespace Scene {
 		alignas(4) float diffuse				= 0.0f;
 		alignas(4) float specular				= 0.0f;
 
+		
+		inline bool IsActive() const {
+			return flags & (1 << 4);
+		}
+
+		inline bool IsShadowCastingEnabled() const {
+			return flags & (1 << 1);
+		}
 	};
 }
