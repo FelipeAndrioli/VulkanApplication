@@ -2019,6 +2019,22 @@ namespace Graphics {
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, set, setCount, &descriptorSet, 0, nullptr);
 	}
 
+	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet) {
+		VkWriteDescriptorSet descriptorWrite = {};
+
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = binding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = binding.descriptorType;
+		descriptorWrite.descriptorCount = binding.descriptorCount;
+		descriptorWrite.pBufferInfo = nullptr;
+		descriptorWrite.pImageInfo = nullptr;
+		descriptorWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr);
+	}
+
 	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUBuffer& buffer) {
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = buffer.Handle;
