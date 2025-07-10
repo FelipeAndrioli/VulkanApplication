@@ -167,74 +167,115 @@ namespace Assets {
 		// TODO: rework when implementing voxels
 
 		Assets::Mesh mesh = {};
+		mesh.Vertices.resize(24);
+	
+		const glm::vec3 NormalX = glm::vec3(1.0f, 0.0f, 0.0f);
+		const glm::vec3 NormalY = glm::vec3(0.0f, 1.0f, 0.0);
+		const glm::vec3 NormalZ = glm::vec3(0.0f, 0.0f, 1.0f);
 
-		Assets::Vertex vertex[8];
+		mesh.Vertices[0].pos = glm::vec3(pos.x, pos.y, pos.z);
+		mesh.Vertices[0].normal = -NormalZ;
+		mesh.Vertices[1].pos = glm::vec3(pos.x, pos.y, pos.z);							
+		mesh.Vertices[1].normal = -NormalY;
+		mesh.Vertices[2].pos = glm::vec3(pos.x, pos.y, pos.z);							
+		mesh.Vertices[2].normal = -NormalX;
 
-		vertex[0].pos = glm::vec3(pos.x, pos.y, pos.z);
-		vertex[1].pos = glm::vec3(pos.x, pos.y + size, pos.z);
-		vertex[2].pos = glm::vec3(pos.x + size, pos.y + size, pos.z);
-		vertex[3].pos = glm::vec3(pos.x + size, pos.y, pos.z);
-		vertex[4].pos = glm::vec3(pos.x, pos.y, pos.z + size);
-		vertex[5].pos = glm::vec3(pos.x, pos.y + size, pos.z + size);
-		vertex[6].pos = glm::vec3(pos.x + size, pos.y + size, pos.z + size);
-		vertex[7].pos = glm::vec3(pos.x + size, pos.y, pos.z + size);
+		mesh.Vertices[3].pos = glm::vec3(pos.x, pos.y + size, pos.z);
+		mesh.Vertices[3].normal = -NormalZ;
+		mesh.Vertices[4].pos = glm::vec3(pos.x, pos.y + size, pos.z);
+		mesh.Vertices[4].normal = NormalY;
+		mesh.Vertices[5].pos = glm::vec3(pos.x, pos.y + size, pos.z);
+		mesh.Vertices[5].normal = -NormalX;
 
-		mesh.Vertices.push_back(vertex[0]);
-		mesh.Vertices.push_back(vertex[1]);
-		mesh.Vertices.push_back(vertex[2]);
-		mesh.Vertices.push_back(vertex[3]);
-		mesh.Vertices.push_back(vertex[4]);
-		mesh.Vertices.push_back(vertex[5]);
-		mesh.Vertices.push_back(vertex[6]);
-		mesh.Vertices.push_back(vertex[7]);
+		mesh.Vertices[6].pos = glm::vec3(pos.x + size, pos.y + size, pos.z);
+		mesh.Vertices[6].normal = -NormalZ;
+		mesh.Vertices[7].pos = glm::vec3(pos.x + size, pos.y + size, pos.z);
+		mesh.Vertices[7].normal = NormalY;
+		mesh.Vertices[8].pos = glm::vec3(pos.x + size, pos.y + size, pos.z);
+		mesh.Vertices[8].normal = NormalX;
 
-		// front face
+		mesh.Vertices[9].pos = glm::vec3(pos.x + size, pos.y, pos.z);
+		mesh.Vertices[9].normal = -NormalZ;
+		mesh.Vertices[10].pos = glm::vec3(pos.x + size, pos.y, pos.z);
+		mesh.Vertices[10].normal = -NormalY;
+		mesh.Vertices[11].pos = glm::vec3(pos.x + size, pos.y, pos.z);
+		mesh.Vertices[11].normal = NormalX;
+
+		mesh.Vertices[12].pos = glm::vec3(pos.x, pos.y, pos.z + size);
+		mesh.Vertices[12].normal = NormalZ;
+		mesh.Vertices[13].pos = glm::vec3(pos.x, pos.y, pos.z + size);
+		mesh.Vertices[13].normal = -NormalY;
+		mesh.Vertices[14].pos = glm::vec3(pos.x, pos.y, pos.z + size);
+		mesh.Vertices[14].normal = -NormalX;
+
+		mesh.Vertices[15].pos = glm::vec3(pos.x, pos.y + size, pos.z + size);
+		mesh.Vertices[15].normal = NormalZ;
+		mesh.Vertices[16].pos = glm::vec3(pos.x, pos.y + size, pos.z + size);
+		mesh.Vertices[16].normal = NormalY;
+		mesh.Vertices[17].pos = glm::vec3(pos.x, pos.y + size, pos.z + size);
+		mesh.Vertices[17].normal = -NormalX;
+
+		mesh.Vertices[18].pos = glm::vec3(pos.x + size, pos.y + size, pos.z + size);
+		mesh.Vertices[18].normal = NormalZ;
+		mesh.Vertices[19].pos = glm::vec3(pos.x + size, pos.y + size, pos.z + size);
+		mesh.Vertices[19].normal = NormalY;
+		mesh.Vertices[20].pos = glm::vec3(pos.x + size, pos.y + size, pos.z + size);
+		mesh.Vertices[20].normal = NormalX;
+
+		mesh.Vertices[21].pos = glm::vec3(pos.x + size, pos.y, pos.z + size);			
+		mesh.Vertices[21].normal = NormalZ;
+		mesh.Vertices[22].pos = glm::vec3(pos.x + size, pos.y, pos.z + size);			
+		mesh.Vertices[22].normal = -NormalY;
+		mesh.Vertices[23].pos = glm::vec3(pos.x + size, pos.y, pos.z + size);			
+		mesh.Vertices[23].normal = NormalX;
+
+		// Front Face
 		mesh.Indices.push_back(0);
-		mesh.Indices.push_back(1);
-		mesh.Indices.push_back(2);
-		mesh.Indices.push_back(0);
-		mesh.Indices.push_back(2);
 		mesh.Indices.push_back(3);
-
-		// back face
-		mesh.Indices.push_back(4);
 		mesh.Indices.push_back(6);
+		mesh.Indices.push_back(0);
+		mesh.Indices.push_back(6);
+		mesh.Indices.push_back(9);
+
+		// Right Face
+		mesh.Indices.push_back(11);
+		mesh.Indices.push_back(8);
+		mesh.Indices.push_back(20);
+		mesh.Indices.push_back(11);
+		mesh.Indices.push_back(20);
+		mesh.Indices.push_back(23);
+
+		// Left Face
+		mesh.Indices.push_back(14);
+		mesh.Indices.push_back(17);
 		mesh.Indices.push_back(5);
-		mesh.Indices.push_back(4);
-		mesh.Indices.push_back(7);
-		mesh.Indices.push_back(6);
-
-		// left face
-		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(14);
 		mesh.Indices.push_back(5);
-		mesh.Indices.push_back(1);
-		mesh.Indices.push_back(4);
-		mesh.Indices.push_back(1);
-		mesh.Indices.push_back(0);
-
-		// right face
-		mesh.Indices.push_back(3);
 		mesh.Indices.push_back(2);
-		mesh.Indices.push_back(6);
-		mesh.Indices.push_back(3);
-		mesh.Indices.push_back(6);
+		
+		// Top Face
+		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(16);
+		mesh.Indices.push_back(19);
+		mesh.Indices.push_back(4);
+		mesh.Indices.push_back(19);
 		mesh.Indices.push_back(7);
 
-		// top face
+		// Bottom Face
+		mesh.Indices.push_back(13);
 		mesh.Indices.push_back(1);
-		mesh.Indices.push_back(5);
-		mesh.Indices.push_back(6);
-		mesh.Indices.push_back(1);
-		mesh.Indices.push_back(6);
-		mesh.Indices.push_back(2);
+		mesh.Indices.push_back(10);
+		mesh.Indices.push_back(13);
+		mesh.Indices.push_back(10);
+		mesh.Indices.push_back(22);
 
-		// bottom face
-		mesh.Indices.push_back(3);
-		mesh.Indices.push_back(7);
-		mesh.Indices.push_back(4);
-		mesh.Indices.push_back(3);
-		mesh.Indices.push_back(4);
-		mesh.Indices.push_back(0);
+		// Back Face
+		mesh.Indices.push_back(12);
+		mesh.Indices.push_back(15);
+		mesh.Indices.push_back(18);
+		mesh.Indices.push_back(12);
+		mesh.Indices.push_back(18);
+		mesh.Indices.push_back(21);
 
 		std::vector<Assets::Mesh> customMesh = { mesh };
 
