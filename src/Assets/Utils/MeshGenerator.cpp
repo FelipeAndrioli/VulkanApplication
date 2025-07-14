@@ -270,12 +270,12 @@ namespace Assets {
 		mesh.Indices.push_back(22);
 
 		// Back Face
-		mesh.Indices.push_back(12);
-		mesh.Indices.push_back(15);
-		mesh.Indices.push_back(18);
-		mesh.Indices.push_back(12);
-		mesh.Indices.push_back(18);
 		mesh.Indices.push_back(21);
+		mesh.Indices.push_back(18);
+		mesh.Indices.push_back(15);
+		mesh.Indices.push_back(21);
+		mesh.Indices.push_back(15);
+		mesh.Indices.push_back(12);
 
 		std::vector<Assets::Mesh> customMesh = { mesh };
 
