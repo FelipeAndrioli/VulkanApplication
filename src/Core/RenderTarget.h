@@ -92,4 +92,21 @@ namespace Graphics {
 		uint32_t m_Precision	= 0;
 		uint32_t m_Layers		= 0;
 	};
+
+	class DepthOnlyCubeRenderTarget : public IRenderTarget {
+	public:
+		DepthOnlyCubeRenderTarget(uint32_t width, uint32_t height, uint32_t precision, uint32_t layers);
+		~DepthOnlyCubeRenderTarget();
+		void Create() override;
+		void Begin(const VkCommandBuffer& commandBuffer, uint32_t layer);
+		void End(const VkCommandBuffer& commandBuffer) override;
+		const GPUImage& GetDepthBuffer() { return m_DepthCubeMap; }
+	private:
+		void Begin(const VkCommandBuffer& commandBuffer) override;
+	private:
+		GPUImageCube m_DepthCubeMap;
+
+		uint32_t m_Precision;
+		uint32_t m_Layers;
+	};
 }
