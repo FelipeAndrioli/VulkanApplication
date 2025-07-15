@@ -10,21 +10,22 @@ layout (location = 2) in vec3 in_color;
 layout (location = 3) in vec3 in_tangent;
 layout (location = 4) in vec2 in_tex_coord;
 
-layout (location = 0) out vec4 out_frag_world_position;
-layout (location = 1) out vec4 out_light_position; 
-layout (location = 2) out vec4 out_view_position;
-layout (location = 3) out vec3 out_frag_normal;
-layout (location = 4) out int out_light_far_distance;
-
 struct model_t {
 	vec4 extra[12];
 	mat4 model;
 };
 
+layout (location = 0) out vec4 frag_world_position;	
+layout (location = 1) out vec4 light_position; 
+layout (location = 2) out vec4 view_position;
+layout (location = 3) out vec3 frag_normal;
+layout (location = 4) out int light_far_distance;
+layout (location = 5) out int flags;
+
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int extra0;
 	int extra1;
-	int extra2;
+	int flags;
 	int light_far_distance;
 	vec4 extra;
 	vec4 view_position;
@@ -43,11 +44,12 @@ layout (push_constant) uniform ScenePushConstants {
 } scene_push_constants;
 
 void main() {
-	out_frag_world_position = model_gpu_data.model[scene_push_constants.model_index].model * vec4(in_position, 1.0);
-	out_light_position		= scene_gpu_data.light_position;
-	out_frag_normal			= normalize(mat3(model_gpu_data.model[scene_push_constants.model_index].model) * in_normal);
-	out_light_far_distance	= scene_gpu_data.light_far_distance;
-	out_view_position		= scene_gpu_data.view_position;
+	frag_world_position	= model_gpu_data.model[scene_push_constants.model_index].model * vec4(in_position, 1.0);
+	light_position		= scene_gpu_data.light_position;
+	frag_normal			= normalize(mat3(model_gpu_data.model[scene_push_constants.model_index].model) * in_normal);
+	light_far_distance	= scene_gpu_data.light_far_distance;
+	view_position		= scene_gpu_data.view_position;
+	flags				= scene_gpu_data.flags;
 
-	gl_Position = scene_gpu_data.projection * scene_gpu_data.view * out_frag_world_position;
+	gl_Position = scene_gpu_data.projection * scene_gpu_data.view * frag_world_position;
 }

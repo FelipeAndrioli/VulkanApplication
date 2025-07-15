@@ -38,17 +38,17 @@ private:
 	struct GPUData {
 		int extra0 = 0;
 		int extra1 = 0;
-		int extra2 = 0;
 
-		uint32_t LightFarDistance = 0;
+		uint32_t Flags				= 0;				// 4 -> 0 - Shadow Map Enabled | 1 - PCF Enabled | 2 - Optimized PCF Enabled
+		uint32_t LightFarDistance	= 0;
 
 		glm::vec4 extra			= {};					// 16
 		glm::vec4 ViewPosition	= {};					// 16
 		glm::vec4 LightPosition = glm::vec4(0.0f);		// 16
 
-		glm::mat4 View = glm::mat4(1.0f);				// 64
-		glm::mat4 Projection = glm::mat4(1.0f);			// 64
-		glm::mat4 LightProjection = glm::mat4(1.0f);	// 64
+		glm::mat4 View				= glm::mat4(1.0f);	// 64
+		glm::mat4 Projection		= glm::mat4(1.0f);	// 64
+		glm::mat4 LightProjection	= glm::mat4(1.0f);	// 64
 	} m_SceneGPUData;
 
 	// 256
@@ -64,7 +64,10 @@ private:
 	uint32_t m_Width		= 0;
 	uint32_t m_Height		= 0;
 
-	bool m_RotateLight = true;
+	bool m_RotateLight			= true;
+	bool m_ShadowMapEnabled		= true;
+	bool m_PCFEnabled			= false;
+	bool m_OptimizedPCFEnabled	= false;
 
 	glm::vec4 m_LightPosition = glm::vec4(0.0f, 2.0f, 0.0f, 0.0f);
 
@@ -271,6 +274,7 @@ void OmnidirectionalShadowMap::Update(const float ConstantT, const float DeltaT,
 	m_SceneGPUData.LightFarDistance = m_ShadowCamera.PointLightFar;
 	m_SceneGPUData.LightPosition	= m_LightPosition;
 	m_SceneGPUData.ViewPosition		= glm::vec4(m_Camera.Position, 1.0f);
+	m_SceneGPUData.Flags			= (m_OptimizedPCFEnabled << 2) | (m_PCFEnabled << 1) | (m_ShadowMapEnabled);
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &m_SceneGPUData);
 	gfxDevice->UpdateBuffer(m_ModelsBuffer[gfxDevice->GetCurrentFrameIndex()], &m_ModelGPUData);
@@ -338,7 +342,9 @@ void OmnidirectionalShadowMap::ShadowPass(const uint32_t CurrentFrame, const VkC
 }
 
 void OmnidirectionalShadowMap::RenderScene(const uint32_t CurrentFrame, const VkCommandBuffer& CommandBuffer) {
-	ShadowPass(CurrentFrame, CommandBuffer, m_Models, m_TotalModels);
+	if (m_ShadowMapEnabled)
+		ShadowPass(CurrentFrame, CommandBuffer, m_Models, m_TotalModels);
+
 	ColorPass(CurrentFrame, CommandBuffer, m_Models, m_TotalModels);
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
@@ -358,6 +364,9 @@ void OmnidirectionalShadowMap::RenderUI() {
 	}
 
 	ImGui::Separator();
+	ImGui::Checkbox("Shadow Map Enabled",				&m_ShadowMapEnabled);
+	ImGui::Checkbox("Shadow Map PCF Enabled",			&m_PCFEnabled);
+	ImGui::Checkbox("Shadow Map Optimized PCF Enabled", &m_OptimizedPCFEnabled);
 	ImGui::Checkbox("Rotate Light", &m_RotateLight);
 	ImGui::DragFloat4("Light Position", (float*)&m_LightPosition, 0.002, -10.0f, 10.0f);
 }
