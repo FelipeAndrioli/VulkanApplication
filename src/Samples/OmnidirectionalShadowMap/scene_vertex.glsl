@@ -12,8 +12,9 @@ layout (location = 4) in vec2 in_tex_coord;
 
 layout (location = 0) out vec4 out_frag_world_position;
 layout (location = 1) out vec4 out_light_position; 
-layout (location = 2) out vec3 out_frag_normal;
-layout (location = 3) out int out_light_far_distance;
+layout (location = 2) out vec4 out_view_position;
+layout (location = 3) out vec3 out_frag_normal;
+layout (location = 4) out int out_light_far_distance;
 
 struct model_t {
 	vec4 extra[12];
@@ -25,7 +26,8 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int extra1;
 	int extra2;
 	int light_far_distance;
-	vec4 extra[2];
+	vec4 extra;
+	vec4 view_position;
 	vec4 light_position;
 	mat4 view;
 	mat4 projection;
@@ -45,6 +47,7 @@ void main() {
 	out_light_position		= scene_gpu_data.light_position;
 	out_frag_normal			= normalize(mat3(model_gpu_data.model[scene_push_constants.model_index].model) * in_normal);
 	out_light_far_distance	= scene_gpu_data.light_far_distance;
+	out_view_position		= scene_gpu_data.view_position;
 
 	gl_Position = scene_gpu_data.projection * scene_gpu_data.view * out_frag_world_position;
 }

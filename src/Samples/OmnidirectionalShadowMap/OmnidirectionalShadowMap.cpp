@@ -42,7 +42,8 @@ private:
 
 		uint32_t LightFarDistance = 0;
 
-		glm::vec4 extra[2] = {};
+		glm::vec4 extra			= {};					// 16
+		glm::vec4 ViewPosition	= {};					// 16
 		glm::vec4 LightPosition = glm::vec4(0.0f);		// 16
 
 		glm::mat4 View = glm::mat4(1.0f);				// 64
@@ -63,9 +64,9 @@ private:
 	uint32_t m_Width		= 0;
 	uint32_t m_Height		= 0;
 
-	bool m_RotateLight		= true;
+	bool m_RotateLight = true;
 
-	glm::vec4 m_LightPosition	= glm::vec4(0.0f, 2.0f, 0.0f, 0.0f);
+	glm::vec4 m_LightPosition = glm::vec4(0.0f, 2.0f, 0.0f, 0.0f);
 
 	const glm::vec3 m_CameraInitialPosition = glm::vec3(-2.2f, 4.0f, -12.0f);
 
@@ -269,6 +270,7 @@ void OmnidirectionalShadowMap::Update(const float ConstantT, const float DeltaT,
 	m_SceneGPUData.LightProjection	= m_ShadowCamera.ProjectionMatrix;
 	m_SceneGPUData.LightFarDistance = m_ShadowCamera.PointLightFar;
 	m_SceneGPUData.LightPosition	= m_LightPosition;
+	m_SceneGPUData.ViewPosition		= glm::vec4(m_Camera.Position, 1.0f);
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &m_SceneGPUData);
 	gfxDevice->UpdateBuffer(m_ModelsBuffer[gfxDevice->GetCurrentFrameIndex()], &m_ModelGPUData);
