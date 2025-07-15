@@ -230,7 +230,8 @@ namespace Graphics {
 		VkCommandBuffer BeginSingleTimeCommandBuffer(VkCommandPool& commandPool);
 		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer, VkCommandPool& commandPool);
 
-		void CreateImage(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageType imageType);
+		void CreateImage(GPUImage& image, const ImageDescription& description);
+		void CreateImageView(const VkImage& image, VkImageView& imageView, const ImageDescription& description);
 		void CreateImageView(GPUImage& image);
 		void RecreateImageView(GPUImage& image);
 		
@@ -245,6 +246,7 @@ namespace Graphics {
 		void ResizeImage(GPUImage& image, uint32_t width, uint32_t height);
 		void CopyBufferToImage(GPUImage& image, GPUBuffer& srcBuffer);
 		void DestroyImage(GPUImage& image);
+		void DestroyImageCube(GPUImageCube& image);
 
 		template <class T>
 		void UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
