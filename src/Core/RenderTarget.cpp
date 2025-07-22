@@ -554,12 +554,13 @@ namespace Graphics {
 
 	/*  ========================== Depth Only Cube Render Target Implementation Begin ========================== */
 
-	DepthOnlyCubeRenderTarget::DepthOnlyCubeRenderTarget(uint32_t width, uint32_t height, uint32_t precision, uint32_t layers) {
+	DepthOnlyCubeRenderTarget::DepthOnlyCubeRenderTarget(uint32_t width, uint32_t height, uint32_t precision, uint32_t layers, bool singleFramebuffer) {
 
-		m_Width		= width;
-		m_Height	= height;
-		m_Precision = precision;
-		m_Layers	= layers;
+		m_Width				= width > height ? width : height;
+		m_Height			= m_Width;
+		m_Precision			= precision;
+		m_Layers			= layers;
+		m_SingleFramebuffer = singleFramebuffer;
 
 		Create();
 	}
@@ -570,7 +571,69 @@ namespace Graphics {
 		gfxDevice->DestroyImageCube(m_DepthCubeMap);
 	}
 
-	void DepthOnlyCubeRenderTarget::Create() {
+	void DepthOnlyCubeRenderTarget::CreateSingleFramebuffer() {
+		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
+
+		m_RenderPass.Description.Extent		= GetExtent();
+		m_RenderPass.Description.Viewport	= {
+			.x			= 0,
+			.y			= 0,
+			.width		= static_cast<float>(m_Width),
+			.height		= static_cast<float>(m_Height),
+			.minDepth	= 0.0f,
+			.maxDepth	= 1.0f
+		};
+
+		m_RenderPass.Description.Scissor	= {
+			.offset = {
+				.x = 0,
+				.y = 0
+			},
+			.extent = {
+				.width	= m_Width,
+				.height = m_Height
+			}
+		};
+
+		m_RenderPass.Description.SampleCount		= VK_SAMPLE_COUNT_1_BIT;
+		m_RenderPass.Description.Flags				= eDepthAttachment | eColorLoadOpClear | eColorStoreOpStore;
+		m_RenderPass.Description.DepthImageFormat	= gfxDevice->GetDepthOnlyFormat();
+
+		gfxDevice->CreateRenderPass(m_RenderPass);
+
+		ImageDescription desc	= {};
+		desc.Width				= m_Width;
+		desc.Height				= m_Height;
+		desc.MipLevels			= 1;
+		desc.MsaaSamples		= VK_SAMPLE_COUNT_1_BIT;
+		desc.Tiling				= VK_IMAGE_TILING_OPTIMAL;
+		desc.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+		desc.MemoryProperty		= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		desc.AspectFlags		= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		desc.AspectMask			= VK_IMAGE_ASPECT_DEPTH_BIT;
+		desc.ViewType			= VK_IMAGE_VIEW_TYPE_CUBE;
+		desc.LayerCount			= 6;
+		desc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		desc.Format				= VK_FORMAT_D32_SFLOAT;
+		desc.ImageType			= VK_IMAGE_TYPE_2D;
+		desc.SamplerCompareOp	= VK_COMPARE_OP_NEVER;
+
+		gfxDevice->CreateImage(m_DepthCubeMap, desc);
+		gfxDevice->CreateImageView(m_DepthCubeMap.Image, m_DepthCubeMap.ImageView, m_DepthCubeMap.Description);
+		gfxDevice->CreateImageSampler(m_DepthCubeMap);
+
+		for (uint32_t i = 0; i < m_Framebuffers.size(); i++) {
+			std::vector<VkImageView> views = { m_DepthCubeMap.ImageView };
+
+			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, views, GetExtent(), m_Framebuffers[i], 6);
+		}
+
+		gfxDevice->TransitionCubeImageLayout(m_DepthCubeMap, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+	}
+	
+	void DepthOnlyCubeRenderTarget::CreateMultipleFramebuffer() {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 		m_Framebuffers.resize(6);
@@ -639,9 +702,24 @@ namespace Graphics {
 
 			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, views, GetExtent(), m_Framebuffers[i], 1);
 		}
+
+		gfxDevice->TransitionCubeImageLayout(m_DepthCubeMap, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 	}
 
-	void DepthOnlyCubeRenderTarget::Begin(const VkCommandBuffer& commandBuffer, uint32_t layer) {
+	void DepthOnlyCubeRenderTarget::Create() {
+		if (m_SingleFramebuffer) {
+			CreateSingleFramebuffer();
+		}
+		else {
+			CreateMultipleFramebuffer();
+		}
+	}
+
+	void DepthOnlyCubeRenderTarget::BeginSingleFramebuffer(const VkCommandBuffer& commandBuffer) {
+		BeginRenderPass(commandBuffer);
+	}
+
+	void DepthOnlyCubeRenderTarget::BeginMultipleFramebuffer(const VkCommandBuffer& commandBuffer, uint32_t layer) {
 		if (m_Started)
 			return;
 
@@ -682,6 +760,15 @@ namespace Graphics {
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 		m_Started = true;
+	}
+
+	void DepthOnlyCubeRenderTarget::Begin(const VkCommandBuffer& commandBuffer, uint32_t layer) {
+		if (m_SingleFramebuffer) {
+			BeginSingleFramebuffer(commandBuffer);
+		}
+		else {
+			BeginMultipleFramebuffer(commandBuffer, layer);
+		}
 	}
 
 	void DepthOnlyCubeRenderTarget::End(const VkCommandBuffer& commandBuffer) {
