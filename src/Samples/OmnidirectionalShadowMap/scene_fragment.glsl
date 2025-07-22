@@ -12,8 +12,9 @@ layout (location = 5) flat in int flags;
 layout (location = 0) out vec4 frag_color;
 
 layout (set = 0, binding = 2) uniform samplerCube shadow_map_sampler;
+layout (set = 0, binding = 3) uniform samplerCube geometry_shadow_map_sampler;
 
-float raw_shadow_map(vec3 light_direction) {
+float raw_shadow_map(samplerCube shadow_map_sampler, vec3 light_direction) {
 	float closest_depth = texture(shadow_map_sampler, light_direction).r;
 	closest_depth *= light_far_distance;
 
@@ -24,7 +25,7 @@ float raw_shadow_map(vec3 light_direction) {
 	return shadow;
 }
 
-float pcf_shadow_map(vec3 light_direction) {
+float pcf_shadow_map(samplerCube shadow_map_sampler, vec3 light_direction) {
 	float shadow = 0.0;
 	float samples = 4.0;
 	float offset = 0.1;
@@ -56,7 +57,7 @@ vec3 sample_offset_directions[20] = vec3[] (
 	vec3(0, 1, 1),	vec3(0, -1, 1),		vec3(0, -1, -1),	vec3(0, 1, -1)
 );
 
-float optimized_pcf_shadow_map(vec3 light_direction, vec3 view_position) {
+float optimized_pcf_shadow_map(samplerCube shadow_map_sampler, vec3 light_direction, vec3 view_position) {
 	// Note:	When applying PCF to omnidirectional shadow maps most of the samples are redundant in that
 	//			they sample close to the original direction vector it may make more sense to only sample in
 	//			perpendicular directions of the sample direction vector. However as there is no (easy) way 
@@ -106,6 +107,10 @@ void main() {
 
 	bool optimized_pcf_enabled = bool(flags & mask);
 
+	mask = 1 << 3;
+
+	bool geometry_shader_pass = bool(flags & mask);
+
 	vec3 material_color = vec3(1.0);
 	vec3 material_diffuse = vec3(1.0);
 
@@ -119,12 +124,22 @@ void main() {
 
 	float shadow = 0.0;
 
-	if (shadow_map_enabled && optimized_pcf_enabled) {
-		shadow = optimized_pcf_shadow_map(light_direction, view_position.xyz);
-	} else if (shadow_map_enabled && pcf_enabled) {
-		shadow = pcf_shadow_map(light_direction);
-	} else if (shadow_map_enabled) {
-		shadow = raw_shadow_map(light_direction);
+	if (geometry_shader_pass) {
+		if (shadow_map_enabled && optimized_pcf_enabled) {
+			shadow = optimized_pcf_shadow_map(geometry_shadow_map_sampler, light_direction, view_position.xyz);
+		} else if (shadow_map_enabled && pcf_enabled) {
+			shadow = pcf_shadow_map(geometry_shadow_map_sampler, light_direction);
+		} else if (shadow_map_enabled) {
+			shadow = raw_shadow_map(geometry_shadow_map_sampler, light_direction);
+		}
+	} else {
+		if (shadow_map_enabled && optimized_pcf_enabled) {
+			shadow = optimized_pcf_shadow_map(shadow_map_sampler, light_direction, view_position.xyz);
+		} else if (shadow_map_enabled && pcf_enabled) {
+			shadow = pcf_shadow_map(shadow_map_sampler, light_direction);
+		} else if (shadow_map_enabled) {
+			shadow = raw_shadow_map(shadow_map_sampler, light_direction);
+		}
 	}
 
 	frag_color = vec4(ambient + ((1.0 - shadow) * diffuse), 1.0);	
