@@ -57,7 +57,7 @@ namespace Graphics {
 	};
 
 	struct GPUImageCube : public GPUImage {
-		VkImageView ImageViews[6];
+		VkImageView ImageViews[6] = { VK_NULL_HANDLE };
 	};
 
 	struct Texture : public GPUImage {
