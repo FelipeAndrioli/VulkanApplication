@@ -6,6 +6,8 @@
 #include "../Core/RenderTarget.h"
 #include "../Core/ResourceManager.h"
 
+#include "../Core/Profiler.h"
+
 #include "../Assets/Model.h"
 #include "../Assets/Camera.h"
 #include "../Assets/ShadowCamera.h"
@@ -188,6 +190,7 @@ void OmnidirectionalShadowMap::ColorPassStartUp() {
 }
 
 void OmnidirectionalShadowMap::ShadowPassStartUp() {
+
 	m_ShadowInputLayout = {
 		.pushConstants = {
 			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(ShadowPushConstants) }
@@ -219,6 +222,7 @@ void OmnidirectionalShadowMap::ShadowPassStartUp() {
 }
 
 void OmnidirectionalShadowMap::ShadowSingleFramebufferPassStartUp() {
+
 	m_ShadowSingleFramebufferInputLayout = {
 		.pushConstants = {
 			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(ShadowPushConstants) }
@@ -331,6 +335,8 @@ void OmnidirectionalShadowMap::CleanUp() {
 }
 
 void OmnidirectionalShadowMap::Update(const float ConstantT, const float DeltaT, InputSystem::Input& Input) {
+	SCOPED_PROFILER_US("OmnidirectionalShadowMap::Update");
+
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	for (uint32_t CurrentModelIndex = 0; CurrentModelIndex < m_TotalModels; CurrentModelIndex++) {
@@ -363,6 +369,8 @@ void OmnidirectionalShadowMap::Update(const float ConstantT, const float DeltaT,
 }
 
 void OmnidirectionalShadowMap::ColorPass(const uint32_t CurrentFrame, const VkCommandBuffer& CommandBuffer, const std::shared_ptr<Assets::Model> Models[MAX_MODELS], const uint32_t ModelsCount) {
+	SCOPED_PROFILER_US("OmnidirectionalShadowMap::ColorPass");
+
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	m_SceneRenderTarget->Begin(CommandBuffer);
@@ -391,6 +399,8 @@ void OmnidirectionalShadowMap::ColorPass(const uint32_t CurrentFrame, const VkCo
 }
 
 void OmnidirectionalShadowMap::ShadowPass(const uint32_t CurrentFrame, const VkCommandBuffer& CommandBuffer, const std::shared_ptr<Assets::Model> Models[MAX_MODELS], const uint32_t ModelsCount) {
+	SCOPED_PROFILER_US("OmnidirectionalShadowMap::ShadowPass");
+
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	for (uint32_t LightFaceIndex = 0; LightFaceIndex < 6; LightFaceIndex++) {
@@ -424,6 +434,8 @@ void OmnidirectionalShadowMap::ShadowPass(const uint32_t CurrentFrame, const VkC
 }
 
 void OmnidirectionalShadowMap::ShadowSingleFramebufferPass(const uint32_t CurrentFrame, const VkCommandBuffer& CommandBuffer, const std::shared_ptr<Assets::Model> Models[MAX_MODELS], const uint32_t ModelsCount) {
+	SCOPED_PROFILER_US("OmnidirectionalShadowMap::ShadowSingleFramebufferPass");
+
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	m_OmniDirectionalSingleFramebufferRenderTarget->Begin(CommandBuffer, 0);
@@ -452,6 +464,8 @@ void OmnidirectionalShadowMap::ShadowSingleFramebufferPass(const uint32_t Curren
 }
 
 void OmnidirectionalShadowMap::RenderScene(const uint32_t CurrentFrame, const VkCommandBuffer& CommandBuffer) {
+	SCOPED_PROFILER_US("OmnidirectionalShadowMap::RenderScene");
+
 	if (m_ShadowMapEnabled && !m_SingleFramebufferPass)
 		ShadowPass(CurrentFrame, CommandBuffer, m_Models, m_TotalModels);
 	
@@ -460,11 +474,15 @@ void OmnidirectionalShadowMap::RenderScene(const uint32_t CurrentFrame, const Vk
 
 	ColorPass(CurrentFrame, CommandBuffer, m_Models, m_TotalModels);
 
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+	{
+		// TODO: Implement a better solution to move offscreen render result to the swapchain framebuffer as this approach takes most of the rendering time.
 
-	m_SceneRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		SCOPED_PROFILER_US("Layout change and copy");
+		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+		m_SceneRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_SceneRenderTarget->GetColorBuffer());
+	}
 
-	gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_SceneRenderTarget->GetColorBuffer());
 }
 
 void OmnidirectionalShadowMap::RenderUI() {
