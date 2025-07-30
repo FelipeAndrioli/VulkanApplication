@@ -75,6 +75,34 @@ namespace Helper {
 		return temp.erase(0, lastSlashIndex).c_str();
 	}
 
+	static const char* get_filename_msvc(const char* file_path) {
+		char FileName[50] = {};
+		
+		size_t FilePathSize = strlen(file_path);
+
+		int LastSlashIndex = -1;
+
+		for (size_t i = FilePathSize; i > 0; --i) {
+			if (file_path[i] == '\\') {
+				LastSlashIndex = i;
+				break;
+			}
+		}
+
+		if (LastSlashIndex == -1)
+			return file_path;
+
+		size_t FileNameCharIndex = 0;
+
+		for (size_t i = LastSlashIndex + 1; i < FilePathSize; i++) {
+			FileName[FileNameCharIndex++] = file_path[i];
+		}
+
+		FileName[FileNameCharIndex] = '\0';
+
+		return FileName;
+	}
+
 	bool inline file_exists(const std::string& path) {
 		std::ifstream f(path.c_str());
 		return f.good();
