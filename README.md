@@ -3,13 +3,13 @@
 ## Samples Screenshots
 
 ### Directional Light Shadow Map
-[Directional Light Shadow Map](screenshots/directional_light_shadow_map_1.png)
+![Directional Light Shadow Map](screenshots/directional_light_shadow_map_1.png)
 
 ### Spot Light Shadow Map
-[Spot Light Shadow Map](screenshots/spot_light_shadow_map_1.png)
+![Spot Light Shadow Map](screenshots/spot_light_shadow_map_1.png)
 
 ### Point Light Shadow Map
-[Point Light Shadow Map](screenshots/omnidirectional_shadow_map.png)
+![Point Light Shadow Map](screenshots/omnidirectional_shadow_map.png)
 
 ## Current Work (not in order)
 
