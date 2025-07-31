@@ -1,9 +1,15 @@
 # Vulkan Application
 
-As of now, this README is more to remember myself of what I'm currently working, to help me focus on the current work, 
-to help me not lose track of what I'm doing, to help me remember the future work, and to set "features" for future work.
+## Samples Screenshots
 
-Once the engine is in a acceptable (ish) kind of state, I will change the whole README.
+### Directional Light Shadow Map
+[Directional Light Shadow Map](screenshots/directional_light_shadow_map_1.png)
+
+### Spot Light Shadow Map
+[Spot Light Shadow Map](screenshots/spot_light_shadow_map_1.png)
+
+### Point Light Shadow Map
+[Point Light Shadow Map](screenshots/omnidirectional_shadow_map.png)
 
 ## Current Work (not in order)
 
