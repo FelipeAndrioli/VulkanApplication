@@ -68,6 +68,8 @@ void Application::RenderCoreUI() {
 
 	if (ImGui::TreeNode("Profiler")) {
 
+		ImGui::Separator();
+
 		std::unordered_map<std::string, std::vector<Profiler::Item>>::iterator it;
 
 		static Profiler* profiler = Profiler::Get();
@@ -84,7 +86,7 @@ void Application::RenderCoreUI() {
 
 					const std::string UnitTypeString = Item.UnitType == Profiler::UnitType::MS ? "ms" : "us";
 
-					std::string ProfilerMessage = Item.FunctionId + "-" + std::to_string(Item.Duration) + UnitTypeString;
+					std::string ProfilerMessage = Item.FunctionId + ": " + std::to_string(Item.Duration) + UnitTypeString;
 
 					ImGui::Text(ProfilerMessage.c_str());
 				}
