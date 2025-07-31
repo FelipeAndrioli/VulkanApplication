@@ -574,34 +574,36 @@ namespace Graphics {
 	void DepthOnlyCubeRenderTarget::CreateSingleFramebuffer() {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
+		if (m_RenderPass.Handle == VK_NULL_HANDLE) {
+			m_RenderPass.Description.Extent		= GetExtent();
+			m_RenderPass.Description.Viewport	= {
+				.x			= 0,
+				.y			= 0,
+				.width		= static_cast<float>(m_Width),
+				.height		= static_cast<float>(m_Height),
+				.minDepth	= 0.0f,
+				.maxDepth	= 1.0f
+			};
+
+			m_RenderPass.Description.Scissor	= {
+				.offset = {
+					.x = 0,
+					.y = 0
+				},
+				.extent = {
+					.width	= m_Width,
+					.height = m_Height
+				}
+			};
+
+			m_RenderPass.Description.SampleCount		= VK_SAMPLE_COUNT_1_BIT;
+			m_RenderPass.Description.Flags				= eDepthAttachment | eColorLoadOpClear | eColorStoreOpStore;
+			m_RenderPass.Description.DepthImageFormat	= gfxDevice->GetDepthOnlyFormat();
+
+			gfxDevice->CreateRenderPass(m_RenderPass);
+		}
+
 		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
-
-		m_RenderPass.Description.Extent		= GetExtent();
-		m_RenderPass.Description.Viewport	= {
-			.x			= 0,
-			.y			= 0,
-			.width		= static_cast<float>(m_Width),
-			.height		= static_cast<float>(m_Height),
-			.minDepth	= 0.0f,
-			.maxDepth	= 1.0f
-		};
-
-		m_RenderPass.Description.Scissor	= {
-			.offset = {
-				.x = 0,
-				.y = 0
-			},
-			.extent = {
-				.width	= m_Width,
-				.height = m_Height
-			}
-		};
-
-		m_RenderPass.Description.SampleCount		= VK_SAMPLE_COUNT_1_BIT;
-		m_RenderPass.Description.Flags				= eDepthAttachment | eColorLoadOpClear | eColorStoreOpStore;
-		m_RenderPass.Description.DepthImageFormat	= gfxDevice->GetDepthOnlyFormat();
-
-		gfxDevice->CreateRenderPass(m_RenderPass);
 
 		ImageDescription desc	= {};
 		desc.Width				= m_Width;
@@ -614,7 +616,7 @@ namespace Graphics {
 		desc.AspectFlags		= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		desc.AspectMask			= VK_IMAGE_ASPECT_DEPTH_BIT;
 		desc.ViewType			= VK_IMAGE_VIEW_TYPE_CUBE;
-		desc.LayerCount			= 6;
+		desc.LayerCount			= CUBE_FACES;
 		desc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 		desc.Format				= VK_FORMAT_D32_SFLOAT;
 		desc.ImageType			= VK_IMAGE_TYPE_2D;
@@ -627,7 +629,7 @@ namespace Graphics {
 		for (uint32_t i = 0; i < m_Framebuffers.size(); i++) {
 			std::vector<VkImageView> views = { m_DepthCubeMap.ImageView };
 
-			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, views, GetExtent(), m_Framebuffers[i], 6);
+			gfxDevice->CreateFramebuffer(m_RenderPass.Handle, views, GetExtent(), m_Framebuffers[i], CUBE_FACES);
 		}
 
 		gfxDevice->TransitionCubeImageLayout(m_DepthCubeMap, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
@@ -636,34 +638,36 @@ namespace Graphics {
 	void DepthOnlyCubeRenderTarget::CreateMultipleFramebuffer() {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-		m_Framebuffers.resize(6);
+		if (m_RenderPass.Handle == VK_NULL_HANDLE) {
+			m_RenderPass.Description.Extent		= GetExtent();
+			m_RenderPass.Description.Viewport	= {
+				.x			= 0,
+				.y			= 0,
+				.width		= static_cast<float>(m_Width),
+				.height		= static_cast<float>(m_Height),
+				.minDepth	= 0.0f,
+				.maxDepth	= 1.0f
+			};
 
-		m_RenderPass.Description.Extent		= GetExtent();
-		m_RenderPass.Description.Viewport	= {
-			.x			= 0,
-			.y			= 0,
-			.width		= static_cast<float>(m_Width),
-			.height		= static_cast<float>(m_Height),
-			.minDepth	= 0.0f,
-			.maxDepth	= 1.0f
-		};
+			m_RenderPass.Description.Scissor	= {
+				.offset = {
+					.x = 0,
+					.y = 0
+				},
+				.extent = {
+					.width	= m_Width,
+					.height = m_Height
+				}
+			};
 
-		m_RenderPass.Description.Scissor	= {
-			.offset = {
-				.x = 0,
-				.y = 0
-			},
-			.extent = {
-				.width	= m_Width,
-				.height = m_Height
-			}
-		};
+			m_RenderPass.Description.SampleCount		= VK_SAMPLE_COUNT_1_BIT;
+			m_RenderPass.Description.Flags				= eDepthAttachment | eColorLoadOpClear | eColorStoreOpStore;
+			m_RenderPass.Description.DepthImageFormat	= gfxDevice->GetDepthOnlyFormat();
 
-		m_RenderPass.Description.SampleCount		= VK_SAMPLE_COUNT_1_BIT;
-		m_RenderPass.Description.Flags				= eDepthAttachment | eColorLoadOpClear | eColorStoreOpStore;
-		m_RenderPass.Description.DepthImageFormat	= gfxDevice->GetDepthOnlyFormat();
+			gfxDevice->CreateRenderPass(m_RenderPass);
+		}
 
-		gfxDevice->CreateRenderPass(m_RenderPass);
+		m_Framebuffers.resize(CUBE_FACES);
 
 		ImageDescription desc	= {};
 		desc.Width				= m_Width;
@@ -676,7 +680,7 @@ namespace Graphics {
 		desc.AspectFlags		= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		desc.AspectMask			= VK_IMAGE_ASPECT_DEPTH_BIT;
 		desc.ViewType			= VK_IMAGE_VIEW_TYPE_CUBE;
-		desc.LayerCount			= 6;
+		desc.LayerCount			= CUBE_FACES;
 		desc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 		desc.Format				= VK_FORMAT_D32_SFLOAT;
 		desc.ImageType			= VK_IMAGE_TYPE_2D;
@@ -688,7 +692,7 @@ namespace Graphics {
 		m_DepthCubeMap.Description.ViewType = VK_IMAGE_VIEW_TYPE_2D;
 		m_DepthCubeMap.Description.LayerCount = 1;
 
-		for (uint32_t i = 0; i < 6; i++) {
+		for (uint32_t i = 0; i < CUBE_FACES; i++) {
 			m_DepthCubeMap.Description.BaseArrayLayer = i;
 	
 			gfxDevice->CreateImageView(m_DepthCubeMap.Image, m_DepthCubeMap.ImageViews[i], m_DepthCubeMap.Description);
@@ -774,6 +778,23 @@ namespace Graphics {
 	void DepthOnlyCubeRenderTarget::End(const VkCommandBuffer& commandBuffer) {
 		EndRenderPass(commandBuffer);
 		m_DepthCubeMap.ImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+	}
+
+	void DepthOnlyCubeRenderTarget::Resize(uint32_t width, uint32_t height) {
+		m_Width = width > height ? width : height;
+		m_Height = m_Width;
+
+		m_RenderPass.Description.Viewport.width = m_Width;
+		m_RenderPass.Description.Viewport.height = m_Height;
+		m_RenderPass.Description.Extent = GetExtent();
+		m_RenderPass.Description.Scissor.extent = GetExtent();
+		
+		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+		gfxDevice->DestroyFramebuffer(m_Framebuffers);
+		gfxDevice->DestroyImageCube(m_DepthCubeMap);
+	
+		Create();
 	}
 
 	void DepthOnlyCubeRenderTarget::Begin(const VkCommandBuffer& commandBuffer) {

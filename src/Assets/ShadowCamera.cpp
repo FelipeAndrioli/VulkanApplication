@@ -16,7 +16,10 @@ namespace Assets {
 
 	void ShadowCamera::UpdateOmniDirectionalShadowMatrix(const glm::vec3& lightPosition) {
 
-		ProjectionMatrix = glm::perspective(glm::radians(PointLightFov), (float)m_Width / (float)m_Height, PointLightNear, PointLightFar);
+		// Note:	Aspect ratio of a omnidirectional shadow matrix must always be 1.0 because it renders to a cube (a cube must
+		//			have width equals to the height, d'oh!), otherwise the shadow will be misplaced or distorted.
+
+		ProjectionMatrix = glm::perspective(glm::radians(PointLightFov), 1.0f, PointLightNear, PointLightFar);
 		
 		// Positive X
 		OmniViewMatrix[0] = glm::mat4(1.0f);

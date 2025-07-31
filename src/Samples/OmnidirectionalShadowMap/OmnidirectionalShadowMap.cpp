@@ -259,11 +259,11 @@ void OmnidirectionalShadowMap::ShadowSingleFramebufferPassStartUp() {
 
 void OmnidirectionalShadowMap::StartUp() {
 	m_Camera.Init(m_CameraInitialPosition, m_CameraInitialFov, m_CameraInitialYaw, m_CameraInitialPitch, m_Width, m_Height);
-	m_ShadowCamera.Init(m_LightPosition, 0, 0, 0, m_Width, m_Width);
+	m_ShadowCamera.Init(m_LightPosition, 0, 0, 0, m_Width, m_Height);
 	m_ShadowCamera.SetPointLightSettings(m_InitialPointLightNear, m_InitialPointLightFar);
 
 	m_SceneRenderTarget								= std::make_unique<Graphics::OffscreenRenderTarget>(m_Width, m_Height);
-	m_OmniDirectionalRenderTarget					= std::make_unique<Graphics::DepthOnlyCubeRenderTarget>(m_Width, m_Width, 0, 0, false);
+	m_OmniDirectionalRenderTarget					= std::make_unique<Graphics::DepthOnlyCubeRenderTarget>(m_Width, m_Height, 0, 0, false);
 	m_OmniDirectionalSingleFramebufferRenderTarget	= std::make_unique<Graphics::DepthOnlyCubeRenderTarget>(m_Width, m_Height, 0, 6, true);
 
 	m_Models[m_TotalModels] = ModelLoader::LoadModel(ModelType::QUAD);
@@ -511,6 +511,17 @@ void OmnidirectionalShadowMap::Resize(uint32_t Width, uint32_t Height) {
 
 	m_Camera.Resize(m_Width, m_Height);
 	m_ShadowCamera.Resize(m_Width, m_Height);
+
+	m_OmniDirectionalRenderTarget->Resize(m_Width, m_Height);
+	m_OmniDirectionalSingleFramebufferRenderTarget->Resize(m_Width, m_Height);
+	m_SceneRenderTarget->Resize(m_Width, m_Height);
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	for (uint32_t FrameIndex = 0; FrameIndex < Graphics::FRAMES_IN_FLIGHT; ++FrameIndex) {
+		gfxDevice->WriteDescriptor(m_SceneInputLayout.bindings[2], m_SceneDescriptor[FrameIndex], m_OmniDirectionalRenderTarget->GetDepthBuffer());
+		gfxDevice->WriteDescriptor(m_SceneInputLayout.bindings[3], m_SceneDescriptor[FrameIndex], m_OmniDirectionalSingleFramebufferRenderTarget->GetDepthBuffer());
+	}
 }
 
 RUN_APPLICATION(OmnidirectionalShadowMap);
