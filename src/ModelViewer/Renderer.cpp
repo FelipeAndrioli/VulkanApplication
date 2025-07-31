@@ -134,16 +134,12 @@ void Renderer::Shutdown() {
 
 	gfxDevice->DestroyPipelineLayout(m_GlobalPipelineLayout);
 
-	LightManager::Shutdown();
-
 	m_Initialized = false;
 }
 
-void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget, const Graphics::GPUImage& shadowMappingImage) {
+void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget, const Graphics::GPUImage& shadowMappingImage, const Graphics::Buffer& lightBuffer) {
 	if (!m_Initialized)
 		return;
-
-	LightManager::Init();
 
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
@@ -345,7 +341,8 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget, const 
 		gfxDevice->CreateDescriptorSet(m_GlobalDescriptorSetLayout, gfxDevice->GetFrame(i).bindlessSet);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[0], gfxDevice->GetFrame(i).bindlessSet, m_GlobalDataBuffer[i]);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[1], gfxDevice->GetFrame(i).bindlessSet, rm->GetMaterialBuffer());
-		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, LightManager::GetLightBuffer());
+//		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, LightManager::GetLightBuffer());
+		gfxDevice->WriteDescriptor(globalInputLayout.bindings[2], gfxDevice->GetFrame(i).bindlessSet, lightBuffer);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[3], gfxDevice->GetFrame(i).bindlessSet, rm->GetTextures());
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[4], gfxDevice->GetFrame(i).bindlessSet, m_Skybox);
 		gfxDevice->WriteDescriptor(globalInputLayout.bindings[5], gfxDevice->GetFrame(i).bindlessSet, m_ModelBuffer);
@@ -355,7 +352,7 @@ void Renderer::LoadResources(const Graphics::IRenderTarget& renderTarget, const 
 }
 
 void Renderer::OnUIRender() {
-	LightManager::OnUIRender();
+
 }
 
 void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
@@ -367,17 +364,14 @@ void Renderer::RenderSkybox(const VkCommandBuffer& commandBuffer) {
 }
 
 // TODO: refactor this function
-void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap, float minShadowBias, float maxShadowBias) {
+void Renderer::UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap, float maxShadowBias, uint32_t totalLights) {
 	GraphicsDevice* gfxDevice = GetDevice();
 	
-	m_GlobalConstants.totalLights = LightManager::GetTotalLights();
+	m_GlobalConstants.totalLights = totalLights;
 	m_GlobalConstants.renderNormalMap = static_cast<int>(renderNormalMap);
-	m_GlobalConstants.minShadowBias = minShadowBias;
 	m_GlobalConstants.maxShadowBias = maxShadowBias;
 
 	gfxDevice->UpdateBuffer(m_GlobalDataBuffer[gfxDevice->GetCurrentFrameIndex()], &m_GlobalConstants);
-
-	LightManager::UpdateBuffer();
 
 	std::array<ModelConstants, MAX_MODELS> modelConstants;
 
@@ -481,16 +475,16 @@ void Renderer::RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Mod
 	}
 }
 
-void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer) {
+void Renderer::RenderLightSources(const VkCommandBuffer& commandBuffer, uint32_t totalLights, const Scene::LightComponent* lights) {
 	Graphics::GraphicsDevice* gfxDevice = GetDevice();
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_LightSourcePSO.pipeline);
 
-	for (int i = 0; i < LightManager::GetLights().size(); i++) {
+	for (int i = 0; i < totalLights; i++) {
 
-		const Scene::LightComponent& light = LightManager::GetLights().at(i);
+		const Scene::LightComponent& light = lights[i];
 
-		if (light.type == Scene::LightComponent::LightType::DIRECTIONAL)
+		if (!light.IsActive() || light.type == Scene::LightComponent::LightType::DIRECTIONAL)
 			continue;
 
 		PipelinePushConstants pushConstants = {

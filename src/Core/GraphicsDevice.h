@@ -230,7 +230,8 @@ namespace Graphics {
 		VkCommandBuffer BeginSingleTimeCommandBuffer(VkCommandPool& commandPool);
 		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer, VkCommandPool& commandPool);
 
-		void CreateImage(GPUImage& image, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageType imageType);
+		void CreateImage(GPUImage& image, const ImageDescription& description);
+		void CreateImageView(const VkImage& image, VkImageView& imageView, const ImageDescription& description);
 		void CreateImageView(GPUImage& image);
 		void RecreateImageView(GPUImage& image);
 		
@@ -240,11 +241,14 @@ namespace Graphics {
 		void TransitionImageLayout(const VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout, const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask, const VkPipelineStageFlags srcPipelineStage, const VkPipelineStageFlags dstPipelineStage);
 		void TransitionImageLayout(GPUImage& image, VkImageLayout oldLayout, VkImageLayout newLayout);
 		void TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
+		void TransitionImageLayout(const VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout, const VkImageSubresourceRange subresourceRange, const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask, const VkPipelineStageFlags srcPipelineStage, const VkPipelineStageFlags dstPipelineStage);
+		void TransitionCubeImageLayout(GPUImage& cubeImage, VkImageLayout newLayout);
 		void GenerateMipMaps(GPUImage& image);
 		void CreateImageSampler(GPUImage& image);
 		void ResizeImage(GPUImage& image, uint32_t width, uint32_t height);
 		void CopyBufferToImage(GPUImage& image, GPUBuffer& srcBuffer);
 		void DestroyImage(GPUImage& image);
+		void DestroyImageCube(GPUImageCube& image);
 
 		template <class T>
 		void UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
@@ -295,6 +299,7 @@ namespace Graphics {
 		void CreateDescriptorSet(VkDescriptorPool& descriptorPool, VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
 		void BindDescriptorSet(VkDescriptorSet& descriptorSet, const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout, uint32_t set, uint32_t setCount);
 
+		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUBuffer& buffer);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const Buffer& buffer);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, std::vector<Texture>& textures);

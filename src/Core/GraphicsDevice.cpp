@@ -1007,22 +1007,70 @@ namespace Graphics {
 
 	void GraphicsDevice::CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer, const uint32_t layers) {
 
-		std::vector<VkImageView> attachments;
-
-		for (int i = 0; i < attachmentViews.size(); i++) {
-			attachments.push_back(attachmentViews[i]);
-		}
-
-		VkFramebufferCreateInfo framebufferInfo{};
-		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = renderPass;
-		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = extent.width;
-		framebufferInfo.height = extent.height;
-		framebufferInfo.layers = layers;
+		VkFramebufferCreateInfo framebufferInfo = {};
+		framebufferInfo.sType				= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass			= renderPass;
+		framebufferInfo.attachmentCount		= static_cast<uint32_t>(attachmentViews.size());
+		framebufferInfo.pAttachments		= attachmentViews.data();
+		framebufferInfo.width				= extent.width;
+		framebufferInfo.height				= extent.height;
+		framebufferInfo.layers				= layers;
 
 		VkResult result = vkCreateFramebuffer(m_LogicalDevice, &framebufferInfo, nullptr, &framebuffer);
+		assert(result == VK_SUCCESS);
+	}
+
+	void GraphicsDevice::CreateImage(GPUImage& image, const ImageDescription& description) {
+		VkImageCreateInfo imageCreateInfo{};
+		imageCreateInfo.sType			= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imageCreateInfo.imageType		= description.ImageType;
+		imageCreateInfo.extent.width	= description.Width;
+		imageCreateInfo.extent.height	= description.Height;
+		imageCreateInfo.extent.depth	= 1;
+		imageCreateInfo.mipLevels		= description.MipLevels;
+		imageCreateInfo.arrayLayers		= (uint32_t)(description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? 6 : description.LayerCount);
+
+		if (description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
+			imageCreateInfo.flags = description.AspectFlags;
+		}
+
+		imageCreateInfo.format			= description.Format;
+		imageCreateInfo.tiling			= description.Tiling;
+		imageCreateInfo.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+		imageCreateInfo.usage			= description.Usage;
+		imageCreateInfo.samples			= description.MsaaSamples;
+		imageCreateInfo.sharingMode		= VK_SHARING_MODE_EXCLUSIVE;
+
+		VkResult result = vkCreateImage(m_LogicalDevice, &imageCreateInfo, nullptr, &image.Image);
+
+		assert(result == VK_SUCCESS);
+
+		AllocateMemory(image, description.MemoryProperty);
+
+		image.Description = description;
+		image.ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	}
+
+	void GraphicsDevice::CreateImageView(const VkImage& image, VkImageView& imageView, const ImageDescription& description) {
+		VkImageViewCreateInfo viewCreateInfo			= {};
+		viewCreateInfo.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewCreateInfo.image							= image;
+		viewCreateInfo.viewType							= description.ViewType;
+		viewCreateInfo.format							= description.Format;
+//		viewCreateInfo.subresourceRange.aspectMask		= (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? VK_IMAGE_ASPECT_COLOR_BIT : image.Description.AspectFlags);
+		viewCreateInfo.subresourceRange.baseMipLevel	= 0;
+		viewCreateInfo.subresourceRange.levelCount		= description.MipLevels;
+		viewCreateInfo.subresourceRange.baseArrayLayer	= description.BaseArrayLayer;
+		viewCreateInfo.subresourceRange.layerCount		= description.LayerCount;
+		viewCreateInfo.components						= description.ComponentMapping;
+		viewCreateInfo.subresourceRange.aspectMask		= description.AspectMask;
+
+		if (description.AspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT && HasStencilComponent(description.Format)) {
+			viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+		}
+
+		VkResult result = vkCreateImageView(m_LogicalDevice, &viewCreateInfo, nullptr, &imageView);
+
 		assert(result == VK_SUCCESS);
 
 	}
@@ -1033,11 +1081,18 @@ namespace Graphics {
 		viewCreateInfo.image							= image.Image;
 		viewCreateInfo.viewType							= image.Description.ViewType;
 		viewCreateInfo.format							= image.Description.Format;
-		viewCreateInfo.subresourceRange.aspectMask		= (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? VK_IMAGE_ASPECT_COLOR_BIT : image.Description.AspectFlags);
+//		viewCreateInfo.subresourceRange.aspectMask		= (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? VK_IMAGE_ASPECT_COLOR_BIT : image.Description.AspectFlags);
 		viewCreateInfo.subresourceRange.baseMipLevel	= 0;
 		viewCreateInfo.subresourceRange.levelCount		= image.Description.MipLevels;
-		viewCreateInfo.subresourceRange.baseArrayLayer	= 0;
+		viewCreateInfo.subresourceRange.baseArrayLayer	= image.Description.BaseArrayLayer;
 		viewCreateInfo.subresourceRange.layerCount		= image.Description.LayerCount;
+
+		if (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT && !(image.Description.AspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT)) {
+			viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		}
+		else {
+			viewCreateInfo.subresourceRange.aspectMask = image.Description.AspectFlags;
+		}
 
 		if (image.Description.AspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT && HasStencilComponent(image.Description.Format)) {
 			viewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
@@ -1225,6 +1280,66 @@ namespace Graphics {
 		image.ImageLayout = newLayout;
 	}
 
+	void GraphicsDevice::TransitionImageLayout(const VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout, const VkImageSubresourceRange subresourceRange, const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask, const VkPipelineStageFlags srcPipelineStage, const VkPipelineStageFlags dstPipelineStage) {
+		VkCommandBuffer singleTimeCommandBuffer = BeginSingleTimeCommandBuffer(m_CommandPool);
+
+		VkImageMemoryBarrier barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.oldLayout = oldLayout;
+		barrier.newLayout = newLayout;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = image;
+		barrier.subresourceRange = subresourceRange;
+		barrier.srcAccessMask = srcAccessMask;
+		barrier.dstAccessMask = dstAccessMask;
+
+		VkPipelineStageFlags sourceStage = srcPipelineStage;
+		VkPipelineStageFlags dstStage = dstPipelineStage;
+
+		vkCmdPipelineBarrier(singleTimeCommandBuffer, sourceStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+		EndSingleTimeCommandBuffer(singleTimeCommandBuffer, m_CommandPool);
+	}
+
+	void GraphicsDevice::TransitionCubeImageLayout(GPUImage& cubeImage, VkImageLayout newLayout) {
+		VkImageLayout oldLayout = cubeImage.ImageLayout; 
+		VkAccessFlags srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT; 
+		VkAccessFlags dstAccessMask; 
+		VkPipelineStageFlags srcPipelineStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; 
+		VkPipelineStageFlags dstPipelineStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+		VkImageSubresourceRange subresourceRange = {
+			.aspectMask = cubeImage.Description.AspectMask,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 6
+		};
+
+		if (cubeImage.Description.AspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+			srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		}
+
+		if (cubeImage.Description.AspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
+			srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			srcPipelineStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dstPipelineStage = srcPipelineStage;
+		}
+
+		dstAccessMask = srcAccessMask;
+
+		TransitionImageLayout(
+			cubeImage.Image, 
+			oldLayout, 
+			newLayout, 
+			subresourceRange, 
+			srcAccessMask, 
+			dstAccessMask, 
+			srcPipelineStage, 
+			dstPipelineStage);
+	}
+
 	void GraphicsDevice::GenerateMipMaps(GPUImage& image) {
 
 		assert(image.Image != VK_NULL_HANDLE);
@@ -1323,7 +1438,8 @@ namespace Graphics {
 		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 		samplerInfo.compareEnable = VK_FALSE;
-		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+//		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.compareOp = image.Description.SamplerCompareOp;
 		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 		samplerInfo.mipLodBias = 0.0f;
 		samplerInfo.minLod = 0.0f;
@@ -1423,6 +1539,15 @@ namespace Graphics {
 		image.ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 		vkFreeMemory(m_LogicalDevice, image.Memory, nullptr);
+	}
+
+	void GraphicsDevice::DestroyImageCube(GPUImageCube& image) {
+		for (int i = 0; i < 6; i++) {
+			if (image.ImageViews[i] != VK_NULL_HANDLE)
+				vkDestroyImageView(m_LogicalDevice, image.ImageViews[i], nullptr);
+		}
+
+		DestroyImage(image);
 	}
 
 	void GraphicsDevice::CreateDepthBuffer(GPUImage& depthBuffer, const RenderPassDesc& renderPassDesc) {
@@ -2019,6 +2144,22 @@ namespace Graphics {
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, set, setCount, &descriptorSet, 0, nullptr);
 	}
 
+	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet) {
+		VkWriteDescriptorSet descriptorWrite = {};
+
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = binding.binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = binding.descriptorType;
+		descriptorWrite.descriptorCount = binding.descriptorCount;
+		descriptorWrite.pBufferInfo = nullptr;
+		descriptorWrite.pImageInfo = nullptr;
+		descriptorWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(m_LogicalDevice, 1, &descriptorWrite, 0, nullptr);
+	}
+
 	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUBuffer& buffer) {
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = buffer.Handle;
@@ -2108,10 +2249,13 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUImage& image) {
-		VkDescriptorImageInfo newImageInfo	= {};
+		VkDescriptorImageInfo newImageInfo = {};
 
-		newImageInfo.imageLayout			= image.Description.AspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-//		newImageInfo.imageLayout			= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		if (image.Description.AspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT || image.Description.AspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+			newImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+		else
+			newImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
 		newImageInfo.imageView				= image.ImageView;
 		newImageInfo.sampler				= image.ImageSampler;
 

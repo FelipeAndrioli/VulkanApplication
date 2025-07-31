@@ -18,10 +18,12 @@ namespace Assets {
 
 		void UpdateDirectionalLightShadowMatrix (const glm::vec3& lightDirection);
 		void UpdateSpotLightShadowMatrix		(const glm::vec3& lightPosition, const glm::vec3& lightDirection);
+		void UpdateOmniDirectionalShadowMatrix	(const glm::vec3& lightPosition);
 		void OnUIRender							(const char* idCamera)													override;
 		void Resize								(uint32_t width, uint32_t height)										override;
 		void SetSpotLightSettings				(float near, float far, float fov);
 		void SetDirLightSettings				(float near, float far, float frustumSize);
+		void SetPointLightSettings				(float near, float far);
 
 		inline const glm::mat4& GetShadowMatrix	() const { return m_ShadowMatrix; }
 	private:
@@ -33,5 +35,11 @@ namespace Assets {
 		float m_DirLightNear		= 0.0f;
 		float m_DirLightFar			= 0.0f;
 		float m_DirLightFrustumSize = 0.0f;
+	public:
+		float PointLightNear		= 0.0f;
+		float PointLightFar			= 0.0f;
+		float PointLightFov			= 90.0f;
+
+		glm::mat4 OmniViewMatrix[6] = {};
 	};
 }

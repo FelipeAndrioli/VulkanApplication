@@ -26,10 +26,13 @@ namespace Graphics {
 	struct RenderPass;
 }
 
+namespace Scene {
+	struct LightComponent;
+}
+
 enum ModelType;
 
 namespace Renderer {
-
 	class MeshSorter {
 	public:
 
@@ -111,14 +114,14 @@ namespace Renderer {
 
 	void Init();
 	void Shutdown();
-	void LoadResources(const Graphics::IRenderTarget& renderTarget, const Graphics::GPUImage& shadowMappingImage);
+	void LoadResources(const Graphics::IRenderTarget& renderTarget, const Graphics::GPUImage& shadowMappingImage, const Graphics::Buffer& lightBuffer);
 	void OnUIRender();
 
-	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap, float minShadowBias, float maxShadowBias);
+	void UpdateGlobalDescriptors(const VkCommandBuffer& commandBuffer, const std::array<Assets::Camera, MAX_CAMERAS> cameras, const bool renderNormalMap, float maxShadowBias, uint32_t totalLights);
 	void RenderSkybox(const VkCommandBuffer& commandBuffer);
 	void RenderOutline(const VkCommandBuffer& commandBuffer, Assets::Model& model);
 	void RenderWireframe(const VkCommandBuffer& commandBuffer, Assets::Model& model);
-	void RenderLightSources(const VkCommandBuffer& commandBuffer);
+	void RenderLightSources(const VkCommandBuffer& commandBuffer, uint32_t totalLights, const Scene::LightComponent* lights);
 	void RenderCube(const VkCommandBuffer& commandBuffer, const Graphics::PipelineState& PSO);
 	void SetCameraIndex(int index);
 

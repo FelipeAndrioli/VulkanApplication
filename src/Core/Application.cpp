@@ -3,8 +3,12 @@
 #include "BufferManager.h"
 #include "ResourceManager.h"
 #include "RenderTarget.h"
+#include "Profiler.h"
 
 Application::~Application() {
+	static Profiler* profiler = Profiler::Get();
+	profiler->Destroy();
+
 	m_UI.reset();
 	
 	m_GraphicsDevice->DestroyDescriptorPool();
@@ -61,6 +65,38 @@ void Application::RenderCoreUI() {
 	ImGui::Text("Last Frame: %f ms", m_Milliseconds);
 	ImGui::Text("Framerate: %.1f fps", m_FramesPerSecond);
 	ImGui::Checkbox("Limit Framerate", &m_Vsync);
+
+	if (ImGui::TreeNode("Profiler")) {
+
+		ImGui::Separator();
+
+		std::unordered_map<std::string, std::vector<Profiler::Item>>::iterator it;
+
+		static Profiler* profiler = Profiler::Get();
+
+		for (it = profiler->Items.begin(); it != profiler->Items.end(); it++) {
+			if (ImGui::TreeNode(it->first.c_str())) {
+
+				ImGui::Separator();
+
+				std::vector<Profiler::Item>& profilerItems = it->second;
+
+				for (size_t ProfilerItemIndex = 0; ProfilerItemIndex < profilerItems.size(); ++ProfilerItemIndex) {
+					Profiler::Item& Item = profilerItems[ProfilerItemIndex];
+
+					const std::string UnitTypeString = Item.UnitType == Profiler::UnitType::MS ? "ms" : "us";
+
+					std::string ProfilerMessage = Item.FunctionId + ": " + std::to_string(Item.Duration) + UnitTypeString;
+
+					ImGui::Text(ProfilerMessage.c_str());
+				}
+
+				ImGui::TreePop();
+			}
+		}
+		
+		ImGui::TreePop();
+	}
 }
 
 bool Application::UpdateApplication(IScene& scene) {
@@ -78,19 +114,27 @@ bool Application::UpdateApplication(IScene& scene) {
 	if (m_Input->Keys[GLFW_KEY_I].IsPressed)
 		scene.settings.uiEnabled = !scene.settings.uiEnabled;
 
-	scene.Update(m_CurrentFrameTime, timestep.GetMilliseconds(), *m_Input.get());
+	{
+		SCOPED_PROFILER_US("Application::Update");
+		scene.Update(m_CurrentFrameTime, timestep.GetMilliseconds(), *m_Input.get());
+	}
 
 	if (!m_GraphicsDevice->BeginFrame(m_GraphicsDevice->GetCurrentFrame()))
 		return true;
 
 	Graphics::Frame& frame = m_GraphicsDevice->GetCurrentFrame();
 
-	scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
+	{
+		SCOPED_PROFILER_US("Application::RenderScene");
+		scene.RenderScene(m_GraphicsDevice->GetCurrentFrameIndex(), frame.commandBuffer);
+	}
 
 	// SwapChain Render Pass
 	{
+		SCOPED_PROFILER_US("Application::SwapChain Pass");
 		m_GraphicsDevice->GetSwapChain().RenderTarget->Begin(frame.commandBuffer);
 		if (m_UI && scene.settings.uiEnabled) {
+			SCOPED_PROFILER_US("Application::UI");
 			m_UI->BeginFrame();
 			RenderCoreUI();
 			scene.RenderUI();

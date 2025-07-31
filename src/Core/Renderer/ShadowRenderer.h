@@ -43,13 +43,12 @@ Known Issues:
 */
 
 public:
-	ShadowRenderer() : m_Layers(1) {};
-	ShadowRenderer(uint32_t maxLights) : m_Layers(maxLights > MAX_LIGHT_SOURCES ? MAX_LIGHT_SOURCES : maxLights) {};
-	ShadowRenderer(uint32_t width, uint32_t height, uint32_t precision, uint32_t maxLights) 
+	ShadowRenderer() : m_Layers(MAX_LIGHT_SOURCES) {};
+	ShadowRenderer(uint32_t width, uint32_t height, uint32_t precision) 
 		: m_Width(width), 
 		m_Height(height), 
 		m_Precision(precision), 
-		m_Layers(maxLights > MAX_LIGHT_SOURCES ? MAX_LIGHT_SOURCES : maxLights) {};
+		m_Layers(MAX_LIGHT_SOURCES) {};
 
 	void StartUp		()																override;
 	void CleanUp		()																override;
@@ -58,8 +57,7 @@ public:
 	void RenderUI		()																override;
 	void SetExtent		(uint32_t width, uint32_t height);
 	void SetPrecision	(uint32_t precision);
-	void Render			(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, const glm::mat4& lightViewProj);
-	void Render			(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, const std::vector<Scene::LightComponent>& lights);
+	void Render			(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, uint32_t totalLights, const Scene::LightComponent* lights);
 
 	const Graphics::GPUImage& GetDepthBuffer();
 

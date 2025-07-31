@@ -24,32 +24,40 @@ namespace Graphics {
 	};
 
 	struct ImageDescription {
-		uint32_t Width = 0;
-		uint32_t Height = 0;
-		uint32_t MipLevels = 1;
-		uint32_t LayerCount = 1;
+		uint32_t Width				= 0;
+		uint32_t Height				= 0;
+		uint32_t MipLevels			= 1;
+		uint32_t LayerCount			= 1;
+		uint32_t BaseArrayLayer		= 0;
 
-		VkFormat Format = VK_FORMAT_R8G8B8A8_SRGB;
-		VkImageTiling Tiling = VK_IMAGE_TILING_OPTIMAL;
-		VkImageUsageFlagBits Usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-		VkMemoryPropertyFlagBits MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		VkImageAspectFlags AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-		VkImageViewType ViewType = VK_IMAGE_VIEW_TYPE_2D;
-		VkSampleCountFlagBits MsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-		VkImageType ImageType = VK_IMAGE_TYPE_2D;
-		VkSamplerAddressMode AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		VkFormat					Format				= VK_FORMAT_R8G8B8A8_SRGB;
+		VkImageTiling				Tiling				= VK_IMAGE_TILING_OPTIMAL;
+		VkImageUsageFlagBits		Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_SAMPLED_BIT);
+		VkMemoryPropertyFlagBits	MemoryProperty		= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		VkImageAspectFlags			AspectFlags			= VK_IMAGE_ASPECT_COLOR_BIT;
+		VkImageViewType				ViewType			= VK_IMAGE_VIEW_TYPE_2D;
+		VkSampleCountFlagBits		MsaaSamples			= VK_SAMPLE_COUNT_1_BIT;
+		VkImageType					ImageType			= VK_IMAGE_TYPE_2D;
+		VkSamplerAddressMode		AddressMode			= VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		VkImageAspectFlags			AspectMask			= VK_IMAGE_ASPECT_NONE;
+		VkCompareOp					SamplerCompareOp	= VK_COMPARE_OP_ALWAYS;
+		VkComponentMapping			ComponentMapping	= {};
 	};
 
 	struct GPUImage {
-		VkImage Image = VK_NULL_HANDLE;
-		VkImageView ImageView = VK_NULL_HANDLE;
-		VkSampler ImageSampler = VK_NULL_HANDLE;
-		VkImageLayout ImageLayout;
+		VkImage			Image			= VK_NULL_HANDLE;
+		VkImageView		ImageView		= VK_NULL_HANDLE;
+		VkSampler		ImageSampler	= VK_NULL_HANDLE;
+		VkDeviceMemory	Memory			= VK_NULL_HANDLE;
+		VkImageLayout	ImageLayout		= VK_IMAGE_LAYOUT_UNDEFINED;
 
-		VkDeviceMemory Memory;
-		void* MemoryMapped;
+		void*			MemoryMapped;
 
 		ImageDescription Description = {};
+	};
+
+	struct GPUImageCube : public GPUImage {
+		VkImageView ImageViews[6] = { VK_NULL_HANDLE };
 	};
 
 	struct Texture : public GPUImage {

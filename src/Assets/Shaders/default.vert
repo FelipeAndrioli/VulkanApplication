@@ -48,14 +48,18 @@ struct light_t {
 	vec4 position;
 	vec4 direction;
 	vec4 color;
-	vec4 extra[2];
+	vec4 extra;
 
 	mat4 model;
-	mat4 viewProj;	
+	mat4 view_proj;	
 
 	int type;
-	int extra_0;
-	
+	int flags;
+	int index;
+	int pcf_samples;
+
+	float minBias;
+	float sps_spread;
 	float outer_cut_off_angle;
 	float cut_off_angle;
 	float raw_cut_off_angle;
@@ -115,7 +119,7 @@ void main() {
 	fragBiTangent		= cross(fragTangent, fragNormal);	
 
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
-		fragPosLightSpace[i] = lights[i].viewProj * vec4(fragPos, 1.0);
+		fragPosLightSpace[i] = lights[i].view_proj * vec4(fragPos, 1.0);
 	}
 
 	if (dot(cross(fragNormal, fragTangent), fragBiTangent) < 0.0)

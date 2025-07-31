@@ -43,13 +43,28 @@ void ShadowRenderer::SetPrecision(uint32_t precision) {
 	m_Precision = precision;
 }
 
-void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, const glm::mat4& lightViewProj) {
+void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, uint32_t totalLights, const Scene::LightComponent* lights) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_ShadowMappingGPUData[0].Light = lightViewProj;
-	m_ShadowMappingGPUData[0].Index = 0;
+	uint32_t activeLights = 0;
+
+	for (int i = 0; i < totalLights; i++) {
+		if (!lights[i].IsActive() || !lights[i].IsShadowCastingEnabled() || lights[i].type == Scene::LightComponent::LightType::POINT)
+			continue;
+
+		m_ShadowMappingGPUData[activeLights].Light = lights[i].viewProj;
+		m_ShadowMappingGPUData[activeLights].Index = lights[i].index;
+
+		activeLights++;
+	}
 
 	m_RenderTarget->Begin(commandBuffer);
+
+	if (activeLights == 0) {
+		m_RenderTarget->End(commandBuffer);
+		return;
+	}
+		
 
 	for (int i = 0; i < models.size(); i++) {
 		m_ModelGPUData[i].Model = models[i]->GetModelMatrix();
@@ -71,54 +86,7 @@ void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vec
 		vkCmdBindIndexBuffer	(commandBuffer, model->DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
 		m_PushConstants.ModelIndex = model->ModelIndex;
-		m_PushConstants.ActiveLightSources = 1;
-
-		vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PushConstants), &m_PushConstants);
-
-		for (int j = 0; j < model->Meshes.size(); j++) {
-			const Assets::Mesh* mesh = &model->Meshes[j];
-
-			if (mesh->PSOFlags & PSOFlags::tTransparent)
-				continue;
-
-			vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh->Indices.size()), 1, static_cast<uint32_t>(mesh->IndexOffset), static_cast<int32_t>(mesh->VertexOffset), 0);
-		}
-	}
-
-	m_RenderTarget->End(commandBuffer);
-}
-
-void ShadowRenderer::Render(const VkCommandBuffer& commandBuffer, const std::vector<std::shared_ptr<Assets::Model>>& models, const std::vector<Scene::LightComponent>& lights) {
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
-	for (int i = 0; i < lights.size(); i++) {
-		m_ShadowMappingGPUData[i].Light = lights[i].viewProj;
-		m_ShadowMappingGPUData[i].Index = lights[i].index;
-	}
-
-	m_RenderTarget->Begin(commandBuffer);
-
-	for (int i = 0; i < models.size(); i++) {
-		m_ModelGPUData[i].Model = models[i]->GetModelMatrix();
-	}
-
-	gfxDevice->UpdateBuffer		(m_ShadowMappingUBO[gfxDevice->GetCurrentFrameIndex()], m_ShadowMappingGPUData.data());
-	gfxDevice->UpdateBuffer		(m_ModelUBO[gfxDevice->GetCurrentFrameIndex()],			m_ModelGPUData.data());
-	gfxDevice->BindDescriptorSet(m_Set, commandBuffer, m_PSO.pipelineLayout, 0, 1);
-			
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PSO.pipeline);
-	
-	for (int i = 0; i < models.size(); i++) {
-		
-		std::shared_ptr<Assets::Model> model = models[i];
-	
-		VkDeviceSize offsets[] = { sizeof(uint32_t) * model->TotalIndices };
-
-		vkCmdBindVertexBuffers	(commandBuffer, 0, 1, &model->DataBuffer.Handle, offsets);
-		vkCmdBindIndexBuffer	(commandBuffer, model->DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-
-		m_PushConstants.ModelIndex = model->ModelIndex;
-		m_PushConstants.ActiveLightSources = (int)lights.size();
+		m_PushConstants.ActiveLightSources = (int)activeLights;
 
 		vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PushConstants), &m_PushConstants);
 
