@@ -219,7 +219,7 @@ namespace Graphics {
 		void BindScissor(const Rect& rect, VkCommandBuffer& commandBuffer);
 		void BeginRenderPass(const RenderPass& renderPass, const VkCommandBuffer& commandBuffer);
 		void EndRenderPass(const VkCommandBuffer& commandBuffer);
-		
+
 		void BeginCommandBuffer(VkCommandBuffer& commandBuffer);
 		void EndCommandBuffer(VkCommandBuffer& commandBuffer);
 
@@ -234,7 +234,7 @@ namespace Graphics {
 		void CreateImageView(const VkImage& image, VkImageView& imageView, const ImageDescription& description);
 		void CreateImageView(GPUImage& image);
 		void RecreateImageView(GPUImage& image);
-		
+
 		void AllocateMemory(GPUImage& image, VkMemoryPropertyFlagBits memoryProperty);
 		void AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty);
 
@@ -249,6 +249,9 @@ namespace Graphics {
 		void CopyBufferToImage(GPUImage& image, GPUBuffer& srcBuffer);
 		void DestroyImage(GPUImage& image);
 		void DestroyImageCube(GPUImageCube& image);
+		void DestroyAndDeallocateImage(GPUImage& image);
+		void DestroyImageView(GPUImage& image);
+		void DestroyImageView(GPUImageCube& image);
 
 		template <class T>
 		void UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);

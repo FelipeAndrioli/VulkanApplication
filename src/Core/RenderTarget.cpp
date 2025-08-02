@@ -791,6 +791,8 @@ namespace Graphics {
 		
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
+		gfxDevice->WaitIdle();
+
 		gfxDevice->DestroyFramebuffer(m_Framebuffers);
 		gfxDevice->DestroyImageCube(m_DepthCubeMap);
 	
