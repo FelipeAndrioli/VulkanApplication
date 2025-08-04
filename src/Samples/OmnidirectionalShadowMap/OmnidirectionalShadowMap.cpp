@@ -17,6 +17,14 @@
 constexpr int MAX_MODELS = 5;
 
 /*
+	TODO's:
+
+		- [ ] Implement shadow rendering using compute shaders
+		- [ ] Implement shadow atlas optimization
+		- [ ] Move the implementation to the ShadowRenderer
+		- [ ] AABB Optimization
+		- [ ] Culling Optimization
+
 	Notes:
 		
 		-	I can use the same descriptor binding location to send the shadow map intended to generate the shadows, however 
@@ -49,6 +57,15 @@ public:
 	virtual void Resize(uint32_t Width, uint32_t Height)										override;
 
 private:
+
+	enum ShadowQuality : int {
+		VERY_LOW = 0,		// Width / 4, Height / 4
+		LOW,				// Width / 2, Height / 2
+		NORMAL,				// Width, Height
+		HIGH,				// Width * 2, Height * 2
+		VERY_HIGH			// Width * 4, Height * 4
+	};
+
 	// 256 bytes
 	struct GPUData {
 		int extra0 = 0;
@@ -143,6 +160,13 @@ private:
 
 	VkDescriptorSet						m_SceneDescriptor[Graphics::FRAMES_IN_FLIGHT]	= {};
 
+	float m_LightRotationSpeed = 0.5f;
+	float m_LightMaxDisplacement = 7.0f;
+
+	ShadowQuality m_CurrentShadowQuality = ShadowQuality::NORMAL;
+
+	bool m_UpdateShadowQuality = false;
+
 private:
 	void ColorPassStartUp();
 	void ShadowPassStartUp();
@@ -151,6 +175,8 @@ private:
 	void ColorPass(const uint32_t CurrentFrame, const VkCommandBuffer& CommandBuffer, const std::shared_ptr<Assets::Model> Models[MAX_MODELS], const uint32_t ModelsCount);
 	void ShadowPass(const uint32_t CurrentFrame, const VkCommandBuffer& CommandBuffer, const std::shared_ptr<Assets::Model> Models[MAX_MODELS], const uint32_t ModelsCount);
 	void ShadowSingleFramebufferPass(const uint32_t CurrentFrame, const VkCommandBuffer& CommandBuffer, const std::shared_ptr<Assets::Model> Models[MAX_MODELS], const uint32_t ModelsCount);
+
+	void ChangeShadowQuality(ShadowQuality NewShadowQuality);
 };
 
 void OmnidirectionalShadowMap::ColorPassStartUp() {
@@ -345,8 +371,8 @@ void OmnidirectionalShadowMap::Update(const float ConstantT, const float DeltaT,
 	}
 
 	if (m_RotateLight) {
-		m_LightPosition.x = glm::sin(ConstantT + 5.0f) * 7.0f;
-		m_LightPosition.z = glm::cos(ConstantT + 5.0f) * 7.0f;
+		m_LightPosition.x = glm::sin(ConstantT * m_LightRotationSpeed) * m_LightMaxDisplacement;
+		m_LightPosition.z = glm::cos(ConstantT * m_LightRotationSpeed) * m_LightMaxDisplacement;
 	}
 
 	m_Camera.OnUpdate(DeltaT, Input);
@@ -466,6 +492,12 @@ void OmnidirectionalShadowMap::ShadowSingleFramebufferPass(const uint32_t Curren
 void OmnidirectionalShadowMap::RenderScene(const uint32_t CurrentFrame, const VkCommandBuffer& CommandBuffer) {
 	SCOPED_PROFILER_US("OmnidirectionalShadowMap::RenderScene");
 
+	if (m_UpdateShadowQuality) {
+		ChangeShadowQuality(m_CurrentShadowQuality);
+		m_UpdateShadowQuality = false;
+		return;
+	}
+
 	if (m_ShadowMapEnabled && !m_SingleFramebufferPass)
 		ShadowPass(CurrentFrame, CommandBuffer, m_Models, m_TotalModels);
 	
@@ -475,14 +507,11 @@ void OmnidirectionalShadowMap::RenderScene(const uint32_t CurrentFrame, const Vk
 	ColorPass(CurrentFrame, CommandBuffer, m_Models, m_TotalModels);
 
 	{
-		// TODO: Implement a better solution to move offscreen render result to the swapchain framebuffer as this approach takes most of the rendering time.
-
 		SCOPED_PROFILER_US("Layout change and copy");
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 		m_SceneRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 		gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_SceneRenderTarget->GetColorBuffer());
 	}
-
 }
 
 void OmnidirectionalShadowMap::RenderUI() {
@@ -495,10 +524,24 @@ void OmnidirectionalShadowMap::RenderUI() {
 	}
 
 	ImGui::Separator();
+
+	static const char* ShadowQualities[] = { "Very Low", "Low", "Normal", "High", "Very High" };
+
+	int SelectedShadowQuality = m_CurrentShadowQuality;
+
+	ImGui::Combo("Shadow Quality", &SelectedShadowQuality, ShadowQualities, IM_ARRAYSIZE(ShadowQualities));
+
+	if (SelectedShadowQuality != m_CurrentShadowQuality) {
+		m_UpdateShadowQuality = true;
+		m_CurrentShadowQuality = static_cast<ShadowQuality>(SelectedShadowQuality);
+	}
+
 	ImGui::Checkbox("Shadow Map Enabled",				&m_ShadowMapEnabled);
 	ImGui::Checkbox("Shadow Map PCF Enabled",			&m_PCFEnabled);
 	ImGui::Checkbox("Shadow Map Optimized PCF Enabled", &m_OptimizedPCFEnabled);
 	ImGui::Checkbox("Rotate Light", &m_RotateLight);
+	ImGui::DragFloat("Light Rotation Speed", &m_LightRotationSpeed, 0.002, 0.0f, 20.0f);
+	ImGui::DragFloat("Light Max Displacement", &m_LightMaxDisplacement, 0.002, 0.0f, 20.0f);
 	ImGui::DragFloat4("Light Position", (float*)&m_LightPosition, 0.002, -10.0f, 10.0f);
 	
 	ImGui::Separator();
@@ -510,11 +553,48 @@ void OmnidirectionalShadowMap::Resize(uint32_t Width, uint32_t Height) {
 	m_Height	= Height;
 
 	m_Camera.Resize(m_Width, m_Height);
-	m_ShadowCamera.Resize(m_Width, m_Height);
 
-	m_OmniDirectionalRenderTarget->Resize(m_Width, m_Height);
-	m_OmniDirectionalSingleFramebufferRenderTarget->Resize(m_Width, m_Height);
 	m_SceneRenderTarget->Resize(m_Width, m_Height);
+
+	// Maybe I need to think on a better name for this method
+	ChangeShadowQuality(m_CurrentShadowQuality);
+}
+
+void OmnidirectionalShadowMap::ChangeShadowQuality(ShadowQuality NewShadowQuality) {
+
+	uint32_t Width = 0;
+	uint32_t Height = 0;
+
+	switch (NewShadowQuality) {
+	case ShadowQuality::VERY_LOW:
+		Width	= m_Width / 4;
+		Height	= m_Height / 4;
+		break;
+	case ShadowQuality::LOW:
+		Width	= m_Width / 2;
+		Height	= m_Height / 2;
+		break;
+	case ShadowQuality::NORMAL:
+		Width	= m_Width;
+		Height	= m_Height;
+		break;
+	case ShadowQuality::HIGH:
+		Width	= m_Width * 2;
+		Height	= m_Height * 2;
+		break;
+	case ShadowQuality::VERY_HIGH:
+		Width	= m_Width * 4;
+		Height	= m_Height * 4;
+		break;
+	default:
+		Width	= m_Width;
+		Height	= m_Height;
+		break;
+	}
+
+	m_ShadowCamera.Resize(Width, Height);
+	m_OmniDirectionalRenderTarget->Resize(Width, Height);
+	m_OmniDirectionalSingleFramebufferRenderTarget->Resize(Width, Height);
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -522,6 +602,8 @@ void OmnidirectionalShadowMap::Resize(uint32_t Width, uint32_t Height) {
 		gfxDevice->WriteDescriptor(m_SceneInputLayout.bindings[2], m_SceneDescriptor[FrameIndex], m_OmniDirectionalRenderTarget->GetDepthBuffer());
 		gfxDevice->WriteDescriptor(m_SceneInputLayout.bindings[3], m_SceneDescriptor[FrameIndex], m_OmniDirectionalSingleFramebufferRenderTarget->GetDepthBuffer());
 	}
+
+	m_CurrentShadowQuality = NewShadowQuality;
 }
 
 RUN_APPLICATION(OmnidirectionalShadowMap);

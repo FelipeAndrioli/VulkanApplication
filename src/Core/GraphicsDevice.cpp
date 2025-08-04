@@ -1541,6 +1541,30 @@ namespace Graphics {
 		vkFreeMemory(m_LogicalDevice, image.Memory, nullptr);
 	}
 
+	void GraphicsDevice::DestroyAndDeallocateImage(GPUImage& image) {
+		if (image.Image == VK_NULL_HANDLE)
+			return;
+
+		vkDestroyImage(m_LogicalDevice, image.Image, nullptr);
+		vkFreeMemory(m_LogicalDevice, image.Memory, nullptr);
+		image.ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	}
+		
+	void GraphicsDevice::DestroyImageView(GPUImage& image) {
+		if (image.ImageView == VK_NULL_HANDLE)
+			return;
+
+		vkDestroyImageView(m_LogicalDevice, image.ImageView, nullptr);
+	}
+
+	void GraphicsDevice::DestroyImageView(GPUImageCube& image) {
+		for (int ImageViewIndex = 0; ImageViewIndex < 6; ImageViewIndex++) {
+			if (image.ImageViews[ImageViewIndex] != VK_NULL_HANDLE) {
+				vkDestroyImageView(m_LogicalDevice, image.ImageViews[ImageViewIndex], nullptr);
+			}
+		}
+	}
+
 	void GraphicsDevice::DestroyImageCube(GPUImageCube& image) {
 		for (int i = 0; i < 6; i++) {
 			if (image.ImageViews[i] != VK_NULL_HANDLE)
