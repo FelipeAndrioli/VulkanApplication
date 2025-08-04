@@ -160,7 +160,7 @@ private:
 
 	VkDescriptorSet						m_SceneDescriptor[Graphics::FRAMES_IN_FLIGHT]	= {};
 
-	float m_LightRotationSpeed = 5.0f;
+	float m_LightRotationSpeed = 0.5f;
 	float m_LightMaxDisplacement = 7.0f;
 
 	ShadowQuality m_CurrentShadowQuality = ShadowQuality::NORMAL;
