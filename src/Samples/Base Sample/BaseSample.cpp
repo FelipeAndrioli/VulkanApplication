@@ -215,10 +215,10 @@ void BaseSample::RenderUI() {
 
 	m_Camera.OnUIRender("Main Camera - Settings");
 
-	ImGui::Checkbox("Orbitate Light", &m_OrbitateLight);
-	ImGui::DragFloat("Light Orbital Speed", &m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
-	ImGui::DragFloat("Light Orbital Displacement", &m_OrbitalLightDisplacement, 0.02f, 0.0f, 9.0f);
-	ImGui::DragFloat4("Light Position", (float*)&m_LightPosition, 0.02f, -20.0f, 20.0f);
+	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
+	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
+	ImGui::DragFloat("Light Orbital Displacement",	&m_OrbitalLightDisplacement, 0.02f, 0.0f, 9.0f);
+	ImGui::DragFloat4("Light Position",				(float*)&m_LightPosition, 0.02f, -20.0f, 20.0f);
 
 	for (int ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
 		m_Models[ModelIndex]->OnUIRender();
