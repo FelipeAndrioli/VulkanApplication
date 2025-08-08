@@ -42,10 +42,17 @@ layout (push_constant) uniform PushConstants {
 void main() {
 
 	bool parallax_enabled = bool(push_constants.flags & 1);
+	bool discard_oversampled_frags = bool(push_constants.flags & (1 << 1));
 
 	vec3 tangent_view_dir = normalize(fs_input.tangent_view_pos - fs_input.tangent_frag_pos);
 
 	vec2 uv = parallax_enabled ? ParallaxMapping(fs_input.frag_uv, tangent_view_dir, fs_input.height_scale) : fs_input.frag_uv;
+
+	// Note:	Displaced texture coordinates can oversample outside the range [0, 1]. This gives unrealistic results based on
+	//			the texture's wrapping mode(s). To solve this issue we can discard the fragment when it samples outside the 
+	//			default texture coordinate range.
+	if (discard_oversampled_frags && (uv.x > 1.0 || uv.y > 1.0 || uv.x < 0.0 || uv.y < 0.0))
+		discard;
 
 	vec3 color = texture(in_diffuse_texture, uv).rgb;
 

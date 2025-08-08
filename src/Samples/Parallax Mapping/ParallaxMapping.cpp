@@ -44,7 +44,7 @@ public:
 	} SampleSceneData;
 
 	struct PushConstants {
-		alignas(16) glm::mat4 Model;
+		alignas(16) glm::mat4 Model = glm::mat4(1.0f);
 		alignas(4) int Flags = 0;
 	} SamplePushConstants;
 
@@ -84,6 +84,7 @@ private:
 	float m_OrbitalLightDisplacement = 3.0f;
 	bool m_OrbitateLight = false;
 	bool m_ParallaxMappingEnabled = true;
+	bool m_DiscardOversampledFragments = true;
 
 	uint32_t m_DiffuseTextureIndex		= 0;
 	uint32_t m_NormalTextureIndex		= 0;
@@ -218,7 +219,7 @@ void ParallaxMapping::RenderScene(const uint32_t currentFrame, const VkCommandBu
 		vkCmdBindIndexBuffer(commandBuffer, Model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
 		SamplePushConstants.Model	= Model.GetModelMatrix();
-		SamplePushConstants.Flags	= m_ParallaxMappingEnabled;
+		SamplePushConstants.Flags	= ((m_DiscardOversampledFragments << 1) | m_ParallaxMappingEnabled);
 
 		vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
 
@@ -245,6 +246,7 @@ void ParallaxMapping::RenderUI() {
 	m_Camera.OnUIRender("Main Camera - Settings");
 
 	ImGui::Checkbox("Parallax Mapping Enabled",		&m_ParallaxMappingEnabled);
+	ImGui::Checkbox("Discard Oversampled Fragments",&m_DiscardOversampledFragments);
 	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
 	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
 	ImGui::DragFloat("Light Orbital Displacement",	&m_OrbitalLightDisplacement, 0.02f, 0.0f, 9.0f);
