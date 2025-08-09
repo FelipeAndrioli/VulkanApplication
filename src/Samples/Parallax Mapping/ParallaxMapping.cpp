@@ -40,12 +40,14 @@ public:
 		alignas(16) glm::mat4 View			= glm::mat4(1.0f);
 		alignas(16) glm::vec4 LightPosition = glm::vec4(1.0f);
 		alignas(16) glm::vec4 ViewPosition	= glm::vec4(1.0f);
-		alignas(4) float HeightScale		= 0.120f;
+		alignas(4) float HeightScale		= 0.100f;
+		alignas(4) float LayerSize			= 4.0f;
 	} SampleSceneData;
 
 	struct PushConstants {
 		alignas(16) glm::mat4 Model = glm::mat4(1.0f);
-		alignas(4) int Flags = 0;
+		alignas(4) int Flags		= 0;
+		alignas(4) int TotalLayers	= 100;
 	} SamplePushConstants;
 
 	const glm::vec3 InitialCameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
@@ -85,7 +87,8 @@ private:
 	bool m_OrbitateLight				= false;
 	bool m_ParallaxMappingEnabled		= true;
 	bool m_DiscardOversampledFragments	= true;
-	bool m_OffsetLimiting				= false;
+	bool m_OffsetLimiting				= true;
+	bool m_SteepParallaxMapping			= true;
 
 	uint32_t m_DiffuseTextureIndex		= 0;
 	uint32_t m_NormalTextureIndex		= 0;
@@ -106,9 +109,9 @@ void ParallaxMapping::LoadAssets() {
 
 	ResourceManager* rm = ResourceManager::Get();
 
-	m_DiffuseTextureIndex		= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2.jpg", Texture::TextureType::DIFFUSE, true, false));
-	m_NormalTextureIndex		= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2_normal.jpg", Texture::TextureType::NORMAL, true, false));
-	m_DisplacementTextureIndex	= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2_disp.jpg", Texture::TextureType::DISPLACEMENT, true, false));
+	m_DiffuseTextureIndex		= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2.jpg",			Texture::TextureType::DIFFUSE,		true, false));
+	m_NormalTextureIndex		= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2_normal.jpg",	Texture::TextureType::NORMAL,		true, false));
+	m_DisplacementTextureIndex	= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2_disp.jpg",		Texture::TextureType::DISPLACEMENT, true, false));
 }
 
 void ParallaxMapping::LoadPipeline() {
@@ -151,6 +154,8 @@ void ParallaxMapping::LoadPipeline() {
 }
 
 void ParallaxMapping::StartUp() {
+
+	assert(sizeof(SceneData) <= 256 && "UBO Size cannot exceed 256 bytes!");
 
 	m_ScreenWidth	= settings.Width;
 	m_ScreenHeight	= settings.Height;
@@ -220,7 +225,7 @@ void ParallaxMapping::RenderScene(const uint32_t currentFrame, const VkCommandBu
 		vkCmdBindIndexBuffer(commandBuffer, Model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
 		SamplePushConstants.Model	= Model.GetModelMatrix();
-		SamplePushConstants.Flags	= ((m_OffsetLimiting << 2) | (m_DiscardOversampledFragments << 1) | m_ParallaxMappingEnabled);
+		SamplePushConstants.Flags	= ((m_SteepParallaxMapping << 3) | (m_OffsetLimiting << 2) | (m_DiscardOversampledFragments << 1) | m_ParallaxMappingEnabled);
 
 		vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
 
@@ -250,11 +255,14 @@ void ParallaxMapping::RenderUI() {
 	ImGui::Checkbox("Discard Oversampled Fragments",&m_DiscardOversampledFragments);
 	ImGui::Checkbox("Offset Limiting",				&m_OffsetLimiting);
 	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
+	ImGui::Checkbox("Steep Parallax Mapping",		&m_SteepParallaxMapping);
 	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
 	ImGui::DragFloat("Light Orbital Displacement",	&m_OrbitalLightDisplacement, 0.02f, 0.0f, 9.0f);
 	ImGui::DragFloat4("Light Position",				(float*)&m_LightPosition, 0.02f, -20.0f, 20.0f);
 	
 	ImGui::DragFloat("Height Scale",				&SampleSceneData.HeightScale, 0.02, 0.0f, 1.0f);
+	ImGui::DragFloat("Layer Size",					&SampleSceneData.LayerSize, 0.02, 0.0f, 10.0f);
+	ImGui::DragInt("Total Layers",					&SamplePushConstants.TotalLayers, 1.0f, 0, 200);
 
 	for (int ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
 		m_Models[ModelIndex]->OnUIRender();

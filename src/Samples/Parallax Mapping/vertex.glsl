@@ -23,6 +23,7 @@ struct vertex_output {
 	vec2 frag_uv;
 	
 	float height_scale;
+	float layer_size;
 };
 
 layout (location = 0) out vertex_output vt_output;
@@ -30,15 +31,20 @@ layout (location = 0) out vertex_output vt_output;
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	mat4 projection;
 	mat4 view;
+
 	vec4 light_position;
 	vec4 view_position;
+
 	float height_scale;
-	int flags;
+	float layer_size;
+
+	int total_layers;
 } scene_gpu_data;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
 	int flags;
+	int total_layers;
 } push_constants;
 
 void main() {
@@ -60,4 +66,5 @@ void main() {
 	vt_output.tangent_frag_pos	= vt_output.tbn * vt_output.frag_pos;
 	vt_output.tangent_view_pos	= vt_output.tbn * vt_output.view_pos;
 	vt_output.height_scale		= scene_gpu_data.height_scale;
+	vt_output.layer_size		= scene_gpu_data.layer_size;
 }
