@@ -34,6 +34,18 @@ vec2 ParallaxMapping(vec2 uv, vec3 view_dir, float height_scale) {
 	return uv - view_dir.xy * (height * height_scale);
 }
 
+// Note:	Since view direction vector is normalized, its z component will be in the range of 0 to 1. When the view direction
+//			is largely parallel to the surface, its z component is close to 0.0 and the division returns a much larger 
+//			displacement to the uv, compared to when view direction is largely perpendicular to the surface. We're adjusting
+//			the size of the displacement for the uv in such a way that it offsets the texture coordinates at a larger scale 
+//			when looking at a surface from an angle compared to when looking at it from the top. The technique is called
+//			Parallax Mapping with Offset Limiting.
+vec2 ParallaxMappingOffsetLimiting(vec2 uv, vec3 view_dir, float height_scale) {
+	float height = texture(in_displacement_texture, uv).r;
+
+	return uv - view_dir.xy / view_dir.z * (height * height_scale);
+}
+
 layout (push_constant) uniform PushConstants {
 	mat4 model;
 	int flags;
@@ -43,10 +55,11 @@ void main() {
 
 	bool parallax_enabled = bool(push_constants.flags & 1);
 	bool discard_oversampled_frags = bool(push_constants.flags & (1 << 1));
+	bool offset_limiting = bool(push_constants.flags & (1 << 2));
 
 	vec3 tangent_view_dir = normalize(fs_input.tangent_view_pos - fs_input.tangent_frag_pos);
 
-	vec2 uv = parallax_enabled ? ParallaxMapping(fs_input.frag_uv, tangent_view_dir, fs_input.height_scale) : fs_input.frag_uv;
+	vec2 uv = parallax_enabled ? (offset_limiting ? ParallaxMappingOffsetLimiting(fs_input.frag_uv, tangent_view_dir, fs_input.height_scale) : ParallaxMapping(fs_input.frag_uv, tangent_view_dir, fs_input.height_scale)) : fs_input.frag_uv;
 
 	// Note:	Displaced texture coordinates can oversample outside the range [0, 1]. This gives unrealistic results based on
 	//			the texture's wrapping mode(s). To solve this issue we can discard the fragment when it samples outside the 
@@ -56,7 +69,7 @@ void main() {
 
 	vec3 color = texture(in_diffuse_texture, uv).rgb;
 
-	// retrieve normal in range [0, 1] and transform it to range [-1, 1]
+	// Note:	Retrieve normal in range [0, 1] and transform it to range [-1, 1].
 	vec3 normal = normalize(texture(in_normal_texture, uv).rgb * 2.0 - 1.0);
 
 	vec3 tangent_light_dir = normalize(fs_input.tangent_light_pos - fs_input.tangent_frag_pos);
