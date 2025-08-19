@@ -38,14 +38,17 @@ layout (set = 0, binding = 3) uniform sampler2D in_displacement_texture;
 //			Parallax Mapping with Offset Limiting.
 
 vec2 ParallaxMapping(vec2 uv, vec3 view_dir, float height_scale, bool offset_limiting) {
+
 	float height = texture(in_displacement_texture, uv).r;
-	return offset_limiting ? uv - (view_dir.xy / view_dir.z) * (height * height_scale) : uv - view_dir.xy * (height * height_scale);
+	return offset_limiting ? uv - ((view_dir.xy / view_dir.z) * (height * height_scale)) : uv - (view_dir.xy * (height * height_scale));
 }
 
-vec2 SteepParallaxMapping(vec2 uv, vec3 view_dir, int total_layers, float layer_size, float height_scale, bool offset_limiting) {
-	
-//	const int total_layers	= 10;
-	const float layer_depth = layer_size / total_layers;
+vec2 SteepParallaxMapping(vec2 uv, vec3 view_dir, int min_layers, int max_layers, float layer_size, float height_scale, bool offset_limiting) {
+
+	// Note:	'mix' performs a linear interpolation between 'x' and 'y' using a to weight between them. The return value is 
+	//			computed as 'x * (1 - a) + y * a'
+	const float total_layers = mix(max_layers, min_layers, max(dot(vec3(0.0, 0.0, 1.0), view_dir), 0.0));
+	const float layer_depth  = layer_size / total_layers;
 
 	vec2 current_uv = uv;
 
@@ -64,25 +67,74 @@ vec2 SteepParallaxMapping(vec2 uv, vec3 view_dir, int total_layers, float layer_
 	return current_uv;
 }
 
+vec2 SteepParallaxOcclusionMapping(vec2 uv, vec3 view_dir, int min_layers, int max_layers, float layer_size, float height_scale, bool offset_limiting) {
+
+	// Note:	'mix' performs a linear interpolation between 'x' and 'y' using 'a' to weight between them. The return value is 
+	//			computed as 'x * (1 - a) + y * a'
+//	const float total_layers = mix(max_layers, min_layers, max(dot(vec3(0.0, 0.0, 1.0), view_dir), 0.0));
+	const float total_layers = mix(max_layers, min_layers, abs(dot(vec3(0.0, 0.0, 1.0), view_dir)));
+	const float layer_depth  = layer_size / total_layers;
+
+	vec2 current_uv = uv;
+
+	float current_layer_depth	= 0.0;
+	float current_sampled_depth = texture(in_displacement_texture, current_uv).r;
+
+	vec2 scaled_view_direction = offset_limiting ? (view_dir.xy / view_dir.z) * height_scale : view_dir.xy * height_scale;
+	vec2 uv_displacement_delta = scaled_view_direction / total_layers;
+
+	while(current_layer_depth < current_sampled_depth) {
+		current_uv				-= uv_displacement_delta;
+		current_sampled_depth	= texture(in_displacement_texture, current_uv).r;
+		current_layer_depth		+= layer_depth;
+	}
+
+	// Note: Get the texture coordinates before collision (reverse operations).
+	vec2 prev_uv = current_uv + uv_displacement_delta;
+
+	// Note: Get depth before and after collision for linear interpolation.
+	float depth_after = current_sampled_depth - current_layer_depth;
+	float depth_before = texture(in_displacement_texture, prev_uv).r - current_layer_depth + layer_depth;
+
+	// Note: Interpolation of texture coordinates.
+	float weight = depth_after / (depth_after - depth_before);
+
+	vec2 final_uv = prev_uv * weight + current_uv * (1.0 - weight);
+
+	return final_uv;
+}
+
 layout (push_constant) uniform PushConstants {
 	mat4 model;
 	int flags;
-	int total_layers;
+	int debug_flags;
+	int min_layers;
+	int max_layers;
 } push_constants;
 
 void main() {
 
-	bool parallax_enabled			= bool(push_constants.flags & 1);
-	bool discard_oversampled_frags	= bool(push_constants.flags & (1 << 1));
-	bool offset_limiting			= bool(push_constants.flags & (1 << 2));
-	bool steep_parallax_mapping		= bool(push_constants.flags & (1 << 3));
+	bool parallax_enabled					= bool(push_constants.flags & 1);
+	bool discard_oversampled_frags			= bool(push_constants.flags & (1 << 1));
+	bool offset_limiting					= bool(push_constants.flags & (1 << 2));
+	bool steep_parallax_mapping				= bool(push_constants.flags & (1 << 3));
+	bool steep_parallax_occlusion_mapping	= bool(push_constants.flags & (1 << 4));
+	bool flip_uv_vertically					= bool(push_constants.flags & (1 << 5));
+
+	bool debug_enabled					= bool(push_constants.debug_flags & 1);
+	bool debug_render_mesh_normal		= bool(push_constants.debug_flags & (1 << 1));
+	bool debug_render_texture_normal	= bool(push_constants.debug_flags & (1 << 2));
+	bool debug_render_bi_tangent		= bool(push_constants.debug_flags & (1 << 3));
+	bool debug_render_tangent			= bool(push_constants.debug_flags & (1 << 4));
 
 	vec3 tangent_view_dir = normalize(fs_input.tangent_view_pos - fs_input.tangent_frag_pos);
 
 	vec2 uv = fs_input.frag_uv;
 
-	if (parallax_enabled && steep_parallax_mapping) {
-		uv = SteepParallaxMapping(fs_input.frag_uv, tangent_view_dir, push_constants.total_layers, fs_input.layer_size, fs_input.height_scale, offset_limiting);
+	if (parallax_enabled && steep_parallax_occlusion_mapping) {
+		uv = SteepParallaxOcclusionMapping(fs_input.frag_uv, tangent_view_dir, push_constants.min_layers, push_constants.max_layers, fs_input.layer_size, fs_input.height_scale, offset_limiting);
+	} else if (parallax_enabled && steep_parallax_mapping) {
+		uv = SteepParallaxMapping(fs_input.frag_uv, tangent_view_dir, push_constants.min_layers, push_constants.max_layers, fs_input.layer_size, fs_input.height_scale, offset_limiting);
 	} else if (parallax_enabled) {
 		uv = ParallaxMapping(fs_input.frag_uv, tangent_view_dir, fs_input.height_scale, offset_limiting);
 	}
@@ -93,9 +145,14 @@ void main() {
 	if (discard_oversampled_frags && (uv.x > 1.0 || uv.y > 1.0 || uv.x < 0.0 || uv.y < 0.0))
 		discard;
 
+	if (flip_uv_vertically) {
+		uv.y *= -1.0;
+	}
+
 	vec3 color = texture(in_diffuse_texture, uv).rgb;
 
 	// Note:	Retrieve normal in range [0, 1] and transform it to range [-1, 1].
+	// Note:	Normal should only be multiplied by tbn if the other variables are not in tangent space already.
 	vec3 normal = normalize(texture(in_normal_texture, uv).rgb * 2.0 - 1.0);
 
 	vec3 tangent_light_dir = normalize(fs_input.tangent_light_pos - fs_input.tangent_frag_pos);
@@ -114,4 +171,22 @@ void main() {
 	vec3 specular = vec3(0.5) * spec;
 
 	pixel_color = vec4(ambient + diffuse + specular, 1.0);	
+
+	if (debug_enabled) {
+		if (debug_render_mesh_normal) {
+			pixel_color = vec4(fs_input.frag_normal, 1.0);
+		}
+
+		if (debug_render_texture_normal) {
+			pixel_color = vec4(normal, 1.0);
+		}
+
+		if (debug_render_bi_tangent) {
+			pixel_color = vec4(fs_input.frag_bitangent, 1.0);
+		}
+
+		if (debug_render_tangent) {
+			pixel_color = vec4(fs_input.frag_tangent, 1.0);
+		}
+	}
 }

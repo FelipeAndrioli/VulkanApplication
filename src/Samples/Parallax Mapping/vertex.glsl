@@ -44,7 +44,9 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 layout (push_constant) uniform PushConstants {
 	mat4 model;
 	int flags;
-	int total_layers;
+	int debug_flags;
+	int min_layers;
+	int max_layers;
 } push_constants;
 
 void main() {
@@ -52,13 +54,13 @@ void main() {
 	vec4 frag_pos = push_constants.model * vec4(in_position, 1.0);
 
 	gl_Position = scene_gpu_data.projection * scene_gpu_data.view * frag_pos;
-	
+
 	vt_output.frag_pos			= vec3(frag_pos);
 	vt_output.frag_color		= in_color;
 	vt_output.light_pos			= vec3(scene_gpu_data.light_position);
-	vt_output.frag_normal		= normalize(vec3(push_constants.model * vec4(in_normal, 0.0)));
-	vt_output.frag_tangent		= normalize(vec3(push_constants.model * vec4(in_tangent, 0.0)));
-	vt_output.frag_bitangent	= normalize(cross(in_tangent, in_normal));
+	vt_output.frag_normal		= vec3(normalize(push_constants.model * vec4(in_normal, 0.0)));
+	vt_output.frag_tangent		= vec3(normalize(push_constants.model * vec4(in_tangent, 0.0)));
+	vt_output.frag_bitangent	= normalize(cross(vt_output.frag_tangent, vt_output.frag_normal));
 	vt_output.frag_uv			= in_tex_coord;
 	vt_output.view_pos			= vec3(scene_gpu_data.view_position);
 	vt_output.tbn				= transpose(mat3(vt_output.frag_tangent, vt_output.frag_bitangent, vt_output.frag_normal));

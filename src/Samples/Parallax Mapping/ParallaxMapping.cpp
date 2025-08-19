@@ -47,7 +47,9 @@ public:
 	struct PushConstants {
 		alignas(16) glm::mat4 Model = glm::mat4(1.0f);
 		alignas(4) int Flags		= 0;
-		alignas(4) int TotalLayers	= 100;
+		alignas(4) int DebugFlags	= 0;
+		alignas(4) int MinLayers	= 8;
+		alignas(4) int MaxLayers	= 100;
 	} SamplePushConstants;
 
 	const glm::vec3 InitialCameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
@@ -82,13 +84,20 @@ private:
 
 	glm::vec4 m_LightPosition = glm::vec4(1.0f);
 
-	float m_OrbitalLightSpeed			= 0.5f;
-	float m_OrbitalLightDisplacement	= 3.0f;
-	bool m_OrbitateLight				= false;
-	bool m_ParallaxMappingEnabled		= true;
-	bool m_DiscardOversampledFragments	= true;
-	bool m_OffsetLimiting				= true;
-	bool m_SteepParallaxMapping			= true;
+	float m_OrbitalLightSpeed				= 0.5f;
+	float m_OrbitalLightDisplacement		= 3.0f;
+	bool m_OrbitateLight					= false;
+	bool m_ParallaxMappingEnabled			= true;
+	bool m_DiscardOversampledFragments		= true;
+	bool m_OffsetLimiting					= true;
+	bool m_SteepParallaxMapping				= true;
+	bool m_SteepParallaxOcclusionMapping	= true;
+
+	bool m_DebugEnabled = false;
+	bool m_DebugRenderTangent = false;
+	bool m_DebugRenderBiTangent = false;
+	bool m_DebugRenderMeshNormal = false;
+	bool m_DebugRenderTextureNormal = false;
 
 	uint32_t m_DiffuseTextureIndex		= 0;
 	uint32_t m_NormalTextureIndex		= 0;
@@ -99,19 +108,26 @@ private:
 };
 
 void ParallaxMapping::LoadAssets() {
+
+	m_Models[TotalModels] = ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/plane/plane.gltf");
+	m_Models[TotalModels]->Transformations.scaleHandler = 0.5f;
+	m_Models[TotalModels]->ModelIndex = TotalModels;
+
+	TotalModels++;
+
 	m_Models[TotalModels] = ModelLoader::LoadModel(ModelType::QUAD);
-	m_Models[TotalModels]->Transformations.rotation.x = 180.0f;
-	m_Models[TotalModels]->Transformations.translation.z = 2.0f;
-	m_Models[TotalModels]->Transformations.scaleHandler = 1.0f;
+	m_Models[TotalModels]->Transformations.rotation.x = 90.0f;
+	m_Models[TotalModels]->Transformations.translation.x = 5.0f;
+	m_Models[TotalModels]->Transformations.scaleHandler = 5.0f;
 	m_Models[TotalModels]->ModelIndex = TotalModels;
 
 	TotalModels++;
 
 	ResourceManager* rm = ResourceManager::Get();
 
-	m_DiffuseTextureIndex		= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2.jpg",			Texture::TextureType::DIFFUSE,		true, false));
-	m_NormalTextureIndex		= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2_normal.jpg",	Texture::TextureType::NORMAL,		true, false));
-	m_DisplacementTextureIndex	= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2_disp.jpg",		Texture::TextureType::DISPLACEMENT, true, false));
+	m_DiffuseTextureIndex		= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2.jpg",			Texture::TextureType::DIFFUSE,		false, false));
+	m_NormalTextureIndex		= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2_normal.jpg",	Texture::TextureType::NORMAL,		false, false));
+	m_DisplacementTextureIndex	= rm->AddTexture(TextureLoader::LoadTexture("../src/Samples/Parallax Mapping/bricks2_disp.jpg",		Texture::TextureType::DISPLACEMENT, false, false));
 }
 
 void ParallaxMapping::LoadPipeline() {
@@ -188,6 +204,10 @@ void ParallaxMapping::Update(const float constantT, const float deltaT, InputSys
 
 	m_Camera.OnUpdate(deltaT, input);
 
+	for (int ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
+		m_Models[ModelIndex]->OnUpdate(deltaT);
+	}
+
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	if (m_OrbitateLight) {
@@ -225,7 +245,18 @@ void ParallaxMapping::RenderScene(const uint32_t currentFrame, const VkCommandBu
 		vkCmdBindIndexBuffer(commandBuffer, Model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
 		SamplePushConstants.Model	= Model.GetModelMatrix();
-		SamplePushConstants.Flags	= ((m_SteepParallaxMapping << 3) | (m_OffsetLimiting << 2) | (m_DiscardOversampledFragments << 1) | m_ParallaxMappingEnabled);
+		SamplePushConstants.Flags	= ((Model.FlipUvVertically << 5)
+			| (m_SteepParallaxOcclusionMapping << 4) 
+			| (m_SteepParallaxMapping << 3) 
+			| (m_OffsetLimiting << 2) 
+			| (m_DiscardOversampledFragments << 1) 
+			| m_ParallaxMappingEnabled);
+		SamplePushConstants.DebugFlags = (
+			(m_DebugRenderTangent << 4)
+			| (m_DebugRenderBiTangent << 3)
+			| (m_DebugRenderTextureNormal << 2)
+			| (m_DebugRenderMeshNormal << 1)
+			| (m_DebugEnabled));
 
 		vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
 
@@ -251,18 +282,54 @@ void ParallaxMapping::RenderUI() {
 
 	m_Camera.OnUIRender("Main Camera - Settings");
 
-	ImGui::Checkbox("Parallax Mapping Enabled",		&m_ParallaxMappingEnabled);
-	ImGui::Checkbox("Discard Oversampled Fragments",&m_DiscardOversampledFragments);
-	ImGui::Checkbox("Offset Limiting",				&m_OffsetLimiting);
-	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
-	ImGui::Checkbox("Steep Parallax Mapping",		&m_SteepParallaxMapping);
-	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
-	ImGui::DragFloat("Light Orbital Displacement",	&m_OrbitalLightDisplacement, 0.02f, 0.0f, 9.0f);
-	ImGui::DragFloat4("Light Position",				(float*)&m_LightPosition, 0.02f, -20.0f, 20.0f);
+	ImGui::Checkbox("Debug Enabled", &m_DebugEnabled);
+
+	ImGui::Checkbox("Debug - Render Tangent",			&m_DebugRenderTangent);
+
+	if (m_DebugRenderTangent) {
+		m_DebugRenderBiTangent		= false;
+		m_DebugRenderMeshNormal		= false;
+		m_DebugRenderTextureNormal	= false;
+	}
+
+	ImGui::Checkbox("Debug - Render BiTangent",			&m_DebugRenderBiTangent);
+
+	if (m_DebugRenderBiTangent) {
+		m_DebugRenderTangent		= false;
+		m_DebugRenderMeshNormal		= false;
+		m_DebugRenderTextureNormal	= false;
+	}
+
+	ImGui::Checkbox("Debug - Render Mesh Normal",		&m_DebugRenderMeshNormal);
+
+	if (m_DebugRenderMeshNormal) {
+		m_DebugRenderBiTangent		= false;
+		m_DebugRenderTangent		= false;
+		m_DebugRenderTextureNormal	= false;
+	}
+
+	ImGui::Checkbox("Debug - Render Texture Normal",	&m_DebugRenderTextureNormal);
+
+	if (m_DebugRenderTextureNormal) {
+		m_DebugRenderMeshNormal		= false;
+		m_DebugRenderBiTangent		= false;
+		m_DebugRenderTangent		= false;
+	}
+
+	ImGui::Checkbox("Parallax Mapping Enabled",			&m_ParallaxMappingEnabled);
+	ImGui::Checkbox("Discard Oversampled Fragments",	&m_DiscardOversampledFragments);
+	ImGui::Checkbox("Offset Limiting",					&m_OffsetLimiting);
+	ImGui::Checkbox("Orbitate Light",					&m_OrbitateLight);
+	ImGui::Checkbox("Steep Parallax Mapping",			&m_SteepParallaxMapping);
+	ImGui::Checkbox("Steep Parallax Occlusion Mapping",	&m_SteepParallaxOcclusionMapping);
+	ImGui::DragFloat("Light Orbital Speed",				&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
+	ImGui::DragFloat("Light Orbital Displacement",		&m_OrbitalLightDisplacement, 0.02f, 0.0f, 9.0f);
+	ImGui::DragFloat4("Light Position",					(float*)&m_LightPosition, 0.02f, -20.0f, 20.0f);
 	
-	ImGui::DragFloat("Height Scale",				&SampleSceneData.HeightScale, 0.02, 0.0f, 1.0f);
-	ImGui::DragFloat("Layer Size",					&SampleSceneData.LayerSize, 0.02, 0.0f, 10.0f);
-	ImGui::DragInt("Total Layers",					&SamplePushConstants.TotalLayers, 1.0f, 0, 200);
+	ImGui::DragFloat("Height Scale",					&SampleSceneData.HeightScale, 0.02, 0.0f, 1.0f);
+	ImGui::DragFloat("Layer Size",						&SampleSceneData.LayerSize, 0.02, 0.0f, 10.0f);
+	ImGui::DragInt("Min Layers",						&SamplePushConstants.MinLayers, 1.0f, 0, 200);
+	ImGui::DragInt("Max Layers",						&SamplePushConstants.MaxLayers, 1.0f, 0, 200);
 
 	for (int ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
 		m_Models[ModelIndex]->OnUIRender();
