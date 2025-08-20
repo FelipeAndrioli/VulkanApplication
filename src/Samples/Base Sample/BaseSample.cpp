@@ -250,4 +250,4 @@ void BaseSample::DeleteSampleModel() {
 	TotalModels--;
 }
 
-RUN_APPLICATION(BaseSample);
+//RUN_APPLICATION(BaseSample);

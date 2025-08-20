@@ -11,6 +11,9 @@
 ### Point Light Shadow Map
 ![Point Light Shadow Map](screenshots/omnidirectional_shadow_map.png)
 
+### Parallax Mapping
+![Parallax Mapping](screenshots/parallax_mapping.png)
+
 ## Current Work (not in order)
 
 - [x] Depth Buffer 
@@ -83,5 +86,6 @@
 
 ## Small problems to remember to solve
 
-- [ ] Add material instance per object and bind if from there to have customized properties of the same material
+- [ ] Add material instance per object and bind if from there to have customized properties of the same material.
+- [ ] The way I'm currently copying the offscreen framebuffer to the swapchain is extremely inefficient taking most of the rendering time, implement a better way of achieving this.
 

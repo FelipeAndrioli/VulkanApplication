@@ -606,4 +606,4 @@ void OmnidirectionalShadowMap::ChangeShadowQuality(ShadowQuality NewShadowQualit
 	m_CurrentShadowQuality = NewShadowQuality;
 }
 
-RUN_APPLICATION(OmnidirectionalShadowMap);
+//RUN_APPLICATION(OmnidirectionalShadowMap);
