@@ -44,7 +44,6 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 layout (push_constant) uniform PushConstants {
 	mat4 model;
 	int flags;
-	int debug_flags;
 	int min_layers;
 	int max_layers;
 } push_constants;

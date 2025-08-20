@@ -41,22 +41,21 @@ public:
 		alignas(16) glm::vec4 LightPosition = glm::vec4(1.0f);
 		alignas(16) glm::vec4 ViewPosition	= glm::vec4(1.0f);
 		alignas(4) float HeightScale		= 0.100f;
-		alignas(4) float LayerSize			= 4.0f;
+		alignas(4) float LayerSize			= 1.1f;
 	} SampleSceneData;
 
 	struct PushConstants {
 		alignas(16) glm::mat4 Model = glm::mat4(1.0f);
 		alignas(4) int Flags		= 0;
-		alignas(4) int DebugFlags	= 0;
 		alignas(4) int MinLayers	= 8;
-		alignas(4) int MaxLayers	= 100;
+		alignas(4) int MaxLayers	= 200;
 	} SamplePushConstants;
 
-	const glm::vec3 InitialCameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+	const glm::vec3 InitialCameraPosition = glm::vec3(-5.84f, 1.95f, 7.28f);
 
 	const float InitialCameraFov	= 45.0f;
-	const float InitialCameraYaw	= -90.0f;
-	const float InitialCameraPitch	= 0.0f;
+	const float InitialCameraYaw	= -54.8f;
+	const float InitialCameraPitch	= -11.9f;
 
 private:
 	Assets::Camera m_Camera = {};
@@ -93,12 +92,6 @@ private:
 	bool m_SteepParallaxMapping				= true;
 	bool m_SteepParallaxOcclusionMapping	= true;
 
-	bool m_DebugEnabled = false;
-	bool m_DebugRenderTangent = false;
-	bool m_DebugRenderBiTangent = false;
-	bool m_DebugRenderMeshNormal = false;
-	bool m_DebugRenderTextureNormal = false;
-
 	uint32_t m_DiffuseTextureIndex		= 0;
 	uint32_t m_NormalTextureIndex		= 0;
 	uint32_t m_DisplacementTextureIndex = 0;
@@ -109,17 +102,18 @@ private:
 
 void ParallaxMapping::LoadAssets() {
 
-	m_Models[TotalModels] = ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/plane/plane.gltf");
-	m_Models[TotalModels]->Transformations.scaleHandler = 0.5f;
-	m_Models[TotalModels]->ModelIndex = TotalModels;
+	m_Models[TotalModels] = ModelLoader::LoadModel(ModelType::QUAD);
+	m_Models[TotalModels]->Transformations.rotation.x	= 180.0f;
+	m_Models[TotalModels]->Transformations.scaleHandler = 5.0f;
+	m_Models[TotalModels]->ModelIndex					= TotalModels;
 
 	TotalModels++;
 
 	m_Models[TotalModels] = ModelLoader::LoadModel(ModelType::QUAD);
-	m_Models[TotalModels]->Transformations.rotation.x = 90.0f;
-	m_Models[TotalModels]->Transformations.translation.x = 5.0f;
-	m_Models[TotalModels]->Transformations.scaleHandler = 5.0f;
-	m_Models[TotalModels]->ModelIndex = TotalModels;
+	m_Models[TotalModels]->Transformations.rotation.x		= 180.0f;
+	m_Models[TotalModels]->Transformations.translation.x	= 5.0f;
+	m_Models[TotalModels]->Transformations.scaleHandler		= 5.0f;
+	m_Models[TotalModels]->ModelIndex						= TotalModels;
 
 	TotalModels++;
 
@@ -180,7 +174,7 @@ void ParallaxMapping::StartUp() {
 
 	m_Camera.Init(InitialCameraPosition, InitialCameraFov, InitialCameraYaw, InitialCameraPitch, m_ScreenWidth, m_ScreenHeight);
 
-	m_LightPosition = glm::vec4(0.0f, 0.0f, 2.2f, 1.0f);
+	m_LightPosition = glm::vec4(2.38f, 0.0f, 1.54f, 1.0f);
 
 	LoadAssets();
 	LoadPipeline();
@@ -251,12 +245,6 @@ void ParallaxMapping::RenderScene(const uint32_t currentFrame, const VkCommandBu
 			| (m_OffsetLimiting << 2) 
 			| (m_DiscardOversampledFragments << 1) 
 			| m_ParallaxMappingEnabled);
-		SamplePushConstants.DebugFlags = (
-			(m_DebugRenderTangent << 4)
-			| (m_DebugRenderBiTangent << 3)
-			| (m_DebugRenderTextureNormal << 2)
-			| (m_DebugRenderMeshNormal << 1)
-			| (m_DebugEnabled));
 
 		vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
 
@@ -281,40 +269,6 @@ void ParallaxMapping::RenderUI() {
 	ImGui::SeparatorText("Scene Settings");
 
 	m_Camera.OnUIRender("Main Camera - Settings");
-
-	ImGui::Checkbox("Debug Enabled", &m_DebugEnabled);
-
-	ImGui::Checkbox("Debug - Render Tangent",			&m_DebugRenderTangent);
-
-	if (m_DebugRenderTangent) {
-		m_DebugRenderBiTangent		= false;
-		m_DebugRenderMeshNormal		= false;
-		m_DebugRenderTextureNormal	= false;
-	}
-
-	ImGui::Checkbox("Debug - Render BiTangent",			&m_DebugRenderBiTangent);
-
-	if (m_DebugRenderBiTangent) {
-		m_DebugRenderTangent		= false;
-		m_DebugRenderMeshNormal		= false;
-		m_DebugRenderTextureNormal	= false;
-	}
-
-	ImGui::Checkbox("Debug - Render Mesh Normal",		&m_DebugRenderMeshNormal);
-
-	if (m_DebugRenderMeshNormal) {
-		m_DebugRenderBiTangent		= false;
-		m_DebugRenderTangent		= false;
-		m_DebugRenderTextureNormal	= false;
-	}
-
-	ImGui::Checkbox("Debug - Render Texture Normal",	&m_DebugRenderTextureNormal);
-
-	if (m_DebugRenderTextureNormal) {
-		m_DebugRenderMeshNormal		= false;
-		m_DebugRenderBiTangent		= false;
-		m_DebugRenderTangent		= false;
-	}
 
 	ImGui::Checkbox("Parallax Mapping Enabled",			&m_ParallaxMappingEnabled);
 	ImGui::Checkbox("Discard Oversampled Fragments",	&m_DiscardOversampledFragments);

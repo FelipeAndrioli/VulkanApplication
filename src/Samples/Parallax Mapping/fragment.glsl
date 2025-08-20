@@ -107,7 +107,6 @@ vec2 SteepParallaxOcclusionMapping(vec2 uv, vec3 view_dir, int min_layers, int m
 layout (push_constant) uniform PushConstants {
 	mat4 model;
 	int flags;
-	int debug_flags;
 	int min_layers;
 	int max_layers;
 } push_constants;
@@ -120,12 +119,6 @@ void main() {
 	bool steep_parallax_mapping				= bool(push_constants.flags & (1 << 3));
 	bool steep_parallax_occlusion_mapping	= bool(push_constants.flags & (1 << 4));
 	bool flip_uv_vertically					= bool(push_constants.flags & (1 << 5));
-
-	bool debug_enabled					= bool(push_constants.debug_flags & 1);
-	bool debug_render_mesh_normal		= bool(push_constants.debug_flags & (1 << 1));
-	bool debug_render_texture_normal	= bool(push_constants.debug_flags & (1 << 2));
-	bool debug_render_bi_tangent		= bool(push_constants.debug_flags & (1 << 3));
-	bool debug_render_tangent			= bool(push_constants.debug_flags & (1 << 4));
 
 	vec3 tangent_view_dir = normalize(fs_input.tangent_view_pos - fs_input.tangent_frag_pos);
 
@@ -171,22 +164,4 @@ void main() {
 	vec3 specular = vec3(0.5) * spec;
 
 	pixel_color = vec4(ambient + diffuse + specular, 1.0);	
-
-	if (debug_enabled) {
-		if (debug_render_mesh_normal) {
-			pixel_color = vec4(fs_input.frag_normal, 1.0);
-		}
-
-		if (debug_render_texture_normal) {
-			pixel_color = vec4(normal, 1.0);
-		}
-
-		if (debug_render_bi_tangent) {
-			pixel_color = vec4(fs_input.frag_bitangent, 1.0);
-		}
-
-		if (debug_render_tangent) {
-			pixel_color = vec4(fs_input.frag_tangent, 1.0);
-		}
-	}
 }
