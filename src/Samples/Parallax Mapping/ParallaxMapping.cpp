@@ -298,4 +298,4 @@ void ParallaxMapping::Resize(uint32_t width, uint32_t height) {
 	m_OffscreenRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
 }
 
-RUN_APPLICATION(ParallaxMapping);
+//RUN_APPLICATION(ParallaxMapping);
