@@ -59,6 +59,9 @@ namespace Graphics {
 	class OffscreenRenderTarget : public IRenderTarget {
 	public:
 		OffscreenRenderTarget			(uint32_t width, uint32_t height);
+
+		// Note: When specifying a image format different than the swap chain format it must be converted first before being copied/blitted to the swap chain (HDR -> LDR).
+		OffscreenRenderTarget			(uint32_t width, uint32_t height, VkFormat imageFormat);
 		void Create						()										override;
 		void ChangeLayout				(VkImageLayout newLayout);
 		void Begin						(const VkCommandBuffer& commandBuffer)  override;
@@ -67,6 +70,8 @@ namespace Graphics {
 		const GPUImage& GetDepthBuffer	()							const { return m_Images[m_DepthIndex]; }
 
 	private:
+		VkFormat m_ImageFormat = VK_FORMAT_UNDEFINED;
+
 		float m_PositionX = 0;
 		float m_PositionY = 0;
 	};
