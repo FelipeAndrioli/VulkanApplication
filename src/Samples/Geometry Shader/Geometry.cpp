@@ -277,4 +277,4 @@ void Geometry::RenderNormals(const VkCommandBuffer& commandBuffer) {
 	}
 }
 
-RUN_APPLICATION(Geometry);
+//RUN_APPLICATION(Geometry);
