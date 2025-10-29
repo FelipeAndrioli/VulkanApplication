@@ -421,7 +421,8 @@ namespace Graphics {
 
 	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 		for (const auto& availableFormat : availableFormats) {
-			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+//			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+			if (availableFormat.format == VK_FORMAT_R8G8B8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 				return availableFormat;
 			}
 		}
@@ -2022,6 +2023,221 @@ namespace Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
+	void GraphicsDevice::CreateRenderPass(RenderPassDescription& renderPassDesc) {
+
+		// Note: Can we make depth and resolve attachment references a single variable instead of a vector?
+		std::vector<VkAttachmentReference> colorAttachmentReferences	= {};
+		std::vector<VkAttachmentReference> depthAttachmentReferences	= {};
+		std::vector<VkAttachmentReference> resolveAttachmentReferences	= {};
+
+		std::vector<VkSubpassDescription> subpassDescriptions		= {};
+		std::vector<VkSubpassDependency> subpassDependencies		= {};
+		std::vector<VkAttachmentDescription> attachmentDescriptions = {};
+
+		std::vector<SubPassDescription> subpassDescriptionsForDependencies = {};
+		SubPassDescription subpassDesc = {};
+
+		for (uint32_t attachmentIndex = 0; attachmentIndex < renderPassDesc.Attachments.size(); ++attachmentIndex) {
+		
+			const RenderPassAttachment& renderPassAttachment = renderPassDesc.Attachments[attachmentIndex];
+			
+			VkAttachmentDescription attachmentDescription = {};
+
+			switch (renderPassAttachment.LoadOp) {
+			default:
+			case RenderPassAttachment::AttachmentLoadOp::LOAD:
+				attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+				break;
+			case RenderPassAttachment::AttachmentLoadOp::CLEAR:
+				attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+				break;
+			case RenderPassAttachment::AttachmentLoadOp::DONTCARE:
+				attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				break;
+			}
+
+			switch (renderPassAttachment.StoreOp) {
+			default:
+			case RenderPassAttachment::AttachmentStoreOp::STORE:
+				attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				break;
+			case RenderPassAttachment::AttachmentStoreOp::DONTCARE:
+				attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+				break;
+			}
+
+			attachmentDescription.stencilLoadOp		= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			attachmentDescription.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+			// Note: Check multiple samples/resolve depth attachments.
+			switch (renderPassAttachment.Type) {
+			default:
+			case RenderPassAttachment::AttachmentType::RENDERTARGET:
+			{
+
+				attachmentDescription.samples		= (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
+
+				VkAttachmentReference attachmentRef	= {};
+//				attachmentRef.attachment			= colorAttachmentReferences.size();
+				attachmentRef.attachment			= attachmentIndex;
+				attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
+
+				colorAttachmentReferences.emplace_back(attachmentRef);
+
+				subpassDesc.ColorAttachmentIndices.push_back(attachmentIndex);
+			}
+				break;
+			case RenderPassAttachment::AttachmentType::DEPTHSTENCIL:
+			{
+				attachmentDescription.samples		= (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
+
+				VkAttachmentReference attachmentRef	= {};
+//				attachmentRef.attachment			= depthAttachmentReferences.size();
+				attachmentRef.attachment			= attachmentIndex;
+				attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
+
+				depthAttachmentReferences.emplace_back(attachmentRef);
+
+				subpassDesc.DepthStencilAttachmentIndex = attachmentIndex;
+			}
+				break;
+			case RenderPassAttachment::AttachmentType::RESOLVE:
+			{
+				attachmentDescription.samples		= VK_SAMPLE_COUNT_1_BIT;
+
+				VkAttachmentReference attachmentRef = {};
+//				attachmentRef.attachment			= resolveAttachmentReferences.size();
+				attachmentRef.attachment			= attachmentIndex;
+				attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
+
+				resolveAttachmentReferences.emplace_back(attachmentRef);
+				subpassDesc.ResolveAttachmentIndices.push_back(attachmentIndex);
+			}
+				break;
+			}
+
+			attachmentDescription.initialLayout	= ConvertResourceStateToImageLayout(renderPassAttachment.InitialLayout);
+			attachmentDescription.finalLayout	= ConvertResourceStateToImageLayout(renderPassAttachment.FinalLayout);
+			attachmentDescription.format		= ConvertFormat(renderPassAttachment.ImageFormat);
+			attachmentDescriptions.emplace_back(attachmentDescription);
+		}
+
+		subpassDescriptionsForDependencies.push_back(subpassDesc);
+		subpassDependencies.push_back(CreateSubpassDependency(VK_SUBPASS_EXTERNAL, 0, renderPassDesc.Attachments, subpassDescriptionsForDependencies));
+		subpassDependencies.push_back(CreateSubpassDependency(0, VK_SUBPASS_EXTERNAL, renderPassDesc.Attachments, subpassDescriptionsForDependencies));
+
+
+		VkSubpassDescription vkSubPassDesc		= {};
+		vkSubPassDesc.pipelineBindPoint			= VK_PIPELINE_BIND_POINT_GRAPHICS;
+		vkSubPassDesc.colorAttachmentCount		= colorAttachmentReferences.size();
+		vkSubPassDesc.pColorAttachments			= colorAttachmentReferences.data();
+		vkSubPassDesc.pDepthStencilAttachment	= depthAttachmentReferences.data();
+		vkSubPassDesc.pResolveAttachments		= resolveAttachmentReferences.data();
+
+		subpassDescriptions.emplace_back(vkSubPassDesc);
+
+		VkRenderPassCreateInfo createInfo	= {};
+		createInfo.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		createInfo.attachmentCount			= static_cast<uint32_t>(attachmentDescriptions.size());
+		createInfo.pAttachments				= attachmentDescriptions.data();
+		createInfo.subpassCount				= static_cast<uint32_t>(subpassDescriptions.size());
+		createInfo.pSubpasses				= subpassDescriptions.data();
+		createInfo.dependencyCount			= static_cast<uint32_t>(subpassDependencies.size());
+		createInfo.pDependencies			= subpassDependencies.data();
+
+		VkResult result = vkCreateRenderPass(m_LogicalDevice, &createInfo, nullptr, &renderPassDesc.Handle);
+	}
+
+	VkSubpassDependency GraphicsDevice::CreateSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, std::vector<RenderPassAttachment>& attachments, std::vector<SubPassDescription>& subpassDescriptions) {
+		
+		VkSubpassDependency subpassDependency = {};
+		subpassDependency.srcSubpass = srcSubpass;
+		subpassDependency.dstSubpass = dstSubpass;
+
+		// Note:	VK_DEPENDENCY_BY_REGION_BIT specifies that dependencies will be framebuffer-local.
+		subpassDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+		subpassDependency.srcStageMask	= 0;
+		subpassDependency.dstStageMask	= 0;
+		subpassDependency.srcAccessMask = 0;
+		subpassDependency.dstAccessMask = 0;
+
+		if (srcSubpass == VK_SUBPASS_EXTERNAL) {
+			// First pass
+			subpassDependency.srcStageMask	= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			subpassDependency.srcAccessMask = 0; // No prior access
+
+			// Write is assumed for the first subpass
+			subpassDependency.dstStageMask	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+			if (subpassDescriptions[0].DepthStencilAttachmentIndex != VK_ATTACHMENT_UNUSED) {
+				subpassDependency.dstStageMask	|= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				subpassDependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			}
+		}
+		else if (dstSubpass == VK_SUBPASS_EXTERNAL) {
+			// Last pass
+			subpassDependency.dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			subpassDependency.dstAccessMask = 0; // allow any post-render access
+
+			// Write is assumed in last subpass
+			subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			subpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+			if (subpassDescriptions.back().DepthStencilAttachmentIndex != VK_ATTACHMENT_UNUSED) {
+				subpassDependency.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				subpassDependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			}
+		}
+		else {
+			// Internal subpasses
+			subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			subpassDependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			subpassDependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			subpassDependency.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+
+			bool hasDepthWriteInSrcSubpass = false;
+			bool hasDepthReadInDstSubpass = false;
+
+			// check if src subpass has write depth/stencil
+			if (subpassDescriptions[srcSubpass].DepthStencilAttachmentIndex != VK_ATTACHMENT_UNUSED 
+				&& (attachments[subpassDescriptions[srcSubpass].DepthStencilAttachmentIndex].SubpassLayout & ResourceState::DEPTHSTENCIL)) {
+				hasDepthWriteInSrcSubpass = true;
+			}
+
+			for (uint32_t attachmentIndex = 0; attachmentIndex < subpassDescriptions[srcSubpass].ColorAttachmentIndices.size(); ++attachmentIndex) {
+				if (attachments[subpassDescriptions[srcSubpass].ColorAttachmentIndices[attachmentIndex]].SubpassLayout & ResourceState::DEPTHSTENCIL) {
+					hasDepthWriteInSrcSubpass = true;
+					break;
+				}
+			}
+
+			// check if dst subpass has read depth/stencil
+			for (uint32_t attachmentIndex = 0; attachmentIndex < subpassDescriptions[dstSubpass].ColorAttachmentIndices.size(); ++attachmentIndex) {
+				if (attachments[subpassDescriptions[dstSubpass].ColorAttachmentIndices[attachmentIndex]].SubpassLayout & ResourceState::DEPTHSTENCIL ||
+					attachments[subpassDescriptions[dstSubpass].ColorAttachmentIndices[attachmentIndex]].SubpassLayout & ResourceState::DEPTHSTENCIL_READONLY) {
+					hasDepthReadInDstSubpass = true;
+					break;
+				}
+			}
+
+			if (hasDepthWriteInSrcSubpass && hasDepthReadInDstSubpass) {
+				subpassDependency.srcStageMask	|= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				subpassDependency.srcAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				subpassDependency.dstStageMask	|= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				subpassDependency.dstAccessMask |= VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+			}
+
+			// check if src subpass has resolve
+			if (subpassDescriptions[srcSubpass].ResolveAttachmentIndices.size() > 0) {
+				subpassDependency.srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			}
+		}
+
+		return subpassDependency;
+	}
+
 	void GraphicsDevice::DestroyRenderPass(VkRenderPass& renderPass) {
 		vkDestroyRenderPass(m_LogicalDevice, renderPass, nullptr);
 	}
@@ -2047,7 +2263,7 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::CreateDescriptorPool() {
-		VkDescriptorPoolSize poolSizes[2] = {};
+		VkDescriptorPoolSize poolSizes[3] = {};
 		uint32_t count = 0;
 
 		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -2056,6 +2272,10 @@ namespace Graphics {
 		
 		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		poolSizes[1].descriptorCount = m_PoolSize;
+		count++;
+
+		poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		poolSizes[2].descriptorCount = m_PoolSize;
 		count++;
 
 		VkDescriptorPoolCreateInfo poolCreateInfo = {};
@@ -2554,9 +2774,9 @@ namespace Graphics {
 		pso.inputAssembly.topology					= desc.topology;
 		pso.inputAssembly.primitiveRestartEnable	= VK_FALSE;
 
-		VkExtent2D psoExtent	= renderTarget.GetExtent();
-		VkViewport viewport		= renderTarget.GetRenderPass().Description.Viewport;
-		VkRect2D scissor		= renderTarget.GetRenderPass().Description.Scissor;
+		VkExtent2D psoExtent = renderTarget.GetExtent();
+		VkViewport viewport = renderTarget.GetViewport();
+		VkRect2D scissor = renderTarget.GetScissor();
 
 		pso.viewportState.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		pso.viewportState.viewportCount = 1;
@@ -2579,19 +2799,30 @@ namespace Graphics {
 		pso.multisampling.sType						= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		pso.multisampling.sampleShadingEnable		= VK_FALSE;
 		//pso.multisampling.rasterizationSamples	= m_MsaaSamples;
-		pso.multisampling.rasterizationSamples		= renderTarget.GetRenderPass().Description.SampleCount;
+		pso.multisampling.rasterizationSamples		= renderTarget.GetSampleCount();
 		pso.multisampling.minSampleShading			= 1.0f;
 		pso.multisampling.pSampleMask				= nullptr;
 		pso.multisampling.alphaToCoverageEnable		= desc.colorBlendingEnable;
 		pso.multisampling.alphaToOneEnable			= desc.colorBlendingEnable;
 
-		desc.colorBlendingDesc.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		
+	
 		pso.colorBlending.sType				= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 		pso.colorBlending.logicOpEnable		= VK_FALSE;
 		pso.colorBlending.logicOp			= VK_LOGIC_OP_COPY;
-		pso.colorBlending.attachmentCount	= 1;
-		pso.colorBlending.pAttachments		= &desc.colorBlendingDesc;
+		pso.colorBlending.attachmentCount	= desc.attachmentCount;
+
+		if (desc.attachmentCount > 1) {
+			for (uint32_t i = 0; i < desc.attachmentCount; ++i)
+				desc.colorBlendingDescArray[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+			pso.colorBlending.pAttachments = desc.colorBlendingDescArray.data();
+		}
+		else {
+			pso.colorBlending.pAttachments = &desc.colorBlendingDesc;
+			desc.colorBlendingDesc.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		}
+
+//		pso.colorBlending.pAttachments		= desc.attachmentCount == 1 ? &desc.colorBlendingDesc : desc.colorBlendingDescArray.data();
 		pso.colorBlending.blendConstants[0] = 0.0f;
 		pso.colorBlending.blendConstants[1] = 0.0f;
 		pso.colorBlending.blendConstants[2] = 0.0f;
@@ -2704,12 +2935,12 @@ namespace Graphics {
 		pso.pipelineInfo.pColorBlendState		= &pso.colorBlending;
 		pso.pipelineInfo.pDynamicState			= &dynamicState;
 		pso.pipelineInfo.layout					= pso.pipelineLayout;
-		pso.pipelineInfo.renderPass				= renderTarget.GetRenderPass().Handle;
+		pso.pipelineInfo.renderPass				= renderTarget.GetRenderPassHandle();
 		pso.pipelineInfo.subpass				= 0;
 		pso.pipelineInfo.basePipelineHandle		= VK_NULL_HANDLE;
 		//pipelineInfo.basePipelineIndex		= -1;
 
-		pso.renderPass							= &renderTarget.GetRenderPass();
+//		pso.renderPass							= &renderTarget.GetRenderPass();
 
 		result = vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pso.pipelineInfo, nullptr, &pso.pipeline);
 		assert(result == VK_SUCCESS);
@@ -2763,6 +2994,132 @@ namespace Graphics {
 		renderPass.Subpasses.clear();
 
 		vkDestroyRenderPass(m_LogicalDevice, renderPass.Handle, nullptr);
+	}
+
+	Format GraphicsDevice::ConvertFormat(VkFormat format) {
+		switch (format) {
+		case VK_FORMAT_R32G32B32A32_SFLOAT:
+			return Format::R32G32B32A32_FLOAT;
+		case VK_FORMAT_R32G32B32A32_UINT:
+			return Format::R32G32B32A32_INT;
+		case VK_FORMAT_R32G32B32A32_SINT:
+			return Format::R32G32B32A32_SINT;
+		case VK_FORMAT_R32G32B32_SFLOAT:
+			return Format::R32G32B32_FLOAT;
+		case VK_FORMAT_R32G32B32_UINT:
+			return Format::R32G32B32_INT;
+		case VK_FORMAT_R32G32B32_SINT:
+			return Format::R32G32B32_SINT;
+		case VK_FORMAT_R16G16B16A16_SFLOAT:
+			return Format::R16G16B16A16_FLOAT;
+		case VK_FORMAT_R16G16B16A16_UNORM:
+			return Format::R16G16B16A16_UNORM;
+		case VK_FORMAT_R16G16B16A16_UINT:
+			return Format::R16G16B16A16_UINT;
+		case VK_FORMAT_R16G16B16A16_SNORM:
+			return Format::R16G16B16A16_SNORM;
+		case VK_FORMAT_R16G16B16A16_SINT:
+			return Format::R16G16B16A16_SINT;
+		case VK_FORMAT_R8G8B8A8_UNORM:
+			return Format::R8G8B8A8_UNORM;
+		case VK_FORMAT_R8G8B8A8_UINT:
+			return Format::R8G8B8A8_UINT;
+		case VK_FORMAT_R8G8B8A8_SNORM:
+			return Format::R8G8B8A8_SNORM;
+		case VK_FORMAT_R8G8B8A8_SINT:
+			return Format::R8G8B8A8_SINT;
+//		case VK_FORMAT_R8G8B8A8_SRGB:
+//			return Format::R
+		case VK_FORMAT_D32_SFLOAT_S8_UINT:
+			return Format::D32_FLOAT_S8_UINT;
+		case VK_FORMAT_D24_UNORM_S8_UINT:
+			return Format::D24_UNORM_S8_UINT;
+		case VK_FORMAT_D16_UNORM_S8_UINT:
+			return Format::D16_UNORM_S8_UINT;
+		case VK_FORMAT_D32_SFLOAT:
+			return Format::D32_FLOAT;
+		case VK_FORMAT_D16_UNORM:
+			return Format::D16_UNORM;
+		case VK_FORMAT_S8_UINT:
+			return Format::S8_UINT;
+		default:
+			return Format::UNKNOWN;
+		}
+	}
+
+	VkFormat GraphicsDevice::ConvertFormat(Format format) {
+		switch (format) {
+		case Format::R32G32B32A32_FLOAT:
+			return VK_FORMAT_R32G32B32A32_SFLOAT;
+		case Format::R32G32B32A32_INT:
+			return VK_FORMAT_R32G32B32A32_UINT;
+		case Format::R32G32B32A32_SINT:
+			return VK_FORMAT_R32G32B32A32_SINT;
+		case Format::R32G32B32_FLOAT:
+			return VK_FORMAT_R32G32B32_SFLOAT;
+		case Format::R32G32B32_INT:
+			return VK_FORMAT_R32G32B32_UINT;
+		case Format::R32G32B32_SINT:
+			return VK_FORMAT_R32G32B32_SINT;
+		case Format::R16G16B16A16_FLOAT:
+			return VK_FORMAT_R16G16B16A16_SFLOAT;
+		case Format::R16G16B16A16_UNORM:
+			return VK_FORMAT_R16G16B16A16_UNORM;
+		case Format::R16G16B16A16_UINT:
+			return VK_FORMAT_R16G16B16A16_UINT;
+		case Format::R16G16B16A16_SNORM:
+			return VK_FORMAT_R16G16B16A16_SNORM;
+		case Format::R16G16B16A16_SINT:
+			return VK_FORMAT_R16G16B16A16_SINT;
+		case Format::R8G8B8A8_UNORM:
+			return VK_FORMAT_R8G8B8A8_UNORM;
+		case Format::R8G8B8A8_UINT:
+			return VK_FORMAT_R8G8B8A8_UINT;
+		case Format::R8G8B8A8_SNORM:
+			return VK_FORMAT_R8G8B8A8_SNORM;
+		case Format::R8G8B8A8_SINT:
+			return VK_FORMAT_R8G8B8A8_SINT;
+		case Format::D32_FLOAT_S8_UINT:
+			return VK_FORMAT_D32_SFLOAT_S8_UINT;
+		case Format::D24_UNORM_S8_UINT:
+			return VK_FORMAT_D24_UNORM_S8_UINT;
+		case Format::D16_UNORM_S8_UINT:
+			return VK_FORMAT_D16_UNORM_S8_UINT;
+		case Format::D32_FLOAT:
+			return VK_FORMAT_D32_SFLOAT;
+		case Format::D16_UNORM:
+			return VK_FORMAT_D16_UNORM;
+		case Format::S8_UINT:
+			return VK_FORMAT_S8_UINT;
+		default:
+			return VK_FORMAT_UNDEFINED;
+		}
+	}
+		
+	VkImageLayout GraphicsDevice::ConvertResourceStateToImageLayout(ResourceState resourceState) {
+		switch (resourceState) {
+		case ResourceState::UNDEFINED:
+			return VK_IMAGE_LAYOUT_UNDEFINED;
+		case ResourceState::RENDERTARGET:
+			return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		case ResourceState::DEPTHSTENCIL:
+			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		case ResourceState::DEPTHSTENCIL_READONLY:
+			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+		case ResourceState::SHADER_RESOURCE:
+		case ResourceState::SHADER_RESOURCE_COMPUTE:
+			return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		case ResourceState::UNORDERED_ACCESS:
+			return VK_IMAGE_LAYOUT_GENERAL;
+		case ResourceState::COPY_DST:
+			return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		case ResourceState::COPY_SRC:
+			return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		case ResourceState::SWAPCHAIN:
+			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		default:
+			return VK_IMAGE_LAYOUT_GENERAL;
+		}
 	}
 
 	void GraphicsDevice::ResizeRenderPass(const uint32_t width, const uint32_t height, RenderPass& renderPass) {
