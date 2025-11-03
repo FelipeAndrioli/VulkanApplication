@@ -8,13 +8,18 @@
 #define MAX_LIGHT_SOURCES 5
 #define MAX_CAMERAS 10
 
-layout (location = 0) in vec3 fragPos;
-layout (location = 1) in vec3 fragNormal;
-layout (location = 2) in vec3 fragColor;
-layout (location = 3) in vec3 fragTangent;
-layout (location = 4) in vec3 fragBiTangent;
-layout (location = 5) in vec2 fragTexCoord;
-layout (location = 6) in vec4 fragPosLightSpace[MAX_LIGHT_SOURCES];
+struct FSInput {
+	vec3 fragPos;
+	vec3 fragNormal;
+	vec3 fragColor;
+	vec3 fragTangent;
+	vec3 fragBiTangent;
+	vec2 fragTexCoord;
+	vec4 fragPosLightSpace[MAX_LIGHT_SOURCES];
+	vec3 fragWorldPos;
+};
+
+layout (location = 0) in FSInput fsInput;
 
 layout (location = 0) out vec4 out_color;
 
@@ -172,7 +177,7 @@ float calc_shadow(vec4 normal, vec4 light_position, light_t light) {
 	if (!shadow_map_enabled)
 		return 0.0;
 
-	vec4 light_space_frag_pos = fragPosLightSpace[light.index];
+	vec4 light_space_frag_pos = fsInput.fragPosLightSpace[light.index];
 
 	vec3 light_dir = normalize(light_position.xyz - light_space_frag_pos.xyz);
 
@@ -271,7 +276,7 @@ vec3 calc_directional_light(light_t light, material_t current_material, vec4 mat
 	vec3 ambient = material_ambient.rgb * vec3(light.ambient);
 	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse);
 
-	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
+	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fsInput.fragPos);
 
 	//Phong specular model
 	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
@@ -288,18 +293,18 @@ vec3 calc_directional_light(light_t light, material_t current_material, vec4 mat
 }
 
 vec3 calc_point_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
-	float d = length(fragPos - light.position.xyz);
+	float d = length(fsInput.fragPos - light.position.xyz);
 	float constant_attenuation = 1.0;
 	float light_attenuation = 1 / (constant_attenuation + light.linear_attenuation * d + light.quadratic_attenuation * (d * d));
 
-	vec3 light_dir = normalize(light.position.xyz - fragPos);
+	vec3 light_dir = normalize(light.position.xyz - fsInput.fragPos);
 
 	float diff = max(dot(light_dir, vec3(material_normal)), 0.0);
 
 	vec3 ambient = material_ambient.rgb * vec3(light.ambient) * light_attenuation;
 	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse) * light_attenuation;
 
-	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
+	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fsInput.fragPos);
 
 	// Phong specular model
 	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
@@ -317,13 +322,13 @@ vec3 calc_point_light(light_t light, material_t current_material, vec4 material_
 }
 
 vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_ambient, vec4 material_diffuse, vec4 material_specular, vec4 material_normal) {
-	vec3 light_dir = normalize(light.position.xyz - fragPos);
+	vec3 light_dir = normalize(light.position.xyz - fsInput.fragPos);
 
 	float theta = dot(light_dir, normalize(-light.direction.xyz));
 	float epsilon = light.cut_off_angle - light.outer_cut_off_angle;
 	float intensity = clamp((theta - light.outer_cut_off_angle) / epsilon, 0.0, 1.0);
 
-	float d = length(fragPos - light.position.xyz);
+	float d = length(fsInput.fragPos - light.position.xyz);
 	float constant_attenuation = 1.0;
 	float light_attenuation = 1 / (constant_attenuation + light.linear_attenuation * d + light.quadratic_attenuation * (d * d));
 
@@ -332,7 +337,7 @@ vec3 calc_spot_light(light_t light, material_t current_material, vec4 material_a
 	vec3 ambient = material_ambient.rgb * vec3(light.ambient) * light_attenuation;
 	vec3 diffuse = material_diffuse.rgb * diff * vec3(light.diffuse) * light_attenuation;
 
-	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fragPos);
+	vec3 view_dir = normalize(vec3(cameras[mesh_constant.camera_index].position) - fsInput.fragPos);
 
 	// Phong specular model
 	//vec3 reflect_dir = reflect(-light_dir, vec3(material_normal));
@@ -375,7 +380,7 @@ void main() {
 	if (current_material.diffuse_texture_index == -1) {
 		material_ambient = vec4(current_material.diffuse);
 	} else {
-		material_ambient = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+		material_ambient = texture(texSampler[current_material.diffuse_texture_index], fsInput.fragTexCoord);
 		if (material_ambient.a < 0.1) {
 			discard;
 		}
@@ -384,21 +389,21 @@ void main() {
 	if (current_material.diffuse_texture_index == -1) {
 		material_diffuse = vec4(current_material.diffuse);
 	} else {
-		material_diffuse = texture(texSampler[current_material.diffuse_texture_index], fragTexCoord);
+		material_diffuse = texture(texSampler[current_material.diffuse_texture_index], fsInput.fragTexCoord);
 		if (material_diffuse.a < 0.1) {
 			discard;
 		}
 	}
 
 	if (current_material.normal_texture_index == -1 || sceneGPUData.render_normal_map == 0) {
-		material_normal = vec4(fragNormal, 1.0);
+		material_normal = vec4(fsInput.fragNormal, 1.0);
 	} else {
 		// normal mapping
 		// retrieve normal map in range [0, 1] and transform it to range [-1, 1]
-		material_normal = normalize(texture(texSampler[current_material.normal_texture_index], fragTexCoord) * 2.0 - 1.0);
+		material_normal = normalize(texture(texSampler[current_material.normal_texture_index], fsInput.fragTexCoord) * 2.0 - 1.0);
 
 		// create TBN matrix from tangent bitangent and normal
-		mat3 tbn = mat3(fragTangent, fragBiTangent, fragNormal);
+		mat3 tbn = mat3(fsInput.fragTangent, fsInput.fragBiTangent, fsInput.fragNormal);
 
 		// multiply the normal retrieved from texture by the TBN matrix to transform the normal from tangent space to world space
 		material_normal = vec4(normalize(tbn * vec3(material_normal)), 1.0);
@@ -415,7 +420,7 @@ void main() {
 	if (current_material.specular_texture_index == -1) {
 		material_specular = vec4(current_material.specular);
 	} else {
-		material_specular = texture(texSampler[current_material.specular_texture_index], fragTexCoord);
+		material_specular = texture(texSampler[current_material.specular_texture_index], fsInput.fragTexCoord);
 	}
 
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {

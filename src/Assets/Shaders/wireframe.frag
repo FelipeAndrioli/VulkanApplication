@@ -5,13 +5,18 @@
 
 #define MAX_LIGHT_SOURCES 5
 
-layout (location = 0) in vec3 fragPos;
-layout (location = 1) in vec3 fragNormal;
-layout (location = 2) in vec3 fragColor;
-layout (location = 3) in vec3 fragTangent;
-layout (location = 4) in vec3 fragBiTangent;
-layout (location = 5) in vec2 fragTexCoord;
-layout (location = 6) in vec4 fragPosLightSpace[MAX_LIGHT_SOURCES];
+struct FSInput {
+	vec3 fragPos;
+	vec3 fragNormal;
+	vec3 fragColor;
+	vec3 fragTangent;
+	vec3 fragBiTangent;
+	vec2 fragTexCoord;
+	vec4 fragPosLightSpace[MAX_LIGHT_SOURCES];
+	vec3 fragWorldPos;
+};
+
+layout (location = 0) in FSInput fsInput;
 
 layout (location = 0) out vec4 outColor;
 
