@@ -95,6 +95,8 @@ void Geometry::StartUp() {
 	
 	ResourceManager* rm = ResourceManager::Get();
 
+	uint32_t texturesCount = rm->GetTextures().size() == 0 ? 1 : static_cast<uint32_t>(rm->GetTextures().size());
+
 	m_PSOInputLayout = {
 		.pushConstants = {
 			{ VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(PushConstant) }
@@ -103,7 +105,7 @@ void Geometry::StartUp() {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT },								// Scene GPU Data
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT },															// Model GPU Data
 			{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT},															// Material Data
-			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(rm->GetTextures().size()), VK_SHADER_STAGE_FRAGMENT_BIT }		// Textures Array 
+			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, texturesCount, VK_SHADER_STAGE_FRAGMENT_BIT }										// Textures Array 
 		}
 	};
 
@@ -144,7 +146,6 @@ void Geometry::StartUp() {
 	desc.vertexShader						= &m_NormalVertShader;
 	desc.geometryShader						= &m_NormalGeoShader;
 	desc.fragmentShader						= &m_NormalFragShader;
-	desc.topology							= VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
 	gfxDevice->CreatePipelineState(desc, m_NormalRenderPSO, *gfxDevice->GetSwapChain().RenderTarget.get());
 
@@ -202,8 +203,6 @@ void Geometry::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& c
 
 	if (m_RenderNormals)
 		RenderNormals(commandBuffer);
-
-	// gfxDevice->GetSwapChain().RenderTarget->End(commandBuffer); -> When using swap chain render target it should not be ended here
 }
 
 void Geometry::RenderUI() {
@@ -224,8 +223,6 @@ void Geometry::RenderUI() {
 void Geometry::Resize(uint32_t width, uint32_t height) {
 	m_Width		= width;
 	m_Height	= height;
-
-	// SwapChain Render Target is resized automatically
 }
 
 void Geometry::RenderModelMeshes(const VkCommandBuffer& commandBuffer) {
@@ -279,11 +276,5 @@ void Geometry::RenderNormals(const VkCommandBuffer& commandBuffer) {
 		);
 	}
 }
-
-/*
-	Known Issues:
-		- The Vulkan Validation Layer complains about the builtin blocks being different between vertex shader output and 
-			geometry shader input, changing shader version to 450 fixes the issue.
-*/
 
 //RUN_APPLICATION(Geometry);

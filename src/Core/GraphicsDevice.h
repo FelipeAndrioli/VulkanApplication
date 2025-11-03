@@ -153,12 +153,17 @@ namespace Graphics {
 		VkExtent2D pipelineExtent		= {};
 
 		float lineWidth					= 1.0f;
-		
-		VkPipelineColorBlendAttachmentState colorBlendingDesc = {};
 
 		std::vector<InputLayout> psoInputLayout;
 
 		std::string Name;
+
+		uint32_t attachmentCount = 1;
+
+		union {
+			VkPipelineColorBlendAttachmentState colorBlendingDesc = {};
+			std::array<VkPipelineColorBlendAttachmentState, 6> colorBlendingDescArray;
+		};
 	};
 
 	struct PipelineState {
@@ -280,6 +285,8 @@ namespace Graphics {
 		void DestroyBuffer(GPUBuffer& buffer);
 	
 		void CreateRenderPass(RenderPass& renderPass);
+		void CreateRenderPass(RenderPassDescription& renderPassDesc);
+		VkSubpassDependency CreateSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, std::vector<RenderPassAttachment>& attachments, std::vector<SubPassDescription>& subpassDescriptions);
 		void DestroyRenderPass(VkRenderPass& renderPass);
 		void DestroyFramebuffer(std::vector<VkFramebuffer>& framebuffers);
 
@@ -310,6 +317,9 @@ namespace Graphics {
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUImage& image);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const VkImageLayout& imageLayout, const VkImageView& imageView, const VkSampler& imageSampler);
 
+		VkFormat ConvertFormat(Format format);
+		Format ConvertFormat(VkFormat format);
+		VkImageLayout ConvertResourceStateToImageLayout(ResourceState resourceState);
 #ifdef RUNTIME_SHADER_COMPILATION
 		static EShLanguage FindLanguage(const Shader& shader);
 		static bool CompileShader(Shader& shader);
