@@ -9,7 +9,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int total_lights;
 	int extra1;
 	int extra2;
-	int extra3;
+	float bloom_threshold;
 } scene_gpu_data;
 
 layout (push_constant) uniform PushConstants {

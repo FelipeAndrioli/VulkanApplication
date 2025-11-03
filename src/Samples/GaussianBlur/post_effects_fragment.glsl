@@ -8,8 +8,10 @@ layout (location = 0) out vec4 frag_color;
 
 layout (set = 0, binding = 0) uniform sampler2D geometry_pass_result;
 
-layout (set = 0, binding = 1) uniform PostEffectsGPUData {
+layout (std140, set = 0, binding = 1) uniform PostEffectsGPUData {
+	vec4 padding[15];
 	int flags;
+	int extra;
 	float gamma;
 	float hdr_exposure;
 } post_effects_gpu_data;

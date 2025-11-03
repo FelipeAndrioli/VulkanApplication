@@ -15,9 +15,13 @@
 
 #include <glm.hpp>
 #include <gtc/type_ptr.hpp>
+#include <math.h>
 
-constexpr int MAX_LIGHTS = 30;
-constexpr int TOTAL_MODELS = 3;
+constexpr int MAX_LIGHTS			= 30;
+constexpr int TOTAL_MODELS			= 3;
+constexpr int NAX_GAUSSIAN_WEIGHTS	= 63;
+constexpr float SQRT_PI_TIMES_TWO	= 2.506628f;
+constexpr float EULER				= 2.71828f;
 
 class GaussianBlur : public Application::IScene {
 public:
@@ -36,13 +40,13 @@ public:
 	virtual void Resize(uint32_t width, uint32_t height)											override;
 
 	struct SceneData {
-		glm::mat4 Projection = glm::mat4(1.0f);
-		glm::mat4 View = glm::mat4(1.0f);
-		glm::vec4 Extra[7] = {};
-		uint32_t TotalLights = 0;
-		uint32_t Extra1 = 0;
-		uint32_t Extra2 = 0;
-		float BloomThreshold = 1.0f;
+		glm::mat4 Projection	= glm::mat4(1.0f);
+		glm::mat4 View			= glm::mat4(1.0f);
+		glm::vec4 Extra[7]		= {};
+		uint32_t TotalLights	= 0;
+		uint32_t Extra1			= 0;
+		uint32_t Extra2			= 0;
+		float BloomThreshold	= 1.0f;
 	} SampleSceneData;
 
 	struct PushConstants {
@@ -55,16 +59,21 @@ public:
 		alignas(16) glm::vec4 Color;
 	} LightSourcePushConstants;
 
+	struct GaussianBlurData {
+		alignas(16) glm::vec4 Weights[15] = {};
+		alignas(4) int TotalWeights	= 0;
+	} GaussianBlurGPUData = {};
+
 	// Note:	Only point lights for now
 	struct Light {
-		glm::mat4 Model = glm::mat4(1.0f);			// to render the light sources		| 64 bytes
-		glm::vec4 Position = glm::vec4(0.0f);		// 16 bytes							| 80 bytes aggregated
-		glm::vec4 Color = glm::vec4(1.0f);			// w -> light intensity | 16 bytes	| 94 bytes aggregated
-		glm::vec4 Extra_v[9] = {};
-		float Linear = -4.0f;
-		float Quadratic = 10.0f;
-		float Extra1 = 0.0f;
-		float Extra2 = 0.0f;
+		glm::mat4 Model			= glm::mat4(1.0f);		// to render the light sources		| 64 bytes
+		glm::vec4 Position		= glm::vec4(0.0f);		// 16 bytes							| 80 bytes aggregated
+		glm::vec4 Color			= glm::vec4(1.0f);		// w -> light intensity | 16 bytes	| 94 bytes aggregated
+		glm::vec4 Extra_v[9]	= {};
+		float Linear			= -4.0f;
+		float Quadratic			= 10.0f;
+		float Extra1			= 0.0f;
+		float Extra2			= 0.0f;
 	};
 
 	const glm::vec3 InitialCameraPosition = glm::vec3(-6.0f, 0.0f, 0.0f);
@@ -80,30 +89,39 @@ private:
 	uint32_t m_ScreenHeight		= 0;
 	uint32_t m_BlurPassCount	= 10;
 
-	std::array<std::shared_ptr<Assets::Model>, TOTAL_MODELS> m_Models;
-
 	size_t m_TotalModels = 0;
-
-	std::array<Light, MAX_LIGHTS> m_SceneLights;
-
 	size_t m_TotalLights = 0;
 
+	std::array<std::shared_ptr<Assets::Model>, TOTAL_MODELS> m_Models;
+	std::array<Light, MAX_LIGHTS> m_SceneLights;
+
+	std::vector<double> m_GaussianWeights;
+
 	struct PostProcessGPUData {
+		glm::vec4 Padding[15];
 		uint32_t Flags;			// HDR ACES Tone Mapping Enabled | HDR Exposure Enabled | Gamma Correction Enabled | HDR Enabled
+		uint32_t Extra;
 		float Gamma;
 		float HDRExposure;
-		
 	} m_PostProcessingGPUData;
 
 	float m_LightScaleFactor	= 0.0f;
 	float m_LightPositionOffset = 4.0f;
-	float m_Gamma				= 0.0f;
+	float m_Gamma				= 1.220f;
 	float m_HDRExposure			= 0.0f;
 
-	bool m_GammaCorrectionEnabled	= false;
+	std::string m_GaussianWeightsString;
+
+	uint32_t m_GaussianWeightSteps	= 7; 
+	float m_GaussianWeightSpread	= 4.580f; 
+	float m_GaussianWeightOffset	= 1.660f; 
+	float m_GaussianWeightCenter	= 0.0f;
+
+	bool m_GenerateGaussianWeights	= true;
+	bool m_GammaCorrectionEnabled	= true;
 	bool m_HDRReinhardEnabled		= false;
-	bool m_HDRExposureEnabled		= true;
-	bool m_HDRAcesEnabled			= false;
+	bool m_HDRExposureEnabled		= false;
+	bool m_HDRAcesEnabled			= true;
 	bool m_MovingLights				= false;
 	bool m_BloomEnabled				= true;
 	bool m_HorizontalBlurPass		= false;
@@ -113,23 +131,25 @@ private:
 	std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_BloomRenderTarget;
 
 	Graphics::Buffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
-	Graphics::Buffer m_LightBuffer			= {};
-	Graphics::Buffer m_PostProcessBuffer	= {};
+	Graphics::Buffer m_LightBuffer				= {};
+	Graphics::Buffer m_PostProcessBuffer		= {};
+	Graphics::Buffer m_GaussianBlurUBOBuffer	= {};
 
 	// Gaussian Blur Pass
-	Graphics::Shader m_GaussianBlurVertexShader = {};
-	Graphics::Shader m_GaussianBlurFragmentShader = {};
+	Graphics::Shader m_GaussianBlurVertexShader		= {};
+	Graphics::Shader m_GaussianBlurFragmentShader	= {};
 
-	Graphics::InputLayout m_GaussianBlurInputLayout = {};
+	Graphics::InputLayout m_GaussianBlurInputLayout[2] = {};
 
 	Graphics::PipelineState m_GaussianBlurPSO = {};
 
-	VkDescriptorSetLayout m_GaussianBlurSetLayout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout m_GaussianBlurSetLayout[2] = { VK_NULL_HANDLE };
 	VkDescriptorSet m_GaussianBlurSet[Graphics::FRAMES_IN_FLIGHT][3] = { VK_NULL_HANDLE };	// Per frame, per input image type 
+	VkDescriptorSet m_GaussianBlurUBO[Graphics::FRAMES_IN_FLIGHT] = { VK_NULL_HANDLE };
 
 	// Geometry Pass
 	Graphics::Shader m_VertexShader = {};
-	Graphics::Shader m_FragShader = {};
+	Graphics::Shader m_FragShader	= {};
 
 	Graphics::PipelineState m_PSO = {};
 
@@ -147,8 +167,8 @@ private:
 
 	// Post Effects Pass
 
-	Graphics::Shader m_PostEffectsVertexShader = {};
-	Graphics::Shader m_PostEffectsFragShader = {};
+	Graphics::Shader m_PostEffectsVertexShader	= {};
+	Graphics::Shader m_PostEffectsFragShader	= {};
 
 	Graphics::InputLayout m_PostEffectsInputLayouts[2] = {};
 
@@ -162,7 +182,40 @@ private:
 	void GaussianBlurPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 	void AddLight();
 	void RemoveLight();
+
+	std::vector<double> GenerateGaussianWeights(const uint32_t steps, const float spread, const float offset = 0.0f, const float center = 0.0f);
 };
+
+std::vector<double> GaussianBlur::GenerateGaussianWeights(
+	const uint32_t steps, 
+	const float spread, 
+	const float offset, 
+	const float center) {
+	
+	std::vector<double> weights;
+
+	// Normalization
+	const float n = 1 / (spread * SQRT_PI_TIMES_TWO);
+
+	const float stepSize = (n + offset) / steps;
+
+	float x = 0.0f + offset;
+
+	for (size_t i = 0; i < steps; ++i) {
+
+		// Gaussian Core
+		const float g = -(((x - center) * (x - center)) / (2 * (spread * spread)));
+
+		// Weight
+		const double weight = n * pow(EULER, g);
+
+		weights.emplace_back(weight);
+
+		x += stepSize;
+	}
+
+	return weights;
+}
 
 void GaussianBlur::AddLight() {
 
@@ -203,7 +256,6 @@ void GaussianBlur::StartUp() {
 
 	m_LightScaleFactor = 0.08f;
 
-	m_Gamma = 2.2f;
 	m_HDRExposure = 1.0f;
 
 	m_BloomRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(m_ScreenWidth, m_ScreenHeight, 2, Graphics::Format::R16G16B16A16_FLOAT);
@@ -234,8 +286,9 @@ void GaussianBlur::StartUp() {
 		m_SceneBuffer[i] = gfxDevice->CreateBuffer(sizeof(SceneData));
 	}
 
-	m_LightBuffer		= gfxDevice->CreateBuffer(sizeof(Light) * MAX_LIGHTS);
-	m_PostProcessBuffer = gfxDevice->CreateBuffer(sizeof(PostProcessGPUData));
+	m_LightBuffer			= gfxDevice->CreateBuffer(sizeof(Light) * MAX_LIGHTS);
+	m_PostProcessBuffer		= gfxDevice->CreateBuffer(sizeof(PostProcessGPUData));
+	m_GaussianBlurUBOBuffer = gfxDevice->CreateBuffer(sizeof(GaussianBlurData));
 
 	Graphics::InputLayout inputLayout = {
 		.pushConstants = {
@@ -310,8 +363,6 @@ void GaussianBlur::StartUp() {
 		}
 	};
 
-	// Instead of duplicating set 0 to support finishing bloom rendering in 'vertical' or 'horizontal', I'll just create a separate
-	// 'set' entry for the pipeline so I can directly bind the result to this slot.
 	m_PostEffectsInputLayouts[1] = {
 		.pushConstants = {},
 		.bindings = {
@@ -320,11 +371,11 @@ void GaussianBlur::StartUp() {
 	};
 
 	Graphics::PipelineStateDescription postEffectsPsoDesc = {};
-	postEffectsPsoDesc.Name = "Post Effects PSO";
-	postEffectsPsoDesc.vertexShader = &m_PostEffectsVertexShader;
-	postEffectsPsoDesc.fragmentShader = &m_PostEffectsFragShader;
-	postEffectsPsoDesc.noVertex = true;
-	postEffectsPsoDesc.cullMode = VK_CULL_MODE_NONE;
+	postEffectsPsoDesc.Name				= "Post Effects PSO";
+	postEffectsPsoDesc.vertexShader		= &m_PostEffectsVertexShader;
+	postEffectsPsoDesc.fragmentShader	= &m_PostEffectsFragShader;
+	postEffectsPsoDesc.noVertex			= true;
+	postEffectsPsoDesc.cullMode			= VK_CULL_MODE_NONE;
 	postEffectsPsoDesc.psoInputLayout.push_back(m_PostEffectsInputLayouts[0]);
 	postEffectsPsoDesc.psoInputLayout.push_back(m_PostEffectsInputLayouts[1]);
 
@@ -340,7 +391,7 @@ void GaussianBlur::StartUp() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_GaussianBlurVertexShader, "../src/Samples/GaussianBlur/gaussian_blur_vertex.glsl");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_GaussianBlurFragmentShader, "../src/Samples/GaussianBlur/gaussian_blur_fragment.glsl");
 
-	m_GaussianBlurInputLayout = {
+	m_GaussianBlurInputLayout[0] = {
 		.pushConstants = {
 			{ VK_SHADER_STAGE_ALL, 0, sizeof(uint32_t) }
 		},
@@ -349,26 +400,39 @@ void GaussianBlur::StartUp() {
 		}
 	};
 
+	m_GaussianBlurInputLayout[1] = {
+		.pushConstants = {},
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }			// Gaussian Blur UBO 
+		}
+	};
+
 	Graphics::PipelineStateDescription gaussianBlurPsoDesc = {};
-	gaussianBlurPsoDesc.Name = "Gaussian Blur PSO";
-	gaussianBlurPsoDesc.vertexShader = &m_GaussianBlurVertexShader;
-	gaussianBlurPsoDesc.fragmentShader = &m_GaussianBlurFragmentShader;
-	gaussianBlurPsoDesc.noVertex = true;
-	gaussianBlurPsoDesc.cullMode = VK_CULL_MODE_NONE;
-	gaussianBlurPsoDesc.psoInputLayout.push_back(m_GaussianBlurInputLayout);
+	gaussianBlurPsoDesc.Name			= "Gaussian Blur PSO";
+	gaussianBlurPsoDesc.vertexShader	= &m_GaussianBlurVertexShader;
+	gaussianBlurPsoDesc.fragmentShader	= &m_GaussianBlurFragmentShader;
+	gaussianBlurPsoDesc.noVertex		= true;
+	gaussianBlurPsoDesc.cullMode		= VK_CULL_MODE_NONE;
+	gaussianBlurPsoDesc.psoInputLayout.push_back(m_GaussianBlurInputLayout[0]);
+	gaussianBlurPsoDesc.psoInputLayout.push_back(m_GaussianBlurInputLayout[1]);
 
 	// Note: Assumption that we don't need to create two pipeline states.
 	gfxDevice->CreatePipelineState(gaussianBlurPsoDesc, m_GaussianBlurPSO, *m_PingPongRenderTarget[0].get());
-	gfxDevice->CreateDescriptorSetLayout(m_GaussianBlurSetLayout, m_GaussianBlurInputLayout.bindings);
+	gfxDevice->CreateDescriptorSetLayout(m_GaussianBlurSetLayout[0], m_GaussianBlurInputLayout[0].bindings);
+	gfxDevice->CreateDescriptorSetLayout(m_GaussianBlurSetLayout[1], m_GaussianBlurInputLayout[1].bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; ++i) {
-		gfxDevice->CreateDescriptorSet(m_GaussianBlurSetLayout, m_GaussianBlurSet[i][0]);
-		gfxDevice->CreateDescriptorSet(m_GaussianBlurSetLayout, m_GaussianBlurSet[i][1]);
-		gfxDevice->CreateDescriptorSet(m_GaussianBlurSetLayout, m_GaussianBlurSet[i][2]);
+		gfxDevice->CreateDescriptorSet(m_GaussianBlurSetLayout[0], m_GaussianBlurSet[i][0]);
+		gfxDevice->CreateDescriptorSet(m_GaussianBlurSetLayout[0], m_GaussianBlurSet[i][1]);
+		gfxDevice->CreateDescriptorSet(m_GaussianBlurSetLayout[0], m_GaussianBlurSet[i][2]);
 
-		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout.bindings[0], m_GaussianBlurSet[i][0], m_PingPongRenderTarget[0]->GetColorBuffer());
-		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout.bindings[0], m_GaussianBlurSet[i][1], m_PingPongRenderTarget[1]->GetColorBuffer());
-		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout.bindings[0], m_GaussianBlurSet[i][2], m_BloomRenderTarget->GetResolvedColorBuffer()[1]);
+		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][0], m_PingPongRenderTarget[0]->GetColorBuffer());
+		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][1], m_PingPongRenderTarget[1]->GetColorBuffer());
+		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][2], m_BloomRenderTarget->GetResolvedColorBuffer()[1]);
+		
+		gfxDevice->CreateDescriptorSet(m_GaussianBlurSetLayout[1], m_GaussianBlurUBO[i]);
+
+		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[1].bindings[0], m_GaussianBlurUBO[i], m_GaussianBlurUBOBuffer);
 	}
 }
 
@@ -395,7 +459,8 @@ void GaussianBlur::CleanUp() {
 
 	gfxDevice->DestroyShader(m_GaussianBlurVertexShader);
 	gfxDevice->DestroyShader(m_GaussianBlurFragmentShader);
-	gfxDevice->DestroyDescriptorSetLayout(m_GaussianBlurSetLayout);
+	gfxDevice->DestroyDescriptorSetLayout(m_GaussianBlurSetLayout[0]);
+	gfxDevice->DestroyDescriptorSetLayout(m_GaussianBlurSetLayout[1]);
 	gfxDevice->DestroyPipeline(m_GaussianBlurPSO);
 }
 
@@ -406,6 +471,30 @@ void GaussianBlur::Update(const float constantT, const float deltaT, InputSystem
 	m_Camera.OnUpdate(deltaT, input);
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	if (m_GenerateGaussianWeights) {
+	
+		m_GenerateGaussianWeights = false;
+
+		m_GaussianWeights.clear();
+
+		m_GaussianWeights = GenerateGaussianWeights(m_GaussianWeightSteps, m_GaussianWeightSpread, m_GaussianWeightOffset, m_GaussianWeightCenter);
+
+		m_GaussianWeightsString = "Gaussian Weights: ";
+
+		for (size_t gaussianWeightIndex = 0; gaussianWeightIndex < m_GaussianWeights.size(); ++gaussianWeightIndex) {
+			if (gaussianWeightIndex > 0)
+				m_GaussianWeightsString = m_GaussianWeightsString.append(",");
+
+			m_GaussianWeightsString = m_GaussianWeightsString.append(std::to_string(m_GaussianWeights[gaussianWeightIndex]));
+
+			GaussianBlurGPUData.Weights[gaussianWeightIndex / 4][gaussianWeightIndex % 4] = static_cast<float>(m_GaussianWeights[gaussianWeightIndex]);
+		}
+
+		GaussianBlurGPUData.TotalWeights = m_GaussianWeights.size();
+
+		gfxDevice->UpdateBuffer(m_GaussianBlurUBOBuffer, &GaussianBlurGPUData);
+	}
 
 	SampleSceneData.Projection		= m_Camera.ProjectionMatrix;
 	SampleSceneData.View			= m_Camera.ViewMatrix;
@@ -562,7 +651,8 @@ void GaussianBlur::GaussianBlurPass(const uint32_t currentFrame, const VkCommand
 	bool firstIteration = true;
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GaussianBlurPSO.pipeline);
-
+	gfxDevice->BindDescriptorSet(m_GaussianBlurUBO[currentFrame], commandBuffer, m_GaussianBlurPSO.pipelineLayout, 1, 1);
+	
 	for (uint32_t blurPassIndex = 0; blurPassIndex < m_BlurPassCount; ++blurPassIndex) {
 		m_PingPongRenderTarget[m_HorizontalBlurPass]->Begin(commandBuffer);
 
@@ -655,6 +745,33 @@ void GaussianBlur::RenderUI() {
 	for (int ModelIndex = 0; ModelIndex < m_TotalModels; ++ModelIndex) {
 		m_Models[ModelIndex]->OnUIRender();
 	}
+
+	ImGui::SeparatorText("Gaussian Weights");
+	
+	uint32_t gaussianWeightSteps = m_GaussianWeightSteps;
+	float gaussianWeightSpread = m_GaussianWeightSpread;
+	float gaussianWeightOffset = m_GaussianWeightOffset;
+	float gaussianWeightCenter = m_GaussianWeightCenter;
+
+	ImGui::DragInt("Total Weights", reinterpret_cast<int*>(&gaussianWeightSteps), 1.0f, 1, NAX_GAUSSIAN_WEIGHTS);
+	ImGui::DragFloat("Spread", &gaussianWeightSpread, 0.01f, 0.0f, 10.0f);
+	ImGui::DragFloat("Offset", &gaussianWeightOffset, 0.01f, 0.0f, 10.0f);
+	ImGui::DragFloat("Center", &gaussianWeightCenter, 0.01f, -10.0f, 10.0f);
+
+	if (gaussianWeightSteps != m_GaussianWeightSteps
+		|| gaussianWeightSpread != m_GaussianWeightSpread
+		|| gaussianWeightOffset != m_GaussianWeightOffset
+		|| gaussianWeightCenter != m_GaussianWeightCenter) {
+
+		m_GenerateGaussianWeights = true;
+
+		m_GaussianWeightSteps = gaussianWeightSteps;
+		m_GaussianWeightSpread = gaussianWeightSpread;
+		m_GaussianWeightOffset = gaussianWeightOffset;
+		m_GaussianWeightCenter = gaussianWeightCenter;
+	}
+
+	ImGui::Text(m_GaussianWeightsString.c_str());
 }
 
 void GaussianBlur::Resize(uint32_t width, uint32_t height) {
@@ -672,9 +789,9 @@ void GaussianBlur::Resize(uint32_t width, uint32_t height) {
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; ++i) {
 		gfxDevice->WriteDescriptor(m_PostEffectsInputLayouts[0].bindings[0], m_PostEffectsSet[i], m_BloomRenderTarget->GetResolvedColorBuffer()[0]);
 		
-		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout.bindings[0], m_GaussianBlurSet[i][0], m_PingPongRenderTarget[0]->GetColorBuffer());
-		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout.bindings[0], m_GaussianBlurSet[i][1], m_PingPongRenderTarget[1]->GetColorBuffer());
-		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout.bindings[0], m_GaussianBlurSet[i][2], m_BloomRenderTarget->GetResolvedColorBuffer()[1]);
+		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][0], m_PingPongRenderTarget[0]->GetColorBuffer());
+		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][1], m_PingPongRenderTarget[1]->GetColorBuffer());
+		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][2], m_BloomRenderTarget->GetResolvedColorBuffer()[1]);
 	}
 }
 
