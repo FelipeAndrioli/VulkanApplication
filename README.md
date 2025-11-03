@@ -14,6 +14,12 @@
 ### Parallax Mapping
 ![Parallax Mapping](screenshots/parallax_mapping.png)
 
+### Gaussian Blur - Full Screen Blur
+![Full Screen Blur](screenshots/full_screen_blur.png)
+
+### Gaussian Blur - Bloom
+![Bloom](screenshots/bloom.png)
+
 ## Current Work (not in order)
 
 - [x] Depth Buffer 
