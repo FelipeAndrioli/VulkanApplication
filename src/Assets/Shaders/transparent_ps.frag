@@ -80,7 +80,7 @@ struct light_t {
 	int index;
 	int pcf_samples;
 
-	float minBias;
+	float min_bias;
 	float sps_spread;
 	float outer_cut_off_angle;
 	float cut_off_angle;

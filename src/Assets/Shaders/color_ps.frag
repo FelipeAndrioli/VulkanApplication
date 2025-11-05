@@ -423,6 +423,7 @@ void main() {
 		material_specular = texture(texSampler[current_material.specular_texture_index], fsInput.fragTexCoord);
 	}
 
+
 	for (int i = 0; i < sceneGPUData.total_lights; i++) {
 		light_t light = lights[i];
 
