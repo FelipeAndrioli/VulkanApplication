@@ -145,7 +145,16 @@ namespace Graphics {
 	//			refactoring everything.
 	class MultiAttachmentRenderTarget : public IRenderTarget {
 	public:
+
+		struct AttachmentDescription {
+			uint32_t Width;
+			uint32_t Height;
+			uint32_t Samples;
+			Graphics::Format ImageFormat;
+		};
+
 		MultiAttachmentRenderTarget(const uint32_t width, const uint32_t height, const uint32_t numColorAttachments, const Graphics::Format imageFormat);
+		MultiAttachmentRenderTarget(const uint32_t width, const uint32_t height, const std::vector<AttachmentDescription> colorAttachmentDescriptions);
 		~MultiAttachmentRenderTarget();
 
 		void Begin			(const VkCommandBuffer& commandBuffer)	override;
@@ -172,6 +181,7 @@ namespace Graphics {
 		std::vector<Graphics::GPUImage> m_ResolveAttachments;
 
 		std::vector<VkClearValue> m_ClearValues;
+		std::vector<VkImageView> m_FramebufferViews;
 
 		Graphics::RenderPassDescription m_RenderPassDescription = {};
 	};
