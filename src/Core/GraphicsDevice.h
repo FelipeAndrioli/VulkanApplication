@@ -317,6 +317,7 @@ namespace Graphics {
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUImage& image);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const VkImageLayout& imageLayout, const VkImageView& imageView, const VkSampler& imageSampler);
 
+		uint32_t GetMsaaSamples() { return static_cast<uint32_t>(m_MsaaSamples); }
 		VkFormat ConvertFormat(Format format);
 		Format ConvertFormat(VkFormat format);
 		VkImageLayout ConvertResourceStateToImageLayout(ResourceState resourceState);
