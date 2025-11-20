@@ -37,19 +37,29 @@ public:
 	virtual void Resize(uint32_t width, uint32_t height)											override;
 
 	// For comparison
-	struct ForwardRenderingPass {
+	struct ForwardResourcesResources {
+
+		VkDescriptorSetLayout SetLayout = VK_NULL_HANDLE;
+		std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> Set = { VK_NULL_HANDLE };
+
+		Graphics::InputLayout PipelineInputLayout = {};
 		Graphics::PipelineState PSO		= {};
 		Graphics::Shader VertexShader	= {};
 		Graphics::Shader FragShader		= {};
 		std::unique_ptr<Graphics::OffscreenRenderTarget> RenderTarget;
-	} ForwardPass;
+	} ForwardResources;
 
-	struct DefererredRenderingPass {
-		Graphics::PipelineState PSO		= {};
-		Graphics::Shader VertexShader	= {};
-		Graphics::Shader FragShader		= {};
-		std::unique_ptr<Graphics::MultiAttachmentRenderTarget> RenderTarget;
-	} DeferredPass;
+	struct DefererredRenderingResources {
+
+		VkDescriptorSetLayout SetLayout = VK_NULL_HANDLE;
+		std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> Set = { VK_NULL_HANDLE };
+
+		Graphics::InputLayout GeometryPipelineInputLayout = {};
+		Graphics::PipelineState GeometryPassPSO		= {};
+		Graphics::Shader GeometryPassVertexShader	= {};
+		Graphics::Shader GeometryPassFragShader		= {};
+		std::unique_ptr<Graphics::MultiAttachmentRenderTarget> GBufferRenderTarget;
+	} DeferredResources;
 
 	struct SceneData {
 		alignas(16) glm::mat4 Projection;
@@ -88,15 +98,13 @@ private:
 	Graphics::Buffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 	Graphics::Buffer m_LightBuffer = {};
 
-	Graphics::InputLayout m_PipelineInputLayout = {};
-
-	VkDescriptorSetLayout m_SetLayout = VK_NULL_HANDLE;
-	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_Set = { VK_NULL_HANDLE };
-
 	bool m_DeferredRenderingEnabled = false;
 private:
-	void InitializeForwardPassResources();
+	void InitializeForwardResources();
 	void InitializeDeferredPassResources();
+
+	void DestroyForwardResources();
+	void DestroyDeferredResources();
 
 	void RenderForward(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 	void RenderDeferred(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
@@ -139,37 +147,101 @@ void DeferredRendering::RemoveLight() {
 }
 
 
-void DeferredRendering::InitializeForwardPassResources() {
+void DeferredRendering::InitializeForwardResources() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-	
-	ForwardPass.RenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, ForwardPass.VertexShader, "../src/Samples/DeferredRendering/vertex.glsl");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, ForwardPass.FragShader, "../src/Samples/DeferredRendering/fragment.glsl");
+	ResourceManager* rm = ResourceManager::Get();
+
+	const uint32_t totalLoadedTextures = static_cast<uint32_t>(rm->GetTotalTextures());
+
+	ForwardResources.PipelineInputLayout = {
+		.pushConstants = {
+			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
+		},
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			// Scene GPU Data
+			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },										// Material GPU Data
+			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, totalLoadedTextures, VK_SHADER_STAGE_FRAGMENT_BIT},				// Textures 
+			{ 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT}										// Light GPU Data 
+		}
+	};
+
+	gfxDevice->CreateDescriptorSetLayout(ForwardResources.SetLayout, ForwardResources.PipelineInputLayout.bindings);
+
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+		gfxDevice->CreateDescriptorSet(ForwardResources.SetLayout, ForwardResources.Set[i]);
+
+		gfxDevice->WriteDescriptor(ForwardResources.PipelineInputLayout.bindings[0], ForwardResources.Set[i], m_SceneBuffer[i]);
+		gfxDevice->WriteDescriptor(ForwardResources.PipelineInputLayout.bindings[1], ForwardResources.Set[i], rm->GetMaterialBuffer());
+		gfxDevice->WriteDescriptor(ForwardResources.PipelineInputLayout.bindings[2], ForwardResources.Set[i], rm->GetTextures());
+		gfxDevice->WriteDescriptor(ForwardResources.PipelineInputLayout.bindings[3], ForwardResources.Set[i], m_LightBuffer);
+	}
+
+	ForwardResources.RenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
+
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, ForwardResources.VertexShader, "../src/Samples/DeferredRendering/vertex.glsl");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, ForwardResources.FragShader, "../src/Samples/DeferredRendering/fragment.glsl");
 
 	Graphics::PipelineStateDescription desc = {};
 	desc.Name = "Forward Rendering - Phong";
-	desc.vertexShader = &ForwardPass.VertexShader;
-	desc.fragmentShader = &ForwardPass.FragShader;
-	desc.psoInputLayout.push_back(m_PipelineInputLayout);
+	desc.vertexShader = &ForwardResources.VertexShader;
+	desc.fragmentShader = &ForwardResources.FragShader;
+	desc.psoInputLayout.push_back(ForwardResources.PipelineInputLayout);
 
-	gfxDevice->CreatePipelineState(desc, ForwardPass.PSO, *ForwardPass.RenderTarget.get());
+	gfxDevice->CreatePipelineState(desc, ForwardResources.PSO, *ForwardResources.RenderTarget.get());
 }
 
 void DeferredRendering::InitializeDeferredPassResources() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-	
+
+	ResourceManager* rm = ResourceManager::Get();
+
+	const uint32_t totalLoadedTextures = static_cast<uint32_t>(rm->GetTotalTextures());
+
+	DeferredResources.GeometryPipelineInputLayout = {
+		.pushConstants = {
+			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
+		},
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			// Scene GPU Data
+			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },										// Material GPU Data
+			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, totalLoadedTextures, VK_SHADER_STAGE_FRAGMENT_BIT}				// Textures 
+		}
+	};
+
+	gfxDevice->CreateDescriptorSetLayout(DeferredResources.SetLayout, DeferredResources.GeometryPipelineInputLayout.bindings);
+
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; ++i) {
+		gfxDevice->CreateDescriptorSet(DeferredResources.SetLayout, DeferredResources.Set[i]);
+
+		gfxDevice->WriteDescriptor(DeferredResources.GeometryPipelineInputLayout.bindings[0], DeferredResources.Set[i], m_SceneBuffer[i]);
+		gfxDevice->WriteDescriptor(DeferredResources.GeometryPipelineInputLayout.bindings[1], DeferredResources.Set[i], rm->GetMaterialBuffer());
+		gfxDevice->WriteDescriptor(DeferredResources.GeometryPipelineInputLayout.bindings[2], DeferredResources.Set[i], rm->GetTextures());
+	}
+
 	const std::vector<Graphics::MultiAttachmentRenderTarget::AttachmentDescription> attachments = {
 		{ .Samples = gfxDevice->GetMsaaSamples(), .ImageFormat = Graphics::Format::R16G16B16A16_FLOAT },	// Position
 		{ .Samples = gfxDevice->GetMsaaSamples(), .ImageFormat = Graphics::Format::R16G16B16A16_FLOAT },	// Normal
-		{ .Samples = gfxDevice->GetMsaaSamples(), .ImageFormat = Graphics::Format::R16G16B16A16_FLOAT }		// AlbedoSpec 
+		{ .Samples = gfxDevice->GetMsaaSamples(), .ImageFormat = Graphics::Format::R8G8B8A8_UNORM }			// AlbedoSpec 
 	};
 
-	DeferredPass.RenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+	DeferredResources.GBufferRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
 		m_ScreenWidth,
 		m_ScreenHeight,
 		attachments
 	);
+
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, DeferredResources.GeometryPassVertexShader, "../src/Samples/DeferredRendering/vertex.glsl");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, DeferredResources.GeometryPassFragShader, "../src/Samples/DeferredRendering/deferred_geometry_fragment.glsl");
+
+	Graphics::PipelineStateDescription desc = {};
+	desc.Name = "Deferred Rendering - Geometry Pass";
+	desc.vertexShader = &DeferredResources.GeometryPassVertexShader;
+	desc.fragmentShader = &DeferredResources.GeometryPassFragShader;
+	desc.attachmentCount = attachments.size();
+	desc.psoInputLayout.push_back(DeferredResources.GeometryPipelineInputLayout);
+
+	gfxDevice->CreatePipelineState(desc, DeferredResources.GeometryPassPSO, *DeferredResources.GBufferRenderTarget.get());
 }
 
 void DeferredRendering::StartUp() {
@@ -187,6 +259,7 @@ void DeferredRendering::StartUp() {
 
 	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(Scene::LightComponent) * MAX_LIGHTS);
 
+	/*
 	m_Models[TotalModels] = ModelLoader::LoadModel(ModelType::QUAD);
 	m_Models[TotalModels]->Transformations.translation		= glm::vec3(0.0f, -0.51f, 0.0f);
 	m_Models[TotalModels]->Transformations.rotation.x		= 90.0f;
@@ -194,6 +267,7 @@ void DeferredRendering::StartUp() {
 	m_Models[TotalModels]->ModelIndex						= TotalModels;
 	
 	TotalModels++;
+	*/
 
 	const int maxRow = 5;
 	const int maxColumn = 3;
@@ -258,49 +332,35 @@ void DeferredRendering::StartUp() {
 		TotalLights++;
 	}
 
-	ResourceManager* rm = ResourceManager::Get();
-
-	const uint32_t totalLoadedTextures = static_cast<uint32_t>(rm->GetTotalTextures());
-
-	m_PipelineInputLayout = {
-		.pushConstants = {
-			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
-		},
-		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			// Scene GPU Data
-			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },										// Material GPU Data
-			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, totalLoadedTextures, VK_SHADER_STAGE_FRAGMENT_BIT},				// Textures 
-			{ 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT}										// Light GPU Data 
-		}
-	};
-
-	InitializeForwardPassResources();
+	InitializeForwardResources();
 	InitializeDeferredPassResources();
+}
 
-	gfxDevice->CreateDescriptorSetLayout(m_SetLayout, m_PipelineInputLayout.bindings);
+void DeferredRendering::DestroyForwardResources() {
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->CreateDescriptorSet(m_SetLayout, m_Set[i]);
+	ForwardResources.RenderTarget.reset();
 
-		gfxDevice->WriteDescriptor(m_PipelineInputLayout.bindings[0], m_Set[i], m_SceneBuffer[i]);
-		gfxDevice->WriteDescriptor(m_PipelineInputLayout.bindings[1], m_Set[i], rm->GetMaterialBuffer());
-		gfxDevice->WriteDescriptor(m_PipelineInputLayout.bindings[2], m_Set[i], rm->GetTextures());
-		gfxDevice->WriteDescriptor(m_PipelineInputLayout.bindings[3], m_Set[i], m_LightBuffer);
-	}
+	gfxDevice->DestroyShader(ForwardResources.VertexShader);
+	gfxDevice->DestroyShader(ForwardResources.FragShader);
+	gfxDevice->DestroyDescriptorSetLayout(ForwardResources.SetLayout);
+	gfxDevice->DestroyPipeline(ForwardResources.PSO);
+}
+
+void DeferredRendering::DestroyDeferredResources() {
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	DeferredResources.GBufferRenderTarget.reset();
+
+	gfxDevice->DestroyShader(DeferredResources.GeometryPassVertexShader);
+	gfxDevice->DestroyShader(DeferredResources.GeometryPassFragShader);
+	gfxDevice->DestroyDescriptorSetLayout(DeferredResources.SetLayout);
+	gfxDevice->DestroyPipeline(DeferredResources.GeometryPassPSO);
 }
 
 void DeferredRendering::CleanUp() {
-	
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
-	ForwardPass.RenderTarget.reset();
-
-	gfxDevice->DestroyShader(ForwardPass.VertexShader);
-	gfxDevice->DestroyShader(ForwardPass.FragShader);
-	gfxDevice->DestroyDescriptorSetLayout(m_SetLayout);
-	gfxDevice->DestroyPipeline(ForwardPass.PSO);
-	
-	DeferredPass.RenderTarget.reset();
+	DestroyForwardResources();
+	DestroyDeferredResources();
 }
 
 void DeferredRendering::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
@@ -325,11 +385,11 @@ void DeferredRendering::RenderForward(const uint32_t currentFrame, const VkComma
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	ForwardPass.RenderTarget->Begin(commandBuffer);
+	ForwardResources.RenderTarget->Begin(commandBuffer);
 
-	gfxDevice->BindDescriptorSet(m_Set[currentFrame], commandBuffer, ForwardPass.PSO.pipelineLayout, 0, 1);
+	gfxDevice->BindDescriptorSet(ForwardResources.Set[currentFrame], commandBuffer, ForwardResources.PSO.pipelineLayout, 0, 1);
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ForwardPass.PSO.pipeline);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ForwardResources.PSO.pipeline);
 
 	for (int ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
 
@@ -346,7 +406,7 @@ void DeferredRendering::RenderForward(const uint32_t currentFrame, const VkComma
 
 			SamplePushConstants.MaterialIndex = Mesh.MaterialIndex;
 
-			vkCmdPushConstants(commandBuffer, ForwardPass.PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
+			vkCmdPushConstants(commandBuffer, ForwardResources.PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
 
 			vkCmdDrawIndexed(
 				commandBuffer, 
@@ -358,15 +418,50 @@ void DeferredRendering::RenderForward(const uint32_t currentFrame, const VkComma
 		}
 	}
 
-	ForwardPass.RenderTarget->End(commandBuffer);
+	ForwardResources.RenderTarget->End(commandBuffer);
 
-	ForwardPass.RenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	gfxDevice->GetSwapChain().RenderTarget->CopyColor(ForwardPass.RenderTarget->GetColorBuffer());
+	ForwardResources.RenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	gfxDevice->GetSwapChain().RenderTarget->CopyColor(ForwardResources.RenderTarget->GetColorBuffer());
 
 }
 
 void DeferredRendering::RenderDeferred(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	SCOPED_PROFILER_US("DeferredRendering::RenderDeferred");
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	DeferredResources.GBufferRenderTarget->Begin(commandBuffer);
+
+	gfxDevice->BindDescriptorSet(DeferredResources.Set[currentFrame], commandBuffer, DeferredResources.GeometryPassPSO.pipelineLayout, 0, 1);
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, DeferredResources.GeometryPassPSO.pipeline);
+
+	for (uint32_t ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
+		Assets::Model& Model = *m_Models[ModelIndex].get();
+
+		VkDeviceSize offsets[] = { sizeof(uint32_t) * Model.TotalIndices };
+
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &Model.DataBuffer.Handle, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, Model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+
+		SamplePushConstants.Model = Model.GetModelMatrix();
+
+		for (const auto& Mesh : Model.Meshes) {
+			SamplePushConstants.MaterialIndex = Mesh.MaterialIndex;
+
+			vkCmdPushConstants(commandBuffer, DeferredResources.GeometryPassPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
+
+			vkCmdDrawIndexed(
+				commandBuffer,
+				static_cast<uint32_t>(Mesh.Indices.size()),
+				1,
+				static_cast<uint32_t>(Mesh.IndexOffset),
+				static_cast<int32_t>(Mesh.VertexOffset),
+				0);
+		}
+	}
+
+	DeferredResources.GBufferRenderTarget->End(commandBuffer);
 }
 
 void DeferredRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -383,8 +478,6 @@ void DeferredRendering::RenderScene(const uint32_t currentFrame, const VkCommand
 
 void DeferredRendering::RenderUI() {
 	ImGui::SeparatorText("Scene Settings");
-
-	ImGui::Checkbox("Deferred Rendering Enabled", &m_DeferredRenderingEnabled);
 
 	m_Camera.OnUIRender("Main Camera - Settings");
 
@@ -420,6 +513,20 @@ void DeferredRendering::RenderUI() {
 		
 		ImGui::TreePop();
 	}
+
+	bool deferredRenderingEnabledBefore = m_DeferredRenderingEnabled;
+
+	ImGui::Checkbox("Deferred Rendering Enabled", &m_DeferredRenderingEnabled);
+
+	if (ImGui::TreeNode("Deferred Geometry Pass Output")) {
+		if (m_DeferredRenderingEnabled && deferredRenderingEnabledBefore == m_DeferredRenderingEnabled) {
+			ImGui::Image((ImTextureID)DeferredResources.GBufferRenderTarget->GetDescriptorSets()[0], ImVec2(500, 200));
+			ImGui::Image((ImTextureID)DeferredResources.GBufferRenderTarget->GetDescriptorSets()[1], ImVec2(500, 200));
+			ImGui::Image((ImTextureID)DeferredResources.GBufferRenderTarget->GetDescriptorSets()[2], ImVec2(500, 200));
+		}
+
+		ImGui::TreePop();
+	}
 }
 
 void DeferredRendering::Resize(uint32_t width, uint32_t height) {
@@ -428,8 +535,8 @@ void DeferredRendering::Resize(uint32_t width, uint32_t height) {
 
 	m_Camera.Resize(m_ScreenWidth, m_ScreenHeight);
 
-	ForwardPass.RenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
-	DeferredPass.RenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
+	ForwardResources.RenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
+	DeferredResources.GBufferRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
 }
 
 RUN_APPLICATION(DeferredRendering);
