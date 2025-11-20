@@ -865,9 +865,10 @@ namespace Graphics {
 	MultiAttachmentRenderTarget::MultiAttachmentRenderTarget(const uint32_t width, const uint32_t height, const std::vector<AttachmentDescription> colorAttachmentDescriptions) {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 		
-		m_Width					= width;
-		m_Height				= height;
-		m_NumColorAttachments	= colorAttachmentDescriptions.size();
+		m_Width							= width;
+		m_Height						= height;
+		m_NumColorAttachments			= colorAttachmentDescriptions.size();
+		m_ColorAttachmentDescriptions	= colorAttachmentDescriptions;
 
 		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
 		m_ColorAttachments.resize(m_NumColorAttachments);
@@ -1044,6 +1045,32 @@ namespace Graphics {
 		for (int i = 0; i < m_Framebuffers.size(); i++) {
 			gfxDevice->CreateFramebuffer(m_RenderPassDescription.Handle, m_FramebufferViews, GetExtent(), m_Framebuffers[i]);
 		}
+
+		m_DescriptorSets.resize(m_ColorAttachmentDescriptions.size());
+
+		VkDescriptorSetLayoutBinding binding = {};
+	    binding.binding			= 0;
+		binding.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		binding.descriptorCount = 1;
+		binding.stageFlags		= VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+
+		gfxDevice->CreateDescriptorSetLayout(descriptorSetLayout, { binding });
+
+		for (int i = 0; i < m_DescriptorSets.size(); ++i) {
+		
+			gfxDevice->CreateDescriptorSet(descriptorSetLayout, m_DescriptorSets[i]);
+
+			if (m_ColorAttachmentDescriptions[i].Samples > 2) {
+				gfxDevice->WriteDescriptor(binding, m_DescriptorSets[i], m_ResolveAttachments[i]);
+			}
+			else {
+				gfxDevice->WriteDescriptor(binding, m_DescriptorSets[i], m_ColorAttachments[i]);
+			}
+		}
+
+		gfxDevice->DestroyDescriptorSetLayout(descriptorSetLayout);
 	}
 
 	void MultiAttachmentRenderTarget::ChangeLayout(VkImageLayout newLayout) {

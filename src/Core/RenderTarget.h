@@ -166,6 +166,7 @@ namespace Graphics {
 //		const GPUImage&				GetColorBuffer			()	{ return m_ResolveAttachments[1]; }
 		const std::vector<Graphics::GPUImage>& GetColorBuffer			()	{ return m_ColorAttachments; }
 		const std::vector<Graphics::GPUImage>& GetResolvedColorBuffer	()	{ return m_ResolveAttachments; }
+		const std::vector<VkDescriptorSet>& GetDescriptorSets			()	{ return m_DescriptorSets; }
 		const VkSampleCountFlagBits GetSampleCount			()	const override;
 		const VkRenderPass&			GetRenderPassHandle		()	const override;
 		const VkViewport			GetViewport				() const override;
@@ -176,9 +177,13 @@ namespace Graphics {
 
 		Graphics::Format m_ImageFormat = Graphics::Format::UNKNOWN;
 
+		std::vector<AttachmentDescription> m_ColorAttachmentDescriptions;
+
 		std::vector<Graphics::GPUImage> m_ColorAttachments;
 		std::vector<Graphics::GPUImage> m_DepthAttachments;
 		std::vector<Graphics::GPUImage> m_ResolveAttachments;
+
+		std::vector<VkDescriptorSet> m_DescriptorSets;
 
 		std::vector<VkClearValue> m_ClearValues;
 		std::vector<VkImageView> m_FramebufferViews;
