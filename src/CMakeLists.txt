@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.24)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -41,9 +41,11 @@ target_link_libraries(${PROJECT_NAME} glfw)
 target_link_libraries(${PROJECT_NAME} assimp)
 
 if (RUNTIME_SHADER_COMPILE)
+	MESSAGE("Compiling and linking required resources for runtime shader compilation...")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE RUNTIME_SHADER_COMPILATION=${RUNTIME_SHADER_COMPILE})
 	target_link_libraries(${PROJECT_NAME} Vulkan::Headers)
 	target_link_libraries(${PROJECT_NAME} Vulkan::glslang)
+	target_link_libraries(${PROJECT_NAME} Vulkan::shaderc_combined)
 	target_link_libraries(${PROJECT_NAME} Vulkan::SPIRV-Tools)
 endif()
 
