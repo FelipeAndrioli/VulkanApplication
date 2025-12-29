@@ -64,7 +64,7 @@ namespace Graphics {
 	class OffscreenRenderTarget : public IRenderTarget {
 	public:
 		OffscreenRenderTarget			(uint32_t width, uint32_t height);
-
+		
 		// Note: When specifying a image format different than the swap chain format it must be converted first before being copied/blitted to the swap chain (HDR -> LDR).
 		OffscreenRenderTarget			(uint32_t width, uint32_t height, VkFormat imageFormat);
 
@@ -80,9 +80,13 @@ namespace Graphics {
 		VkFormat m_ImageFormat = VK_FORMAT_UNDEFINED;
 
 		uint32_t m_NumColorAttachments = 0;
+		uint32_t m_MsaaSamples = 1;
+		VkSampleCountFlagBits m_MsaaSamplesConverted = VK_SAMPLE_COUNT_1_BIT;
 
 		float m_PositionX = 0;
 		float m_PositionY = 0;
+		
+		Graphics::RenderPassDescription m_RenderPassDescription = {};
 	};
 
 	class PostEffectsRenderTarget : public IRenderTarget {
@@ -141,53 +145,36 @@ namespace Graphics {
 		bool m_SingleFramebuffer = false;
 	};
 
-	// Note:	I'll go with specific 'render targets' for now and will change the way they're being created when
-	//			refactoring everything.
 	class MultiAttachmentRenderTarget : public IRenderTarget {
 	public:
-
-		struct AttachmentDescription {
-			uint32_t Width;
-			uint32_t Height;
-			uint32_t Samples;
-			Graphics::Format ImageFormat;
-		};
-
-		MultiAttachmentRenderTarget(const uint32_t width, const uint32_t height, const uint32_t numColorAttachments, const Graphics::Format imageFormat);
-		MultiAttachmentRenderTarget(const uint32_t width, const uint32_t height, const std::vector<AttachmentDescription> colorAttachmentDescriptions);
+	
+		MultiAttachmentRenderTarget(
+			const uint32_t width, 
+			const uint32_t height, 
+			const uint32_t samples, 
+			RenderPassDescription& renderPassDescription);
 		~MultiAttachmentRenderTarget();
 
 		void Begin			(const VkCommandBuffer& commandBuffer)	override;
 		void Create			()										override;
 		void End			(const VkCommandBuffer& commandBuffer)	override;
-		void Resize			(uint32_t width, uint32_t height)		override;
 		void ChangeLayout	(VkImageLayout newLayout);
-		
-//		const GPUImage&				GetColorBuffer			()	{ return m_ResolveAttachments[1]; }
-		const std::vector<Graphics::GPUImage>& GetColorBuffer			()	{ return m_ColorAttachments; }
-		const std::vector<Graphics::GPUImage>& GetResolvedColorBuffer	()	{ return m_ResolveAttachments; }
-		const std::vector<VkDescriptorSet>& GetDescriptorSets			()	{ return m_DescriptorSets; }
-		const VkSampleCountFlagBits GetSampleCount			()	const override;
-		const VkRenderPass&			GetRenderPassHandle		()	const override;
-		const VkViewport			GetViewport				() const override;
-		const VkRect2D				GetScissor				() const override;
-		const uint32_t				GetColorAttachmentCount () const override;
+		void Resize(uint32_t width, uint32_t height, RenderPassDescription& renderPassDescription);
+		const VkSampleCountFlagBits GetSampleCount					() const override;
+		const VkRenderPass&			GetRenderPassHandle				() const override;
+		const VkViewport			GetViewport						() const override;
+		const VkRect2D				GetScissor						() const override;
+		const uint32_t				GetColorAttachmentCount			() const override;
+	
+		VkRenderPass RenderPassHandle = VK_NULL_HANDLE;
+	private:
+		void Resize	(const uint32_t width, const uint32_t height) override;
 	private:
 		uint32_t m_NumColorAttachments = 0;
-
-		Graphics::Format m_ImageFormat = Graphics::Format::UNKNOWN;
-
-		std::vector<AttachmentDescription> m_ColorAttachmentDescriptions;
-
-		std::vector<Graphics::GPUImage> m_ColorAttachments;
-		std::vector<Graphics::GPUImage> m_DepthAttachments;
-		std::vector<Graphics::GPUImage> m_ResolveAttachments;
-
-		std::vector<VkDescriptorSet> m_DescriptorSets;
+		uint32_t m_MsaaSamples = 0;
 
 		std::vector<VkClearValue> m_ClearValues;
 		std::vector<VkImageView> m_FramebufferViews;
 
-		Graphics::RenderPassDescription m_RenderPassDescription = {};
 	};
 }

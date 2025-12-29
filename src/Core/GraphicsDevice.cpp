@@ -627,6 +627,10 @@ namespace Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
+	VkCommandBuffer GraphicsDevice::BeginSingleTimeCommandBuffer() {
+		return BeginSingleTimeCommandBuffer(m_CommandPool);
+	}
+
 	VkCommandBuffer GraphicsDevice::BeginSingleTimeCommandBuffer(VkCommandPool& commandPool) {
 		assert(commandPool != VK_NULL_HANDLE);
 
@@ -647,6 +651,10 @@ namespace Graphics {
 		assert(result == VK_SUCCESS);
 
 		return commandBuffer;
+	}
+
+	void GraphicsDevice::EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer) {
+		EndSingleTimeCommandBuffer(commandBuffer, m_CommandPool);
 	}
 
 	void GraphicsDevice::EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer, VkCommandPool& commandPool) {
@@ -1156,6 +1164,12 @@ namespace Graphics {
 		EndSingleTimeCommandBuffer(singleTimeCommandBuffer, m_CommandPool);
 	}
 
+	void GraphicsDevice::TransitionImageLayout(GPUImage& image, Graphics::ResourceState currentLayout, Graphics::ResourceState newLayout) {
+		image.ImageLayout = ConvertResourceStateToImageLayout(currentLayout);
+
+		TransitionImageLayout(image, ConvertResourceStateToImageLayout(newLayout));
+	}
+
 	void GraphicsDevice::TransitionImageLayout(GPUImage& image, VkImageLayout oldLayout, VkImageLayout newLayout) {
 		image.ImageLayout = oldLayout;
 
@@ -1165,19 +1179,20 @@ namespace Graphics {
 	void GraphicsDevice::TransitionImageLayout(GPUImage& image, VkImageLayout newLayout) {
 		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(m_CommandPool);
 
-		VkImageMemoryBarrier barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.oldLayout = image.ImageLayout;
-		barrier.newLayout = newLayout;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = image.Image;
-		//barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.aspectMask = image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT ? VK_IMAGE_ASPECT_COLOR_BIT : image.Description.AspectFlags;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = image.Description.MipLevels;
+		VkImageMemoryBarrier barrier			= {};
+		barrier.sType							= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.oldLayout						= image.ImageLayout;
+		barrier.newLayout						= newLayout;
+		barrier.srcQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED;
+		barrier.image							= image.Image;
+		barrier.subresourceRange.baseMipLevel	= 0;
+		barrier.subresourceRange.levelCount		= image.Description.MipLevels;
 		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = image.Description.LayerCount;
+		barrier.subresourceRange.layerCount		= image.Description.LayerCount;
+		barrier.subresourceRange.aspectMask		= (image.Description.AspectFlags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) 
+													? VK_IMAGE_ASPECT_COLOR_BIT	
+													: image.Description.AspectFlags;
 
 		VkPipelineStageFlags sourceStage;
 		VkPipelineStageFlags dstStage;
@@ -1269,6 +1284,20 @@ namespace Graphics {
 
 			sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 			dstStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+		else if (image.ImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+		
+			sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		}
 		else {
 			throw std::invalid_argument("Unsupported layout transition!");
@@ -1600,6 +1629,28 @@ namespace Graphics {
 		CreateImageView	(depthBuffer);
 	}
 
+	void GraphicsDevice::CreateDepthBuffer(GPUImage& depthBuffer, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples) {
+		ImageDescription depthDesc	= {};
+		depthDesc.Width				= extent.width;
+		depthDesc.Height			= extent.height;
+		depthDesc.MipLevels			= 1;
+		depthDesc.MsaaSamples		= samples;
+		depthDesc.Tiling			= VK_IMAGE_TILING_OPTIMAL;
+		depthDesc.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		depthDesc.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		depthDesc.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		depthDesc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
+		depthDesc.LayerCount		= 1;
+		depthDesc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		depthDesc.Format			= format;
+		depthDesc.ImageType			= VK_IMAGE_TYPE_2D;
+
+		depthBuffer.Description		= depthDesc;
+
+		CreateImage		(depthBuffer);
+		CreateImageView	(depthBuffer);
+	}
+
 	void GraphicsDevice::CreateDepthBuffer(GPUImage& depthBuffer, const VkExtent2D& extent, const VkSampleCountFlagBits& samples) {
 
 		ImageDescription depthDesc	= {};
@@ -1608,7 +1659,7 @@ namespace Graphics {
 		depthDesc.MipLevels			= 1;
 		depthDesc.MsaaSamples		= samples;
 		depthDesc.Tiling			= VK_IMAGE_TILING_OPTIMAL;
-		depthDesc.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		depthDesc.Usage				= static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 		depthDesc.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		depthDesc.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 		depthDesc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
@@ -1621,6 +1672,34 @@ namespace Graphics {
 
 		CreateImage		(depthBuffer);
 		CreateImageView	(depthBuffer);
+	}
+
+	void GraphicsDevice::CreateDepthBuffer(GPUImage& image, Format format, uint32_t width, uint32_t height, uint32_t samples) {
+
+		ImageDescription desc	= {};
+		desc.Width				= width;
+		desc.Height				= height;
+		desc.MipLevels			= 1;
+		desc.MsaaSamples		= static_cast<VkSampleCountFlagBits>(samples);
+		desc.Tiling				= VK_IMAGE_TILING_OPTIMAL;
+
+		desc.Usage				= static_cast<VkImageUsageFlagBits>(
+									VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | 
+									VK_IMAGE_USAGE_TRANSFER_SRC_BIT | 
+									VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+		desc.MemoryProperty		= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		desc.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		desc.ViewType			= VK_IMAGE_VIEW_TYPE_2D;
+		desc.LayerCount			= 1;
+		desc.AddressMode		= VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		desc.Format				= FindDepthFormat(m_PhysicalDevice);
+		desc.ImageType			= VK_IMAGE_TYPE_2D;
+
+		image.Description		= desc;
+
+		CreateImage		(image);
+		CreateImageView	(image);
 	}
 
 	void GraphicsDevice::CreateDepthOnlyBuffer(GPUImage& depthBuffer, const VkExtent2D extent, const VkSampleCountFlagBits sampleCount, const uint32_t layers) {
@@ -1700,6 +1779,37 @@ namespace Graphics {
 
 		CreateImage(renderTarget);
 		CreateImageView(renderTarget);
+	}
+
+
+	void GraphicsDevice::CreateRenderTarget(GPUImage& image, const Format format, uint32_t width, uint32_t height, uint32_t samples) {
+
+		ImageDescription desc = {};
+		desc.Width			= width;
+		desc.Height			= height;
+		desc.MipLevels		= 1;
+		desc.MsaaSamples	= static_cast<VkSampleCountFlagBits>(samples);
+		desc.Tiling			= VK_IMAGE_TILING_OPTIMAL;
+
+		desc.Usage			= static_cast<VkImageUsageFlagBits>(
+							VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | 
+							VK_IMAGE_USAGE_SAMPLED_BIT			| 
+							VK_IMAGE_USAGE_TRANSFER_SRC_BIT		|
+							VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+		desc.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		desc.AspectFlags	= VK_IMAGE_ASPECT_COLOR_BIT;
+		desc.ViewType		= VK_IMAGE_VIEW_TYPE_2D;
+		desc.LayerCount		= 1;
+		desc.AddressMode	= VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		desc.Format			= ConvertFormat(format);
+		desc.ImageType		= VK_IMAGE_TYPE_2D;
+
+		image.Description	= desc;
+
+		CreateImage(image);
+		CreateImageView(image);
+		CreateImageSampler(image);
 	}
 
 	void GraphicsDevice::AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty) {
@@ -2023,7 +2133,7 @@ namespace Graphics {
 		assert(result == VK_SUCCESS);
 	}
 
-	void GraphicsDevice::CreateRenderPass(RenderPassDescription& renderPassDesc) {
+	VkRenderPass GraphicsDevice::CreateRenderPass(RenderPassDescription& renderPassDesc) {
 
 		// Note: Can we make depth and resolve attachment references a single variable instead of a vector?
 		std::vector<VkAttachmentReference> colorAttachmentReferences	= {};
@@ -2046,24 +2156,29 @@ namespace Graphics {
 			switch (renderPassAttachment.LoadOp) {
 			default:
 			case RenderPassAttachment::AttachmentLoadOp::LOAD:
-				attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-				break;
+				{
+					attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+				} break;
 			case RenderPassAttachment::AttachmentLoadOp::CLEAR:
-				attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-				break;
+				{
+					attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+				} break;
 			case RenderPassAttachment::AttachmentLoadOp::DONTCARE:
-				attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-				break;
+				{
+					attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				} break;
 			}
 
 			switch (renderPassAttachment.StoreOp) {
 			default:
 			case RenderPassAttachment::AttachmentStoreOp::STORE:
-				attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-				break;
+				{
+					attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				} break;
 			case RenderPassAttachment::AttachmentStoreOp::DONTCARE:
-				attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-				break;
+				{
+					attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+				} break;
 			}
 
 			attachmentDescription.stencilLoadOp		= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -2073,47 +2188,41 @@ namespace Graphics {
 			switch (renderPassAttachment.Type) {
 			default:
 			case RenderPassAttachment::AttachmentType::RENDERTARGET:
-			{
+				{
 
-				attachmentDescription.samples		= (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
+					attachmentDescription.samples		= (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
 
-				VkAttachmentReference attachmentRef	= {};
-//				attachmentRef.attachment			= colorAttachmentReferences.size();
-				attachmentRef.attachment			= attachmentIndex;
-				attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
+					VkAttachmentReference attachmentRef	= {};
+					attachmentRef.attachment			= attachmentIndex;
+					attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
 
-				colorAttachmentReferences.emplace_back(attachmentRef);
+					colorAttachmentReferences.emplace_back(attachmentRef);
 
-				subpassDesc.ColorAttachmentIndices.push_back(attachmentIndex);
-			}
-				break;
+					subpassDesc.ColorAttachmentIndices.push_back(attachmentIndex);
+				} break;
 			case RenderPassAttachment::AttachmentType::DEPTHSTENCIL:
-			{
-				attachmentDescription.samples		= (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
+				{
+					attachmentDescription.samples		= (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
 
-				VkAttachmentReference attachmentRef	= {};
-//				attachmentRef.attachment			= depthAttachmentReferences.size();
-				attachmentRef.attachment			= attachmentIndex;
-				attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
+					VkAttachmentReference attachmentRef	= {};
+					attachmentRef.attachment			= attachmentIndex;
+					attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
 
-				depthAttachmentReferences.emplace_back(attachmentRef);
+					depthAttachmentReferences.emplace_back(attachmentRef);
 
-				subpassDesc.DepthStencilAttachmentIndex = attachmentIndex;
-			}
-				break;
+					subpassDesc.DepthStencilAttachmentIndex = attachmentIndex;
+				} break;
 			case RenderPassAttachment::AttachmentType::RESOLVE:
-			{
-				attachmentDescription.samples		= VK_SAMPLE_COUNT_1_BIT;
+				{
+					attachmentDescription.samples		= VK_SAMPLE_COUNT_1_BIT;
 
-				VkAttachmentReference attachmentRef = {};
-//				attachmentRef.attachment			= resolveAttachmentReferences.size();
-				attachmentRef.attachment			= attachmentIndex;
-				attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
+					VkAttachmentReference attachmentRef = {};
+					attachmentRef.attachment			= attachmentIndex;
+					attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
 
-				resolveAttachmentReferences.emplace_back(attachmentRef);
-				subpassDesc.ResolveAttachmentIndices.push_back(attachmentIndex);
-			}
-				break;
+					resolveAttachmentReferences.emplace_back(attachmentRef);
+					subpassDesc.ResolveAttachmentIndices.push_back(attachmentIndex);
+				} break;
 			}
 
 			attachmentDescription.initialLayout	= ConvertResourceStateToImageLayout(renderPassAttachment.InitialLayout);
@@ -2145,7 +2254,13 @@ namespace Graphics {
 		createInfo.dependencyCount			= static_cast<uint32_t>(subpassDependencies.size());
 		createInfo.pDependencies			= subpassDependencies.data();
 
-		VkResult result = vkCreateRenderPass(m_LogicalDevice, &createInfo, nullptr, &renderPassDesc.Handle);
+		VkRenderPass handle = VK_NULL_HANDLE;
+
+		VkResult result = vkCreateRenderPass(m_LogicalDevice, &createInfo, nullptr, &handle);
+
+		assert(result == VK_SUCCESS);
+
+		return handle;
 	}
 
 	VkSubpassDependency GraphicsDevice::CreateSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, std::vector<RenderPassAttachment>& attachments, std::vector<SubPassDescription>& subpassDescriptions) {
@@ -2239,7 +2354,9 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::DestroyRenderPass(VkRenderPass& renderPass) {
-		vkDestroyRenderPass(m_LogicalDevice, renderPass, nullptr);
+		if (renderPass != VK_NULL_HANDLE) {
+			vkDestroyRenderPass(m_LogicalDevice, renderPass, nullptr);
+		}
 	}
 
 	void GraphicsDevice::DestroyFramebuffer(std::vector<VkFramebuffer>& framebuffers) {

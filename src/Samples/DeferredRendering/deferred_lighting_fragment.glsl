@@ -60,9 +60,11 @@ void main() {
 	vec4 normal = texture(normalTex, in_uv).rgba;
 	vec4 albedo = texture(albedoSpecTex, in_uv).rgba;
 
-	float specular = albedo.a;
+	float specular_value = albedo.a;
 
-	vec3 color = vec3(0.0);
+	float ambient = 0.1;
+
+	vec3 color = albedo.rgb * ambient;
 
 	vec3 view_dir = normalize(scene_gpu_data.view_position - position).xyz;
 
@@ -71,17 +73,17 @@ void main() {
 
 		float light_intensity = light.color.a;
 
-		vec3 light_dir = light.position.xyz - position.xyz;
+		vec3 light_dir = normalize(light.position.xyz - position.xyz);
 
-		float diff = max(dot(light_dir, normal.rgb), 0);
-		vec3 diffuse = vec3(diff);
+		float diff = max(dot(normal.rgb, light_dir), 0);
+		vec3 diffuse = diff * albedo.rgb;
 
 		vec3 halfway = normalize(light_dir + view_dir.xyz);
 		
 		float spec = pow(max(dot(normal.xyz, halfway), 0.0), 16.0);
-		vec3 specular = vec3(spec * specular);
+		vec3 specular = vec3(spec * specular_value);
 
-		color += vec3((diffuse + specular) * light_intensity * light.color.rgb * albedo.rgb);
+		color += (diffuse + specular) * light_intensity * light.color.rgb;
 	}
 
 	frag_color = vec4(color, 1.0);

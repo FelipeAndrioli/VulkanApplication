@@ -3,6 +3,7 @@
 #include "../../src/Core/VulkanHeader.h"
 #include "../../src/Core/Application.h"
 #include "../../src/Core/GraphicsDevice.h"
+#include "../../src/Core/Graphics.h"
 #include "../../src/Core/RenderTarget.h"
 #include "../../src/Core/Profiler.h"
 #include "../../src/Core/ResourceManager.h"
@@ -18,7 +19,9 @@
 #include <gtc/type_ptr.hpp>
 
 constexpr int MAX_MODELS = 20;
-constexpr int MAX_LIGHTS = 20;
+constexpr int MAX_LIGHTS = 50;
+
+#define ARRAY_SIZE(array) { (uint32_t)(sizeof(array) / sizeof(array[0])) };
 
 class DeferredRendering : public Application::IScene {
 public:
@@ -51,6 +54,22 @@ public:
 
 	struct DefererredRenderingResources {
 
+		struct GeometryBuffer {
+			Graphics::GPUImage Position;
+			Graphics::GPUImage Normals;
+			Graphics::GPUImage AlbedoSpec;
+			Graphics::GPUImage Depth;
+		} GBufferAttachments;
+
+		struct CompositionBuffer {
+			Graphics::GPUImage Color;
+		} CompositionBufferAttachments;
+
+		struct CombinedForwardBuffer {
+			Graphics::GPUImage Color;
+			Graphics::GPUImage Depth;
+		} CombinedForwardBufferAttachments;
+
 		VkDescriptorSetLayout SetLayout = VK_NULL_HANDLE;
 		std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> Set = { VK_NULL_HANDLE };
 
@@ -60,14 +79,21 @@ public:
 		Graphics::Shader GeometryPassFragShader			= {};
 		std::unique_ptr<Graphics::MultiAttachmentRenderTarget> GBufferRenderTarget;
 
-		VkDescriptorSetLayout LightingSetLayout = VK_NULL_HANDLE;
-		std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> LightingSet = { VK_NULL_HANDLE };
+		Graphics::RenderPassDescription GeometryPassDescription = {};
 
-		Graphics::InputLayout LightingPassInputLayout	= {};
-		Graphics::PipelineState LightingPassPSO			= {};
-		Graphics::Shader LightingPassVertexShader		= {};
-		Graphics::Shader LightingPassFragmentShader		= {};
-		std::unique_ptr<Graphics::PostEffectsRenderTarget> LightingRenderTarget;
+		VkDescriptorSetLayout CompositionSetLayout = VK_NULL_HANDLE;
+		std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> CompositionSet = { VK_NULL_HANDLE };
+
+		Graphics::InputLayout CompositionPassInputLayout	= {};
+		Graphics::PipelineState CompositionPassPSO			= {};
+		Graphics::Shader CompositionPassVertexShader		= {};
+		Graphics::Shader CompositionPassFragmentShader		= {};
+
+		Graphics::RenderPassDescription CompositionPassDescription = {};
+		std::unique_ptr<Graphics::MultiAttachmentRenderTarget> CompositionRenderTarget;
+
+		VkDescriptorSetLayout ForwardCombinedSetLayout = {};
+
 	} DeferredResources;
 
 	struct SceneData {
@@ -85,6 +111,11 @@ public:
 		alignas(16) glm::mat4 Model;
 		alignas(4) uint32_t MaterialIndex;
 	} SamplePushConstants;
+
+	struct LightSourcesPushConstants {
+		glm::mat4 Model;
+		glm::vec4 LightColor;
+	} LightSourcePushConstants;
 
 	const glm::vec3 InitialCameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
 
@@ -107,10 +138,21 @@ private:
 	Graphics::Buffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 	Graphics::Buffer m_LightBuffer = {};
 
+	Graphics::PipelineState m_LightSourcesPSODeferred = {};
+	Graphics::PipelineState m_LightSourcesPSOForward = {};
+	Graphics::Shader m_LightSourcesVertexShader = {};
+	Graphics::Shader m_LightSourcesFragmentShader = {};
+
+	VkDescriptorSetLayout m_LightSourcesSetLayout = VK_NULL_HANDLE;
+	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_LightSourcesSet = { VK_NULL_HANDLE };
+
 	bool m_DeferredRenderingEnabled = false;
+
 private:
 	void InitializeForwardResources();
 	void InitializeDeferredPassResources();
+	void InitializeLightSourcesRenderResources();
+	void InitializeDeferredSizeDependentResources(uint32_t width, uint32_t height);
 
 	void DestroyForwardResources();
 	void DestroyDeferredResources();
@@ -203,6 +245,131 @@ void DeferredRendering::InitializeForwardResources() {
 	gfxDevice->CreatePipelineState(desc, ForwardResources.PSO, *ForwardResources.RenderTarget.get());
 }
 
+void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width, uint32_t height) {
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	uint32_t gBufferSampleCount = 1;
+
+	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.Position);
+	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.Normals);
+	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.AlbedoSpec);
+	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.Depth);
+
+	gfxDevice->CreateRenderTarget(
+		DeferredResources.GBufferAttachments.Position, 
+		Graphics::Format::R16G16B16A16_FLOAT,
+		m_ScreenWidth,
+		m_ScreenHeight,
+		gBufferSampleCount);
+
+	gfxDevice->CreateRenderTarget(
+		DeferredResources.GBufferAttachments.Normals,
+		Graphics::Format::R16G16B16A16_FLOAT,
+		m_ScreenWidth,
+		m_ScreenHeight,
+		gBufferSampleCount);
+
+	gfxDevice->CreateRenderTarget(
+		DeferredResources.GBufferAttachments.AlbedoSpec,
+		Graphics::Format::R8G8B8A8_UNORM,
+		m_ScreenWidth,
+		m_ScreenHeight,
+		gBufferSampleCount);
+
+	gfxDevice->CreateDepthBuffer(
+		DeferredResources.GBufferAttachments.Depth,
+		gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
+		m_ScreenWidth, 
+		m_ScreenHeight, 
+		gBufferSampleCount);				
+
+	DeferredResources.GeometryPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::RenderTarget(
+			DeferredResources.GBufferAttachments.Position,
+			Graphics::Format::R16G16B16A16_FLOAT,
+			gBufferSampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED,
+			Graphics::ResourceState::RENDERTARGET,
+			Graphics::ResourceState::SHADER_RESOURCE));
+
+	DeferredResources.GeometryPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::RenderTarget(
+			DeferredResources.GBufferAttachments.Normals,
+			Graphics::Format::R16G16B16A16_FLOAT,
+			gBufferSampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED,
+			Graphics::ResourceState::RENDERTARGET,
+			Graphics::ResourceState::SHADER_RESOURCE));
+
+	DeferredResources.GeometryPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::RenderTarget(
+			DeferredResources.GBufferAttachments.AlbedoSpec,
+			Graphics::Format::R8G8B8A8_UNORM, 
+			gBufferSampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED,
+			Graphics::ResourceState::RENDERTARGET,
+			Graphics::ResourceState::SHADER_RESOURCE));
+
+	DeferredResources.GeometryPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::DepthStencil(
+			DeferredResources.GBufferAttachments.Depth,
+			gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
+			gBufferSampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED,
+			Graphics::ResourceState::DEPTHSTENCIL,
+			Graphics::ResourceState::DEPTHSTENCIL));
+
+	DeferredResources.GBufferRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+		m_ScreenWidth,
+		m_ScreenHeight,
+		gBufferSampleCount,
+		DeferredResources.GeometryPassDescription);
+
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+		gfxDevice->WriteDescriptor(DeferredResources.CompositionPassInputLayout.bindings[2], DeferredResources.CompositionSet[i], DeferredResources.GBufferAttachments.Position);
+		gfxDevice->WriteDescriptor(DeferredResources.CompositionPassInputLayout.bindings[3], DeferredResources.CompositionSet[i], DeferredResources.GBufferAttachments.Normals);
+		gfxDevice->WriteDescriptor(DeferredResources.CompositionPassInputLayout.bindings[4], DeferredResources.CompositionSet[i], DeferredResources.GBufferAttachments.AlbedoSpec);
+	}
+
+	const uint32_t lightingSampleCount = 1;
+
+	gfxDevice->DestroyImage(DeferredResources.CompositionBufferAttachments.Color);
+
+	gfxDevice->CreateRenderTarget(
+		DeferredResources.CompositionBufferAttachments.Color,
+		Graphics::Format::R8G8B8A8_UNORM,
+		m_ScreenWidth,
+		m_ScreenHeight,
+		lightingSampleCount);
+
+	DeferredResources.CompositionPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::RenderTarget(
+			DeferredResources.CompositionBufferAttachments.Color,
+			Graphics::Format::R8G8B8A8_UNORM,
+			lightingSampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED,
+			Graphics::ResourceState::RENDERTARGET,
+			Graphics::ResourceState::COPY_SRC));
+
+	DeferredResources.CompositionRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+		m_ScreenWidth, 
+		m_ScreenHeight, 
+		lightingSampleCount,
+		DeferredResources.CompositionPassDescription
+	);
+}
+
 void DeferredRendering::InitializeDeferredPassResources() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -223,25 +390,13 @@ void DeferredRendering::InitializeDeferredPassResources() {
 
 	gfxDevice->CreateDescriptorSetLayout(DeferredResources.SetLayout, DeferredResources.GeometryPassInputLayout.bindings);
 
-	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; ++i) {
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(DeferredResources.SetLayout, DeferredResources.Set[i]);
 
 		gfxDevice->WriteDescriptor(DeferredResources.GeometryPassInputLayout.bindings[0], DeferredResources.Set[i], m_SceneBuffer[i]);
 		gfxDevice->WriteDescriptor(DeferredResources.GeometryPassInputLayout.bindings[1], DeferredResources.Set[i], rm->GetMaterialBuffer());
 		gfxDevice->WriteDescriptor(DeferredResources.GeometryPassInputLayout.bindings[2], DeferredResources.Set[i], rm->GetTextures());
 	}
-
-	const std::vector<Graphics::MultiAttachmentRenderTarget::AttachmentDescription> attachments = {
-		{ .Samples = gfxDevice->GetMsaaSamples(), .ImageFormat = Graphics::Format::R16G16B16A16_FLOAT },	// Position
-		{ .Samples = gfxDevice->GetMsaaSamples(), .ImageFormat = Graphics::Format::R16G16B16A16_FLOAT },	// Normal
-		{ .Samples = gfxDevice->GetMsaaSamples(), .ImageFormat = Graphics::Format::R8G8B8A8_UNORM }			// AlbedoSpec 
-	};
-
-	DeferredResources.GBufferRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
-		m_ScreenWidth,
-		m_ScreenHeight,
-		attachments
-	);
 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, DeferredResources.GeometryPassVertexShader, "../src/Samples/DeferredRendering/vertex.glsl");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, DeferredResources.GeometryPassFragShader, "../src/Samples/DeferredRendering/deferred_geometry_fragment.glsl");
@@ -250,50 +405,80 @@ void DeferredRendering::InitializeDeferredPassResources() {
 	desc.Name = "Deferred Rendering - Geometry Pass";
 	desc.vertexShader = &DeferredResources.GeometryPassVertexShader;
 	desc.fragmentShader = &DeferredResources.GeometryPassFragShader;
-	desc.attachmentCount = attachments.size();
+	desc.attachmentCount = 3;	// Position, Normal, AlbedoSpec
 	desc.psoInputLayout.push_back(DeferredResources.GeometryPassInputLayout);
 
-	gfxDevice->CreatePipelineState(desc, DeferredResources.GeometryPassPSO, *DeferredResources.GBufferRenderTarget.get());
-
-	DeferredResources.LightingPassInputLayout = {
+	DeferredResources.CompositionPassInputLayout = {
 		.pushConstants = {
 
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },		// Scene UBO
-			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },		// Lighing UBO
+			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },		// Lighting UBO
 			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },		// Position 
 			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },		// Normal 
 			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }		// AlbedoSpec 
 		}
 	};
 
-	gfxDevice->CreateDescriptorSetLayout(DeferredResources.LightingSetLayout, DeferredResources.LightingPassInputLayout.bindings);
+	gfxDevice->CreateDescriptorSetLayout(DeferredResources.CompositionSetLayout, DeferredResources.CompositionPassInputLayout.bindings);
 
-	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; ++i) {
-		gfxDevice->CreateDescriptorSet(DeferredResources.LightingSetLayout, DeferredResources.LightingSet[i]);
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+		gfxDevice->CreateDescriptorSet(DeferredResources.CompositionSetLayout, DeferredResources.CompositionSet[i]);
 
-		gfxDevice->WriteDescriptor(DeferredResources.LightingPassInputLayout.bindings[0], DeferredResources.LightingSet[i], m_SceneBuffer[i]);
-		gfxDevice->WriteDescriptor(DeferredResources.LightingPassInputLayout.bindings[1], DeferredResources.LightingSet[i], m_LightBuffer);
-		gfxDevice->WriteDescriptor(DeferredResources.LightingPassInputLayout.bindings[2], DeferredResources.LightingSet[i], DeferredResources.GBufferRenderTarget->GetResolvedColorBuffer()[0]);
-		gfxDevice->WriteDescriptor(DeferredResources.LightingPassInputLayout.bindings[3], DeferredResources.LightingSet[i], DeferredResources.GBufferRenderTarget->GetResolvedColorBuffer()[1]);
-		gfxDevice->WriteDescriptor(DeferredResources.LightingPassInputLayout.bindings[4], DeferredResources.LightingSet[i], DeferredResources.GBufferRenderTarget->GetResolvedColorBuffer()[2]);
+		gfxDevice->WriteDescriptor(DeferredResources.CompositionPassInputLayout.bindings[0], DeferredResources.CompositionSet[i], m_SceneBuffer[i]);
+		gfxDevice->WriteDescriptor(DeferredResources.CompositionPassInputLayout.bindings[1], DeferredResources.CompositionSet[i], m_LightBuffer);
 	}
 
-	DeferredResources.LightingRenderTarget = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight);
+	InitializeDeferredSizeDependentResources(m_ScreenWidth, m_ScreenHeight);
+	gfxDevice->CreatePipelineState(desc, DeferredResources.GeometryPassPSO, *DeferredResources.GBufferRenderTarget.get());
 
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, DeferredResources.LightingPassVertexShader, "../src/Samples/DeferredRendering/deferred_lighting_vertex.glsl");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, DeferredResources.LightingPassFragmentShader, "../src/Samples/DeferredRendering/deferred_lighting_fragment.glsl");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, DeferredResources.CompositionPassVertexShader, "../src/Samples/DeferredRendering/deferred_lighting_vertex.glsl");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, DeferredResources.CompositionPassFragmentShader, "../src/Samples/DeferredRendering/deferred_lighting_fragment.glsl");
 
 	Graphics::PipelineStateDescription lightingPsoDesc = {};
 	lightingPsoDesc.Name = "Deferred Rendering - Lighting Pass";
 	lightingPsoDesc.noVertex = true;
 	lightingPsoDesc.cullMode = VK_CULL_MODE_NONE;
-	lightingPsoDesc.vertexShader = &DeferredResources.LightingPassVertexShader;
-	lightingPsoDesc.fragmentShader = &DeferredResources.LightingPassFragmentShader;
-	lightingPsoDesc.psoInputLayout.push_back(DeferredResources.LightingPassInputLayout);
+	lightingPsoDesc.vertexShader = &DeferredResources.CompositionPassVertexShader;
+	lightingPsoDesc.fragmentShader = &DeferredResources.CompositionPassFragmentShader;
+	lightingPsoDesc.psoInputLayout.push_back(DeferredResources.CompositionPassInputLayout);
 
-	gfxDevice->CreatePipelineState(lightingPsoDesc, DeferredResources.LightingPassPSO, *DeferredResources.LightingRenderTarget.get());
+	gfxDevice->CreatePipelineState(lightingPsoDesc, DeferredResources.CompositionPassPSO, *DeferredResources.CompositionRenderTarget.get());
+}
+
+void DeferredRendering::InitializeLightSourcesRenderResources() {
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	Graphics::InputLayout lightSourcesInputLayout = {
+		.pushConstants = {
+			{ VK_SHADER_STAGE_ALL, 0, sizeof(LightSourcesPushConstants) }
+		},
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT }		// Scene GPU Data
+		}
+	};
+
+	gfxDevice->CreateDescriptorSetLayout(m_LightSourcesSetLayout, lightSourcesInputLayout.bindings);
+
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+		gfxDevice->CreateDescriptorSet(m_LightSourcesSetLayout, m_LightSourcesSet[i]);
+		gfxDevice->WriteDescriptor(lightSourcesInputLayout.bindings[0], m_LightSourcesSet[i], m_SceneBuffer[i]);
+	}
+
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourcesVertexShader, "../src/Samples/DeferredRendering/light_source_vertex.glsl");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourcesFragmentShader, "../src/Samples/DeferredRendering/light_source_fragment.glsl");
+
+	Graphics::PipelineStateDescription desc = {};
+	desc.Name = "Light Sources";
+	desc.vertexShader = &m_LightSourcesVertexShader;
+	desc.fragmentShader = &m_LightSourcesFragmentShader;
+	desc.noVertex = true;
+	desc.psoInputLayout.push_back(lightSourcesInputLayout);
+
+	gfxDevice->CreatePipelineState(desc, m_LightSourcesPSODeferred, *DeferredResources.CompositionRenderTarget.get());
+	gfxDevice->CreatePipelineState(desc, m_LightSourcesPSOForward, *ForwardResources.RenderTarget.get());
 }
 
 void DeferredRendering::StartUp() {
@@ -305,7 +490,7 @@ void DeferredRendering::StartUp() {
 
 	m_Camera.Init(InitialCameraPosition, InitialCameraFov, InitialCameraYaw, InitialCameraPitch, m_ScreenWidth, m_ScreenHeight);
 
-	for (size_t i = 0; i < Graphics::FRAMES_IN_FLIGHT; ++i) {
+	for (size_t i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		m_SceneBuffer[i] = gfxDevice->CreateBuffer(sizeof(SceneData));
 	}
 
@@ -334,7 +519,7 @@ void DeferredRendering::StartUp() {
 
 	uint32_t originalModelIndex = 0;
 
-	for (size_t i = 0; i < maxRow; ++i) {
+	for (size_t i = 0; i < maxRow; i++) {
 
 		float x = i + initialX + offsetX;
 
@@ -343,7 +528,7 @@ void DeferredRendering::StartUp() {
 			float z = j + initialZ + offsetZ;
 
 			if (i == 0 && j == 0) {
-				m_Models[TotalModels] = ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj");
+				m_Models[TotalModels] = ModelLoader::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/backpack/backpack.obj");
 				ModelLoader::FlipModelUvVertically(*m_Models[TotalModels].get());
 				originalModelIndex = TotalModels;
 			}
@@ -365,7 +550,7 @@ void DeferredRendering::StartUp() {
 		offsetX += offsetIncrease;
 	}
 
-	for (size_t i = 0; i < 5; ++i) {
+	for (size_t i = 0; i < 32; i++) {
 		float x = 0.0f + static_cast<float>(i);
 		float y = 2.0f;
 		float z = 0.0f + static_cast<float>(i);
@@ -373,12 +558,13 @@ void DeferredRendering::StartUp() {
 		float r = 1.0f;
 		float g = 1.0f;
 		float b = 1.0f;
-		float lightIntensity = 1.0f;
+		float lightIntensity = 0.1f;
 
 		m_Lights[TotalLights].ambient = 0.1f;
 		m_Lights[TotalLights].diffuse = 1.0f;
 		m_Lights[TotalLights].specular = 1.0f;
 		m_Lights[TotalLights].position = glm::vec4(x, y, z, 0.0f);
+		m_Lights[TotalLights].scale = 0.2f;
 		m_Lights[TotalLights].color = glm::vec4(r, g, b, lightIntensity);
 		
 		TotalLights++;
@@ -386,6 +572,7 @@ void DeferredRendering::StartUp() {
 
 	InitializeForwardResources();
 	InitializeDeferredPassResources();
+	InitializeLightSourcesRenderResources();
 }
 
 void DeferredRendering::DestroyForwardResources() {
@@ -402,6 +589,11 @@ void DeferredRendering::DestroyForwardResources() {
 void DeferredRendering::DestroyDeferredResources() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
+	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.Position);
+	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.Normals);
+	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.AlbedoSpec);
+	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.Depth);
+
 	DeferredResources.GBufferRenderTarget.reset();
 
 	gfxDevice->DestroyShader(DeferredResources.GeometryPassVertexShader);
@@ -409,18 +601,27 @@ void DeferredRendering::DestroyDeferredResources() {
 	gfxDevice->DestroyDescriptorSetLayout(DeferredResources.SetLayout);
 	gfxDevice->DestroyPipeline(DeferredResources.GeometryPassPSO);
 
-	DeferredResources.LightingRenderTarget.reset();
-	gfxDevice->DestroyShader(DeferredResources.LightingPassVertexShader);
-	gfxDevice->DestroyShader(DeferredResources.LightingPassFragmentShader);
-	gfxDevice->DestroyDescriptorSetLayout(DeferredResources.LightingSetLayout);
-	gfxDevice->DestroyPipeline(DeferredResources.LightingPassPSO);
+	gfxDevice->DestroyImage(DeferredResources.CompositionBufferAttachments.Color);
 
+	DeferredResources.CompositionRenderTarget.reset();
 
+	gfxDevice->DestroyShader(DeferredResources.CompositionPassVertexShader);
+	gfxDevice->DestroyShader(DeferredResources.CompositionPassFragmentShader);
+	gfxDevice->DestroyDescriptorSetLayout(DeferredResources.CompositionSetLayout);
+	gfxDevice->DestroyPipeline(DeferredResources.CompositionPassPSO);
 }
 
 void DeferredRendering::CleanUp() {
 	DestroyForwardResources();
 	DestroyDeferredResources();
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	gfxDevice->DestroyShader(m_LightSourcesVertexShader);
+	gfxDevice->DestroyShader(m_LightSourcesFragmentShader);
+	gfxDevice->DestroyDescriptorSetLayout(m_LightSourcesSetLayout);
+	gfxDevice->DestroyPipeline(m_LightSourcesPSOForward);
+	gfxDevice->DestroyPipeline(m_LightSourcesPSODeferred);
 }
 
 void DeferredRendering::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
@@ -437,6 +638,17 @@ void DeferredRendering::Update(const float constantT, const float deltaT, InputS
 	SampleSceneData.TotalLights		= TotalLights;
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &SampleSceneData);
+
+	for (size_t LightIndex = 0; LightIndex < TotalLights; ++LightIndex) {
+		Scene::LightComponent& light = m_Lights[LightIndex];
+
+		glm::mat4 toOrigin		= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f));
+		glm::mat4 scale			= glm::scale(glm::mat4(1.0f), glm::vec3(light.scale));
+		glm::mat4 toPosition	= glm::translate(glm::mat4(1.0f), glm::vec3(light.position));
+
+		light.model = toPosition * scale * toOrigin;
+	}
+
 	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
 }
 
@@ -451,7 +663,7 @@ void DeferredRendering::RenderForward(const uint32_t currentFrame, const VkComma
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ForwardResources.PSO.pipeline);
 
-	for (int ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
+	for (int ModelIndex = 0; ModelIndex < TotalModels; ModelIndex++) {
 
 		Assets::Model& Model = *m_Models[ModelIndex].get();
 
@@ -462,20 +674,31 @@ void DeferredRendering::RenderForward(const uint32_t currentFrame, const VkComma
 
 		SamplePushConstants.Model = Model.GetModelMatrix();
 
-		for (const auto& Mesh: Model.Meshes) {
+		for (const auto& Mesh : Model.Meshes) {
 
 			SamplePushConstants.MaterialIndex = Mesh.MaterialIndex;
 
 			vkCmdPushConstants(commandBuffer, ForwardResources.PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
 
 			vkCmdDrawIndexed(
-				commandBuffer, 
-				static_cast<uint32_t>(Mesh.Indices.size()), 
-				1, 
-				static_cast<uint32_t>(Mesh.IndexOffset), 
+				commandBuffer,
+				static_cast<uint32_t>(Mesh.Indices.size()),
+				1,
+				static_cast<uint32_t>(Mesh.IndexOffset),
 				static_cast<int32_t>(Mesh.VertexOffset),
 				0);
 		}
+	}
+
+	gfxDevice->BindDescriptorSet(m_LightSourcesSet[currentFrame], commandBuffer, m_LightSourcesPSOForward.pipelineLayout, 0, 1);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_LightSourcesPSOForward.pipeline);
+
+	for (int LightIndex = 0; LightIndex < TotalLights; LightIndex++) {
+		LightSourcePushConstants.LightColor = m_Lights[LightIndex].color;
+		LightSourcePushConstants.Model = m_Lights[LightIndex].model;
+
+		vkCmdPushConstants(commandBuffer, m_LightSourcesPSOForward.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(LightSourcesPushConstants), &LightSourcePushConstants);
+		vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 	}
 
 	ForwardResources.RenderTarget->End(commandBuffer);
@@ -488,14 +711,122 @@ void DeferredRendering::RenderForward(const uint32_t currentFrame, const VkComma
 void DeferredRendering::RenderDeferred(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	SCOPED_PROFILER_US("DeferredRendering::RenderDeferred");
 	
-	DeferredGeometryPass(currentFrame, commandBuffer);
-	DeferredLightingPass(currentFrame, commandBuffer);
-	
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-	DeferredResources.LightingRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	gfxDevice->GetSwapChain().RenderTarget->CopyColor(DeferredResources.LightingRenderTarget->GetColorBuffer());
-}
 
+	static bool firstFrame = true;
+	
+	DeferredGeometryPass(currentFrame, commandBuffer);
+
+#if 0
+	gfxDevice->TransitionImageLayout(
+		DeferredResources.GBufferRenderTarget->GetDepthBuffers()[0],
+//		gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNDEFINED),
+		gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::DEPTHSTENCIL_READONLY),
+		gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::COPY_SRC));
+
+	gfxDevice->TransitionImageLayout(DeferredResources.CompositionRenderTarget->GetDepthBuffers()[0],
+		gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNDEFINED),
+		gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::COPY_DST));
+
+	// Copy Depth Buffer
+	VkCommandBuffer singleTimeCommandBuffer = gfxDevice->BeginSingleTimeCommandBuffer();
+
+	VkImageCopy imageCopy = {};
+	imageCopy.extent.width = m_ScreenWidth;
+	imageCopy.extent.height = m_ScreenHeight;
+	imageCopy.extent.depth = 1;
+	imageCopy.srcOffset = { .x = 0, .y = 0, .z = 0 };
+	imageCopy.srcSubresource = {
+		.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+		.mipLevel = 0,
+		.baseArrayLayer = 0,
+		.layerCount = 1
+	};
+
+	imageCopy.dstOffset = { .x = 0, .y = 0, .z = 0 };
+	imageCopy.dstSubresource = {
+		.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+		.mipLevel = 0,
+		.baseArrayLayer = 0,
+		.layerCount = 1
+	};
+
+	vkCmdCopyImage(singleTimeCommandBuffer,
+		DeferredResources.GBufferRenderTarget->GetDepthBuffers()[0].Image,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		DeferredResources.CompositionRenderTarget->GetDepthBuffers()[0].Image,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1,
+		&imageCopy);
+	/*
+	VkImageBlit region = {};
+	region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	region.srcSubresource.mipLevel = 0;
+	region.srcSubresource.baseArrayLayer = 0;
+	region.srcSubresource.layerCount = 1;
+
+	region.srcOffsets[0] = {
+		.x = 0,
+		.y = 0,
+		.z = 0,
+	};
+	region.srcOffsets[1] = {
+		.x = (int)m_ScreenWidth,
+		.y = (int)m_ScreenHeight,
+		.z = 1,
+	};
+
+	region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	region.dstSubresource.mipLevel = 0;
+	region.dstSubresource.baseArrayLayer = 0;
+	region.dstSubresource.layerCount = 1;
+
+	region.dstOffsets[0] = {
+		.x = 0,
+		.y = 0,
+		.z = 0,
+	};
+
+	region.dstOffsets[1] = {
+		.x = (int)m_ScreenWidth,
+		.y = (int)m_ScreenHeight,
+		.z = 1,
+	};
+
+	vkCmdBlitImage(
+		singleTimeCommandBuffer,
+		DeferredResources.GBufferRenderTarget->GetDepthBuffers()[0].Image,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		DeferredResources.CompositionRenderTarget->GetDepthBuffers()[0].Image,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1,
+		&region,
+		VK_FILTER_NEAREST);
+	*/
+
+	gfxDevice->EndSingleTimeCommandBuffer(singleTimeCommandBuffer);
+	gfxDevice->TransitionImageLayout(DeferredResources.CompositionRenderTarget->GetDepthBuffers()[0],
+		gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::COPY_DST),
+		gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::DEPTHSTENCIL));
+	
+#endif
+
+	DeferredLightingPass(currentFrame, commandBuffer);
+
+	// TODO: find out why the render pass'implicit' layout transition doesn't happen for this render target in the very first usage.
+
+	if (firstFrame) {
+
+		gfxDevice->TransitionImageLayout(
+			DeferredResources.CompositionBufferAttachments.Color,
+			gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNDEFINED),
+			gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::COPY_SRC));
+
+		firstFrame = false;
+	}
+
+	gfxDevice->GetSwapChain().RenderTarget->CopyColor(DeferredResources.CompositionBufferAttachments.Color);
+}
 
 void DeferredRendering::DeferredGeometryPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 	SCOPED_PROFILER_US("DeferredRendering::DeferredGeometryPass");
@@ -508,7 +839,7 @@ void DeferredRendering::DeferredGeometryPass(const uint32_t currentFrame, const 
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, DeferredResources.GeometryPassPSO.pipeline);
 
-	for (uint32_t ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
+	for (uint32_t ModelIndex = 0; ModelIndex < TotalModels; ModelIndex++) {
 		Assets::Model& Model = *m_Models[ModelIndex].get();
 
 		VkDeviceSize offsets[] = { sizeof(uint32_t) * Model.TotalIndices };
@@ -541,15 +872,87 @@ void DeferredRendering::DeferredLightingPass(const uint32_t currentFrame, const 
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	DeferredResources.LightingRenderTarget->Begin(commandBuffer);
-	
-	gfxDevice->BindDescriptorSet(DeferredResources.LightingSet[currentFrame], commandBuffer, DeferredResources.LightingPassPSO.pipelineLayout, 0, 1);
-	
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, DeferredResources.LightingPassPSO.pipeline);
+	DeferredResources.CompositionRenderTarget->Begin(commandBuffer);
 
-	vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+	// Render scene applying lighting
+	{	 
+		gfxDevice->BindDescriptorSet(DeferredResources.CompositionSet[currentFrame], commandBuffer, DeferredResources.CompositionPassPSO.pipelineLayout, 0, 1);
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, DeferredResources.CompositionPassPSO.pipeline);
+		vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+	}
 
-	DeferredResources.LightingRenderTarget->End(commandBuffer);
+	// Copy depth buffer after the composition rendering to render the light sources (or any other
+	// mesh from a combined forward pass) in the correct position.
+	{
+		/* we might not need this conversion due to the the render pass implicit layout transition
+		*/
+
+	   gfxDevice->TransitionImageLayout(
+			DeferredResources.GBufferAttachments.Depth,
+			Graphics::ResourceState::UNDEFINED,
+			Graphics::ResourceState::COPY_SRC);
+
+		// TODO: Separate the composition pass to a separate pass
+		// TODO: Move the whole copy image to a better/separate function.
+		gfxDevice->TransitionImageLayout(
+			DeferredResources.CompositionBufferAttachments.Depth,
+//			Graphics::ResourceState::DEPTHSTENCIL,
+			Graphics::ResourceState::UNDEFINED,
+			Graphics::ResourceState::COPY_DST);
+
+		VkImageCopy imageCopy = {};
+		imageCopy.extent.width = m_ScreenWidth;
+		imageCopy.extent.height = m_ScreenHeight;
+		imageCopy.extent.depth = 1;
+		imageCopy.srcOffset = { .x = 0, .y = 0, .z = 0 };
+		imageCopy.srcSubresource = {
+			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+			.mipLevel = 0,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		};
+
+		imageCopy.dstOffset = { .x = 0, .y = 0, .z = 0 };
+		imageCopy.dstSubresource = {
+			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+			.mipLevel = 0,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		};
+
+		VkCommandBuffer copyCommandBuffer = gfxDevice->BeginSingleTimeCommandBuffer();
+
+		vkCmdCopyImage(copyCommandBuffer,
+			DeferredResources.GBufferAttachments.Depth.Image,
+			VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			DeferredResources.CompositionBufferAttachments.Depth.Image,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			1,
+			&imageCopy);
+
+		gfxDevice->EndSingleTimeCommandBuffer(copyCommandBuffer);
+
+		gfxDevice->TransitionImageLayout(
+			DeferredResources.CompositionBufferAttachments.Depth,
+			Graphics::ResourceState::COPY_DST,
+			Graphics::ResourceState::DEPTHSTENCIL);
+	}
+
+	// Forward render light sources as cubes
+	{	
+		gfxDevice->BindDescriptorSet(m_LightSourcesSet[currentFrame], commandBuffer, m_LightSourcesPSODeferred.pipelineLayout, 0, 1);
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_LightSourcesPSODeferred.pipeline);
+
+		for (int LightIndex = 0; LightIndex < TotalLights; LightIndex++) {
+			LightSourcePushConstants.LightColor = m_Lights[LightIndex].color;
+			LightSourcePushConstants.Model = m_Lights[LightIndex].model;
+
+			vkCmdPushConstants(commandBuffer, m_LightSourcesPSODeferred.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(LightSourcesPushConstants), &LightSourcePushConstants);
+			vkCmdDraw(commandBuffer, 36, 1, 0, 0);
+		}
+	}
+
+	DeferredResources.CompositionRenderTarget->End(commandBuffer);
 }
 
 void DeferredRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -570,25 +973,26 @@ void DeferredRendering::RenderUI() {
 	m_Camera.OnUIRender("Main Camera - Settings");
 
 	if (ImGui::TreeNode("Lights")) {
-		for (size_t LightIndex = 0; LightIndex < TotalLights; ++LightIndex) {
-			std::string LightId = "Light ";
-			LightId = LightId.append(std::to_string(LightIndex));
-	
-			if (ImGui::TreeNode(LightId.c_str())) {
-				ImGui::DragFloat4("Light Position", (float*)&m_Lights[LightIndex].position, 0.02f, -20.0f, 20.0f);
-				ImGui::ColorPicker4("Light Color", (float*)&m_Lights[LightIndex].color);
-				ImGui::DragFloat("Light Intensity", (float*)&m_Lights[LightIndex].color.a, 0.02f, 0.0f, 1.0f);
-
-				ImGui::TreePop();
-			}
-		}
-
 		if (ImGui::Button("Add Light")) {
 			AddLight();
 		}
 
 		if (ImGui::Button("Remove Light")) {
 			RemoveLight();
+		}
+
+		for (size_t LightIndex = 0; LightIndex < TotalLights; LightIndex++) {
+			std::string LightId = "Light ";
+			LightId = LightId.append(std::to_string(LightIndex));
+
+			if (ImGui::TreeNode(LightId.c_str())) {	
+				ImGui::DragFloat4("Light Position", (float*)&m_Lights[LightIndex].position, 0.02f, -20.0f, 20.0f);
+				ImGui::DragFloat("Light Scale", &m_Lights[LightIndex].scale, 0.01f, 0.0f, 1.0f);
+				ImGui::ColorPicker4("Light Color", (float*)&m_Lights[LightIndex].color);
+				ImGui::DragFloat("Light Intensity", (float*)&m_Lights[LightIndex].color.a, 0.02f, 0.0f, 1.0f);
+
+				ImGui::TreePop();
+			}
 		}
 
 		ImGui::TreePop();
@@ -606,6 +1010,7 @@ void DeferredRendering::RenderUI() {
 
 	ImGui::Checkbox("Deferred Rendering Enabled", &m_DeferredRenderingEnabled);
 
+#if 0
 	if (ImGui::TreeNode("Deferred Geometry Pass Output")) {
 		if (m_DeferredRenderingEnabled && deferredRenderingEnabledBefore == m_DeferredRenderingEnabled) {
 			ImGui::Image((ImTextureID)DeferredResources.GBufferRenderTarget->GetDescriptorSets()[0], ImVec2(500, 200));
@@ -615,6 +1020,8 @@ void DeferredRendering::RenderUI() {
 
 		ImGui::TreePop();
 	}
+#endif
+
 }
 
 void DeferredRendering::Resize(uint32_t width, uint32_t height) {
@@ -624,7 +1031,13 @@ void DeferredRendering::Resize(uint32_t width, uint32_t height) {
 	m_Camera.Resize(m_ScreenWidth, m_ScreenHeight);
 
 	ForwardResources.RenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
-	DeferredResources.GBufferRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
+
+	DeferredResources.GBufferRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, DeferredResources.GeometryPassDescription);
+	DeferredResources.CompositionRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, DeferredResources.CompositionPassDescription);
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	InitializeDeferredSizeDependentResources(width, height);
 }
 
 RUN_APPLICATION(DeferredRendering);

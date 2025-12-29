@@ -104,25 +104,34 @@ layout (push_constant) uniform PushConstants {
 
 void main() {
 
-	vec3 color = vec3(0.0);
-
 	material_t material = material_gpu_data.materials[push_constants.material_index];
 
 	vec3 albedo = material.diffuse_texture_index == -1 ? vec3(in_frag_color) : texture(textures[material.diffuse_texture_index], in_frag_uv).rgb;
+	float specular_value = material.specular_texture_index == -1 ? 0.2 : texture(textures[material.specular_texture_index], in_frag_uv).r;
 
+	vec3 view_dir = normalize(scene_gpu_data.view_position.xyz - in_frag_pos);
+
+	vec3 normal = normalize(in_frag_normal);
+
+	float ambient = 0.1; 
+	vec3 color = vec3(albedo * ambient);
+	
 	for (int light_index = 0; light_index < scene_gpu_data.total_lights; ++light_index) {
 		light_t light = light_gpu_data.lights[light_index];
 	
 		float light_intensity = light.color.a;
 
-		vec3 light_dir = light.position.xyz - in_frag_pos;
+		vec3 light_dir = normalize(light.position.xyz - in_frag_pos);
 
-		float diff = max(dot(light_dir, in_frag_normal), 0.1);
-
-		vec3 ambient = vec3(0.1); 
-		vec3 diffuse = vec3(diff);
+		float diff = max(dot(normal, light_dir), 0);
+		vec3 diffuse = diff * albedo;
+		
+		vec3 halfway = normalize(light_dir + view_dir);
+		
+		float spec = pow(max(dot(normal, halfway), 0.0), 16.0);
+		vec3 specular = vec3(spec * specular_value);
 	
-		color += (ambient + diffuse) * light_intensity * light.color.rgb * albedo;
+		color += (diffuse + specular) * light_intensity * light.color.rgb;
 	}
 	
 	pixel_color = vec4(color, 1.0);	
