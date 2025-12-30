@@ -135,6 +135,10 @@ private:
 	uint32_t m_ScreenWidth	= 0;
 	uint32_t m_ScreenHeight = 0;
 
+	const uint32_t m_GBufferSampleCount = 1;
+	const uint32_t m_LightingCompositionSampleCount = 1;
+	const uint32_t m_ForwardCombinedSampleCount = 1;
+
 	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
 	std::array<Scene::LightComponent, MAX_LIGHTS> m_Lights;
 
@@ -258,8 +262,6 @@ void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width,
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	uint32_t gBufferSampleCount = 1;
-
 	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.Position);
 	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.Normals);
 	gfxDevice->DestroyImage(DeferredResources.GBufferAttachments.AlbedoSpec);
@@ -270,34 +272,36 @@ void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width,
 		Graphics::Format::R16G16B16A16_FLOAT,
 		m_ScreenWidth,
 		m_ScreenHeight,
-		gBufferSampleCount);
+		m_GBufferSampleCount);
 
 	gfxDevice->CreateRenderTarget(
 		DeferredResources.GBufferAttachments.Normals,
 		Graphics::Format::R16G16B16A16_FLOAT,
 		m_ScreenWidth,
 		m_ScreenHeight,
-		gBufferSampleCount);
+		m_GBufferSampleCount);
 
 	gfxDevice->CreateRenderTarget(
 		DeferredResources.GBufferAttachments.AlbedoSpec,
 		Graphics::Format::R8G8B8A8_UNORM,
 		m_ScreenWidth,
 		m_ScreenHeight,
-		gBufferSampleCount);
+		m_GBufferSampleCount);
 
 	gfxDevice->CreateDepthBuffer(
 		DeferredResources.GBufferAttachments.Depth,
 		gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
 		m_ScreenWidth, 
 		m_ScreenHeight, 
-		gBufferSampleCount);				
+		m_GBufferSampleCount);				
+
+	DeferredResources.GeometryPassDescription.Attachments.clear();
 
 	DeferredResources.GeometryPassDescription.Attachments.push_back(
 		Graphics::RenderPassAttachment::RenderTarget(
 			DeferredResources.GBufferAttachments.Position,
 			Graphics::Format::R16G16B16A16_FLOAT,
-			gBufferSampleCount,
+			m_GBufferSampleCount,
 			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
 			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
 			Graphics::ResourceState::UNDEFINED,
@@ -308,7 +312,7 @@ void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width,
 		Graphics::RenderPassAttachment::RenderTarget(
 			DeferredResources.GBufferAttachments.Normals,
 			Graphics::Format::R16G16B16A16_FLOAT,
-			gBufferSampleCount,
+			m_GBufferSampleCount,
 			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
 			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
 			Graphics::ResourceState::UNDEFINED,
@@ -319,7 +323,7 @@ void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width,
 		Graphics::RenderPassAttachment::RenderTarget(
 			DeferredResources.GBufferAttachments.AlbedoSpec,
 			Graphics::Format::R8G8B8A8_UNORM, 
-			gBufferSampleCount,
+			m_GBufferSampleCount,
 			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
 			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
 			Graphics::ResourceState::UNDEFINED,
@@ -330,26 +334,18 @@ void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width,
 		Graphics::RenderPassAttachment::DepthStencil(
 			DeferredResources.GBufferAttachments.Depth,
 			gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
-			gBufferSampleCount,
+			m_GBufferSampleCount,
 			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
 			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
 			Graphics::ResourceState::UNDEFINED,
 			Graphics::ResourceState::DEPTHSTENCIL,
 			Graphics::ResourceState::COPY_SRC));
 
-	DeferredResources.GBufferRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
-		m_ScreenWidth,
-		m_ScreenHeight,
-		gBufferSampleCount,
-		DeferredResources.GeometryPassDescription);
-
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->WriteDescriptor(DeferredResources.CompositionPassInputLayout.bindings[2], DeferredResources.CompositionSet[i], DeferredResources.GBufferAttachments.Position);
 		gfxDevice->WriteDescriptor(DeferredResources.CompositionPassInputLayout.bindings[3], DeferredResources.CompositionSet[i], DeferredResources.GBufferAttachments.Normals);
 		gfxDevice->WriteDescriptor(DeferredResources.CompositionPassInputLayout.bindings[4], DeferredResources.CompositionSet[i], DeferredResources.GBufferAttachments.AlbedoSpec);
 	}
-
-	const uint32_t lightingSampleCount = 1;
 
 	gfxDevice->DestroyImage(DeferredResources.CompositionBufferAttachments.Color);
 
@@ -358,27 +354,20 @@ void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width,
 		Graphics::Format::R8G8B8A8_UNORM,
 		m_ScreenWidth,
 		m_ScreenHeight,
-		lightingSampleCount);
+		m_LightingCompositionSampleCount);
+
+	DeferredResources.CompositionPassDescription.Attachments.clear();
 
 	DeferredResources.CompositionPassDescription.Attachments.push_back(
 		Graphics::RenderPassAttachment::RenderTarget(
 			DeferredResources.CompositionBufferAttachments.Color,
 			Graphics::Format::R8G8B8A8_UNORM,
-			lightingSampleCount,
+			m_LightingCompositionSampleCount,
 			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
 			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
 			Graphics::ResourceState::UNDEFINED,
 			Graphics::ResourceState::RENDERTARGET,
 			Graphics::ResourceState::RENDERTARGET));
-
-	DeferredResources.CompositionRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
-		m_ScreenWidth, 
-		m_ScreenHeight, 
-		lightingSampleCount,
-		DeferredResources.CompositionPassDescription
-	);
-
-	const uint32_t forwardCombinedSampleCount = 1;
 
 	gfxDevice->DestroyImage(DeferredResources.CombinedForwardBufferAttachments.Depth);
 
@@ -387,13 +376,15 @@ void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width,
 		gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
 		m_ScreenWidth,
 		m_ScreenHeight,
-		forwardCombinedSampleCount);
+		m_ForwardCombinedSampleCount);
+
+	DeferredResources.ForwardCombinedPassDescription.Attachments.clear();
 
 	DeferredResources.ForwardCombinedPassDescription.Attachments.push_back(
 		Graphics::RenderPassAttachment::RenderTarget(
 			DeferredResources.CompositionBufferAttachments.Color,
 			Graphics::Format::R8G8B8A8_UNORM,
-			lightingSampleCount,
+			m_LightingCompositionSampleCount,
 			Graphics::RenderPassAttachment::AttachmentLoadOp::LOAD,
 			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
 			Graphics::ResourceState::RENDERTARGET,
@@ -404,19 +395,12 @@ void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width,
 		Graphics::RenderPassAttachment::DepthStencil(
 			DeferredResources.CombinedForwardBufferAttachments.Depth,
 			gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
-			forwardCombinedSampleCount,
+			m_ForwardCombinedSampleCount,
 			Graphics::RenderPassAttachment::AttachmentLoadOp::LOAD,
 			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
 			Graphics::ResourceState::DEPTHSTENCIL,
 			Graphics::ResourceState::DEPTHSTENCIL,
 			Graphics::ResourceState::DEPTHSTENCIL));
-
-	DeferredResources.ForwardCombinedRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
-		m_ScreenWidth,
-		m_ScreenHeight,
-		forwardCombinedSampleCount,
-		DeferredResources.ForwardCombinedPassDescription
-	);
 }
 
 void DeferredRendering::InitializeDeferredPassResources() {
@@ -480,6 +464,25 @@ void DeferredRendering::InitializeDeferredPassResources() {
 	}
 
 	InitializeDeferredSizeDependentResources(m_ScreenWidth, m_ScreenHeight);
+
+	DeferredResources.GBufferRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+		m_ScreenWidth,
+		m_ScreenHeight,
+		m_GBufferSampleCount,
+		DeferredResources.GeometryPassDescription);
+
+	DeferredResources.CompositionRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+		m_ScreenWidth, 
+		m_ScreenHeight, 
+		m_LightingCompositionSampleCount,
+		DeferredResources.CompositionPassDescription);
+
+	DeferredResources.ForwardCombinedRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+		m_ScreenWidth,
+		m_ScreenHeight,
+		m_ForwardCombinedSampleCount,
+		DeferredResources.ForwardCombinedPassDescription);
+
 	gfxDevice->CreatePipelineState(desc, DeferredResources.GeometryPassPSO, *DeferredResources.GBufferRenderTarget.get());
 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, DeferredResources.CompositionPassVertexShader, "../src/Samples/DeferredRendering/deferred_lighting_vertex.glsl");
@@ -989,14 +992,14 @@ void DeferredRendering::Resize(uint32_t width, uint32_t height) {
 
 	m_Camera.Resize(m_ScreenWidth, m_ScreenHeight);
 
-	ForwardResources.RenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
+	InitializeDeferredSizeDependentResources(width, height);
 
+	ForwardResources.RenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
 	DeferredResources.GBufferRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, DeferredResources.GeometryPassDescription);
 	DeferredResources.CompositionRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, DeferredResources.CompositionPassDescription);
+	DeferredResources.ForwardCombinedRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, DeferredResources.ForwardCombinedPassDescription);
 
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
-	InitializeDeferredSizeDependentResources(width, height);
+	m_FirstDeferredPassFrame = true;
 }
 
 RUN_APPLICATION(DeferredRendering);

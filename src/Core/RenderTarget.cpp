@@ -937,6 +937,7 @@ namespace Graphics {
 
 		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
 		m_NumColorAttachments = 0;
+		m_ClearValues.clear();
 
 		std::vector<VkImageView> framebufferViews = {};
 
