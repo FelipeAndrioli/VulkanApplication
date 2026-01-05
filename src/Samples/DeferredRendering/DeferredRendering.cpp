@@ -80,6 +80,9 @@ public:
 
 		Graphics::RenderPassDescription GeometryPassDescription = {};
 		std::unique_ptr<Graphics::MultiAttachmentRenderTarget> GBufferRenderTarget;
+
+		VkDescriptorSetLayout GBufferDisplayDescriptorSetLayout	= VK_NULL_HANDLE;
+		std::array<VkDescriptorSet, 3> GBufferDisplayDescriptorSet = { VK_NULL_HANDLE };
 		// --- Geometry Pass Resources ---
 
 		// --- Composition Pass Resources ---
@@ -99,7 +102,6 @@ public:
 		Graphics::RenderPassDescription ForwardCombinedPassDescription = {};
 		std::unique_ptr<Graphics::MultiAttachmentRenderTarget> ForwardCombinedRenderTarget;
 		// --- Forward Combined Pass Resources ---
-
 	} DeferredResources;
 
 	struct SceneData {
@@ -401,6 +403,25 @@ void DeferredRendering::InitializeDeferredSizeDependentResources(uint32_t width,
 			Graphics::ResourceState::DEPTHSTENCIL,
 			Graphics::ResourceState::DEPTHSTENCIL,
 			Graphics::ResourceState::DEPTHSTENCIL));
+
+	Graphics::InputLayout dummyInputLayout = {
+		.pushConstants = {},
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }
+		}
+	};
+
+	gfxDevice->DestroyDescriptorSetLayout(DeferredResources.GBufferDisplayDescriptorSetLayout);
+	gfxDevice->CreateDescriptorSetLayout(DeferredResources.GBufferDisplayDescriptorSetLayout, dummyInputLayout.bindings);
+
+	gfxDevice->CreateDescriptorSet(DeferredResources.GBufferDisplayDescriptorSetLayout, DeferredResources.GBufferDisplayDescriptorSet[0]);
+	gfxDevice->WriteDescriptor(dummyInputLayout.bindings[0], DeferredResources.GBufferDisplayDescriptorSet[0], DeferredResources.GBufferAttachments.Position);
+
+	gfxDevice->CreateDescriptorSet(DeferredResources.GBufferDisplayDescriptorSetLayout, DeferredResources.GBufferDisplayDescriptorSet[1]);
+	gfxDevice->WriteDescriptor(dummyInputLayout.bindings[0], DeferredResources.GBufferDisplayDescriptorSet[1], DeferredResources.GBufferAttachments.Normals);
+
+	gfxDevice->CreateDescriptorSet(DeferredResources.GBufferDisplayDescriptorSetLayout, DeferredResources.GBufferDisplayDescriptorSet[2]);
+	gfxDevice->WriteDescriptor(dummyInputLayout.bindings[0], DeferredResources.GBufferDisplayDescriptorSet[2], DeferredResources.GBufferAttachments.AlbedoSpec);
 }
 
 void DeferredRendering::InitializeDeferredPassResources() {
@@ -616,7 +637,7 @@ void DeferredRendering::StartUp() {
 		m_Lights[TotalLights].diffuse = 1.0f;
 		m_Lights[TotalLights].specular = 1.0f;
 		m_Lights[TotalLights].position = glm::vec4(x, y, z, 0.0f);
-		m_Lights[TotalLights].scale = 0.2f;
+		m_Lights[TotalLights].scale = 0.05f;
 		m_Lights[TotalLights].color = glm::vec4(r, g, b, lightIntensity);
 		
 		TotalLights++;
@@ -665,6 +686,8 @@ void DeferredRendering::DestroyDeferredResources() {
 	gfxDevice->DestroyImage(DeferredResources.CombinedForwardBufferAttachments.Depth);
 
 	DeferredResources.ForwardCombinedRenderTarget.reset();
+
+	gfxDevice->DestroyDescriptorSetLayout(DeferredResources.GBufferDisplayDescriptorSetLayout);
 }
 
 void DeferredRendering::CleanUp() {
@@ -972,18 +995,27 @@ void DeferredRendering::RenderUI() {
 
 	ImGui::Checkbox("Deferred Rendering Enabled", &m_DeferredRenderingEnabled);
 
-#if 0
-	if (ImGui::TreeNode("Deferred Geometry Pass Output")) {
+	if (ImGui::TreeNode("GBuffer")) {
 		if (m_DeferredRenderingEnabled && deferredRenderingEnabledBefore == m_DeferredRenderingEnabled) {
-			ImGui::Image((ImTextureID)DeferredResources.GBufferRenderTarget->GetDescriptorSets()[0], ImVec2(500, 200));
-			ImGui::Image((ImTextureID)DeferredResources.GBufferRenderTarget->GetDescriptorSets()[1], ImVec2(500, 200));
-			ImGui::Image((ImTextureID)DeferredResources.GBufferRenderTarget->GetDescriptorSets()[2], ImVec2(500, 200));
+
+			if (ImGui::TreeNode("Position")) {
+				ImGui::Image((ImTextureID)DeferredResources.GBufferDisplayDescriptorSet[0], ImVec2(350, 300));
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Normals")) {
+				ImGui::Image((ImTextureID)DeferredResources.GBufferDisplayDescriptorSet[1], ImVec2(350, 300));
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("AlbedoSpec")) {
+				ImGui::Image((ImTextureID)DeferredResources.GBufferDisplayDescriptorSet[2], ImVec2(350, 300));
+				ImGui::TreePop();
+			}
 		}
 
 		ImGui::TreePop();
 	}
-#endif
-
 }
 
 void DeferredRendering::Resize(uint32_t width, uint32_t height) {
