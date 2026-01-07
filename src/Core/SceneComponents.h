@@ -7,7 +7,7 @@
 #include <glm.hpp>
 
 namespace Scene {
-
+	
 	struct LightComponent {
 		enum LightType {
 			DIRECTIONAL = 0,
@@ -20,7 +20,6 @@ namespace Scene {
 		glm::vec4 position						= glm::vec4(0.0f);
 		glm::vec4 direction						= glm::vec4(0.0f);
 		glm::vec4 color							= glm::vec4(1.0f);			// w -> light intensity
-		glm::vec4 extra							= {};
 
 		glm::mat4 model							= glm::mat4(1.0f);			// light source rendering
 		glm::mat4 viewProj						= glm::mat4(1.0f);			// shadow map 
@@ -29,6 +28,9 @@ namespace Scene {
 		alignas(4) uint32_t flags				= 0;					// flags for all purposes such as enabled features, 1 bit only | stratified disk sampling | pcf | shadow map (enabled by default)
 		alignas(4) int index					= 0;
 		alignas(4) int pcfSamples				= 0;
+		alignas(4) int extra0					= 0;
+		alignas(4) int extra1					= 0;
+		alignas(4) int extra2					= 0;
 
 		alignas(4) float minBias				= 0.002f;
 		alignas(4) float spsSpread				= 0.0f;
@@ -42,8 +44,8 @@ namespace Scene {
 		alignas(4) float ambient				= 0.0f;
 		alignas(4) float diffuse				= 0.0f;
 		alignas(4) float specular				= 0.0f;
+		alignas(4) float radius					= 0.0f;
 
-		
 		inline bool IsActive() const {
 			return flags & (1 << 4);
 		}
@@ -51,5 +53,9 @@ namespace Scene {
 		inline bool IsShadowCastingEnabled() const {
 			return flags & (1 << 1);
 		}
+
 	};
+
+	inline float Max(float A, float B);
+	float CalculateLightRadius(const LightComponent& light);
 }

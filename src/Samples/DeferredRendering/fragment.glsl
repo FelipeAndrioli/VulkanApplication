@@ -18,28 +18,31 @@ struct light_t {
 	vec4 position;
 	vec4 direction;
 	vec4 color;			// w -> light intensity
-	vec4 extra;
 
 	mat4 model;			
 	mat4 viewProj;			 
 
-	 int type;
-	 int flags;					
-	 int index;
-	 int pcfSamples;
+	int type;
+	int flags;					
+	int index;
+	int pcfSamples;
+	int extra0;
+	int extra1;
+	int extra2;
 
-	 float minBias;
-	 float spsSpread;
-	 float outerCutOffAngle;
-	 float cutOffAngle;		
-	 float rawCutOffAngle;
-	 float rawOuterCutOffAngle;
-	 float linearAttenuation;
-	 float quadraticAttenuation;
-	 float scale;
-	 float ambient;
-	 float diffuse;
-	 float specular;
+	float minBias;
+	float spsSpread;
+	float outerCutOffAngle;
+	float cutOffAngle;		
+	float rawCutOffAngle;
+	float rawOuterCutOffAngle;
+	float linearAttenuation;
+	float quadraticAttenuation;
+	float scale;
+	float ambient;
+	float diffuse;
+	float specular;
+	float radius;
 };
 
 struct material_t {
