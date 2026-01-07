@@ -178,28 +178,29 @@ private:
 	void DeferredLightingCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 	void DeferredForwardCombinedPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 
-	void AddLight();
+	void AddLight(glm::vec3 position);
 	void RemoveLight();
 };
 
-void DeferredRendering::AddLight() {
+void DeferredRendering::AddLight(glm::vec3 position = glm::vec3(0.0f)) {
 	if (TotalLights + 1 > MAX_LIGHTS)
 		return;
-
-	float x = 0.0f;
-	float y = 0.0f;
-	float z = 0.0f;
 
 	float r = 1.0f;
 	float g = 1.0f;
 	float b = 1.0f;
-	float lightIntensity = 1.0f;
+	float lightIntensity = 0.7f;
 
-	m_Lights[TotalLights].ambient = 0.1f;
-	m_Lights[TotalLights].diffuse = 1.0f;
-	m_Lights[TotalLights].specular = 1.0f;
-	m_Lights[TotalLights].position = glm::vec4(x, y, z, 0.0f);
-	m_Lights[TotalLights].color = glm::vec4(r, g, b, lightIntensity);
+	Scene::LightComponent& Light = m_Lights[TotalLights];
+
+	Light.ambient				= 0.1f;
+	Light.diffuse				= 1.0f;
+	Light.specular				= 1.0f;
+	Light.position				= glm::vec4(position, 0.0f);
+	Light.scale					= 0.05f;
+	Light.color					= glm::vec4(r, g, b, lightIntensity);
+	Light.linearAttenuation		= 0.006f;
+	Light.quadraticAttenuation	= 0.007f;
 	
 	TotalLights++;
 
@@ -597,7 +598,7 @@ void DeferredRendering::StartUp() {
 		float x = i + initialX + offsetX;
 
 		for (size_t j = 0; j < maxColumn; j++) {
-
+			
 			float z = j + initialZ + offsetZ;
 
 			if (i == 0 && j == 0) {
@@ -623,24 +624,28 @@ void DeferredRendering::StartUp() {
 		offsetX += offsetIncrease;
 	}
 
+	const int maxColumns = 5;
+
+	int currentColumnCount = 0;
+	int currentRowCount = 0;
+
+	const float lightInitialX = -7.0f;
+	const float lightInitialZ = -7.0f;
+
 	for (size_t i = 0; i < 32; i++) {
-		float x = 0.0f + static_cast<float>(i);
-		float y = 2.0f;
-		float z = 0.0f + static_cast<float>(i);
 
-		float r = 1.0f;
-		float g = 1.0f;
-		float b = 1.0f;
-		float lightIntensity = 0.1f;
+		float distance = 5.0f;
 
-		m_Lights[TotalLights].ambient = 0.1f;
-		m_Lights[TotalLights].diffuse = 1.0f;
-		m_Lights[TotalLights].specular = 1.0f;
-		m_Lights[TotalLights].position = glm::vec4(x, y, z, 0.0f);
-		m_Lights[TotalLights].scale = 0.05f;
-		m_Lights[TotalLights].color = glm::vec4(r, g, b, lightIntensity);
-		
-		TotalLights++;
+		float x = lightInitialX + distance + currentRowCount;
+		float y = 1.0f;
+		float z = lightInitialZ + distance + currentColumnCount;
+
+		if (++currentColumnCount == maxColumns) {
+			currentColumnCount = 0;
+			currentRowCount++;
+		}
+
+		AddLight(glm::vec3(x, y, z));
 	}
 
 	InitializeForwardResources();
@@ -726,6 +731,7 @@ void DeferredRendering::Update(const float constantT, const float deltaT, InputS
 		glm::mat4 toPosition	= glm::translate(glm::mat4(1.0f), glm::vec3(light.position));
 
 		light.model = toPosition * scale * toOrigin;
+		light.radius = Scene::CalculateLightRadius(light);
 	}
 
 	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
@@ -975,7 +981,9 @@ void DeferredRendering::RenderUI() {
 				ImGui::DragFloat("Light Scale", &m_Lights[LightIndex].scale, 0.01f, 0.0f, 1.0f);
 				ImGui::ColorPicker4("Light Color", (float*)&m_Lights[LightIndex].color);
 				ImGui::DragFloat("Light Intensity", (float*)&m_Lights[LightIndex].color.a, 0.02f, 0.0f, 1.0f);
-
+				ImGui::DragFloat("Light Linear Attenuation", &m_Lights[LightIndex].linearAttenuation, 0.02f, -20.0f, 20.0f);
+				ImGui::DragFloat("Light Quadratic Attenuation", &m_Lights[LightIndex].quadraticAttenuation, 0.02f, -20.0f, 20.0f);
+				ImGui::DragFloat("Light Radius", &m_Lights[LightIndex].radius, 0.02f, 0.0f, 10.0f);
 				ImGui::TreePop();
 			}
 		}
