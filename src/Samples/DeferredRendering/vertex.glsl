@@ -1,7 +1,5 @@
 #version 450
 
-#define MAX_MODELS 10
-
 layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec3 in_normal;
 layout (location = 2) in vec3 in_color;

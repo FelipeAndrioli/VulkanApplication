@@ -18,7 +18,7 @@
 #include <gtc/matrix_transform.hpp>
 #include <gtc/type_ptr.hpp>
 
-constexpr int MAX_MODELS = 20;
+constexpr int MAX_MODELS = 50;
 constexpr int MAX_LIGHTS = 50;
 
 #define ARRAY_SIZE(array) { (uint32_t)(sizeof(array) / sizeof(array[0])) };
@@ -199,9 +199,16 @@ void DeferredRendering::AddLight(glm::vec3 position = glm::vec3(0.0f)) {
 	Light.position				= glm::vec4(position, 0.0f);
 	Light.scale					= 0.05f;
 	Light.color					= glm::vec4(r, g, b, lightIntensity);
-	Light.linearAttenuation		= 0.006f;
-	Light.quadraticAttenuation	= 0.007f;
-	
+//	Light.linearAttenuation		= 0.006f;
+//	Light.quadraticAttenuation	= 0.007f;
+
+// Learn OpenGL suggestion
+//	Light.linearAttenuation		= 0.7f;
+//	Light.quadraticAttenuation	= 1.8f;
+
+
+	Light.linearAttenuation		= 10.0f;
+	Light.quadraticAttenuation	= 3.0f;
 	TotalLights++;
 
 	SampleSceneData.TotalLights = TotalLights;
@@ -570,18 +577,8 @@ void DeferredRendering::StartUp() {
 
 	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(Scene::LightComponent) * MAX_LIGHTS);
 
-	/*
-	m_Models[TotalModels] = ModelLoader::LoadModel(ModelType::QUAD);
-	m_Models[TotalModels]->Transformations.translation		= glm::vec3(0.0f, -0.51f, 0.0f);
-	m_Models[TotalModels]->Transformations.rotation.x		= 90.0f;
-	m_Models[TotalModels]->Transformations.scaleHandler		= 20.0f;
-	m_Models[TotalModels]->ModelIndex						= TotalModels;
-	
-	TotalModels++;
-	*/
-
 	const int maxRow = 5;
-	const int maxColumn = 3;
+	const int maxColumn = 5;
 
 	const float initialX = 0.0f - (maxRow / 2.0f);
 	const float initialZ = 0.0f - (maxColumn / 2.0f);
@@ -593,11 +590,11 @@ void DeferredRendering::StartUp() {
 
 	uint32_t originalModelIndex = 0;
 
-	for (size_t i = 0; i < maxRow; i++) {
+	for (size_t i = 0; i < maxRow && TotalModels < MAX_MODELS; i++) {
 
 		float x = i + initialX + offsetX;
 
-		for (size_t j = 0; j < maxColumn; j++) {
+		for (size_t j = 0; j < maxColumn && TotalModels < MAX_MODELS; j++) {
 			
 			float z = j + initialZ + offsetZ;
 
@@ -632,7 +629,7 @@ void DeferredRendering::StartUp() {
 	const float lightInitialX = -7.0f;
 	const float lightInitialZ = -7.0f;
 
-	for (size_t i = 0; i < 32; i++) {
+	for (size_t i = 0; i < MAX_LIGHTS; i++) {
 
 		float distance = 5.0f;
 
