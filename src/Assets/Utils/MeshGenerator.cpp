@@ -1,6 +1,8 @@
 #include "./MeshGenerator.h"
 #include "../Mesh.h"
 
+#include <iostream>
+
 namespace Assets {
 	glm::vec3 MeshGenerator::GenerateTangentVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 uv1, glm::vec2 uv2, glm::vec2 uv3) {
 		
@@ -340,5 +342,156 @@ namespace Assets {
 		std::vector<Assets::Mesh> quadMesh = { mesh };
 
 		return quadMesh;
+	}
+
+	std::vector<Mesh> MeshGenerator::GenerateIcosphereMesh(const glm::vec3 pos, const float radius, const size_t nSubdivisions) {
+
+		float goldenRatio = (1.0f + glm::sqrt(5.0f)) * 0.5f;
+
+		Assets::Mesh mesh = {};
+		mesh.Vertices.resize(12);
+
+		mesh.Vertices[0].pos = glm::normalize(glm::vec3(-1, goldenRatio, 0));
+		mesh.Vertices[1].pos = glm::normalize(glm::vec3(1, goldenRatio, 0));
+		mesh.Vertices[2].pos = glm::normalize(glm::vec3(-1, -goldenRatio, 0));
+		mesh.Vertices[3].pos = glm::normalize(glm::vec3(1, -goldenRatio, 0));
+		mesh.Vertices[4].pos = glm::normalize(glm::vec3(0, -1, goldenRatio));
+		mesh.Vertices[5].pos = glm::normalize(glm::vec3(0, 1, goldenRatio));
+		mesh.Vertices[6].pos = glm::normalize(glm::vec3(0, -1, -goldenRatio));
+		mesh.Vertices[7].pos = glm::normalize(glm::vec3(0, 1, -goldenRatio));
+		mesh.Vertices[8].pos = glm::normalize(glm::vec3(goldenRatio, 0, -1));
+		mesh.Vertices[9].pos = glm::normalize(glm::vec3(goldenRatio, 0 , 1));
+		mesh.Vertices[10].pos = glm::normalize(glm::vec3(-goldenRatio, 0, -1));
+		mesh.Vertices[11].pos = glm::normalize(glm::vec3(-goldenRatio, 0, 1));
+
+		mesh.Indices.resize(60);
+		
+		// 5 faces around point 0
+		mesh.Indices[0] = 0;
+		mesh.Indices[1] = 11;
+		mesh.Indices[2] = 5;
+		mesh.Indices[3] = 0;
+		mesh.Indices[4] = 5;
+		mesh.Indices[5] = 1;
+		mesh.Indices[6] = 0;
+		mesh.Indices[7] = 1;
+		mesh.Indices[8] = 7;
+		mesh.Indices[9] = 0;
+		mesh.Indices[10] = 7;
+		mesh.Indices[11] = 10;
+		mesh.Indices[12] = 0;
+		mesh.Indices[13] = 10;
+		mesh.Indices[14] = 11;
+	
+		// 5 adjacent faces
+		mesh.Indices[15] = 1;
+		mesh.Indices[16] = 5;
+		mesh.Indices[17] = 9;
+		mesh.Indices[18] = 5;
+		mesh.Indices[19] = 11;
+		mesh.Indices[20] = 4;
+		mesh.Indices[21] = 11;
+		mesh.Indices[22] = 10;
+		mesh.Indices[23] = 2;
+		mesh.Indices[24] = 10;
+		mesh.Indices[25] = 7;
+		mesh.Indices[26] = 6;
+		mesh.Indices[27] = 7;
+		mesh.Indices[28] = 1;
+		mesh.Indices[29] = 8;
+		
+		// 5 faces around point 3
+		mesh.Indices[30] = 3;
+		mesh.Indices[31] = 9;
+		mesh.Indices[32] = 4;
+		mesh.Indices[33] = 3;
+		mesh.Indices[34] = 4;
+		mesh.Indices[35] = 2;
+		mesh.Indices[36] = 3;
+		mesh.Indices[37] = 2;
+		mesh.Indices[38] = 6;
+		mesh.Indices[39] = 3;
+		mesh.Indices[40] = 6;
+		mesh.Indices[41] = 8;
+		mesh.Indices[42] = 3;
+		mesh.Indices[43] = 8;
+		mesh.Indices[44] = 9;
+
+		// 5 adjacent faces
+		mesh.Indices[45] = 4;
+		mesh.Indices[46] = 9;
+		mesh.Indices[47] = 5;
+		mesh.Indices[48] = 2;
+		mesh.Indices[49] = 4;
+		mesh.Indices[50] = 11;
+		mesh.Indices[51] = 6;
+		mesh.Indices[52] = 2;
+		mesh.Indices[53] = 10;
+		mesh.Indices[54] = 8;
+		mesh.Indices[55] = 6;
+		mesh.Indices[56] = 7;
+		mesh.Indices[57] = 9;
+		mesh.Indices[58] = 8;
+		mesh.Indices[59] = 1;
+
+
+		std::unordered_map<uint32_t, uint32_t> MiddlePointIndexCache;
+
+		for (size_t SubdivisionIndex = 0; SubdivisionIndex < nSubdivisions; ++SubdivisionIndex) {
+	
+			std::vector<uint32_t> SubdividedIndices;
+
+			for (uint32_t TriangleIndex = 0; TriangleIndex < mesh.Indices.size(); TriangleIndex += 3) {
+
+				uint32_t Triangle[3] = { mesh.Indices[TriangleIndex + 0], mesh.Indices[TriangleIndex + 1], mesh.Indices[TriangleIndex + 2] };
+				uint32_t NewTriangle[3] = {};
+
+				for (uint32_t InnerTriangleIndex = 0; InnerTriangleIndex < 3; ++InnerTriangleIndex) {
+					uint32_t MiddlePointIndex = 0;
+
+					uint32_t IndexA = Triangle[InnerTriangleIndex];
+					uint32_t IndexB = Triangle[(InnerTriangleIndex + 1) % 3];
+
+					bool IsFirstSmaller = IndexA < IndexB;
+
+					uint32_t SmallerIndex = IsFirstSmaller ? IndexA : IndexB;
+					uint32_t GreaterIndex = IsFirstSmaller ? IndexB : IndexA;
+
+					uint32_t Key = (SmallerIndex << 16) + GreaterIndex;
+
+					if (MiddlePointIndexCache.find(Key) != MiddlePointIndexCache.end()) {
+						MiddlePointIndex = MiddlePointIndexCache.find(Key)->second;
+					} else {
+						glm::vec3 PointA = mesh.Vertices[IndexA].pos;
+						glm::vec3 PointB = mesh.Vertices[IndexB].pos;
+						glm::vec3 Middle = glm::vec3((PointA.x + PointB.x) / 2.0f, (PointA.y + PointB.y) / 2.0f, (PointA.z + PointB.z) / 2.0f);
+
+						mesh.Vertices.push_back({});
+						MiddlePointIndex = mesh.Vertices.size() - 1;
+						mesh.Vertices[MiddlePointIndex].pos = glm::normalize(Middle);
+
+						MiddlePointIndexCache[Key] = MiddlePointIndex;
+					}
+
+					NewTriangle[InnerTriangleIndex] = MiddlePointIndex;
+				}
+
+				for (uint32_t InnerTriangleIndex = 0; InnerTriangleIndex < 3; ++InnerTriangleIndex) {
+					SubdividedIndices.push_back(Triangle[InnerTriangleIndex]);
+					SubdividedIndices.push_back(NewTriangle[InnerTriangleIndex]);
+					SubdividedIndices.push_back(NewTriangle[(InnerTriangleIndex + 2) % 3]);
+				}
+
+				SubdividedIndices.push_back(NewTriangle[0]);
+				SubdividedIndices.push_back(NewTriangle[1]);
+				SubdividedIndices.push_back(NewTriangle[2]);
+			}
+
+			mesh.Indices = SubdividedIndices;
+		}
+
+		std::vector<Assets::Mesh> icosphereMesh = { mesh };
+
+		return icosphereMesh;
 	}
 }

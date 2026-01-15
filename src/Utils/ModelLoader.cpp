@@ -384,23 +384,24 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::
 	
 		model->Meshes = Assets::MeshGenerator::GenerateCubeMesh(position, size);
 		model->Name = "Cube_" + std::to_string(cubeIdx++);
-		model->Transformations.translation = position;
-
-		CompileMesh(*model.get());
-
-		return model;
 	}
 	else if (modelType == ModelType::QUAD) {
 		static int quadIdx = 0;
 
 		model->Meshes = Assets::MeshGenerator::GenerateQuadMesh(position, size);
 		model->Name = "Quad_" + std::to_string(quadIdx++);
-		model->Transformations.translation = position;
-
-		CompileMesh(*model.get());
-
-		return model;
 	}
+	else if (modelType == ModelType::ICOSPHERE) {
+		static int sphereIdx = 0;
+
+		model->Meshes = Assets::MeshGenerator::GenerateIcosphereMesh(position, (float)size / 2.0f, 4);
+		model->Name = "Sphere_" + std::to_string(sphereIdx++);
+	}
+
+	model->Transformations.translation = position;
+	CompileMesh(*model.get());
+
+	return model;
 }
 
 std::shared_ptr<Assets::Model> ModelLoader::DuplicateModel(std::shared_ptr<Assets::Model> model) {

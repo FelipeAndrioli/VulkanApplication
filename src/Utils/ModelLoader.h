@@ -14,7 +14,8 @@ namespace Assets {
 enum ModelType {
 	CUBE,
 	QUAD,
-	PLANE
+	PLANE,
+	ICOSPHERE
 };
 
 namespace {
