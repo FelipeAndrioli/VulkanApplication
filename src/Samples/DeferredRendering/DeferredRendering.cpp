@@ -229,7 +229,7 @@ void DeferredRendering::InitializeForwardResources() {
 
 	ResourceManager* rm = ResourceManager::Get();
 
-	const uint32_t totalLoadedTextures = static_cast<uint32_t>(rm->GetTotalTextures());
+	const uint32_t totalLoadedTextures = rm->GetTotalTextures() == 0 ? 1 : static_cast<uint32_t>(rm->GetTotalTextures());
 
 	ForwardResources.PipelineInputLayout = {
 		.pushConstants = {
@@ -264,6 +264,9 @@ void DeferredRendering::InitializeForwardResources() {
 	desc.vertexShader = &ForwardResources.VertexShader;
 	desc.fragmentShader = &ForwardResources.FragShader;
 	desc.psoInputLayout.push_back(ForwardResources.PipelineInputLayout);
+//	desc.lineWidth = 2.0f;
+//	desc.polygonMode = VK_POLYGON_MODE_LINE;
+//	desc.cullMode = VK_CULL_MODE_NONE;
 
 	gfxDevice->CreatePipelineState(desc, ForwardResources.PSO, *ForwardResources.RenderTarget.get());
 }
@@ -437,7 +440,7 @@ void DeferredRendering::InitializeDeferredPassResources() {
 
 	ResourceManager* rm = ResourceManager::Get();
 
-	const uint32_t totalLoadedTextures = static_cast<uint32_t>(rm->GetTotalTextures());
+	const uint32_t totalLoadedTextures = rm->GetTotalTextures() == 0 ? 1 : static_cast<uint32_t>(rm->GetTotalTextures());
 
 	DeferredResources.GeometryPassInputLayout = {
 		.pushConstants = {
@@ -589,6 +592,9 @@ void DeferredRendering::StartUp() {
 	float offsetZ = 0.0f;
 
 	uint32_t originalModelIndex = 0;
+
+//	m_Models[TotalModels] = ModelLoader::LoadModel(ModelType::ICOSPHERE, glm::vec3(0.0f), 1.0f);
+//	TotalModels++;
 
 	for (size_t i = 0; i < maxRow && TotalModels < MAX_MODELS; i++) {
 
