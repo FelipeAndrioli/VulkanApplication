@@ -1,7 +1,7 @@
 #include "SceneComponents.h"
 
 namespace Scene {
-	inline float Max(float A, float B) {
+	inline static float Max(float A, float B) {
 		return A > B ? A : B;
 	}
 

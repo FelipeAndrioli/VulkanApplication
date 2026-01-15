@@ -56,6 +56,5 @@ namespace Scene {
 
 	};
 
-	inline float Max(float A, float B);
 	float CalculateLightRadius(const LightComponent& light);
 }
