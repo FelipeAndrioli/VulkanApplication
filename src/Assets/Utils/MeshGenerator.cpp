@@ -344,7 +344,16 @@ namespace Assets {
 		return quadMesh;
 	}
 
-	std::vector<Mesh> MeshGenerator::GenerateIcosphereMesh(const glm::vec3 pos, const float radius, const size_t nSubdivisions) {
+	bool MeshGenerator::IsTriangleClockWise(const glm::vec3 A, const glm::vec3 B, const glm::vec3 C) {
+		glm::vec2 E1 = glm::vec2(B.x - A.x, B.y - A.y);
+		glm::vec2 E2 = glm::vec2(C.x - B.x, C.y - B.y);
+
+		float R = (E1.x * E2.y) - (E1.y * E2.y);
+
+		return R < 0.0f;
+	}
+
+	std::vector<Mesh> MeshGenerator::GenerateIcosphereMesh(const size_t Subdivisions) {
 
 		float goldenRatio = (1.0f + glm::sqrt(5.0f)) * 0.5f;
 
@@ -434,10 +443,9 @@ namespace Assets {
 		mesh.Indices[58] = 8;
 		mesh.Indices[59] = 1;
 
-
 		std::unordered_map<uint32_t, uint32_t> MiddlePointIndexCache;
 
-		for (size_t SubdivisionIndex = 0; SubdivisionIndex < nSubdivisions; ++SubdivisionIndex) {
+		for (size_t SubdivisionIndex = 0; SubdivisionIndex < Subdivisions; ++SubdivisionIndex) {
 	
 			std::vector<uint32_t> SubdividedIndices;
 
@@ -488,6 +496,16 @@ namespace Assets {
 			}
 
 			mesh.Indices = SubdividedIndices;
+		}
+
+
+		for (size_t VertexIndex = 0; VertexIndex < mesh.Vertices.size(); ++VertexIndex) {
+			// Note: All vertices are already normalized.
+
+			// Note: If the sphere center is (0, 0, 0), the surface normal at a vertex
+			// is simply its position vector normalized.
+		
+			mesh.Vertices[VertexIndex].normal = mesh.Vertices[VertexIndex].pos;
 		}
 
 		std::vector<Assets::Mesh> icosphereMesh = { mesh };

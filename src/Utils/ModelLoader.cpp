@@ -377,6 +377,10 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 }
 
 std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::vec3 position, float size) {
+	if (modelType == ModelType::ICOSPHERE) {
+		return ModelLoader::LoadSphere(modelType, 4);
+	}
+
 	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
 
 	if (modelType == ModelType::CUBE) {
@@ -391,14 +395,27 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::
 		model->Meshes = Assets::MeshGenerator::GenerateQuadMesh(position, size);
 		model->Name = "Quad_" + std::to_string(quadIdx++);
 	}
-	else if (modelType == ModelType::ICOSPHERE) {
-		static int sphereIdx = 0;
-
-		model->Meshes = Assets::MeshGenerator::GenerateIcosphereMesh(position, (float)size / 2.0f, 4);
-		model->Name = "Sphere_" + std::to_string(sphereIdx++);
-	}
 
 	model->Transformations.translation = position;
+	CompileMesh(*model.get());
+
+	return model;
+}
+
+// Note: Generate a sphere mesh of 'modelType' type, if a invalid Model Type is given, then 
+// Icosphere mesh is assumed. Generates a unit sphere mesh located at the world origin.
+std::shared_ptr<Assets::Model> ModelLoader::LoadSphere(ModelType modelType, size_t sphereSubdivisions) {
+	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
+	static int sphereIdx = 0;
+
+	if (0) {
+		// Note: Only icosphere mesh is supported for now.
+	} else {
+		model->Meshes = Assets::MeshGenerator::GenerateIcosphereMesh(sphereSubdivisions);
+	}
+	
+	model->Name = "Sphere_" + std::to_string(sphereIdx++);
+
 	CompileMesh(*model.get());
 
 	return model;

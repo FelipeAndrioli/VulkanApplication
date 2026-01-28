@@ -17,10 +17,10 @@ namespace Assets {
 		static std::vector<Mesh> GeneratePlaneMesh(glm::vec3 pos, float cellSize, size_t planeSize);
 		static std::vector<Mesh> GenerateCubeMesh(glm::vec3 pos, float size);
 		static std::vector<Mesh> GenerateQuadMesh(const glm::vec3 pos, const float size);
-		static std::vector<Mesh> GenerateIcosphereMesh(const glm::vec3 pos, const float radius, const size_t nSubdivisions);
+		static std::vector<Mesh> GenerateIcosphereMesh(const size_t Subdivisions);
 		static glm::vec3 GenerateTangentVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 uv1, glm::vec2 uv2, glm::vec2 uv3);
 		static glm::vec3 GenerateBiTangentVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 uv1, glm::vec2 uv2, glm::vec2 uv3);
 	private:
-		static bool IsTriangleClockWise(const glm::vec3 A, const glm::vec3 B, const glm::vec3 C, const glm::vec3 Direction);
+		static bool IsTriangleClockWise(const glm::vec3 A, const glm::vec3 B, const glm::vec3 C);
 	};
 }
