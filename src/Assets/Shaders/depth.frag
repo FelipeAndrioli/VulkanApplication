@@ -58,31 +58,30 @@ Directional = 0,
 PointLight = 1,
 SpotLight = 2
 */
-
 struct light_t {
 	vec4 position;
 	vec4 direction;
 	vec4 color;			// w -> light intensity
 
 	mat4 model;			
-	mat4 viewProj;			 
+	mat4 view_proj;			 
 
 	int type;
 	int flags;					
 	int index;
-	int pcfSamples;
+	int pcf_samples;
 	int extra0;
 	int extra1;
 	int extra2;
 
-	float minBias;
-	float spsSpread;
-	float outerCutOffAngle;
-	float cutOffAngle;		
-	float rawCutOffAngle;
-	float rawOuterCutOffAngle;
-	float linearAttenuation;
-	float quadraticAttenuation;
+	float min_bias;
+	float sps_spread;
+	float outer_cut_off_angle;
+	float cut_off_angle;		
+	float raw_cut_off_angle;
+	float raw_outer_cut_off_angle;
+	float linear_attenuation;
+	float quadratic_attenuation;
 	float scale;
 	float ambient;
 	float diffuse;
