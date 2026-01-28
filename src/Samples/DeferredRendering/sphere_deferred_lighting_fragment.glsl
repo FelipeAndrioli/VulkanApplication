@@ -4,7 +4,9 @@
 
 #define MAX_LIGHTS 50
 
-layout (location = 0) in vec2 in_uv;
+layout (location = 0) in vec4 frag_pos;
+layout (location = 1) in vec4 frag_normal;
+layout (location = 2) in vec4 clip_space_frag_pos;
 
 layout (location = 0) out vec4 frag_color;
 
@@ -58,10 +60,21 @@ layout (set = 0, binding = 2) uniform sampler2D positionTex;
 layout (set = 0, binding = 3) uniform sampler2D normalTex;
 layout (set = 0, binding = 4) uniform sampler2D albedoSpecTex;
 
+#define PI 3.141592653589793
+
 void main() {
-	vec4 position = texture(positionTex, in_uv).rgba;
-	vec4 normal = texture(normalTex, in_uv).rgba;
-	vec4 albedo = texture(albedoSpecTex, in_uv).rgba;
+
+	vec3 sphere_normal = normalize(frag_normal.xyz);
+
+//	vec3 clip_space = (clip_space_frag_pos + 1.0) * 0.5;
+//	vec2 sphere_uv = clip_space.xy;
+	vec3 clip_space = clip_space_frag_pos.xyz / clip_space_frag_pos.w;
+	vec2 sphere_uv = vec2((clip_space.xy + 1) * 0.5);
+//	vec2 sphere_uv = vec2(clip_space.xy);
+
+	vec4 position = texture(positionTex, sphere_uv).rgba;
+	vec4 normal = texture(normalTex, sphere_uv).rgba;
+	vec4 albedo = texture(albedoSpecTex, sphere_uv).rgba;
 
 	float specular_value = albedo.a;
 
@@ -73,33 +86,31 @@ void main() {
 	for (int light_index = 0; light_index < scene_gpu_data.total_lights; ++light_index) {
 		light_t light = light_gpu_data.lights[light_index];
 
-		float distance = length(light.position.xyz - position.xyz);
+		float light_distance_from_pixel = length(position.xyz - light.position.xyz);
 
 		/*
 		float constant_attenuation = 1.0;
+
 		float light_attenuation = 1 / (
 				constant_attenuation + 
 				light.linear_attenuation * light_distance_from_pixel + 
 				light.quadratic_attenuation * (light_distance_from_pixel * light_distance_from_pixel));
 		*/
 
-		float light_attenuation = clamp(1.0 - distance * distance / (light.radius * light.radius), 0.0, 1.0);
+		float light_attenuation = clamp(1.0 - light_distance_from_pixel * light_distance_from_pixel / (light.radius * light.radius), 0.0, 1.0);
+		float light_intensity = light.color.a;
 
-		if (distance < light.radius) {
-			float light_intensity = light.color.a;
+		vec3 light_dir = normalize(light.position.xyz - position.xyz);
 
-			vec3 light_dir = normalize(light.position.xyz - position.xyz);
+		float diff = max(dot(normal.rgb, light_dir), 0);
+		vec3 diffuse = diff * albedo.rgb;
 
-			float diff = max(dot(normal.rgb, light_dir), 0);
-			vec3 diffuse = diff * albedo.rgb;
+		vec3 halfway = normalize(light_dir + view_dir.xyz);
+		
+		float spec = pow(max(dot(normal.xyz, halfway), 0.0), 16.0);
+		vec3 specular = vec3(spec * specular_value);
 
-			vec3 halfway = normalize(light_dir + view_dir.xyz);
-			
-			float spec = pow(max(dot(normal.xyz, halfway), 0.0), 16.0);
-			vec3 specular = vec3(spec * specular_value);
-
-			color += (diffuse + specular) * light_intensity * light.color.rgb * light_attenuation;
-		}
+		color += (diffuse + specular) * light_intensity * light.color.rgb * light_attenuation;
 	}
 
 	frag_color = vec4(color, 1.0);

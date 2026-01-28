@@ -98,6 +98,12 @@ public:
 		std::unique_ptr<Graphics::MultiAttachmentRenderTarget> CompositionRenderTarget;
 		// --- Composition Pass Resources ---
 
+		// --- Sphere Composition Pass Resources
+		Graphics::PipelineState SphereCompositionPSO						= {};
+		Graphics::Shader SphereCompositionPassVertexShader					= {};
+		Graphics::Shader SphereCompositionPassFragmentShader				= {};
+		// --- Sphere Composition Pass Resources
+
 		// --- Forward Combined Pass Resources ---
 		Graphics::RenderPassDescription ForwardCombinedPassDescription = {};
 		std::unique_ptr<Graphics::MultiAttachmentRenderTarget> ForwardCombinedRenderTarget;
@@ -142,6 +148,7 @@ private:
 	const uint32_t m_ForwardCombinedSampleCount = 1;
 
 	std::array<std::shared_ptr<Assets::Model>, MAX_MODELS> m_Models;
+	std::array<std::shared_ptr<Assets::Model>, MAX_LIGHTS> m_DeferredLightSpheres;
 	std::array<Scene::LightComponent, MAX_LIGHTS> m_Lights;
 
 	size_t TotalModels = 0;
@@ -161,7 +168,7 @@ private:
 	bool m_DeferredRenderingEnabled = false;
 	bool m_FirstFrame = true;
 	bool m_FirstDeferredPassFrame = true;
-
+	bool m_SphereOptimizationEnabled = true;
 private:
 	void InitializeForwardResources();
 	void InitializeDeferredPassResources();
@@ -176,6 +183,7 @@ private:
 
 	void DeferredGeometryPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 	void DeferredLightingCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+	void DeferredLightingSphereOptimizationCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 	void DeferredForwardCombinedPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 
 	void AddLight(glm::vec3 position);
@@ -186,11 +194,6 @@ void DeferredRendering::AddLight(glm::vec3 position = glm::vec3(0.0f)) {
 	if (TotalLights + 1 > MAX_LIGHTS)
 		return;
 
-	float r = 1.0f;
-	float g = 1.0f;
-	float b = 1.0f;
-	float lightIntensity = 0.7f;
-
 	Scene::LightComponent& Light = m_Lights[TotalLights];
 
 	Light.ambient				= 0.1f;
@@ -198,17 +201,22 @@ void DeferredRendering::AddLight(glm::vec3 position = glm::vec3(0.0f)) {
 	Light.specular				= 1.0f;
 	Light.position				= glm::vec4(position, 0.0f);
 	Light.scale					= 0.05f;
-	Light.color					= glm::vec4(r, g, b, lightIntensity);
+	Light.color					= glm::vec4(1.0f);
 //	Light.linearAttenuation		= 0.006f;
 //	Light.quadraticAttenuation	= 0.007f;
 
-// Learn OpenGL suggestion
 //	Light.linearAttenuation		= 0.7f;
 //	Light.quadraticAttenuation	= 1.8f;
 
-
 	Light.linearAttenuation		= 10.0f;
 	Light.quadraticAttenuation	= 3.0f;
+	Light.radius = 1.0f;
+
+	m_DeferredLightSpheres[TotalLights] = ModelLoader::LoadSphere(ModelType::ICOSPHERE, 1);
+	m_DeferredLightSpheres[TotalLights]->Transformations.translation = glm::vec3(Light.position.x, Light.position.y, Light.position.z);
+	//m_DeferredLightSpheres[TotalLights]->Transformations.scaleHandler = Scene::CalculateLightRadius(Light);
+	m_DeferredLightSpheres[TotalLights]->Transformations.scaleHandler = Light.radius;
+
 	TotalLights++;
 
 	SampleSceneData.TotalLights = TotalLights;
@@ -475,7 +483,7 @@ void DeferredRendering::InitializeDeferredPassResources() {
 
 	DeferredResources.CompositionPassInputLayout = {
 		.pushConstants = {
-
+			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },		// Scene UBO
@@ -529,6 +537,19 @@ void DeferredRendering::InitializeDeferredPassResources() {
 	lightingPsoDesc.psoInputLayout.push_back(DeferredResources.CompositionPassInputLayout);
 
 	gfxDevice->CreatePipelineState(lightingPsoDesc, DeferredResources.CompositionPassPSO, *DeferredResources.CompositionRenderTarget.get());
+
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, DeferredResources.SphereCompositionPassVertexShader, "../src/Samples/DeferredRendering/sphere_deferred_lighting_vertex.glsl");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, DeferredResources.SphereCompositionPassFragmentShader, "../src/Samples/DeferredRendering/sphere_deferred_lighting_fragment.glsl");
+
+	Graphics::PipelineStateDescription sphereLightingPsoDesc = {};
+	sphereLightingPsoDesc.Name = "Deferred Rendering - Sphere Composition Lighting Pass";
+	sphereLightingPsoDesc.cullMode = VK_CULL_MODE_FRONT_BIT;
+//	sphereLightingPsoDesc.cullMode = VK_CULL_MODE_NONE;
+	sphereLightingPsoDesc.vertexShader = &DeferredResources.SphereCompositionPassVertexShader;
+	sphereLightingPsoDesc.fragmentShader = &DeferredResources.SphereCompositionPassFragmentShader;
+	sphereLightingPsoDesc.psoInputLayout.push_back(DeferredResources.CompositionPassInputLayout);
+
+	gfxDevice->CreatePipelineState(sphereLightingPsoDesc, DeferredResources.SphereCompositionPSO, *DeferredResources.CompositionRenderTarget.get());
 }
 
 void DeferredRendering::InitializeLightSourcesRenderResources() {
@@ -593,9 +614,6 @@ void DeferredRendering::StartUp() {
 
 	uint32_t originalModelIndex = 0;
 
-//	m_Models[TotalModels] = ModelLoader::LoadModel(ModelType::ICOSPHERE, glm::vec3(0.0f), 1.0f);
-//	TotalModels++;
-
 	for (size_t i = 0; i < maxRow && TotalModels < MAX_MODELS; i++) {
 
 		float x = i + initialX + offsetX;
@@ -636,6 +654,7 @@ void DeferredRendering::StartUp() {
 	const float lightInitialZ = -7.0f;
 
 	for (size_t i = 0; i < MAX_LIGHTS; i++) {
+//	for (size_t i = 0; i < 1; i++) {
 
 		float distance = 5.0f;
 
@@ -696,6 +715,10 @@ void DeferredRendering::DestroyDeferredResources() {
 	DeferredResources.ForwardCombinedRenderTarget.reset();
 
 	gfxDevice->DestroyDescriptorSetLayout(DeferredResources.GBufferDisplayDescriptorSetLayout);
+
+	gfxDevice->DestroyShader(DeferredResources.SphereCompositionPassVertexShader);
+	gfxDevice->DestroyShader(DeferredResources.SphereCompositionPassFragmentShader);
+	gfxDevice->DestroyPipeline(DeferredResources.SphereCompositionPSO);
 }
 
 void DeferredRendering::CleanUp() {
@@ -713,7 +736,7 @@ void DeferredRendering::CleanUp() {
 
 void DeferredRendering::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
 	
-	SCOPED_PROFILER_US("DeferredRendering::Update");
+	SCOPED_PROFILER_US("Update");
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 	
@@ -726,6 +749,12 @@ void DeferredRendering::Update(const float constantT, const float deltaT, InputS
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &SampleSceneData);
 
+	for (size_t ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
+		std::shared_ptr<Assets::Model>& Model = m_Models[ModelIndex];
+
+		Model->OnUpdate(deltaT);
+	}
+
 	for (size_t LightIndex = 0; LightIndex < TotalLights; ++LightIndex) {
 		Scene::LightComponent& light = m_Lights[LightIndex];
 
@@ -734,14 +763,21 @@ void DeferredRendering::Update(const float constantT, const float deltaT, InputS
 		glm::mat4 toPosition	= glm::translate(glm::mat4(1.0f), glm::vec3(light.position));
 
 		light.model = toPosition * scale * toOrigin;
-		light.radius = Scene::CalculateLightRadius(light);
+//		light.radius = Scene::CalculateLightRadius(light);
+	}
+
+	for (size_t LightSphereVolumeIndex = 0; LightSphereVolumeIndex < TotalLights; ++LightSphereVolumeIndex) {
+		std::shared_ptr<Assets::Model>& SphereVolume = m_DeferredLightSpheres[LightSphereVolumeIndex];
+
+		SphereVolume->Transformations.translation = m_Lights[LightSphereVolumeIndex].position;
+		SphereVolume->Transformations.scaleHandler = m_Lights[LightSphereVolumeIndex].radius;
 	}
 
 	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
 }
 
 void DeferredRendering::RenderForward(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
-	SCOPED_PROFILER_US("DeferredRendering::RenderForward");
+	SCOPED_PROFILER_US("RenderForward");
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -797,12 +833,18 @@ void DeferredRendering::RenderForward(const uint32_t currentFrame, const VkComma
 }
 
 void DeferredRendering::RenderDeferred(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
-	SCOPED_PROFILER_US("DeferredRendering::RenderDeferred");
+	SCOPED_PROFILER_US("RenderDeferred");
 	
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	DeferredGeometryPass(currentFrame, commandBuffer);
-	DeferredLightingCompositionPass(currentFrame, commandBuffer);
+
+	if (m_SphereOptimizationEnabled) {
+		DeferredLightingSphereOptimizationCompositionPass(currentFrame, commandBuffer);
+	} else {
+		DeferredLightingCompositionPass(currentFrame, commandBuffer);
+	}
+
 	DeferredForwardCombinedPass(currentFrame, commandBuffer);
 
 	// TODO: find out why the render pass'implicit' layout transition doesn't happen for this render target in the very first usage.
@@ -817,7 +859,7 @@ void DeferredRendering::RenderDeferred(const uint32_t currentFrame, const VkComm
 }
 
 void DeferredRendering::DeferredGeometryPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
-	SCOPED_PROFILER_US("DeferredRendering::DeferredGeometryPass");
+	SCOPED_PROFILER_US("DeferredGeometryPass");
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -856,11 +898,14 @@ void DeferredRendering::DeferredGeometryPass(const uint32_t currentFrame, const 
 }
 
 void DeferredRendering::DeferredLightingCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
-	SCOPED_PROFILER_US("DeferredRendering::DeferredLightingCompositionPass");
+	SCOPED_PROFILER_US("DeferredLightingCompositionPass");
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	DeferredResources.CompositionRenderTarget->Begin(commandBuffer);
+
+	// Setting a dummy push constant to reuse descriptor set/layout.
+	vkCmdPushConstants(commandBuffer, DeferredResources.CompositionPassPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
 
 	// Render scene applying lighting
 	gfxDevice->BindDescriptorSet(DeferredResources.CompositionSet[currentFrame], commandBuffer, DeferredResources.CompositionPassPSO.pipelineLayout, 0, 1);
@@ -870,8 +915,44 @@ void DeferredRendering::DeferredLightingCompositionPass(const uint32_t currentFr
 	DeferredResources.CompositionRenderTarget->End(commandBuffer);
 }
 
+void DeferredRendering::DeferredLightingSphereOptimizationCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+	SCOPED_PROFILER_US("DeferredLightingSphereOptimizationCompositionPass");
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	DeferredResources.CompositionRenderTarget->Begin(commandBuffer);
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, DeferredResources.SphereCompositionPSO.pipeline);
+	gfxDevice->BindDescriptorSet(DeferredResources.CompositionSet[currentFrame], commandBuffer, DeferredResources.SphereCompositionPSO.pipelineLayout, 0, 1);
+
+	for (uint32_t SphereIndex = 0; SphereIndex < TotalLights; ++SphereIndex) {
+		Assets::Model& SphereModel = *m_DeferredLightSpheres[SphereIndex].get();
+
+		VkDeviceSize offsets[] = { sizeof(uint32_t) * SphereModel.TotalIndices };
+
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &SphereModel.DataBuffer.Handle, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, SphereModel.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+
+		SamplePushConstants.Model = SphereModel.GetModelMatrix();
+
+		vkCmdPushConstants(commandBuffer, DeferredResources.SphereCompositionPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
+
+		for (const auto& Mesh : SphereModel.Meshes) {
+			vkCmdDrawIndexed(
+				commandBuffer,
+				static_cast<uint32_t>(Mesh.Indices.size()),
+				1,
+				static_cast<uint32_t>(Mesh.IndexOffset),
+				static_cast<int32_t>(Mesh.VertexOffset),
+				0);
+		}	
+	}
+
+	DeferredResources.CompositionRenderTarget->End(commandBuffer);
+}
+
 void DeferredRendering::DeferredForwardCombinedPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
-	SCOPED_PROFILER_US("DeferredRendering::DeferredForwardCombinedPass");
+	SCOPED_PROFILER_US("DeferredForwardCombinedPass");
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -948,7 +1029,7 @@ void DeferredRendering::DeferredForwardCombinedPass(const uint32_t currentFrame,
 
 void DeferredRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 
-	SCOPED_PROFILER_US("DeferredRendering::RenderScene");
+	SCOPED_PROFILER_US("RenderScene");
 
 	if (m_DeferredRenderingEnabled) {
 		RenderDeferred(currentFrame, commandBuffer);
@@ -984,8 +1065,8 @@ void DeferredRendering::RenderUI() {
 				ImGui::DragFloat("Light Scale", &m_Lights[LightIndex].scale, 0.01f, 0.0f, 1.0f);
 				ImGui::ColorPicker4("Light Color", (float*)&m_Lights[LightIndex].color);
 				ImGui::DragFloat("Light Intensity", (float*)&m_Lights[LightIndex].color.a, 0.02f, 0.0f, 1.0f);
-				ImGui::DragFloat("Light Linear Attenuation", &m_Lights[LightIndex].linearAttenuation, 0.02f, -20.0f, 20.0f);
-				ImGui::DragFloat("Light Quadratic Attenuation", &m_Lights[LightIndex].quadraticAttenuation, 0.02f, -20.0f, 20.0f);
+//				ImGui::DragFloat("Light Linear Attenuation", &m_Lights[LightIndex].linearAttenuation, 0.02f, -20.0f, 20.0f);
+//				ImGui::DragFloat("Light Quadratic Attenuation", &m_Lights[LightIndex].quadraticAttenuation, 0.02f, -20.0f, 20.0f);
 				ImGui::DragFloat("Light Radius", &m_Lights[LightIndex].radius, 0.02f, 0.0f, 10.0f);
 				ImGui::TreePop();
 			}
@@ -1005,10 +1086,10 @@ void DeferredRendering::RenderUI() {
 	bool deferredRenderingEnabledBefore = m_DeferredRenderingEnabled;
 
 	ImGui::Checkbox("Deferred Rendering Enabled", &m_DeferredRenderingEnabled);
+	ImGui::Checkbox("Sphere Optimization Enabled", &m_SphereOptimizationEnabled);
 
 	if (ImGui::TreeNode("GBuffer")) {
 		if (m_DeferredRenderingEnabled && deferredRenderingEnabledBefore == m_DeferredRenderingEnabled) {
-
 			if (ImGui::TreeNode("Position")) {
 				ImGui::Image((ImTextureID)DeferredResources.GBufferDisplayDescriptorSet[0], ImVec2(350, 300));
 				ImGui::TreePop();

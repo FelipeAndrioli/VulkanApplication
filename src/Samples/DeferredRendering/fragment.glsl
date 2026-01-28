@@ -116,12 +116,15 @@ void main() {
 
 	vec3 normal = normalize(in_frag_normal);
 
-	float ambient = 0.1; 
+	float ambient = 0.0; 
 	vec3 color = vec3(albedo * ambient);
-	
+
 	for (int light_index = 0; light_index < scene_gpu_data.total_lights; ++light_index) {
 		light_t light = light_gpu_data.lights[light_index];
-	
+
+		float light_distance_from_pixel = length(in_frag_pos - light.position.xyz);
+		float light_attenuation = clamp(1.0 - light_distance_from_pixel * light_distance_from_pixel / (light.radius * light.radius), 0.0, 1.0);
+
 		float light_intensity = light.color.a;
 
 		vec3 light_dir = normalize(light.position.xyz - in_frag_pos);
@@ -134,7 +137,7 @@ void main() {
 		float spec = pow(max(dot(normal, halfway), 0.0), 16.0);
 		vec3 specular = vec3(spec * specular_value);
 	
-		color += (diffuse + specular) * light_intensity * light.color.rgb;
+		color += (diffuse + specular) * light_intensity * light.color.rgb * light_attenuation;
 	}
 	
 	pixel_color = vec4(color, 1.0);	
