@@ -200,8 +200,7 @@ void HDR::StartUp() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 	ResourceManager* rm = ResourceManager::Get();
 
-//	m_Models[m_TotalModels] = ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
-	m_Models[m_TotalModels] = ModelLoader::LoadModel("C:/Users/Felipe/Downloads/vulkan-rendering-test-master/models/kevin_original/scene.gltf");
+	m_Models[m_TotalModels] = ModelLoader::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
 	m_Models[m_TotalModels]->Transformations.scaleHandler	= 0.008f;
 	m_Models[m_TotalModels]->ModelIndex						= m_TotalModels;
 
