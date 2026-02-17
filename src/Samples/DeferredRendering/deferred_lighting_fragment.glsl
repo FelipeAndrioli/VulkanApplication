@@ -2,8 +2,6 @@
 
 #extension GL_KHR_vulkan_glsl : enable
 
-#define MAX_LIGHTS 50
-
 layout (location = 0) in vec2 in_uv;
 
 layout (location = 0) out vec4 frag_color;
@@ -50,8 +48,8 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int extra3;
 } scene_gpu_data;
 
-layout (std140, set = 0, binding = 1) uniform LightGPUData {
-	light_t lights[MAX_LIGHTS];
+layout (std140, set = 0, binding = 1) readonly buffer LightGPUData {
+	light_t lights[];
 } light_gpu_data;
 
 layout (set = 0, binding = 2) uniform sampler2D positionTex;

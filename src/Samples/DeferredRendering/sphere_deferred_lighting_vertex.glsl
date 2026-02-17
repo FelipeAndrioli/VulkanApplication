@@ -23,7 +23,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
-	int material_index;
+	int light_index;
 } push_constants;
 
 void main() {

@@ -2,7 +2,7 @@
 
 #extension GL_KHR_vulkan_glsl : enable
 
-#define MAX_LIGHTS 50
+#define MAX_LIGHTS 200
 
 layout (location = 0) in vec4 frag_pos;
 layout (location = 1) in vec4 frag_normal;
@@ -52,13 +52,18 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	int extra3;
 } scene_gpu_data;
 
-layout (std140, set = 0, binding = 1) uniform LightGPUData {
-	light_t lights[MAX_LIGHTS];
+layout (std140, set = 0, binding = 1) readonly buffer LightGPUData {
+	light_t lights[];
 } light_gpu_data;
 
 layout (set = 0, binding = 2) uniform sampler2D positionTex;
 layout (set = 0, binding = 3) uniform sampler2D normalTex;
 layout (set = 0, binding = 4) uniform sampler2D albedoSpecTex;
+
+layout (push_constant) uniform PushConstants {
+	mat4 model;
+	int light_index;
+} push_constants;
 
 #define PI 3.141592653589793
 
@@ -66,11 +71,8 @@ void main() {
 
 	vec3 sphere_normal = normalize(frag_normal.xyz);
 
-//	vec3 clip_space = (clip_space_frag_pos + 1.0) * 0.5;
-//	vec2 sphere_uv = clip_space.xy;
 	vec3 clip_space = clip_space_frag_pos.xyz / clip_space_frag_pos.w;
 	vec2 sphere_uv = vec2((clip_space.xy + 1) * 0.5);
-//	vec2 sphere_uv = vec2(clip_space.xy);
 
 	vec4 position = texture(positionTex, sphere_uv).rgba;
 	vec4 normal = texture(normalTex, sphere_uv).rgba;
@@ -83,35 +85,33 @@ void main() {
 
 	vec3 view_dir = normalize(scene_gpu_data.view_position - position).xyz;
 
-	for (int light_index = 0; light_index < scene_gpu_data.total_lights; ++light_index) {
-		light_t light = light_gpu_data.lights[light_index];
+	light_t light = light_gpu_data.lights[push_constants.light_index];
 
-		float light_distance_from_pixel = length(position.xyz - light.position.xyz);
+	float light_distance_from_pixel = length(position.xyz - light.position.xyz);
 
-		/*
-		float constant_attenuation = 1.0;
+	/*
+	float constant_attenuation = 1.0;
 
-		float light_attenuation = 1 / (
-				constant_attenuation + 
-				light.linear_attenuation * light_distance_from_pixel + 
-				light.quadratic_attenuation * (light_distance_from_pixel * light_distance_from_pixel));
-		*/
+	float light_attenuation = 1 / (
+			constant_attenuation + 
+			light.linear_attenuation * light_distance_from_pixel + 
+			light.quadratic_attenuation * (light_distance_from_pixel * light_distance_from_pixel));
+	*/
 
-		float light_attenuation = clamp(1.0 - light_distance_from_pixel * light_distance_from_pixel / (light.radius * light.radius), 0.0, 1.0);
-		float light_intensity = light.color.a;
+	float light_attenuation = clamp(1.0 - light_distance_from_pixel * light_distance_from_pixel / (light.radius * light.radius), 0.0, 1.0);
+	float light_intensity = light.color.a;
 
-		vec3 light_dir = normalize(light.position.xyz - position.xyz);
+	vec3 light_dir = normalize(light.position.xyz - position.xyz);
 
-		float diff = max(dot(normal.rgb, light_dir), 0);
-		vec3 diffuse = diff * albedo.rgb;
+	float diff = max(dot(normal.rgb, light_dir), 0);
+	vec3 diffuse = diff * albedo.rgb;
 
-		vec3 halfway = normalize(light_dir + view_dir.xyz);
-		
-		float spec = pow(max(dot(normal.xyz, halfway), 0.0), 16.0);
-		vec3 specular = vec3(spec * specular_value);
+	vec3 halfway = normalize(light_dir + view_dir.xyz);
+	
+	float spec = pow(max(dot(normal.xyz, halfway), 0.0), 16.0);
+	vec3 specular = vec3(spec * specular_value);
 
-		color += (diffuse + specular) * light_intensity * light.color.rgb * light_attenuation;
-	}
+	color += (diffuse + specular) * light_intensity * light.color.rgb * light_attenuation;
 
 	frag_color = vec4(color, 1.0);
 }

@@ -14,14 +14,27 @@
 #include "../../Assets/Camera.h"
 #include "../../Assets/Model.h"
 
+#include <cstdlib>
+#include <ctime>
+#include <cmath>
+#include <random>
+#include <chrono>
+
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 #include <gtc/type_ptr.hpp>
 
 constexpr int MAX_MODELS = 50;
-constexpr int MAX_LIGHTS = 50;
+constexpr int MAX_LIGHTS = 2000;
+constexpr float PI = 3.14159265358979323846;
 
-#define ARRAY_SIZE(array) { (uint32_t)(sizeof(array) / sizeof(array[0])) };
+/*
+	TODO's:
+		- Add a minimal debug view for the light volumes
+		- Move the whole copy image to a better/separate function.
+		- Find out why the render pass 'implicit' layout transition doesn't happen for 
+		DeferredResources.CompositionBufferAttachments render target in the very first usage.
+*/
 
 class DeferredRendering : public Application::IScene {
 public:
@@ -126,16 +139,21 @@ public:
 		alignas(4) uint32_t MaterialIndex;
 	} SamplePushConstants;
 
+	struct SphereCompositionPushConstant {
+		alignas(16) glm::mat4 Model;
+		alignas(4) uint32_t LightIndex;
+	} SphereCompositionPushConstants;
+
 	struct LightSourcesPushConstants {
 		glm::mat4 Model;
 		glm::vec4 LightColor;
 	} LightSourcePushConstants;
 
-	const glm::vec3 InitialCameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+	const glm::vec3 InitialCameraPosition = glm::vec3(17.3f, 2.6f, 14.2f);
 
 	const float InitialCameraFov	= 45.0f;
-	const float InitialCameraYaw	= -90.0f;
-	const float InitialCameraPitch	= 0.0f;
+	const float InitialCameraYaw	= -4.2f;
+	const float InitialCameraPitch	= 2.0f;
 
 private:
 	Assets::Camera m_Camera = {};
@@ -151,11 +169,27 @@ private:
 	std::array<std::shared_ptr<Assets::Model>, MAX_LIGHTS> m_DeferredLightSpheres;
 	std::array<Scene::LightComponent, MAX_LIGHTS> m_Lights;
 
+	glm::vec3 m_LightsOriginalPosition[MAX_LIGHTS];
+	glm::vec3 m_GlobalLightRelativePosition = glm::vec3(48.0f, 8.480f, 14.200f);
+
+	float m_CubeOriginalTheta[MAX_LIGHTS];
+	float m_CubeCurrentTheta[MAX_LIGHTS];
+	float m_CubeRadius[MAX_LIGHTS];
+
 	size_t TotalModels = 0;
 	size_t TotalLights = 0;
+	int CurrentLightCount = 200;
+
+	float m_InnerRadius = 7.0f;
+	float m_OuterRadius = 40.0f;
+	float m_Thickness = 20.0f;
+	float m_GlobalLightRadius = 5.0f;
+	float m_LightSourceScaleHandler = 0.046f;
+	float m_LightWaveDisplacement = 10.0f;
+	float m_LightWaveFrequency = 0.152f;
 
 	Graphics::Buffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
-	Graphics::Buffer m_LightBuffer = {};
+	Graphics::GPUBuffer m_LightBuffer = {};
 
 	Graphics::PipelineState m_LightSourcesPSODeferred = {};
 	Graphics::PipelineState m_LightSourcesPSOForward = {};
@@ -186,6 +220,7 @@ private:
 	void DeferredLightingSphereOptimizationCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 	void DeferredForwardCombinedPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 
+	void CreateLights();
 	void AddLight(glm::vec3 position);
 	void RemoveLight();
 };
@@ -200,21 +235,14 @@ void DeferredRendering::AddLight(glm::vec3 position = glm::vec3(0.0f)) {
 	Light.diffuse				= 1.0f;
 	Light.specular				= 1.0f;
 	Light.position				= glm::vec4(position, 0.0f);
-	Light.scale					= 0.05f;
+	Light.scale					= m_LightSourceScaleHandler;
 	Light.color					= glm::vec4(1.0f);
-//	Light.linearAttenuation		= 0.006f;
-//	Light.quadraticAttenuation	= 0.007f;
-
-//	Light.linearAttenuation		= 0.7f;
-//	Light.quadraticAttenuation	= 1.8f;
-
 	Light.linearAttenuation		= 10.0f;
 	Light.quadraticAttenuation	= 3.0f;
-	Light.radius = 1.0f;
+	Light.radius				= m_GlobalLightRadius;
 
 	m_DeferredLightSpheres[TotalLights] = ModelLoader::LoadSphere(ModelType::ICOSPHERE, 1);
 	m_DeferredLightSpheres[TotalLights]->Transformations.translation = glm::vec3(Light.position.x, Light.position.y, Light.position.z);
-	//m_DeferredLightSpheres[TotalLights]->Transformations.scaleHandler = Scene::CalculateLightRadius(Light);
 	m_DeferredLightSpheres[TotalLights]->Transformations.scaleHandler = Light.radius;
 
 	TotalLights++;
@@ -244,10 +272,10 @@ void DeferredRendering::InitializeForwardResources() {
 			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
 		},
 		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			// Scene GPU Data
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			// Scene GPU Datadd
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },										// Material GPU Data
 			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, totalLoadedTextures, VK_SHADER_STAGE_FRAGMENT_BIT},				// Textures 
-			{ 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT}										// Light GPU Data 
+			{ 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT}										// Light GPU Data 
 		}
 	};
 
@@ -272,9 +300,7 @@ void DeferredRendering::InitializeForwardResources() {
 	desc.vertexShader = &ForwardResources.VertexShader;
 	desc.fragmentShader = &ForwardResources.FragShader;
 	desc.psoInputLayout.push_back(ForwardResources.PipelineInputLayout);
-//	desc.lineWidth = 2.0f;
-//	desc.polygonMode = VK_POLYGON_MODE_LINE;
-//	desc.cullMode = VK_CULL_MODE_NONE;
+	desc.cullMode = VK_CULL_MODE_BACK_BIT;
 
 	gfxDevice->CreatePipelineState(desc, ForwardResources.PSO, *ForwardResources.RenderTarget.get());
 }
@@ -487,7 +513,7 @@ void DeferredRendering::InitializeDeferredPassResources() {
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },		// Scene UBO
-			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },		// Lighting UBO
+			{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },		// Lighting UBO
 			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },		// Position 
 			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },		// Normal 
 			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }		// AlbedoSpec 
@@ -544,10 +570,18 @@ void DeferredRendering::InitializeDeferredPassResources() {
 	Graphics::PipelineStateDescription sphereLightingPsoDesc = {};
 	sphereLightingPsoDesc.Name = "Deferred Rendering - Sphere Composition Lighting Pass";
 	sphereLightingPsoDesc.cullMode = VK_CULL_MODE_FRONT_BIT;
-//	sphereLightingPsoDesc.cullMode = VK_CULL_MODE_NONE;
 	sphereLightingPsoDesc.vertexShader = &DeferredResources.SphereCompositionPassVertexShader;
 	sphereLightingPsoDesc.fragmentShader = &DeferredResources.SphereCompositionPassFragmentShader;
 	sphereLightingPsoDesc.psoInputLayout.push_back(DeferredResources.CompositionPassInputLayout);
+	
+	sphereLightingPsoDesc.colorBlendingEnable = true;
+	sphereLightingPsoDesc.colorBlendingDesc.blendEnable = VK_TRUE;
+	sphereLightingPsoDesc.colorBlendingDesc.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	sphereLightingPsoDesc.colorBlendingDesc.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	sphereLightingPsoDesc.colorBlendingDesc.colorBlendOp = VK_BLEND_OP_ADD;
+	sphereLightingPsoDesc.colorBlendingDesc.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	sphereLightingPsoDesc.colorBlendingDesc.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	sphereLightingPsoDesc.colorBlendingDesc.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	gfxDevice->CreatePipelineState(sphereLightingPsoDesc, DeferredResources.SphereCompositionPSO, *DeferredResources.CompositionRenderTarget.get());
 }
@@ -586,6 +620,44 @@ void DeferredRendering::InitializeLightSourcesRenderResources() {
 	gfxDevice->CreatePipelineState(desc, m_LightSourcesPSOForward, *ForwardResources.RenderTarget.get());
 }
 
+void DeferredRendering::CreateLights() {
+
+	if (CurrentLightCount < TotalLights) {
+		TotalLights = CurrentLightCount;
+		return;
+	}
+
+	uint32_t LightIndex = 0;
+
+	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+
+	std::mt19937 engine(seed);
+
+	for (uint32_t LightIndex = 0; LightIndex < CurrentLightCount && LightIndex + 1 < MAX_LIGHTS; ++LightIndex) {
+		std::uniform_int_distribution<int> thetaDist(0.0f, 2 * PI);
+		std::uniform_int_distribution<int> radiusDist(m_InnerRadius, m_OuterRadius);
+		std::uniform_int_distribution<int> thicknessDist(-m_Thickness / 2, m_Thickness / 2);
+
+		m_CubeOriginalTheta[LightIndex] = thetaDist(engine);
+		m_CubeCurrentTheta[LightIndex] = m_CubeOriginalTheta[LightIndex];
+		m_CubeRadius[LightIndex] = radiusDist(engine);
+
+		float y = thicknessDist(engine);
+
+		// Convert to Cartesian coordinates
+		float x = m_CubeRadius[LightIndex] * glm::cos(m_CubeOriginalTheta[LightIndex]);
+		float z = m_CubeRadius[LightIndex] * glm::sin(m_CubeOriginalTheta[LightIndex]);
+
+		glm::vec3 position = glm::vec3(x, y, z);
+
+		m_LightsOriginalPosition[LightIndex] = position;
+	
+		if (LightIndex > TotalLights) {
+			AddLight(position);
+		}
+	}
+}
+
 void DeferredRendering::StartUp() {
 
 	m_ScreenWidth = settings.Width;
@@ -599,77 +671,19 @@ void DeferredRendering::StartUp() {
 		m_SceneBuffer[i] = gfxDevice->CreateBuffer(sizeof(SceneData));
 	}
 
-	m_LightBuffer = gfxDevice->CreateBuffer(sizeof(Scene::LightComponent) * MAX_LIGHTS);
+	m_LightBuffer = gfxDevice->CreateStorageBuffer(sizeof(Scene::LightComponent) * MAX_LIGHTS);
 
-	const int maxRow = 5;
-	const int maxColumn = 5;
+	m_Models[TotalModels] = ModelLoader::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
+	m_Models[TotalModels]->Transformations.scaleHandler		= 0.034f;
+	m_Models[TotalModels]->Transformations.translation.x	= 55.0f;
+	m_Models[TotalModels]->Transformations.translation.y	= 17.0f;
+	m_Models[TotalModels]->Transformations.translation.z	= 15.0f;
+	m_Models[TotalModels]->ModelIndex = TotalModels;
 
-	const float initialX = 0.0f - (maxRow / 2.0f);
-	const float initialZ = 0.0f - (maxColumn / 2.0f);
-
-	const float offsetIncrease = 0.5f;
-
-	float offsetX = 0.0f;
-	float offsetZ = 0.0f;
-
-	uint32_t originalModelIndex = 0;
-
-	for (size_t i = 0; i < maxRow && TotalModels < MAX_MODELS; i++) {
-
-		float x = i + initialX + offsetX;
-
-		for (size_t j = 0; j < maxColumn && TotalModels < MAX_MODELS; j++) {
-			
-			float z = j + initialZ + offsetZ;
-
-			if (i == 0 && j == 0) {
-				m_Models[TotalModels] = ModelLoader::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/backpack/backpack.obj");
-				ModelLoader::FlipModelUvVertically(*m_Models[TotalModels].get());
-				originalModelIndex = TotalModels;
-			}
-			else {
-				m_Models[TotalModels] = ModelLoader::DuplicateModel(m_Models[originalModelIndex]);
-			}
-
-			m_Models[TotalModels]->Transformations.scaleHandler		= 0.3f;
-			m_Models[TotalModels]->Transformations.translation		= glm::vec3(x, 0.6f, z);
-			m_Models[TotalModels]->FlipUvVertically					= true;
-			m_Models[TotalModels]->ModelIndex						= TotalModels;
-			
-			TotalModels++;
-
-			offsetZ += offsetIncrease;
-		}
-
-		offsetZ = 0.0f;
-		offsetX += offsetIncrease;
-	}
-
-	const int maxColumns = 5;
-
-	int currentColumnCount = 0;
-	int currentRowCount = 0;
-
-	const float lightInitialX = -7.0f;
-	const float lightInitialZ = -7.0f;
-
-	for (size_t i = 0; i < MAX_LIGHTS; i++) {
-//	for (size_t i = 0; i < 1; i++) {
-
-		float distance = 5.0f;
-
-		float x = lightInitialX + distance + currentRowCount;
-		float y = 1.0f;
-		float z = lightInitialZ + distance + currentColumnCount;
-
-		if (++currentColumnCount == maxColumns) {
-			currentColumnCount = 0;
-			currentRowCount++;
-		}
-
-		AddLight(glm::vec3(x, y, z));
-	}
-
+	TotalModels++;
+	
+	CreateLights();
+	
 	InitializeForwardResources();
 	InitializeDeferredPassResources();
 	InitializeLightSourcesRenderResources();
@@ -727,6 +741,8 @@ void DeferredRendering::CleanUp() {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
+	gfxDevice->DestroyBuffer(m_LightBuffer);
+
 	gfxDevice->DestroyShader(m_LightSourcesVertexShader);
 	gfxDevice->DestroyShader(m_LightSourcesFragmentShader);
 	gfxDevice->DestroyDescriptorSetLayout(m_LightSourcesSetLayout);
@@ -758,12 +774,25 @@ void DeferredRendering::Update(const float constantT, const float deltaT, InputS
 	for (size_t LightIndex = 0; LightIndex < TotalLights; ++LightIndex) {
 		Scene::LightComponent& light = m_Lights[LightIndex];
 
+		glm::vec3 LightNewPosition = light.position;
+
+		float radius = m_CubeRadius[LightIndex];
+		float angularVelocity = glm::sqrt(1 / (radius * radius * radius));
+
+		m_CubeCurrentTheta[LightIndex] += angularVelocity * deltaT;
+
+		LightNewPosition.x = m_GlobalLightRelativePosition.x + (radius * glm::cos(m_CubeCurrentTheta[LightIndex] * m_LightWaveFrequency));
+		LightNewPosition.y = m_LightsOriginalPosition[LightIndex].y + m_GlobalLightRelativePosition.y;
+		LightNewPosition.z = m_GlobalLightRelativePosition.z + (radius * glm::sin(m_CubeCurrentTheta[LightIndex] * m_LightWaveFrequency));
+
+		light.radius = m_GlobalLightRadius;
+		light.position = glm::vec4(LightNewPosition, light.position.w);
+
 		glm::mat4 toOrigin		= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f));
-		glm::mat4 scale			= glm::scale(glm::mat4(1.0f), glm::vec3(light.scale));
-		glm::mat4 toPosition	= glm::translate(glm::mat4(1.0f), glm::vec3(light.position));
+		glm::mat4 scale			= glm::scale(glm::mat4(1.0f), glm::vec3(m_LightSourceScaleHandler));
+		glm::mat4 toPosition	= glm::translate(glm::mat4(1.0f), glm::vec3(LightNewPosition));
 
 		light.model = toPosition * scale * toOrigin;
-//		light.radius = Scene::CalculateLightRadius(light);
 	}
 
 	for (size_t LightSphereVolumeIndex = 0; LightSphereVolumeIndex < TotalLights; ++LightSphereVolumeIndex) {
@@ -773,7 +802,7 @@ void DeferredRendering::Update(const float constantT, const float deltaT, InputS
 		SphereVolume->Transformations.scaleHandler = m_Lights[LightSphereVolumeIndex].radius;
 	}
 
-	gfxDevice->UpdateBuffer(m_LightBuffer, m_Lights.data());
+	gfxDevice->UpdateBuffer(m_LightBuffer, 0, m_Lights.data(), sizeof(Scene::LightComponent) * TotalLights);
 }
 
 void DeferredRendering::RenderForward(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -847,7 +876,6 @@ void DeferredRendering::RenderDeferred(const uint32_t currentFrame, const VkComm
 
 	DeferredForwardCombinedPass(currentFrame, commandBuffer);
 
-	// TODO: find out why the render pass'implicit' layout transition doesn't happen for this render target in the very first usage.
 	if (m_FirstDeferredPassFrame) {
 		gfxDevice->TransitionImageLayout(
 			DeferredResources.CompositionBufferAttachments.Color,
@@ -933,9 +961,10 @@ void DeferredRendering::DeferredLightingSphereOptimizationCompositionPass(const 
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &SphereModel.DataBuffer.Handle, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, SphereModel.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
-		SamplePushConstants.Model = SphereModel.GetModelMatrix();
+		SphereCompositionPushConstants.Model = SphereModel.GetModelMatrix();
+		SphereCompositionPushConstants.LightIndex = SphereIndex;
 
-		vkCmdPushConstants(commandBuffer, DeferredResources.SphereCompositionPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
+		vkCmdPushConstants(commandBuffer, DeferredResources.SphereCompositionPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SphereCompositionPushConstants);
 
 		for (const auto& Mesh : SphereModel.Meshes) {
 			vkCmdDrawIndexed(
@@ -956,7 +985,6 @@ void DeferredRendering::DeferredForwardCombinedPass(const uint32_t currentFrame,
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	// TODO: Move the whole copy image to a better/separate function.
 	// Copying depth buffer before rendering - BEGIN 
 	{
 
@@ -1048,13 +1076,24 @@ void DeferredRendering::RenderUI() {
 	m_Camera.OnUIRender("Main Camera - Settings");
 
 	if (ImGui::TreeNode("Lights")) {
-		if (ImGui::Button("Add Light")) {
-			AddLight();
+
+		size_t initialLightCount = CurrentLightCount;
+
+		ImGui::DragInt("Light Count", &CurrentLightCount, 10, 0, MAX_LIGHTS);
+		ImGui::DragFloat("All Light Radius", &m_GlobalLightRadius, 0.02f, 0.0f, 10.0f);
+		ImGui::DragFloat("Light Wave Displacement", &m_LightWaveDisplacement, 0.02f, 0.0f, 10.0f);
+		ImGui::DragFloat("Light Wave Frequency", &m_LightWaveFrequency, 0.002f, 0.0f, 10.0f);
+		ImGui::DragFloat("Light Source Scale Handler", &m_LightSourceScaleHandler, 0.002f, 0.0f, 10.0f);
+
+		ImGui::DragFloat("Inner Radius", &m_InnerRadius, 0.02f, 0.0f, 20.0f);
+		ImGui::DragFloat("Outer Radius", &m_OuterRadius, 0.02f, 0.0f, 20.0f);
+		ImGui::DragFloat("Thickness", &m_Thickness, 0.02f, 0.0f, 20.0f);
+
+		if (ImGui::Button("Create Lights") || initialLightCount != CurrentLightCount) {
+			CreateLights();
 		}
 
-		if (ImGui::Button("Remove Light")) {
-			RemoveLight();
-		}
+		ImGui::DragFloat3("Global Light Relative Position", (float*)&m_GlobalLightRelativePosition, 0.02f, -100.0f, 100.0f);
 
 		for (size_t LightIndex = 0; LightIndex < TotalLights; LightIndex++) {
 			std::string LightId = "Light ";
@@ -1065,9 +1104,7 @@ void DeferredRendering::RenderUI() {
 				ImGui::DragFloat("Light Scale", &m_Lights[LightIndex].scale, 0.01f, 0.0f, 1.0f);
 				ImGui::ColorPicker4("Light Color", (float*)&m_Lights[LightIndex].color);
 				ImGui::DragFloat("Light Intensity", (float*)&m_Lights[LightIndex].color.a, 0.02f, 0.0f, 1.0f);
-//				ImGui::DragFloat("Light Linear Attenuation", &m_Lights[LightIndex].linearAttenuation, 0.02f, -20.0f, 20.0f);
-//				ImGui::DragFloat("Light Quadratic Attenuation", &m_Lights[LightIndex].quadraticAttenuation, 0.02f, -20.0f, 20.0f);
-				ImGui::DragFloat("Light Radius", &m_Lights[LightIndex].radius, 0.02f, 0.0f, 10.0f);
+				ImGui::DragFloat("Light Radius (Deactivated)", &m_Lights[LightIndex].radius, 0.02f, 0.0f, 10.0f);
 				ImGui::TreePop();
 			}
 		}

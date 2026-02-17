@@ -3,7 +3,6 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 
 #define MAX_MATERIALS 50
-#define MAX_LIGHTS 50
 
 layout (location = 0) in vec3 in_frag_pos;
 layout (location = 1) in vec3 in_frag_normal;
@@ -96,8 +95,8 @@ layout (std140, set = 0, binding = 1) uniform MaterialGPUData {
 
 layout (set = 0, binding = 2) uniform sampler2D textures[];
 
-layout (std140, set = 0, binding = 3) uniform LightGPUData {
-	light_t lights[MAX_LIGHTS];
+layout (std140, set = 0, binding = 3) readonly buffer LightGPUData {
+	light_t lights[];
 } light_gpu_data;
 
 layout (push_constant) uniform PushConstants {
