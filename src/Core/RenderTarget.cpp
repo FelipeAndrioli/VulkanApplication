@@ -861,119 +861,39 @@ namespace Graphics {
 	/*  ========================== Depth Only Cube Render Target Implementation End ========================== */
 
 	/*  ========================== MultiAttachment Offscreen Render Target Implementation Begin ========================== */
+	MultiAttachmentRenderTarget::MultiAttachmentRenderTarget(
+			const uint32_t width, 
+			const uint32_t height, 
+			const uint32_t samples,
+			RenderPassDescription& renderPassDescription) {
 
-	MultiAttachmentRenderTarget::MultiAttachmentRenderTarget(const uint32_t width, const uint32_t height, const uint32_t numColorAttachments, const Graphics::Format imageFormat) {
-		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-		
-		m_Width					= width;
-		m_Height				= height;
-		m_ImageFormat			= imageFormat;
-		m_NumColorAttachments	= numColorAttachments;
+		m_Width	= width;
+		m_Height = height;
+		m_MsaaSamples = samples;
 
-		m_Framebuffers		.resize(gfxDevice->GetSwapChain().ImageViews.size());
-		m_ColorAttachments	.resize(m_NumColorAttachments);
-		m_ResolveAttachments.resize(m_NumColorAttachments);
-		m_DepthAttachments	.resize(1);
-
-		Create();
+		Resize(m_Width, m_Height, renderPassDescription);
 	}
 
 	MultiAttachmentRenderTarget::~MultiAttachmentRenderTarget() {
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-		for (size_t i = 0; i < m_NumColorAttachments; ++i) {
-			gfxDevice->DestroyImage(m_ColorAttachments[i]);
-			gfxDevice->DestroyImage(m_ResolveAttachments[i]);
-		}
+		gfxDevice->DestroyRenderPass(RenderPassHandle);
+		gfxDevice->DestroyFramebuffer(m_Framebuffers);
 
-		gfxDevice->DestroyImage(m_DepthAttachments[0]);
-
-		m_ColorAttachments.clear();
-		m_ResolveAttachments.clear();
-		m_DepthAttachments.clear();
-
-		gfxDevice->DestroyRenderPass(m_RenderPassDescription.Handle);
+		m_Framebuffers.clear();
 	}
 
+	// These three methods (Create, ChangetLayout, Resize) will get removed from the final version of this API
 	void MultiAttachmentRenderTarget::Create() {
-		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-		std::vector<VkImageView> views = {};
-
-		for (uint32_t attachmentIndex = 0; attachmentIndex < m_NumColorAttachments; ++attachmentIndex) {
-
-			gfxDevice->CreateRenderTarget(m_ColorAttachments[attachmentIndex], gfxDevice->ConvertFormat(m_ImageFormat), GetExtent(), gfxDevice->m_MsaaSamples);
-			gfxDevice->CreateImageSampler(m_ColorAttachments[attachmentIndex]);
-
-			m_RenderPassDescription.Attachments.push_back(
-				Graphics::RenderPassAttachment::RenderTarget(
-					m_ColorAttachments[attachmentIndex],
-					m_ImageFormat,
-					RenderPassAttachment::AttachmentLoadOp::CLEAR,
-					RenderPassAttachment::AttachmentStoreOp::STORE,
-					ResourceState::UNDEFINED,
-					ResourceState::RENDERTARGET,
-					ResourceState::SHADER_RESOURCE)
-			);
-		
-			m_ClearValues.push_back({ .color{0.0f, 0.0f, 0.0f, 1.0f } });
-			views.push_back(m_ColorAttachments[attachmentIndex].ImageView);
-		}
-
-		gfxDevice->CreateDepthBuffer(m_DepthAttachments[0], GetExtent(), gfxDevice->m_MsaaSamples);
-
-		m_RenderPassDescription.Attachments.push_back(
-			Graphics::RenderPassAttachment::DepthStencil(
-				m_DepthAttachments[0], 
-				gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
-				RenderPassAttachment::AttachmentLoadOp::CLEAR,
-				RenderPassAttachment::AttachmentStoreOp::STORE,
-				ResourceState::UNDEFINED,
-				ResourceState::DEPTHSTENCIL,
-				ResourceState::DEPTHSTENCIL_READONLY));
-
-		m_ClearValues.push_back({ .depthStencil{ 1.0f, 0 } });
-		views.push_back(m_DepthAttachments[0].ImageView);
-		
-		for (uint32_t attachmentIndex = 0; attachmentIndex < m_NumColorAttachments; ++attachmentIndex) {
-			gfxDevice->CreateRenderTarget(m_ResolveAttachments[attachmentIndex], gfxDevice->ConvertFormat(m_ImageFormat), GetExtent(), VK_SAMPLE_COUNT_1_BIT);
-			gfxDevice->CreateImageSampler(m_ResolveAttachments[attachmentIndex]);
-
-			m_RenderPassDescription.Attachments.push_back(
-				Graphics::RenderPassAttachment::Resolve(
-					m_ResolveAttachments[attachmentIndex], 
-					m_ImageFormat, 
-					RenderPassAttachment::AttachmentLoadOp::CLEAR,
-					RenderPassAttachment::AttachmentStoreOp::STORE,
-					ResourceState::UNDEFINED,
-					ResourceState::RENDERTARGET,
-					ResourceState::SHADER_RESOURCE)
-			);
-			
-			m_ClearValues.push_back({ .color{0.0f, 0.0f, 0.0f, 1.0f } });
-			views.push_back(m_ResolveAttachments[attachmentIndex].ImageView);
-		}
-
-		gfxDevice->CreateRenderPass(m_RenderPassDescription);
-
-		assert(m_RenderPassDescription.Handle != VK_NULL_HANDLE && "Failed to create render pass!");
-
-		for (int i = 0; i < m_Framebuffers.size(); i++) {
-			gfxDevice->CreateFramebuffer(m_RenderPassDescription.Handle, views, GetExtent(), m_Framebuffers[i]);
-		}
 	}
 
 	void MultiAttachmentRenderTarget::ChangeLayout(VkImageLayout newLayout) {
-		/*
-		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-		for (uint32_t ColorBufferIndex = 0; ColorBufferIndex < NumColorAttachments; ++ColorBufferIndex) {
-			if (ColorBuffers[ColorBufferIndex].ImageLayout == newLayout)
-				continue;
+	}
 
-			gfxDevice->TransitionImageLayout(ColorBuffers[ColorBufferIndex], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, newLayout);
-		}
-		*/
+	void MultiAttachmentRenderTarget::Resize(const uint32_t width, const uint32_t height) {
+
 	}
 
 	void MultiAttachmentRenderTarget::Begin(const VkCommandBuffer& commandBuffer) {
@@ -985,7 +905,7 @@ namespace Graphics {
 
 		VkRenderPassBeginInfo renderPassBeginInfo	= {};
 		renderPassBeginInfo.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.renderPass				= m_RenderPassDescription.Handle;
+		renderPassBeginInfo.renderPass				= RenderPassHandle;
 		renderPassBeginInfo.framebuffer				= m_Framebuffers[gfxDevice->GetSwapChain().ImageIndex];
 		renderPassBeginInfo.renderArea.extent		= GetExtent();
 		renderPassBeginInfo.pNext					= nullptr;
@@ -1007,49 +927,67 @@ namespace Graphics {
 		EndRenderPass(commandBuffer);
 	}
 	
-	void MultiAttachmentRenderTarget::Resize(uint32_t width, uint32_t height) {
+	void MultiAttachmentRenderTarget::Resize(uint32_t width, uint32_t height, RenderPassDescription& renderPassDescription) {
 		m_Width = width;
 		m_Height = height;
 
 		Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-		std::vector<VkImageView> attachmentViews = {};
-
-		for (size_t i = 0; i < m_ColorAttachments.size(); ++i) {
-			gfxDevice->ResizeImage(m_ColorAttachments[i], m_Width, m_Height);
-			gfxDevice->CreateImageSampler(m_ColorAttachments[i]);
-
-			attachmentViews.emplace_back(m_ColorAttachments[i].ImageView);
-		}
-		
-		for (size_t i = 0; i < m_DepthAttachments.size(); ++i) {
-			gfxDevice->ResizeImage(m_DepthAttachments[i], m_Width, m_Height);
-			
-			attachmentViews.emplace_back(m_DepthAttachments[i].ImageView);
-		}
-
-		for (size_t i = 0; i < m_ResolveAttachments.size(); ++i) {
-			gfxDevice->ResizeImage(m_ResolveAttachments[i], m_Width, m_Height);
-			gfxDevice->CreateImageSampler(m_ResolveAttachments[i]);
-			
-			attachmentViews.emplace_back(m_ResolveAttachments[i].ImageView);
-		}
-
 		gfxDevice->DestroyFramebuffer(m_Framebuffers);
 
 		m_Framebuffers.resize(gfxDevice->GetSwapChain().ImageViews.size());
+		m_NumColorAttachments = 0;
+		m_ClearValues.clear();
 
-		for (int i = 0; i < m_Framebuffers.size(); i++) {
-			gfxDevice->CreateFramebuffer(m_RenderPassDescription.Handle, attachmentViews, GetExtent(), m_Framebuffers[i]);
+		std::vector<VkImageView> framebufferViews = {};
+
+		// Note: When creating a framebuffer we must assure the following attachment order:
+		//		1) Render Target
+		//		2) Depth Stencil
+		//		3) Resolve
+
+		for (int attachmentIndex = 0; attachmentIndex < renderPassDescription.Attachments.size(); ++attachmentIndex) {
+			RenderPassAttachment& attachment = renderPassDescription.Attachments[attachmentIndex];
+
+			switch (attachment.Type) {
+			case RenderPassAttachment::AttachmentType::RENDERTARGET:
+				{
+					framebufferViews.push_back(attachment.Texture.ImageView);
+					++m_NumColorAttachments;
+					m_ClearValues.push_back( { .color = { 0.0f, 0.0f, 0.0f, 1.0f } });
+				} break;
+			case RenderPassAttachment::AttachmentType::DEPTHSTENCIL:
+				{
+					framebufferViews.push_back(attachment.Texture.ImageView);
+					m_ClearValues.push_back( { .depthStencil = { 1.0f, 0 } });
+				} break;
+			case RenderPassAttachment::AttachmentType::RESOLVE:
+				{
+					framebufferViews.push_back(attachment.Texture.ImageView);
+					m_ClearValues.push_back( { .color = { 0.0f, 0.0f, 0.0f, 1.0f } });
+				} break;
+			default:
+				break;
+			}
+		}
+
+		if (RenderPassHandle == VK_NULL_HANDLE) {
+			RenderPassHandle = gfxDevice->CreateRenderPass(renderPassDescription);
+		}
+
+		assert(RenderPassHandle != VK_NULL_HANDLE);
+
+		for (int framebufferIndex = 0; framebufferIndex < m_Framebuffers.size(); ++framebufferIndex) {
+			gfxDevice->CreateFramebuffer(RenderPassHandle, framebufferViews, GetExtent(), m_Framebuffers[framebufferIndex]);
 		}
 	}
 
 	const VkSampleCountFlagBits MultiAttachmentRenderTarget::GetSampleCount() const {
-		return m_ColorAttachments[0].Description.MsaaSamples;
+		return static_cast<VkSampleCountFlagBits>(m_MsaaSamples);
 	}
 
 	const VkRenderPass& MultiAttachmentRenderTarget::GetRenderPassHandle() const {
-		return m_RenderPassDescription.Handle;
+		return RenderPassHandle;
 	}
 
 	const VkViewport MultiAttachmentRenderTarget::GetViewport() const {

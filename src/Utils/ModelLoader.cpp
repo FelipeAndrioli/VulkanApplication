@@ -323,6 +323,20 @@ void CompileMesh(Assets::Model& model) {
 	gfxDevice->WriteBuffer	(model.DataBuffer, vertices.data(), sizeof(Assets::Vertex) * vertices.size(), sizeof(uint32_t) * indices.size());
 }
 
+void ModelLoader::FlipModelUvVertically(Assets::Model& model) {
+	
+	for (Assets::Mesh& mesh : model.Meshes) {
+		for (Assets::Vertex& vertex : mesh.Vertices) {
+			vertex.texCoord.y *= -1;
+		}
+	}
+
+	GraphicsDevice* gfxDevice = GetDevice();
+	gfxDevice->DestroyBuffer(model.DataBuffer);
+
+	CompileMesh(model);
+}
+
 std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 
 	Timestep geometryBegin = glfwGetTime();
@@ -332,12 +346,6 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 	model->MaterialPath = Helper::get_directory(path);
 	model->Name = Helper::get_directory_name(path);
 	
-	static std::unordered_map<std::string, int> loadedFileNames;
-
-	if (loadedFileNames[model->Name] > 0) {
-		model->Name = model->Name + "_" + std::to_string(loadedFileNames[model->Name]);
-	}
-		
 	loadedFileNames[model->Name]++;
 
 	const aiScene* scene = aiImportFile(path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs);
@@ -345,6 +353,7 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 	assert(scene && scene->HasMeshes());
 
 	ProcessNode(*model.get(), scene->mRootNode, scene);
+
 	Timestep geometryEnd = glfwGetTime();
 
 	Timestep materialBegin = glfwGetTime();
@@ -368,6 +377,10 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 }
 
 std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::vec3 position, float size) {
+	if (modelType == ModelType::ICOSPHERE) {
+		return ModelLoader::LoadSphere(modelType, 4);
+	}
+
 	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
 
 	if (modelType == ModelType::CUBE) {
@@ -375,21 +388,53 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::
 	
 		model->Meshes = Assets::MeshGenerator::GenerateCubeMesh(position, size);
 		model->Name = "Cube_" + std::to_string(cubeIdx++);
-		model->Transformations.translation = position;
-
-		CompileMesh(*model.get());
-
-		return model;
 	}
 	else if (modelType == ModelType::QUAD) {
 		static int quadIdx = 0;
 
 		model->Meshes = Assets::MeshGenerator::GenerateQuadMesh(position, size);
 		model->Name = "Quad_" + std::to_string(quadIdx++);
-		model->Transformations.translation = position;
-
-		CompileMesh(*model.get());
-
-		return model;
 	}
+
+	model->Transformations.translation = position;
+	CompileMesh(*model.get());
+
+	return model;
+}
+
+// Note: Generate a sphere mesh of 'modelType' type, if a invalid Model Type is given, then 
+// Icosphere mesh is assumed. Generates a unit sphere mesh located at the world origin.
+std::shared_ptr<Assets::Model> ModelLoader::LoadSphere(ModelType modelType, size_t sphereSubdivisions) {
+	std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
+	static int sphereIdx = 0;
+
+	if (0) {
+		// Note: Only icosphere mesh is supported for now.
+	} else {
+		model->Meshes = Assets::MeshGenerator::GenerateIcosphereMesh(sphereSubdivisions);
+	}
+	
+	model->Name = "Sphere_" + std::to_string(sphereIdx++);
+
+	CompileMesh(*model.get());
+
+	return model;
+}
+
+std::shared_ptr<Assets::Model> ModelLoader::DuplicateModel(std::shared_ptr<Assets::Model> model) {
+	Timestep duplicateBegin = glfwGetTime();
+
+	std::shared_ptr<Assets::Model> newModel = std::make_shared<Assets::Model>();
+	newModel->Meshes = model->Meshes;
+
+	newModel->Name = model->Name + "_" + std::to_string(loadedFileNames[model->Name]);
+	loadedFileNames[model->Name]++;
+
+	CompileMesh(*newModel.get());
+	
+	Timestep duplicateEnd = glfwGetTime();
+
+	std::cout << "Loading time: " << duplicateEnd.GetSeconds() - duplicateBegin.GetSeconds() << "\t| Model: " << newModel->Name << '\n';
+
+	return newModel;
 }

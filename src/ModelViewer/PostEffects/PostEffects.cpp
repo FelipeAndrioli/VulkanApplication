@@ -84,7 +84,6 @@ void PostEffects::Render(const VkCommandBuffer& commandBuffer, const Graphics::P
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	if (m_PostEffectsPSO.pipeline == VK_NULL_HANDLE 
-		|| m_PostEffectsPSO.renderPass != &renderTarget.GetRenderPass() 
 		|| colorBuffer.Description.Width != m_Width
 		|| colorBuffer.Description.Height != m_Height) {
 

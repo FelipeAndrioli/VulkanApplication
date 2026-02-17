@@ -15,25 +15,26 @@ Directional = 0,
 PointLight = 1,
 SpotLight = 2
 */
-
 struct light_t {
 	vec4 position;
 	vec4 direction;
-	vec4 color;
-	vec4 extra;
+	vec4 color;			// w -> light intensity
 
-	mat4 model;
-	mat4 view_proj;	
+	mat4 model;			
+	mat4 view_proj;			 
 
 	int type;
-	int flags;
+	int flags;					
 	int index;
 	int pcf_samples;
+	int extra0;
+	int extra1;
+	int extra2;
 
-	float minBias;
+	float min_bias;
 	float sps_spread;
 	float outer_cut_off_angle;
-	float cut_off_angle;
+	float cut_off_angle;		
 	float raw_cut_off_angle;
 	float raw_outer_cut_off_angle;
 	float linear_attenuation;
@@ -42,6 +43,7 @@ struct light_t {
 	float ambient;
 	float diffuse;
 	float specular;
+	float radius;
 };
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {

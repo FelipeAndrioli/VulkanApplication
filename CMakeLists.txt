@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.24)
 
 project("VulkanApplication")
 
@@ -26,8 +26,22 @@ set(RUNTIME_SHADER_COMPILE "RUNTIME_SHADER_COMPILE" CACHE STRING "TRUE")
 
 if (RUNTIME_SHADER_COMPILE)
 	message("RUNTIME SHADER COMPILATION ENABLED")
-	find_package(Vulkan REQUIRED COMPONENTS glslang SPIRV-Tools)
+	find_package(Vulkan REQUIRED COMPONENTS glslang shaderc_combined SPIRV-Tools)
+
+	if (NOT Vulkan_glslang_FOUND)
+		message("FATAL ERROR - glslang not found!")
+	endif()
+
+	if (NOT Vulkan_SPIRV-Tools_FOUND)
+		message("FATAL ERROR - SPIRV-Tools not found!")
+	endif()
+
+	if (NOT Vulkan_shaderc_combined_FOUND)
+		message("FATAL ERROR - shaderc_combined not found!")
+	endif()
+
 else()
+	message("RUNTIME SHADER COMPILATION DISABLED")
 	find_package(Vulkan REQUIRED)
 endif()
 

@@ -20,6 +20,9 @@
 ### Gaussian Blur - Bloom
 ![Bloom](screenshots/bloom.png)
 
+### Deferred Rendering (with light volume optimization)
+![Deferred - Light Volume Optimization](screenshots/deferred_sphere_optimization.png)
+
 ## Current Work (not in order)
 
 - [x] Depth Buffer 
@@ -42,6 +45,7 @@
 	- [x] Individual Cells Plane 
 	- [x] Unique Cells Plane 
 	- [x] Cube
+	- [x] Sphere
 - [x] glTF
 - [x] Cubemap/Skybox 
 - [x] Lighting
@@ -61,22 +65,23 @@
 - [ ] Shadows
 	- [x] Directional
 	- [x] Spot
-	- [ ] Point
+	- [x] Point
 	- [ ] Multiple Lights
 		- [x] Spot
-		- [x] Directional
 		- [ ] Point
 	- [ ] Automatic light frustum
 	- [ ] Soft Shadows
+- [x] Parallax Mapping
+- [x] HDR
+- [x] Bloom
+- [x] Defferred Shading
+    - [x] Real time comparison with forward rendering
+    - [x] Basic deferred rendering with range check in a for loop in the fragment shader
+    - [x] Light volume optimization
 
 ## Next Up
-- [ ] Parallax Mapping
-- [ ] HDR
-- [ ] Bloom
-- [ ] Defferred Shading
+- [ ] Fix broken samples after small refactoring
 - [ ] SSAO
-- [ ] PRB
-- [ ] Refactoring
 
 ## Planning 
 - [ ] Shader Include
@@ -87,8 +92,11 @@
 - [ ] Render Graph
 - [ ] Scene selection
 - [ ] Custom meshes II 
-	- [ ] Sphere
 	- [ ] Voxel
+
+## Planning for new engine
+- [ ] New Architecture
+- [ ] PBR
 
 ## Small problems to remember to solve
 

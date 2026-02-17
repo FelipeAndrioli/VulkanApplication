@@ -232,8 +232,10 @@ namespace Graphics {
 		void EndFrame(const Frame& frame);
 		void PresentFrame(const Frame& frame);
 
+		VkCommandBuffer BeginSingleTimeCommandBuffer();
 		VkCommandBuffer BeginSingleTimeCommandBuffer(VkCommandPool& commandPool);
 		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer, VkCommandPool& commandPool);
+		void EndSingleTimeCommandBuffer(VkCommandBuffer& commandBuffer);
 
 		void CreateImage(GPUImage& image, const ImageDescription& description);
 		void CreateImageView(const VkImage& image, VkImageView& imageView, const ImageDescription& description);
@@ -244,6 +246,7 @@ namespace Graphics {
 		void AllocateMemory(GPUBuffer& buffer, VkMemoryPropertyFlagBits memoryProperty);
 
 		void TransitionImageLayout(const VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout, const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask, const VkPipelineStageFlags srcPipelineStage, const VkPipelineStageFlags dstPipelineStage);
+		void TransitionImageLayout(GPUImage& image, Graphics::ResourceState currentLayout, Graphics::ResourceState newLayout);
 		void TransitionImageLayout(GPUImage& image, VkImageLayout oldLayout, VkImageLayout newLayout);
 		void TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
 		void TransitionImageLayout(const VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout, const VkImageSubresourceRange subresourceRange, const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask, const VkPipelineStageFlags srcPipelineStage, const VkPipelineStageFlags dstPipelineStage);
@@ -264,9 +267,12 @@ namespace Graphics {
 		void CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer, const uint32_t layers = 1);
 		void CreateDepthBuffer(GPUImage& depthBuffer, const RenderPassDesc& renderPassDesc);
 		void CreateDepthBuffer(GPUImage& depthBuffer, const VkExtent2D& extent, const VkSampleCountFlagBits& samples);
+		void CreateDepthBuffer(GPUImage& depthBuffer, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples);
+		void CreateDepthBuffer(GPUImage& image, Format format, uint32_t width, uint32_t height, uint32_t samples);
 		void CreateDepthOnlyBuffer(GPUImage& depthBuffer, const VkExtent2D extent, const VkSampleCountFlagBits sampleCount, const uint32_t layers);
 		void CreateRenderTarget(GPUImage& renderTarget, const RenderPassDesc& renderPassDesc, VkFormat format);
 		void CreateRenderTarget(GPUImage& renderTarget, const VkFormat& format, const VkExtent2D& extent, const VkSampleCountFlagBits& samples);
+		void CreateRenderTarget(GPUImage& image, const Format format, uint32_t width, uint32_t height, uint32_t samples);	
 
 		template <class T>
 		void CopyDataFromStaging(GPUBuffer& dstBuffer, T* data, size_t dataSize, size_t offset);
@@ -285,7 +291,7 @@ namespace Graphics {
 		void DestroyBuffer(GPUBuffer& buffer);
 	
 		void CreateRenderPass(RenderPass& renderPass);
-		void CreateRenderPass(RenderPassDescription& renderPassDesc);
+		VkRenderPass CreateRenderPass(RenderPassDescription& renderPassDesc);
 		VkSubpassDependency CreateSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, std::vector<RenderPassAttachment>& attachments, std::vector<SubPassDescription>& subpassDescriptions);
 		void DestroyRenderPass(VkRenderPass& renderPass);
 		void DestroyFramebuffer(std::vector<VkFramebuffer>& framebuffers);
@@ -317,6 +323,7 @@ namespace Graphics {
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUImage& image);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const VkImageLayout& imageLayout, const VkImageView& imageView, const VkSampler& imageSampler);
 
+		uint32_t GetMsaaSamples() { return static_cast<uint32_t>(m_MsaaSamples); }
 		VkFormat ConvertFormat(Format format);
 		Format ConvertFormat(VkFormat format);
 		VkImageLayout ConvertResourceStateToImageLayout(ResourceState resourceState);

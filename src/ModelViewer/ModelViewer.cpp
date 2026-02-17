@@ -191,8 +191,8 @@ void ModelViewer::StartUp() {
 	
 	ResourceManager* rm = ResourceManager::Get();
 
-	int diffuseTextureIndex = rm->AddTexture(TextureLoader::LoadTexture("C:/Users/Felipe/Documents/current_projects/models/textures/brickwall.jpg", Texture::TextureType::DIFFUSE, false, false));
-	int normalTextureIndex	= rm->AddTexture(TextureLoader::LoadTexture("C:/Users/Felipe/Documents/current_projects/models/textures/normal_mapping.png", Texture::TextureType::NORMAL, false, false));
+	int diffuseTextureIndex = rm->AddTexture(TextureLoader::LoadTexture("C:/Users/felip/Documents/current_projects/models/textures/brickwall.jpg", Texture::TextureType::DIFFUSE, false, false));
+	int normalTextureIndex	= rm->AddTexture(TextureLoader::LoadTexture("C:/Users/felip/Documents/current_projects/models/textures/normal_mapping.png", Texture::TextureType::NORMAL, false, false));
 
 	Material material							= {};
 	material.Name								= "Normal Map Testing";
@@ -206,26 +206,26 @@ void ModelViewer::StartUp() {
 		mesh.MaterialIndex	= materialIndex;
 	}
 
-	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/backpack/backpack.obj"));
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/backpack/backpack.obj"));
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.3f;
 	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(0.0f, -3.75f, 0.0f);
 	m_Models[m_Models.size() - 1]->FlipUvVertically					= true;
 	
-	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/stanford_dragon_sss_test/scene.gltf"));
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 11.2f;
 	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(2.5f, -3.75f, -2.5f);
 	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -46.9f, 0.0f);
 
-	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj"));
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj"));
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.008f;
 	m_Models[m_Models.size() - 1]->Transformations.rotation.y		= 45.0f;
 
-	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/wooden_window/scene.gltf"));
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/wooden_window/scene.gltf"));
 	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(0.0f, -3.3f, -0.9f);
 	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -20.0f, 0.0f);
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.214f;
 	
-	m_Models.emplace_back(Renderer::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/wooden_window/scene.gltf"));
+	m_Models.emplace_back(Renderer::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/wooden_window/scene.gltf"));
 	m_Models[m_Models.size() - 1]->Transformations.translation		= glm::vec3(2.822f, -3.3f, -3.9f);
 	m_Models[m_Models.size() - 1]->Transformations.rotation			= glm::vec3(0.0f, -20.0f, 0.0f);
 	m_Models[m_Models.size() - 1]->Transformations.scaleHandler		= 0.214f;
@@ -419,4 +419,4 @@ void ModelViewer::Resize(uint32_t width, uint32_t height) {
 	m_PostEffectsRenderTarget	->Resize(width, height);
 }
 
-RUN_APPLICATION(ModelViewer)
+//RUN_APPLICATION(ModelViewer)

@@ -207,6 +207,7 @@ namespace Graphics {
 		static RenderPassAttachment RenderTarget(
 			const GPUImage& resource,
 			Format format,
+			uint8_t sampleCount			= 1,
 			AttachmentLoadOp loadOp		= AttachmentLoadOp::LOAD,
 			AttachmentStoreOp storeOp	= AttachmentStoreOp::STORE,
 			ResourceState initialLayout = ResourceState::SHADER_RESOURCE,
@@ -230,6 +231,7 @@ namespace Graphics {
 		static RenderPassAttachment DepthStencil(
 			const GPUImage& resource,
 			Format format,
+			uint8_t sampleCount			= 1,
 			AttachmentLoadOp loadOp		= AttachmentLoadOp::LOAD,
 			AttachmentStoreOp storeOp	= AttachmentStoreOp::STORE,
 			ResourceState initialLayout = ResourceState::DEPTHSTENCIL,
@@ -253,6 +255,7 @@ namespace Graphics {
 		static RenderPassAttachment Resolve(
 			const GPUImage& resource,
 			Format format,
+			uint8_t sampleCount			= 1,
 			AttachmentLoadOp loadOp		= AttachmentLoadOp::LOAD,
 			AttachmentStoreOp storeOp	= AttachmentStoreOp::STORE,
 			ResourceState initialLayout = ResourceState::SHADER_RESOURCE,
@@ -276,7 +279,6 @@ namespace Graphics {
 
 	struct RenderPassDescription {
 		std::vector<RenderPassAttachment> Attachments;
-		VkRenderPass Handle = VK_NULL_HANDLE;
 	};
 
 	struct SubPassDescription {
