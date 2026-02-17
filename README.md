@@ -80,6 +80,7 @@
     - [x] Light volume optimization
 
 ## Next Up
+- [ ] Fix broken samples after small refactoring
 - [ ] SSAO
 
 ## Planning 
