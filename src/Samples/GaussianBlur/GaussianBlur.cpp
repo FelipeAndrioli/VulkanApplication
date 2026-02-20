@@ -130,6 +130,12 @@ private:
 	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PingPongRenderTarget[2];
 	std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_BloomRenderTarget;
 
+	Graphics::GPUImage m_BloomColor = {};
+	Graphics::GPUImage m_BloomHDR = {};
+	Graphics::GPUImage m_BloomResolvedColor = {};
+	Graphics::GPUImage m_BloomResolvedHDR = {};
+	Graphics::GPUImage m_BloomDepthStencil = {};	
+
 	Graphics::Buffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 	Graphics::Buffer m_LightBuffer				= {};
 	Graphics::Buffer m_PostProcessBuffer		= {};
@@ -251,6 +257,8 @@ void GaussianBlur::RemoveLight() {
 
 void GaussianBlur::StartUp() {
 	
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
 	m_ScreenWidth	= settings.Width;
 	m_ScreenHeight	= settings.Height;
 
@@ -258,7 +266,108 @@ void GaussianBlur::StartUp() {
 
 	m_HDRExposure = 1.0f;
 
-	m_BloomRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(m_ScreenWidth, m_ScreenHeight, 2, Graphics::Format::R16G16B16A16_FLOAT);
+	uint32_t SampleCount = static_cast<uint32_t>(gfxDevice->GetMsaaSamples());
+
+	Graphics::RenderPassDescription m_BloomPassDescription = {};
+
+	gfxDevice->CreateRenderTarget(
+		m_BloomColor,
+		Graphics::Format::R16G16B16A16_FLOAT,
+		m_ScreenWidth,
+		m_ScreenHeight,
+		SampleCount);
+
+	gfxDevice->CreateRenderTarget(
+		m_BloomHDR,
+		Graphics::Format::R16G16B16A16_FLOAT,
+		m_ScreenWidth,
+		m_ScreenHeight,
+		SampleCount);
+
+	gfxDevice->CreateRenderTarget(
+		m_BloomResolvedColor,
+		Graphics::Format::R16G16B16A16_FLOAT,
+		m_ScreenWidth,
+		m_ScreenHeight,
+		1);
+
+	gfxDevice->CreateRenderTarget(
+		m_BloomResolvedHDR,
+		Graphics::Format::R16G16B16A16_FLOAT,
+		m_ScreenWidth,
+		m_ScreenHeight,
+		1);
+
+	gfxDevice->CreateDepthBuffer(
+		m_BloomDepthStencil,
+		gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
+		m_ScreenWidth,
+		m_ScreenHeight,
+		SampleCount);
+
+	m_BloomPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::RenderTarget(
+			m_BloomColor,
+			Graphics::Format::R16G16B16A16_FLOAT,
+			SampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED, 
+			Graphics::ResourceState::RENDERTARGET, 
+			Graphics::ResourceState::SHADER_RESOURCE));
+
+	m_BloomPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::RenderTarget(
+			m_BloomHDR,
+			Graphics::Format::R16G16B16A16_FLOAT,
+			SampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED, 
+			Graphics::ResourceState::RENDERTARGET, 
+			Graphics::ResourceState::SHADER_RESOURCE));
+
+	m_BloomPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::DepthStencil(
+			m_BloomDepthStencil,
+			gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
+			SampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED,
+			Graphics::ResourceState::DEPTHSTENCIL,
+			Graphics::ResourceState::DEPTHSTENCIL_READONLY));
+
+	m_BloomPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::Resolve(
+			m_BloomResolvedColor,
+			Graphics::Format::R16G16B16A16_FLOAT,
+			SampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED, 
+			Graphics::ResourceState::RENDERTARGET, 
+			Graphics::ResourceState::SHADER_RESOURCE
+		));
+
+	m_BloomPassDescription.Attachments.push_back(
+		Graphics::RenderPassAttachment::Resolve(
+			m_BloomResolvedHDR,
+			Graphics::Format::R16G16B16A16_FLOAT,
+			SampleCount,
+			Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+			Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+			Graphics::ResourceState::UNDEFINED, 
+			Graphics::ResourceState::RENDERTARGET, 
+			Graphics::ResourceState::SHADER_RESOURCE
+		));
+
+	m_BloomRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+		m_ScreenWidth,
+		m_ScreenHeight,
+		static_cast<uint32_t>(gfxDevice->GetMsaaSamples()),
+		m_BloomPassDescription);
+	
 	m_PostEffectsRenderTarget = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 
 	m_PingPongRenderTarget[0] = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight, Graphics::Format::R16G16B16A16_FLOAT, Graphics::ResourceState::SHADER_RESOURCE);
@@ -270,10 +379,9 @@ void GaussianBlur::StartUp() {
 		AddLight();
 	}
 
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 	ResourceManager* rm = ResourceManager::Get();
 
-	m_Models[m_TotalModels] = ModelLoader::LoadModel("C:/Users/Felipe/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
+	m_Models[m_TotalModels] = ModelLoader::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
 	m_Models[m_TotalModels]->Transformations.scaleHandler	= 0.008f;
 	m_Models[m_TotalModels]->ModelIndex						= static_cast<int>(m_TotalModels);
 
@@ -384,7 +492,7 @@ void GaussianBlur::StartUp() {
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; ++i) {
 		gfxDevice->CreateDescriptorSet(m_PostEffectsSetLayout, m_PostEffectsSet[i]);
-		gfxDevice->WriteDescriptor(m_PostEffectsInputLayouts[0].bindings[0], m_PostEffectsSet[i], m_BloomRenderTarget->GetResolvedColorBuffer()[0]);
+		gfxDevice->WriteDescriptor(m_PostEffectsInputLayouts[0].bindings[0], m_PostEffectsSet[i], m_BloomResolvedColor);
 		gfxDevice->WriteDescriptor(m_PostEffectsInputLayouts[0].bindings[1], m_PostEffectsSet[i], m_PostProcessBuffer);
 	}
 
@@ -428,7 +536,7 @@ void GaussianBlur::StartUp() {
 
 		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][0], m_PingPongRenderTarget[0]->GetColorBuffer());
 		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][1], m_PingPongRenderTarget[1]->GetColorBuffer());
-		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][2], m_BloomRenderTarget->GetResolvedColorBuffer()[1]);
+		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][2], m_BloomResolvedHDR);
 		
 		gfxDevice->CreateDescriptorSet(m_GaussianBlurSetLayout[1], m_GaussianBlurUBO[i]);
 
@@ -441,6 +549,12 @@ void GaussianBlur::CleanUp() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	m_BloomRenderTarget.reset();
+
+	gfxDevice->DestroyImage(m_BloomColor);
+	gfxDevice->DestroyImage(m_BloomHDR);
+	gfxDevice->DestroyImage(m_BloomDepthStencil);
+	gfxDevice->DestroyImage(m_BloomResolvedColor);
+	gfxDevice->DestroyImage(m_BloomResolvedHDR);
 
 	gfxDevice->DestroyShader(m_VertexShader);
 	gfxDevice->DestroyShader(m_FragShader);
@@ -779,7 +893,6 @@ void GaussianBlur::Resize(uint32_t width, uint32_t height) {
 	m_ScreenHeight	= height;
 
 	m_Camera.Resize(m_ScreenWidth, m_ScreenHeight);
-	m_BloomRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
 	m_PostEffectsRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
 	m_PingPongRenderTarget[0]->Resize(m_ScreenWidth, m_ScreenHeight);
 	m_PingPongRenderTarget[1]->Resize(m_ScreenWidth, m_ScreenHeight);
@@ -787,12 +900,12 @@ void GaussianBlur::Resize(uint32_t width, uint32_t height) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; ++i) {
-		gfxDevice->WriteDescriptor(m_PostEffectsInputLayouts[0].bindings[0], m_PostEffectsSet[i], m_BloomRenderTarget->GetResolvedColorBuffer()[0]);
+		gfxDevice->WriteDescriptor(m_PostEffectsInputLayouts[0].bindings[0], m_PostEffectsSet[i], m_BloomResolvedColor);
 		
 		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][0], m_PingPongRenderTarget[0]->GetColorBuffer());
 		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][1], m_PingPongRenderTarget[1]->GetColorBuffer());
-		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][2], m_BloomRenderTarget->GetResolvedColorBuffer()[1]);
+		gfxDevice->WriteDescriptor(m_GaussianBlurInputLayout[0].bindings[0], m_GaussianBlurSet[i][2], m_BloomResolvedHDR);
 	}
 }
 
-RUN_APPLICATION(GaussianBlur);
+//RUN_APPLICATION(GaussianBlur);
