@@ -103,7 +103,7 @@ private:
 	Graphics::Shader m_VertexShader = {};
 	Graphics::Shader m_FragShader = {};
 
-	Graphics::Buffer m_SceneBuffer = {};
+	Graphics::Buffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 
 	Graphics::PipelineState m_PSO = {};
 
@@ -219,7 +219,9 @@ void AmbientOcclusion::StartUp() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "../src/Samples/AmbientOcclusion/vertex.glsl");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragShader, "../src/Samples/AmbientOcclusion/fragment.glsl");
 
-	m_SceneBuffer = gfxDevice->CreateBuffer(sizeof(SceneUBOData));
+    for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+        m_SceneBuffer[i] = gfxDevice->CreateBuffer(sizeof(SceneUBOData));
+    }
 
 	Graphics::InputLayout inputLayout = {
 		.pushConstants = {
@@ -243,7 +245,7 @@ void AmbientOcclusion::StartUp() {
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_SetLayout, m_Set[i]);
-		gfxDevice->WriteDescriptor(inputLayout.bindings[0], m_Set[i], m_SceneBuffer);
+		gfxDevice->WriteDescriptor(inputLayout.bindings[0], m_Set[i], m_SceneBuffer[i]);
 		gfxDevice->WriteDescriptor(inputLayout.bindings[1], m_Set[i], rm->GetMaterialBuffer());
 		gfxDevice->WriteDescriptor(inputLayout.bindings[2], m_Set[i], rm->GetTextures());
 	}
@@ -454,7 +456,7 @@ void AmbientOcclusion::InitializeSSAO() {
 
     for (uint32_t frameIndex = 0; frameIndex < Graphics::FRAMES_IN_FLIGHT; frameIndex++) {
         gfxDevice->CreateDescriptorSet(m_GeometryPassSetLayout, m_GeometryPassSet[frameIndex]); 
-        gfxDevice->WriteDescriptor(m_GeometryPassInputLayout.bindings[0], m_GeometryPassSet[frameIndex], m_SceneBuffer);
+        gfxDevice->WriteDescriptor(m_GeometryPassInputLayout.bindings[0], m_GeometryPassSet[frameIndex], m_SceneBuffer[frameIndex]);
         gfxDevice->WriteDescriptor(m_GeometryPassInputLayout.bindings[1], m_GeometryPassSet[frameIndex], rm->GetMaterialBuffer());
         gfxDevice->WriteDescriptor(m_GeometryPassInputLayout.bindings[2], m_GeometryPassSet[frameIndex], rm->GetTextures());
     }
@@ -541,7 +543,7 @@ void AmbientOcclusion::InitializeSSAO() {
 
     for (uint32_t frameIndex = 0; frameIndex < Graphics::FRAMES_IN_FLIGHT; frameIndex++) {
         gfxDevice->CreateDescriptorSet(m_LightCompositionSetLayout, m_LightCompositionSet[frameIndex]);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[0], m_LightCompositionSet[frameIndex], m_SceneBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[0], m_LightCompositionSet[frameIndex], m_SceneBuffer[frameIndex]);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSet[frameIndex], m_GeometryPositionBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSet[frameIndex], m_GeometryNormalBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSet[frameIndex], m_GeometryAlbedoBuffer);
@@ -692,7 +694,7 @@ void AmbientOcclusion::Update(const float constantT, const float deltaT, InputSy
     SSAOUBOData.ScreenWidth = m_ScreenWidth;
     SSAOUBOData.ScreenHeight = m_ScreenHeight;
 
-	gfxDevice->UpdateBuffer(m_SceneBuffer, &SampleSceneUBOData);
+	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &SampleSceneUBOData);
 	gfxDevice->UpdateBuffer(m_PostEffectsBuffer, &PostProcessUBOData);
     gfxDevice->UpdateBuffer(m_SSAOUBO, 0, &SSAOUBOData, sizeof(SSAOUBO));
 }
