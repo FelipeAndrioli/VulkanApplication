@@ -46,10 +46,15 @@ struct material_t {
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
     mat4 extra;
-	mat4 projection;
-	mat4 view;
-	vec4 light;
-    vec4 extra1[3];
+    mat4 projection;
+    mat4 view;
+    vec4 viewer_position;
+    vec4 light;
+    vec4 light_view;
+    int flags;
+    int extra_1;
+    int extra_2;
+    int extra_3;
 } scene_gpu_data;
 
 layout (std140, set = 0, binding = 1) uniform MaterialGPUData {
@@ -61,6 +66,7 @@ layout (set = 0, binding = 2) uniform sampler2D textures[];
 layout (push_constant) uniform PushConstants {
 	mat4 model;
     int material_index;
+    float specular_factor;
 } push_constants;
 
 void main() {
@@ -68,23 +74,35 @@ void main() {
     material_t material = material_gpu_data.materials[push_constants.material_index];
 
     vec4 albedo = vec4(1.0, 0.0, 1.0, 1.0);
+    vec3 normal = normalize(in_frag_normal);
 
     if (material.diffuse_texture_index != -1) {
         albedo = texture(textures[material.diffuse_texture_index], in_tex_coord);
     }
 
-    if (material.diffuse.a < 0.1) discard;
+    if (albedo.a < 0.1) discard;
 
+    vec3 lighting = vec3(0.0);
     vec3 light_pos = scene_gpu_data.light.xyz;
+    vec3 light_color = vec3(1.0);
+
     float light_intensity = scene_gpu_data.light.w;
 
-    vec3 ambient = light_intensity * albedo.rgb;
+    float ambient_occlusion = 1.0;
 
-	vec3 light_dir = light_pos - in_frag_pos;
+    vec3 ambient = light_intensity * albedo.rgb * ambient_occlusion;
 
-	float diff = max(dot(light_dir, in_frag_normal), 0.1);
+    vec3 view_dir = normalize(scene_gpu_data.viewer_position.xyz - in_frag_pos);
+	vec3 light_dir = normalize(light_pos - in_frag_pos);
 
-	vec3 diffuse = diff * albedo.rgb;
+	float diff = max(dot(normal, light_dir), 0.0);
+	vec3 diffuse = diff * albedo.rgb * light_color;
 
-	pixel_color = vec4(ambient + diffuse, 1.0);	
+    vec3 halfway_dir = normalize(light_dir + view_dir);
+    float spec = pow(max(dot(normal, halfway_dir), 0.0), 8.0);
+    vec3 specular = vec3(light_color * spec) * vec3(push_constants.specular_factor);
+
+    lighting = ambient + diffuse + specular;
+
+	pixel_color = vec4(lighting, 1.0);	
 }
