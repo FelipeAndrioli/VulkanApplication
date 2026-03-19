@@ -88,9 +88,7 @@ void main() {
 
     float light_intensity = scene_gpu_data.light.w;
 
-    float ambient_occlusion = 1.0;
-
-    vec3 ambient = light_intensity * albedo.rgb * ambient_occlusion;
+    vec3 ambient = light_intensity * albedo.rgb;
 
     vec3 view_dir = normalize(scene_gpu_data.viewer_position.xyz - in_frag_pos);
 	vec3 light_dir = normalize(light_pos - in_frag_pos);
