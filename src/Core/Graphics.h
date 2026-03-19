@@ -78,6 +78,7 @@ namespace Graphics {
 			NORMAL				= 12,
 			CUBEMAP_SINGLE		= 13,
 			CUBEMAP_MULTI		= 14,
+            NOISE               = 15,
 			UNKNOWN				= 99
 		} Type = TextureType::UNKNOWN;
 
@@ -134,6 +135,9 @@ namespace Graphics {
 		R8G8B8A8_UINT,
 		R8G8B8A8_SNORM,
 		R8G8B8A8_SINT,
+
+        R32_FLOAT,
+        R16_FLOAT,
 
 		D32_FLOAT_S8_UINT,
 		D24_UNORM_S8_UINT,
