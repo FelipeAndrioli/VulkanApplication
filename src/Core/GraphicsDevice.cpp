@@ -1512,8 +1512,7 @@ namespace Graphics {
 		EndSingleTimeCommandBuffer(commandBuffer, m_CommandPool);
 	}
 
-	template <class T>
-	void GraphicsDevice::UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize) {
+	void GraphicsDevice::UploadDataToImage(GPUImage& dstImage, const void* data, const size_t dataSize) {
 		assert(dataSize != 0);
 
 		BufferDescription stagingDesc = {};
@@ -1943,7 +1942,7 @@ namespace Graphics {
 		CreateImageView(texture);
 		TransitionImageLayout(texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		UploadDataToImage(texture, initialData, dataSize);
-		GenerateMipMaps(texture);
+        GenerateMipMaps(texture);
 		CreateImageSampler(texture);
 	}
 
@@ -3196,6 +3195,10 @@ namespace Graphics {
 			return VK_FORMAT_R8G8B8A8_SNORM;
 		case Format::R8G8B8A8_SINT:
 			return VK_FORMAT_R8G8B8A8_SINT;
+        case Format::R32_FLOAT:
+            return VK_FORMAT_R32_SFLOAT;
+        case Format::R16_FLOAT:
+            return VK_FORMAT_R16_SFLOAT;
 		case Format::D32_FLOAT_S8_UINT:
 			return VK_FORMAT_D32_SFLOAT_S8_UINT;
 		case Format::D24_UNORM_S8_UINT:

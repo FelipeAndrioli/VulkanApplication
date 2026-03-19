@@ -261,8 +261,7 @@ namespace Graphics {
 		void DestroyImageView(GPUImage& image);
 		void DestroyImageView(GPUImageCube& image);
 
-		template <class T>
-		void UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
+		void UploadDataToImage(GPUImage& dstImage, const void* data, const size_t dataSize);
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer, const uint32_t layers = 1);
 		void CreateDepthBuffer(GPUImage& depthBuffer, const RenderPassDesc& renderPassDesc);
