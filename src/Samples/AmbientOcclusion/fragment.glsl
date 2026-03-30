@@ -94,7 +94,7 @@ void main() {
 	vec3 light_dir = normalize(light_pos - in_frag_pos);
 
 	float diff = max(dot(normal, light_dir), 0.0);
-	vec3 diffuse = diff * albedo.rgb * light_color;
+	vec3 diffuse = diff * albedo.rgb * light_color * light_intensity;
 
     vec3 halfway_dir = normalize(light_dir + view_dir);
     float spec = pow(max(dot(normal, halfway_dir), 0.0), 8.0);

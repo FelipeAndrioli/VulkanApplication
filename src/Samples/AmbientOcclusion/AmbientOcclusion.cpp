@@ -87,10 +87,13 @@ private:
 
 	uint32_t m_ScreenWidth	= 0;
 	uint32_t m_ScreenHeight = 0;
+    uint32_t m_SampleCount = 1;
 
     bool m_FinalImageFirstFrame = true;
     bool m_RenderPostEffects = true;
     bool m_RenderSSAO = true;
+    bool m_BlurSSAOEnabled = true;
+    bool m_SSAODebugViewEnabled = false;
 
 	std::array<std::shared_ptr<Assets::Model>, TOTAL_MODELS> m_Models;
 
@@ -98,7 +101,12 @@ private:
 
     glm::vec4 m_Light = glm::vec4(0.1f, 1.0f, 0.0f, 0.1f);
 
-	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
+    // Forward Pass
+	std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_ForwardPassOffscreenRenderTarget;
+    Graphics::RenderPassDescription m_ForwardPassDescription = {};
+    Graphics::GPUImage m_ForwardColorBuffer;
+    Graphics::GPUImage m_ForwardDepthBuffer;
+    Graphics::GPUImage m_ForwardResolveBuffer;
 
 	Graphics::Shader m_VertexShader = {};
 	Graphics::Shader m_FragShader = {};
@@ -109,16 +117,20 @@ private:
 
 	VkDescriptorSetLayout m_SetLayout = VK_NULL_HANDLE;
 	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_Set = { VK_NULL_HANDLE };
+    // Forward Pass
 
-    std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
+    std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_PostEffectsRenderTarget;
+    Graphics::RenderPassDescription m_PostEffectsPassDescription = {}; 
+    Graphics::GPUImage m_PostEffectsBuffer;
     Graphics::Shader m_PostEffectsVertexShader = {};
     Graphics::Shader m_PostEffectsFragmentShader = {};
     Graphics::PipelineState m_PostEffectsPSO = {};
-    Graphics::Buffer m_PostEffectsBuffer = {};
+    Graphics::Buffer m_PostEffectsUBO = {};
     Graphics::InputLayout m_PostEffectsInputLayout = {};
 
 	VkDescriptorSetLayout m_PostEffectsSetLayout = VK_NULL_HANDLE;
-	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_PostEffectsSet = { VK_NULL_HANDLE };
+	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_PostEffectsForwardPassSet = { VK_NULL_HANDLE };
+	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_PostEffectsSSAOPassSet = { VK_NULL_HANDLE };
 
     // SSAO Geometry Pass
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_GeometryPassRenderTarget;
@@ -155,9 +167,6 @@ private:
     Graphics::GPUImage m_SSAONoise = {};
     // SSAO Pass
    
-    // SSAO Blur Pass
-    // SSAO Blur Pass
-
     // SSAO Lighting Pass
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_LightCompositionRenderTarget;
     Graphics::RenderPassDescription m_LightCompositionPassDescription = {};
@@ -169,13 +178,12 @@ private:
     Graphics::InputLayout m_LightCompositionInputLayout = {};
 
     VkDescriptorSetLayout m_LightCompositionSetLayout = VK_NULL_HANDLE;
-    VkDescriptorSet m_LightCompositionSet[Graphics::FRAMES_IN_FLIGHT];
+    VkDescriptorSet m_LightCompositionSetWithoutSSAOBlur[Graphics::FRAMES_IN_FLIGHT];
+    VkDescriptorSet m_LightCompositionSetWithSSAOBlur[Graphics::FRAMES_IN_FLIGHT];
 
     // SSAO Lighting Pass
 
-    /*
     // SSAO Blur Pass
-    
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_SSAOBlurRenderTarget;
     Graphics::RenderPassDescription m_SSAOBlurRenderPassDescription = {};
     Graphics::GPUImage m_SSAOBlurBuffer = {};
@@ -184,19 +192,33 @@ private:
     Graphics::PipelineState m_SSAOBlurPSO = {};
     Graphics::InputLayout m_SSAOBlurInputLayout = {};
 
+    VkDescriptorSetLayout m_SSAOBlurSetLayout = VK_NULL_HANDLE;
+    VkDescriptorSet m_SSAOBlurSet[Graphics::FRAMES_IN_FLIGHT];
     // SSAO Blur Pass
-    */
 private:
+    void InititalizeDisplaySizeDependentResources(uint32_t width, uint32_t height);
+
     void InitializeSSAO();
-    void InititalizeDisplaySizeDependentSSAOResources(uint32_t width, uint32_t height);
     void GenerateSSAOKernel(glm::vec4 kernel[64]);
     Graphics::GPUImage GenerateSSAONoise();
 
-    void RenderSSAO(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+    void FullScreenPass(const VkCommandBuffer& commandBuffer, VkDescriptorSet& set, const VkPipelineLayout& pipelineLayout, const VkPipeline& pipeline, Graphics::IRenderTarget* renderTarget);
+
     void RenderNormalScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+    void ForwardLightCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+    void ForwardPostEffectsPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+
+    void RenderSSAO(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+    void SSAOGeometryPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+    void SSAOPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+    void SSAOBlurPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+    void SSAOLightCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
+    void SSAOPostEffectsPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
 };
 
 void AmbientOcclusion::StartUp() {
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+    ResourceManager* rm = ResourceManager::Get();
 
 	m_ScreenWidth	= settings.Width;
 	m_ScreenHeight	= settings.Height;
@@ -204,6 +226,8 @@ void AmbientOcclusion::StartUp() {
     m_Light.w = 0.5f;
     
     m_Camera.Init(InitialCameraPosition, InitialCameraFov, InitialCameraYaw, InitialCameraPitch, m_ScreenWidth, m_ScreenHeight);
+    m_Camera.MovementSpeed = 0.001f;
+    m_Camera.Sensitivity = 0.01f;
 
     m_Models[TotalModels] = ModelLoader::LoadModel("C:/Users/felip/Documents/current_projects/models/actual_models/Sponza-master/sponza.obj");
     m_Models[TotalModels]->Transformations.scaleHandler = 0.008f;
@@ -211,18 +235,27 @@ void AmbientOcclusion::StartUp() {
 
     TotalModels++;
 
-	m_OffscreenRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
-
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-    ResourceManager* rm = ResourceManager::Get();
-
-	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "../src/Samples/AmbientOcclusion/vertex.glsl");
-	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragShader, "../src/Samples/AmbientOcclusion/fragment.glsl");
+    SSAOUBOData.Flags = 1; 
 
     for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
         m_SceneBuffer[i] = gfxDevice->CreateBuffer(sizeof(SceneUBOData));
     }
 
+    m_PostEffectsUBO = gfxDevice->CreateBuffer(sizeof(PostProcessUBO));
+
+    InititalizeDisplaySizeDependentResources(m_ScreenWidth, m_ScreenHeight);
+
+    InitializeSSAO();
+
+    m_ForwardPassOffscreenRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+        m_ScreenWidth,
+        m_ScreenHeight,
+        gfxDevice->GetMsaaSamples(),
+        m_ForwardPassDescription);
+
+	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "../src/Samples/AmbientOcclusion/vertex.glsl");
+	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragShader, "../src/Samples/AmbientOcclusion/fragment.glsl");
+ 
 	Graphics::InputLayout inputLayout = {
 		.pushConstants = {
 			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
@@ -240,7 +273,7 @@ void AmbientOcclusion::StartUp() {
 	desc.fragmentShader = &m_FragShader;
 	desc.psoInputLayout.push_back(inputLayout);
 
-	gfxDevice->CreatePipelineState(desc, m_PSO, *m_OffscreenRenderTarget.get());
+	gfxDevice->CreatePipelineState(desc, m_PSO, *m_ForwardPassOffscreenRenderTarget.get());
 	gfxDevice->CreateDescriptorSetLayout(m_SetLayout, inputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
@@ -250,14 +283,14 @@ void AmbientOcclusion::StartUp() {
 		gfxDevice->WriteDescriptor(inputLayout.bindings[2], m_Set[i], rm->GetTextures());
 	}
 
-    gfxDevice->DestroyImage(m_GeometryPositionBuffer);
-
-    m_PostEffectsRenderTarget = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight);
+    m_PostEffectsRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+        m_ScreenWidth, 
+        m_ScreenHeight,
+        m_SampleCount,
+        m_PostEffectsPassDescription);
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_PostEffectsVertexShader, "../src/Samples/AmbientOcclusion/quad_vertex.glsl");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_PostEffectsFragmentShader, "../src/Samples/AmbientOcclusion/post_process_fragment.glsl");
-
-    m_PostEffectsBuffer = gfxDevice->CreateBuffer(sizeof(PostProcessUBO));
 
     m_PostEffectsInputLayout = {
         .pushConstants = {},
@@ -279,19 +312,76 @@ void AmbientOcclusion::StartUp() {
     gfxDevice->CreateDescriptorSetLayout(m_PostEffectsSetLayout, m_PostEffectsInputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->CreateDescriptorSet(m_PostEffectsSetLayout, m_PostEffectsSet[i]);
-        gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[0], m_PostEffectsSet[i], m_PostEffectsBuffer);
-        gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[1], m_PostEffectsSet[i], m_OffscreenRenderTarget->GetColorBuffer());
-    }
+		gfxDevice->CreateDescriptorSet(m_PostEffectsSetLayout, m_PostEffectsForwardPassSet[i]);
+        gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[0], m_PostEffectsForwardPassSet[i], m_PostEffectsUBO);
+        gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[1], m_PostEffectsForwardPassSet[i], m_ForwardResolveBuffer);
 
-    InitializeSSAO();
+        gfxDevice->CreateDescriptorSet(m_PostEffectsSetLayout, m_PostEffectsSSAOPassSet[i]);
+        gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[0], m_PostEffectsSSAOPassSet[i], m_PostEffectsUBO);
+        gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[1], m_PostEffectsSSAOPassSet[i], m_LightCompositionBuffer);
+    }
 }
 
-void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t width, uint32_t height) {
+void AmbientOcclusion::InititalizeDisplaySizeDependentResources(uint32_t width, uint32_t height) {
 
     Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-    uint32_t SampleCount = 1;
+    gfxDevice->DestroyImage(m_ForwardColorBuffer);
+    gfxDevice->DestroyImage(m_ForwardDepthBuffer);
+    gfxDevice->DestroyImage(m_ForwardResolveBuffer);
+
+    gfxDevice->CreateRenderTarget(m_ForwardColorBuffer,
+        Graphics::Format::R16G16B16A16_FLOAT,
+        m_ScreenWidth,
+        m_ScreenHeight,
+        gfxDevice->GetMsaaSamples());
+
+    gfxDevice->CreateRenderTarget(m_ForwardResolveBuffer,
+        Graphics::Format::R16G16B16A16_FLOAT,
+        m_ScreenWidth,
+        m_ScreenHeight,
+        m_SampleCount);
+
+    gfxDevice->CreateDepthBuffer(m_ForwardDepthBuffer,
+        gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
+        m_ScreenWidth,
+        m_ScreenHeight,
+        gfxDevice->GetMsaaSamples());
+
+    m_ForwardPassDescription.Attachments.clear();
+
+    m_ForwardPassDescription.Attachments.push_back(
+        Graphics::RenderPassAttachment::RenderTarget(
+            m_ForwardColorBuffer,
+            Graphics::Format::R16G16B16A16_FLOAT,
+            gfxDevice->GetMsaaSamples(),
+            Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+            Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+            Graphics::ResourceState::UNDEFINED,
+            Graphics::ResourceState::RENDERTARGET,
+            Graphics::ResourceState::SHADER_RESOURCE));
+
+    m_ForwardPassDescription.Attachments.push_back(
+        Graphics::RenderPassAttachment::DepthStencil(
+            m_ForwardDepthBuffer,
+            gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
+            gfxDevice->GetMsaaSamples(),
+            Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+            Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+            Graphics::ResourceState::UNDEFINED,
+            Graphics::ResourceState::DEPTHSTENCIL,
+            Graphics::ResourceState::DEPTHSTENCIL));
+
+    m_ForwardPassDescription.Attachments.push_back(
+        Graphics::RenderPassAttachment::Resolve(
+            m_ForwardResolveBuffer,
+            Graphics::Format::R16G16B16A16_FLOAT,
+            1,
+            Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+            Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+            Graphics::ResourceState::UNDEFINED,
+            Graphics::ResourceState::RENDERTARGET,
+            Graphics::ResourceState::SHADER_RESOURCE));
 
     gfxDevice->DestroyImage(m_GeometryPositionBuffer);
     gfxDevice->DestroyImage(m_GeometryNormalBuffer);
@@ -302,25 +392,25 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t wid
         Graphics::Format::R16G16B16A16_FLOAT,
         m_ScreenWidth,
         m_ScreenHeight,
-        SampleCount);
+        m_SampleCount);
 
     gfxDevice->CreateRenderTarget(m_GeometryNormalBuffer,
         Graphics::Format::R16G16B16A16_FLOAT,
         m_ScreenWidth,
         m_ScreenHeight,
-        SampleCount);
+        m_SampleCount);
 
     gfxDevice->CreateRenderTarget(m_GeometryAlbedoBuffer,
         Graphics::Format::R16G16B16A16_FLOAT,
         m_ScreenWidth,
         m_ScreenHeight,
-        SampleCount);
+        m_SampleCount);
 
     gfxDevice->CreateDepthBuffer(m_GeometryDepthBuffer,
         gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
         m_ScreenWidth,
         m_ScreenHeight,
-        SampleCount);
+        m_SampleCount);
 
     m_GeometryPassDescription.Attachments.clear();
 
@@ -328,7 +418,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t wid
         Graphics::RenderPassAttachment::RenderTarget(
         m_GeometryPositionBuffer,
         Graphics::Format::R16G16B16A16_FLOAT,
-        SampleCount,
+        m_SampleCount,
         Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
         Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
         Graphics::ResourceState::UNDEFINED,
@@ -339,7 +429,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t wid
         Graphics::RenderPassAttachment::RenderTarget(
         m_GeometryNormalBuffer,
         Graphics::Format::R16G16B16A16_FLOAT,
-        SampleCount,
+        m_SampleCount,
         Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
         Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
         Graphics::ResourceState::UNDEFINED,
@@ -350,7 +440,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t wid
         Graphics::RenderPassAttachment::RenderTarget(
         m_GeometryAlbedoBuffer,
         Graphics::Format::R16G16B16A16_FLOAT,
-        SampleCount,
+        m_SampleCount,
         Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
         Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
         Graphics::ResourceState::UNDEFINED,
@@ -361,7 +451,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t wid
         Graphics::RenderPassAttachment::DepthStencil(
         m_GeometryDepthBuffer,
         gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
-        SampleCount,
+        m_SampleCount,
         Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
         Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
         Graphics::ResourceState::UNDEFINED,
@@ -374,7 +464,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t wid
         Graphics::Format::R16_FLOAT,
         m_ScreenWidth,
         m_ScreenHeight,
-        SampleCount);
+        m_SampleCount);
 
     m_SSAOPassDescription.Attachments.clear();
     
@@ -382,7 +472,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t wid
         Graphics::RenderPassAttachment::RenderTarget(
             m_SSAOBuffer,
             Graphics::Format::R16_FLOAT,
-            SampleCount,
+            m_SampleCount,
             Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
             Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
             Graphics::ResourceState::UNDEFINED,
@@ -395,7 +485,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t wid
         gfxDevice->ConvertFormat(gfxDevice->GetSwapChain().ImageFormat),
         m_ScreenWidth,
         m_ScreenHeight,
-        SampleCount);
+        m_SampleCount);
 
     m_LightCompositionPassDescription.Attachments.clear();
 
@@ -403,7 +493,50 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentSSAOResources(uint32_t wid
         Graphics::RenderPassAttachment::RenderTarget(
             m_LightCompositionBuffer,
             gfxDevice->ConvertFormat(gfxDevice->GetSwapChain().ImageFormat),
-            SampleCount,
+            m_SampleCount,
+            Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+            Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+            Graphics::ResourceState::UNDEFINED,
+            Graphics::ResourceState::RENDERTARGET,
+            Graphics::ResourceState::SHADER_RESOURCE));
+
+    gfxDevice->DestroyImage(m_SSAOBlurBuffer);
+
+    gfxDevice->CreateRenderTarget(m_SSAOBlurBuffer,
+        Graphics::Format::R16_FLOAT,
+        m_ScreenWidth,
+        m_ScreenHeight,
+        m_SampleCount);
+
+    m_SSAOBlurRenderPassDescription.Attachments.clear();
+
+    m_SSAOBlurRenderPassDescription.Attachments.push_back(
+        Graphics::RenderPassAttachment::RenderTarget(
+            m_SSAOBlurBuffer,
+            Graphics::Format::R16_FLOAT,
+            m_SampleCount,
+            Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+            Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+            Graphics::ResourceState::UNDEFINED,
+            Graphics::ResourceState::RENDERTARGET,
+            Graphics::ResourceState::SHADER_RESOURCE));
+
+    gfxDevice->DestroyImage(m_PostEffectsBuffer);
+
+    gfxDevice->CreateRenderTarget(
+        m_PostEffectsBuffer,
+        gfxDevice->ConvertFormat(gfxDevice->GetSwapChain().ImageFormat),
+        m_ScreenWidth,
+        m_ScreenHeight,
+        m_SampleCount);
+
+    m_PostEffectsPassDescription.Attachments.clear();
+
+    m_PostEffectsPassDescription.Attachments.push_back(
+        Graphics::RenderPassAttachment::RenderTarget(
+            m_PostEffectsBuffer,
+            gfxDevice->ConvertFormat(gfxDevice->GetSwapChain().ImageFormat),
+            m_SampleCount,
             Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
             Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
             Graphics::ResourceState::UNDEFINED,
@@ -415,14 +548,10 @@ void AmbientOcclusion::InitializeSSAO() {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
    
-    InititalizeDisplaySizeDependentSSAOResources(m_ScreenWidth, m_ScreenHeight);
-
-    uint32_t SampleCount = 1;
-
     m_GeometryPassRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
         m_ScreenWidth,
         m_ScreenHeight,
-        SampleCount,
+        m_SampleCount,
         m_GeometryPassDescription);
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_GeometryPassVertexShader, "../src/Samples/AmbientOcclusion/geometry_pass_vertex.glsl");
@@ -467,7 +596,7 @@ void AmbientOcclusion::InitializeSSAO() {
     m_SSAORenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
         m_ScreenWidth,
         m_ScreenHeight,
-        SampleCount,
+        m_SampleCount,
         m_SSAOPassDescription);
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SSAOVertexShader, "../src/Samples/AmbientOcclusion/quad_vertex.glsl");
@@ -507,10 +636,43 @@ void AmbientOcclusion::InitializeSSAO() {
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[4], m_SSAOSet[frameIndex], m_SSAONoise);
     }
 
+    m_SSAOBlurRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+        m_ScreenWidth,
+        m_ScreenHeight,
+        m_SampleCount,
+        m_SSAOBlurRenderPassDescription);
+
+    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SSAOBlurVertexShader, "../src/Samples/AmbientOcclusion/quad_vertex.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SSAOBlurFragmentShader, "../src/Samples/AmbientOcclusion/ssao_blur_fragment.glsl");
+
+    m_SSAOBlurInputLayout = {
+        .pushConstants = {},
+        .bindings = {
+            { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }  // SSAO
+        }
+    };
+
+    Graphics::PipelineStateDescription SSAOBlurPSODesc = {};
+    SSAOBlurPSODesc.Name = "SSAO Blur";
+    SSAOBlurPSODesc.noVertex = true;
+    SSAOBlurPSODesc.cullMode = VK_CULL_MODE_NONE;
+    SSAOBlurPSODesc.vertexShader = &m_SSAOBlurVertexShader;
+    SSAOBlurPSODesc.fragmentShader = &m_SSAOBlurFragmentShader;
+    SSAOBlurPSODesc.attachmentCount = 1;
+    SSAOBlurPSODesc.psoInputLayout.push_back(m_SSAOBlurInputLayout);
+
+    gfxDevice->CreatePipelineState(SSAOBlurPSODesc, m_SSAOBlurPSO, *m_SSAOBlurRenderTarget.get());
+    gfxDevice->CreateDescriptorSetLayout(m_SSAOBlurSetLayout, m_SSAOBlurInputLayout.bindings);
+
+    for (uint32_t frameIndex = 0; frameIndex < Graphics::FRAMES_IN_FLIGHT; frameIndex++) {
+        gfxDevice->CreateDescriptorSet(m_SSAOBlurSetLayout, m_SSAOBlurSet[frameIndex]);
+        gfxDevice->WriteDescriptor(m_SSAOBlurInputLayout.bindings[0], m_SSAOBlurSet[frameIndex], m_SSAOBuffer);
+    }
+
     m_LightCompositionRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
         m_ScreenWidth,
         m_ScreenHeight,
-        SampleCount,
+        m_SampleCount,
         m_LightCompositionPassDescription);
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightCompositionVertexShader, "../src/Samples/AmbientOcclusion/quad_vertex.glsl");
@@ -526,6 +688,7 @@ void AmbientOcclusion::InitializeSSAO() {
             { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Normal
             { 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Albedo Spec 
             { 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // SSAO 
+            { 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // SSAO Blur
         }
     };
 
@@ -542,12 +705,19 @@ void AmbientOcclusion::InitializeSSAO() {
     gfxDevice->CreateDescriptorSetLayout(m_LightCompositionSetLayout, m_LightCompositionInputLayout.bindings);
 
     for (uint32_t frameIndex = 0; frameIndex < Graphics::FRAMES_IN_FLIGHT; frameIndex++) {
-        gfxDevice->CreateDescriptorSet(m_LightCompositionSetLayout, m_LightCompositionSet[frameIndex]);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[0], m_LightCompositionSet[frameIndex], m_SceneBuffer[frameIndex]);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSet[frameIndex], m_GeometryPositionBuffer);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSet[frameIndex], m_GeometryNormalBuffer);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSet[frameIndex], m_GeometryAlbedoBuffer);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSet[frameIndex], m_SSAOBuffer);
+        gfxDevice->CreateDescriptorSet(m_LightCompositionSetLayout, m_LightCompositionSetWithoutSSAOBlur[frameIndex]);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[0], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_SceneBuffer[frameIndex]);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryNormalBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryAlbedoBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_SSAOBuffer);
+
+        gfxDevice->CreateDescriptorSet(m_LightCompositionSetLayout, m_LightCompositionSetWithSSAOBlur[frameIndex]);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[0], m_LightCompositionSetWithSSAOBlur[frameIndex], m_SceneBuffer[frameIndex]);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryNormalBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryAlbedoBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSetWithSSAOBlur[frameIndex], m_SSAOBlurBuffer);
     }
 }
 
@@ -633,7 +803,11 @@ void AmbientOcclusion::CleanUp() {
 	
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_OffscreenRenderTarget.reset();
+	m_ForwardPassOffscreenRenderTarget.reset();
+    
+    gfxDevice->DestroyImage(m_ForwardColorBuffer);
+    gfxDevice->DestroyImage(m_ForwardDepthBuffer);
+    gfxDevice->DestroyImage(m_ForwardResolveBuffer);
 
 	gfxDevice->DestroyShader(m_VertexShader);
 	gfxDevice->DestroyShader(m_FragShader);
@@ -642,6 +816,7 @@ void AmbientOcclusion::CleanUp() {
 
     m_PostEffectsRenderTarget.reset();
 
+    gfxDevice->DestroyImage(m_PostEffectsBuffer);
     gfxDevice->DestroyShader(m_PostEffectsVertexShader);
     gfxDevice->DestroyShader(m_PostEffectsFragmentShader);
 	gfxDevice->DestroyDescriptorSetLayout(m_PostEffectsSetLayout);
@@ -674,6 +849,14 @@ void AmbientOcclusion::CleanUp() {
     gfxDevice->DestroyShader(m_LightCompositionVertexShader);
     gfxDevice->DestroyShader(m_LightCompositionFragmentShader);
     gfxDevice->DestroyImage(m_LightCompositionBuffer);
+
+    m_SSAOBlurRenderTarget.reset();
+
+    gfxDevice->DestroyDescriptorSetLayout(m_SSAOBlurSetLayout);
+    gfxDevice->DestroyPipeline(m_SSAOBlurPSO);
+    gfxDevice->DestroyShader(m_SSAOBlurVertexShader);
+    gfxDevice->DestroyShader(m_SSAOBlurFragmentShader);
+    gfxDevice->DestroyImage(m_SSAOBlurBuffer);
 }
 
 void AmbientOcclusion::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
@@ -690,17 +873,51 @@ void AmbientOcclusion::Update(const float constantT, const float deltaT, InputSy
 	SampleSceneUBOData.Light = m_Light;
     SampleSceneUBOData.LightView = m_Camera.ViewMatrix * glm::vec4(m_Light.x, m_Light.y, m_Light.z, 1.0f);
 
+    SampleSceneUBOData.Flags = (m_BlurSSAOEnabled << 1 | m_SSAODebugViewEnabled << 0);
+
     SSAOUBOData.Projection = SampleSceneUBOData.Projection;
     SSAOUBOData.ScreenWidth = m_ScreenWidth;
     SSAOUBOData.ScreenHeight = m_ScreenHeight;
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &SampleSceneUBOData);
-	gfxDevice->UpdateBuffer(m_PostEffectsBuffer, &PostProcessUBOData);
+	gfxDevice->UpdateBuffer(m_PostEffectsUBO, &PostProcessUBOData);
     gfxDevice->UpdateBuffer(m_SSAOUBO, 0, &SSAOUBOData, sizeof(SSAOUBO));
 }
 
 void AmbientOcclusion::RenderSSAO(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
     SCOPED_PROFILER_US("AmbientOcclusion::RenderSSAO");
+
+    SSAOGeometryPass(currentFrame, commandBuffer);
+    SSAOPass(currentFrame, commandBuffer);
+    
+    if (m_BlurSSAOEnabled) {
+        SSAOBlurPass(currentFrame, commandBuffer);
+    }
+
+    SSAOLightCompositionPass(currentFrame, commandBuffer);
+
+    Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+    Graphics::GPUImage* lastImage = &m_LightCompositionBuffer;
+
+    if (m_RenderPostEffects) {
+        SSAOPostEffectsPass(currentFrame, commandBuffer);
+
+        lastImage = &m_PostEffectsBuffer;
+    } 
+
+    if (m_FinalImageFirstFrame) {
+        gfxDevice->TransitionImageLayout(*lastImage, Graphics::ResourceState::UNDEFINED, Graphics::ResourceState::COPY_SRC);
+        m_FinalImageFirstFrame = false;
+    } else {
+        gfxDevice->TransitionImageLayout(*lastImage, Graphics::ResourceState::SHADER_RESOURCE, Graphics::ResourceState::COPY_SRC);
+    }
+
+    gfxDevice->GetSwapChain().RenderTarget->CopyColor(*lastImage);
+}
+
+void AmbientOcclusion::SSAOGeometryPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+    SCOPED_PROFILER_US("AmbientOcclusion::SSAOGeometryPass");
 
     Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -737,41 +954,103 @@ void AmbientOcclusion::RenderSSAO(const uint32_t currentFrame, const VkCommandBu
 	}
 
     m_GeometryPassRenderTarget->End(commandBuffer);
+}
 
-    m_SSAORenderTarget->Begin(commandBuffer);
+void AmbientOcclusion::SSAOPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+    SCOPED_PROFILER_US("AmbientOcclusion::SSAOPass");
 
-    gfxDevice->BindDescriptorSet(m_SSAOSet[currentFrame], commandBuffer, m_SSAOPassPSO.pipelineLayout, 0, 1);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_SSAOPassPSO.pipeline);
+    FullScreenPass(
+        commandBuffer, 
+        m_SSAOSet[currentFrame],
+        m_SSAOPassPSO.pipelineLayout, 
+        m_SSAOPassPSO.pipeline, 
+        m_SSAORenderTarget.get());
+}
+
+void AmbientOcclusion::SSAOBlurPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+    SCOPED_PROFILER_US("AmbientOcclusion::SSAOBlurPass");
+
+    FullScreenPass(
+        commandBuffer, 
+        m_SSAOBlurSet[currentFrame],
+        m_SSAOBlurPSO.pipelineLayout, 
+        m_SSAOBlurPSO.pipeline, 
+        m_SSAOBlurRenderTarget.get());
+}
+
+void AmbientOcclusion::SSAOLightCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+    SCOPED_PROFILER_US("AmbientOcclusion::SSAOLightCompositionPass");
+
+    FullScreenPass(
+        commandBuffer, 
+        m_BlurSSAOEnabled ? m_LightCompositionSetWithSSAOBlur[currentFrame] : m_LightCompositionSetWithoutSSAOBlur[currentFrame],
+        m_LightCompositionPSO.pipelineLayout, 
+        m_LightCompositionPSO.pipeline, 
+        m_LightCompositionRenderTarget.get());
+}
+
+void AmbientOcclusion::SSAOPostEffectsPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+    SCOPED_PROFILER_US("AmbientOcclusion::SSAOPostEffectsPass");
+
+    FullScreenPass(
+        commandBuffer, 
+        m_PostEffectsSSAOPassSet[currentFrame], 
+        m_PostEffectsPSO.pipelineLayout, 
+        m_PostEffectsPSO.pipeline, 
+        m_PostEffectsRenderTarget.get());
+}
+
+void AmbientOcclusion::FullScreenPass(
+    const VkCommandBuffer& commandBuffer, 
+    VkDescriptorSet& set,
+    const VkPipelineLayout& pipelineLayout,
+    const VkPipeline& pipeline,
+    Graphics::IRenderTarget* renderTarget) {
+
+    if (!renderTarget) return;
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+    renderTarget->Begin(commandBuffer);
+
+    gfxDevice->BindDescriptorSet(set, commandBuffer, pipelineLayout, 0, 1);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 
-    m_SSAORenderTarget->End(commandBuffer);
-
-    m_LightCompositionRenderTarget->Begin(commandBuffer);
-
-    gfxDevice->BindDescriptorSet(m_LightCompositionSet[currentFrame], commandBuffer, m_LightCompositionPSO.pipelineLayout, 0, 1);
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_LightCompositionPSO.pipeline);
-    vkCmdPushConstants(commandBuffer, m_LightCompositionPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(float), &SamplePushConstants.SpecularFactor);
-    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
-    m_LightCompositionRenderTarget->End(commandBuffer);
-
-
-    if (m_FinalImageFirstFrame) {
-        gfxDevice->TransitionImageLayout(m_LightCompositionBuffer, Graphics::ResourceState::UNDEFINED, Graphics::ResourceState::COPY_SRC);
-        m_FinalImageFirstFrame = false;
-    } else {
-        gfxDevice->TransitionImageLayout(m_LightCompositionBuffer, Graphics::ResourceState::SHADER_RESOURCE, Graphics::ResourceState::COPY_SRC);
-    }
-
-    gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_LightCompositionBuffer);
+    renderTarget->End(commandBuffer);
 }
 
 void AmbientOcclusion::RenderNormalScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 
     SCOPED_PROFILER_US("AmbientOcclusion::RenderNormalScene");
 
+    Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+    ForwardLightCompositionPass(currentFrame, commandBuffer);
+
+    Graphics::GPUImage* lastImage = &m_ForwardResolveBuffer;
+
+    if (m_RenderPostEffects) {
+        ForwardPostEffectsPass(currentFrame, commandBuffer);
+        lastImage = &m_PostEffectsBuffer;
+    }
+
+    if (m_FinalImageFirstFrame) {
+        gfxDevice->TransitionImageLayout(*lastImage, Graphics::ResourceState::UNDEFINED, Graphics::ResourceState::COPY_SRC);
+        m_FinalImageFirstFrame = false;
+    } else {
+        gfxDevice->TransitionImageLayout(*lastImage, Graphics::ResourceState::SHADER_RESOURCE, Graphics::ResourceState::COPY_SRC);
+    }
+
+    gfxDevice->GetSwapChain().RenderTarget->CopyColor(*lastImage);
+}
+
+void AmbientOcclusion::ForwardLightCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+    SCOPED_PROFILER_US("AmbientOcclusion::ForwardLightCompositionPass");
+
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_OffscreenRenderTarget->Begin(commandBuffer);
+	m_ForwardPassOffscreenRenderTarget->Begin(commandBuffer);
 
 	gfxDevice->BindDescriptorSet(m_Set[currentFrame], commandBuffer, m_PSO.pipelineLayout, 0, 1);
 
@@ -803,23 +1082,19 @@ void AmbientOcclusion::RenderNormalScene(const uint32_t currentFrame, const VkCo
 		}
 	}
 
-	m_OffscreenRenderTarget->End(commandBuffer);
+	m_ForwardPassOffscreenRenderTarget->End(commandBuffer);
 
-    if (m_RenderPostEffects) {
-        m_PostEffectsRenderTarget->Begin(commandBuffer);
+}
 
-        gfxDevice->BindDescriptorSet(m_PostEffectsSet[currentFrame], commandBuffer, m_PostEffectsPSO.pipelineLayout, 0, 1);
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PostEffectsPSO.pipeline);
-        vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+void AmbientOcclusion::ForwardPostEffectsPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+    SCOPED_PROFILER_US("AmbientOcclusion::ForwardPostEffectsPass");
 
-        m_PostEffectsRenderTarget->End(commandBuffer);
-
-        m_PostEffectsRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-        gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_PostEffectsRenderTarget->GetColorBuffer());
-    } else {
-        m_OffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-        gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_OffscreenRenderTarget->GetColorBuffer());
-    }
+    FullScreenPass(
+        commandBuffer, 
+        m_PostEffectsForwardPassSet[currentFrame],
+        m_PostEffectsPSO.pipelineLayout, 
+        m_PostEffectsPSO.pipeline, 
+        m_PostEffectsRenderTarget.get());
 }
 
 void AmbientOcclusion::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -842,17 +1117,15 @@ void AmbientOcclusion::RenderUI() {
     ImGui::DragFloat("SSAO Radius", &SSAOUBOData.Radius, 0.002f, 0.0f, 10.0f);
     ImGui::DragFloat("SSAO Bias", &SSAOUBOData.Bias, 0.002f, 0.0f, 10.0f);
 
+    ImGui::Checkbox("SSAO - Blur enabled", &m_BlurSSAOEnabled);
+
     bool rangeCheckEnabled = (SSAOUBOData.Flags & (1 << 0));
 
     ImGui::Checkbox("SSAO - Range Check enabled", &rangeCheckEnabled);
 
     SSAOUBOData.Flags = (rangeCheckEnabled << 0); 
 
-    bool ambientOcclusionDebugEnabled = (SampleSceneUBOData.Flags & (1 << 0));
-
-    ImGui::Checkbox("SSAO - Debug View enabled", &ambientOcclusionDebugEnabled);
-
-    SampleSceneUBOData.Flags = (ambientOcclusionDebugEnabled << 0);
+    ImGui::Checkbox("SSAO - Debug View enabled", &m_SSAODebugViewEnabled);
 
     ImGui::DragFloat4("Light Direction", (float*)&m_Light, 0.02f, -20.0f, 20.0f);
     ImGui::DragFloat("Light Intensity", &m_Light.w, 0.002f, 0.0f, 1.0f);
@@ -872,32 +1145,39 @@ void AmbientOcclusion::Resize(uint32_t width, uint32_t height) {
 	m_ScreenHeight	= height;
 
 	m_Camera.Resize(m_ScreenWidth, m_ScreenHeight);
-	m_OffscreenRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
-    m_PostEffectsRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
 
     Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-        gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[1], m_PostEffectsSet[i], m_OffscreenRenderTarget->GetColorBuffer());
-    }
-
-    InititalizeDisplaySizeDependentSSAOResources(m_ScreenWidth, m_ScreenHeight);
+    InititalizeDisplaySizeDependentResources(m_ScreenWidth, m_ScreenHeight);
 
     for (uint32_t frameIndex = 0; frameIndex < Graphics::FRAMES_IN_FLIGHT; frameIndex++) {
+        gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[1], m_PostEffectsForwardPassSet[frameIndex], m_ForwardResolveBuffer);
+        gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[1], m_PostEffectsSSAOPassSet[frameIndex], m_LightCompositionBuffer);
+
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[1], m_SSAOSet[frameIndex], m_GeometryPositionBuffer);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[2], m_SSAOSet[frameIndex], m_GeometryNormalBuffer);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[3], m_SSAOSet[frameIndex], m_GeometryAlbedoBuffer);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[4], m_SSAOSet[frameIndex], m_SSAONoise);
 
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSet[frameIndex], m_GeometryPositionBuffer);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSet[frameIndex], m_GeometryNormalBuffer);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSet[frameIndex], m_GeometryAlbedoBuffer);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSet[frameIndex], m_SSAOBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryNormalBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryAlbedoBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_SSAOBuffer);
+
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryNormalBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryAlbedoBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSetWithSSAOBlur[frameIndex], m_SSAOBlurBuffer);
+
+        gfxDevice->WriteDescriptor(m_SSAOBlurInputLayout.bindings[0], m_SSAOBlurSet[frameIndex], m_SSAOBuffer);
     }    
 
+	m_ForwardPassOffscreenRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_ForwardPassDescription);
+    m_PostEffectsRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_PostEffectsPassDescription);
     m_GeometryPassRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_GeometryPassDescription);
     m_SSAORenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_SSAOPassDescription);
     m_LightCompositionRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_LightCompositionPassDescription);
+    m_SSAOBlurRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_SSAOBlurRenderPassDescription);
 
     m_FinalImageFirstFrame = true;
 }

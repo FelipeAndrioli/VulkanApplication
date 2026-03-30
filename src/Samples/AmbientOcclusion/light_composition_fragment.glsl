@@ -33,9 +33,10 @@ void main() {
     vec3 normal = texture(normal_buffer, uv).rgb;
     vec3 albedo = texture(albedo_spec_buffer, uv).rgb;
 
-    float ambient_occlusion = texture(ssao_buffer, uv).r;
-
     bool ambient_occlusion_debug_enabled = bool(scene_gpu_data.flags & (1 << 0));
+    bool ssao_blur_enabled = bool(scene_gpu_data.flags & (1 << 1));
+
+    float ambient_occlusion = texture(ssao_buffer, uv).r;
 
     if (ambient_occlusion_debug_enabled) {
         frag_color = vec4(ambient_occlusion.rrr, 1.0);
