@@ -227,7 +227,7 @@ namespace Graphics {
 			attachment.SubpassLayout	= subpassLayout;
 			attachment.FinalLayout		= finalLayout;
 			attachment.ImageFormat		= format;
-			attachment.SampleCount		= resource.Description.MsaaSamples;
+			attachment.SampleCount		= sampleCount;
 
 			return attachment;
 		}
@@ -251,7 +251,7 @@ namespace Graphics {
 			attachment.SubpassLayout	= subpassLayout;
 			attachment.FinalLayout		= finalLayout;
 			attachment.ImageFormat		= format;
-			attachment.SampleCount		= resource.Description.MsaaSamples;
+			attachment.SampleCount		= sampleCount;
 
 			return attachment;
 		}
@@ -275,7 +275,7 @@ namespace Graphics {
 			attachment.SubpassLayout	= subpassLayout;
 			attachment.FinalLayout		= finalLayout;
 			attachment.ImageFormat		= format;
-			attachment.SampleCount		= resource.Description.MsaaSamples;
+			attachment.SampleCount		= sampleCount;
 
 			return attachment;
 		}
