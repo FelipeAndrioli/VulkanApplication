@@ -36,32 +36,33 @@ public:
 	virtual void RenderUI()																			override;
 	virtual void Resize(uint32_t width, uint32_t height)											override;
 
-	struct SceneUBOData {
+private:
+    struct SceneUBOData {
         alignas(16) glm::mat4 Extra;
-		alignas(16) glm::mat4 Projection;
-		alignas(16) glm::mat4 View;
+        alignas(16) glm::mat4 Projection;
+        alignas(16) glm::mat4 View;
         alignas(16) glm::vec4 ViewerPosition;
-		alignas(16) glm::vec4 Light;
-		alignas(16) glm::vec4 LightView;
+        alignas(16) glm::vec4 Light;
+        alignas(16) glm::vec4 LightView;
         alignas(4) int Flags;
         alignas(4) int Extra_1;
         alignas(4) int Extra_2;
         alignas(4) int Extra_3;
-	} SampleSceneUBOData;
+    } m_SampleSceneUBOData;
 
-	struct PushConstants {
-		alignas(16) glm::mat4 Model;
+    struct PushConstants {
+        alignas(16) glm::mat4 Model;
         alignas(4) int MaterialIndex;
         alignas(4) float SpecularFactor = 0.0f;
-	} SamplePushConstants;
+    } m_SamplePushConstants;
 
     struct PostProcessUBO {
         alignas(16) glm::vec4 Extra[15];
+        alignas(4) int Flags = 0.0f;
         alignas(4) float Gamma = 2.2f;
-        alignas(4) float Extra1 = 0.0f;
         alignas(4) float Extra2 = 0.0f;
         alignas(4) float Extra3 = 0.0f;
-    } PostProcessUBOData;
+    } m_PostProcessUBOData;
 
     struct SSAOUBO {
         alignas(16) glm::mat4 Projection;
@@ -74,23 +75,20 @@ public:
         alignas(4) int Flags;
         alignas(4) float Radius = 0.5f;
         alignas(4) float Bias = 0.025f;
-    } SSAOUBOData;
+    } m_SSAOUBOData;
 
-	const glm::vec3 InitialCameraPosition = glm::vec3(-10.0f, -3.5f, -0.2f);
+    const glm::vec3 m_InitialCameraPosition = glm::vec3(-10.0f, -3.5f, -0.2f);
 
-	const float InitialCameraFov	= 45.0f;
-	const float InitialCameraYaw	= 1.0f;
-	const float InitialCameraPitch	= -10.0f;
+    const float m_InitialCameraFov	= 45.0f;
+    const float m_InitialCameraYaw	= 1.0f;
+    const float m_InitialCameraPitch	= -10.0f;
 
-private:
 	Assets::Camera m_Camera = {};
 
 	uint32_t m_ScreenWidth	= 0;
 	uint32_t m_ScreenHeight = 0;
     uint32_t m_SampleCount = 1;
 
-    bool m_FinalImageFirstFrame = true;
-    bool m_RenderPostEffects = true;
     bool m_RenderSSAO = true;
     bool m_BlurSSAOEnabled = true;
     bool m_SSAODebugViewEnabled = false;
@@ -119,9 +117,6 @@ private:
 	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_Set = { VK_NULL_HANDLE };
     // Forward Pass
 
-    std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_PostEffectsRenderTarget;
-    Graphics::RenderPassDescription m_PostEffectsPassDescription = {}; 
-    Graphics::GPUImage m_PostEffectsBuffer;
     Graphics::Shader m_PostEffectsVertexShader = {};
     Graphics::Shader m_PostEffectsFragmentShader = {};
     Graphics::PipelineState m_PostEffectsPSO = {};
@@ -143,7 +138,6 @@ private:
     Graphics::Shader m_GeometryPassVertexShader = {};
     Graphics::Shader m_GeometryPassFragmentShader = {};
     Graphics::PipelineState m_GeometryPassPSO = {};
-    Graphics::Buffer m_GeometryPassUBO = {};
     Graphics::InputLayout m_GeometryPassInputLayout = {};
 
     VkDescriptorSetLayout m_GeometryPassSetLayout = VK_NULL_HANDLE;
@@ -174,7 +168,6 @@ private:
     Graphics::Shader m_LightCompositionVertexShader = {};
     Graphics::Shader m_LightCompositionFragmentShader = {};
     Graphics::PipelineState m_LightCompositionPSO = {};
-    Graphics::GPUBuffer m_LightCompositionUBO = {};
     Graphics::InputLayout m_LightCompositionInputLayout = {};
 
     VkDescriptorSetLayout m_LightCompositionSetLayout = VK_NULL_HANDLE;
@@ -196,13 +189,13 @@ private:
     VkDescriptorSet m_SSAOBlurSet[Graphics::FRAMES_IN_FLIGHT];
     // SSAO Blur Pass
 private:
-    void InititalizeDisplaySizeDependentResources(uint32_t width, uint32_t height);
+    void InitializeDisplaySizeDependentResources(uint32_t width, uint32_t height);
 
     void InitializeSSAO();
     void GenerateSSAOKernel(glm::vec4 kernel[64]);
     Graphics::GPUImage GenerateSSAONoise();
 
-    void FullScreenPass(const VkCommandBuffer& commandBuffer, VkDescriptorSet& set, const VkPipelineLayout& pipelineLayout, const VkPipeline& pipeline, Graphics::IRenderTarget* renderTarget);
+    void FullScreenPass(const VkCommandBuffer& commandBuffer, VkDescriptorSet& set, const VkPipelineLayout& pipelineLayout, const VkPipeline& pipeline, Graphics::IRenderTarget* renderTarget, const bool endRenderTarget = true);
 
     void RenderNormalScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
     void ForwardLightCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
@@ -225,7 +218,7 @@ void AmbientOcclusion::StartUp() {
 
     m_Light.w = 0.5f;
     
-    m_Camera.Init(InitialCameraPosition, InitialCameraFov, InitialCameraYaw, InitialCameraPitch, m_ScreenWidth, m_ScreenHeight);
+    m_Camera.Init(m_InitialCameraPosition, m_InitialCameraFov, m_InitialCameraYaw, m_InitialCameraPitch, m_ScreenWidth, m_ScreenHeight);
     m_Camera.MovementSpeed = 0.001f;
     m_Camera.Sensitivity = 0.01f;
 
@@ -235,7 +228,8 @@ void AmbientOcclusion::StartUp() {
 
     TotalModels++;
 
-    SSAOUBOData.Flags = 1; 
+    m_SSAOUBOData.Flags = 1;
+    m_PostProcessUBOData.Flags = ((1 << 1) | (1));
 
     for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
         m_SceneBuffer[i] = gfxDevice->CreateBuffer(sizeof(SceneUBOData));
@@ -243,7 +237,7 @@ void AmbientOcclusion::StartUp() {
 
     m_PostEffectsUBO = gfxDevice->CreateBuffer(sizeof(PostProcessUBO));
 
-    InititalizeDisplaySizeDependentResources(m_ScreenWidth, m_ScreenHeight);
+    InitializeDisplaySizeDependentResources(m_ScreenWidth, m_ScreenHeight);
 
     InitializeSSAO();
 
@@ -283,12 +277,6 @@ void AmbientOcclusion::StartUp() {
 		gfxDevice->WriteDescriptor(inputLayout.bindings[2], m_Set[i], rm->GetTextures());
 	}
 
-    m_PostEffectsRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
-        m_ScreenWidth, 
-        m_ScreenHeight,
-        m_SampleCount,
-        m_PostEffectsPassDescription);
-
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_PostEffectsVertexShader, "../src/Samples/AmbientOcclusion/quad_vertex.glsl");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_PostEffectsFragmentShader, "../src/Samples/AmbientOcclusion/post_process_fragment.glsl");
 
@@ -308,7 +296,7 @@ void AmbientOcclusion::StartUp() {
     postProcessDesc.cullMode= VK_CULL_MODE_NONE;
     postProcessDesc.psoInputLayout.push_back(m_PostEffectsInputLayout);
 
-    gfxDevice->CreatePipelineState(postProcessDesc, m_PostEffectsPSO, *m_PostEffectsRenderTarget.get());
+    gfxDevice->CreatePipelineState(postProcessDesc, m_PostEffectsPSO, *gfxDevice->GetSwapChain().RenderTarget.get());
     gfxDevice->CreateDescriptorSetLayout(m_PostEffectsSetLayout, m_PostEffectsInputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
@@ -322,7 +310,7 @@ void AmbientOcclusion::StartUp() {
     }
 }
 
-void AmbientOcclusion::InititalizeDisplaySizeDependentResources(uint32_t width, uint32_t height) {
+void AmbientOcclusion::InitializeDisplaySizeDependentResources(uint32_t width, uint32_t height) {
 
     Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -388,20 +376,22 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentResources(uint32_t width, 
     gfxDevice->DestroyImage(m_GeometryAlbedoBuffer);
     gfxDevice->DestroyImage(m_GeometryDepthBuffer);
 
+    const Graphics::Format gBufferImageFormat = Graphics::Format::R16G16B16A16_FLOAT;
+
     gfxDevice->CreateRenderTarget(m_GeometryPositionBuffer,
-        Graphics::Format::R16G16B16A16_FLOAT,
+        gBufferImageFormat,
         m_ScreenWidth,
         m_ScreenHeight,
         m_SampleCount);
 
     gfxDevice->CreateRenderTarget(m_GeometryNormalBuffer,
-        Graphics::Format::R16G16B16A16_FLOAT,
+        gBufferImageFormat,
         m_ScreenWidth,
         m_ScreenHeight,
         m_SampleCount);
 
     gfxDevice->CreateRenderTarget(m_GeometryAlbedoBuffer,
-        Graphics::Format::R16G16B16A16_FLOAT,
+        gBufferImageFormat,
         m_ScreenWidth,
         m_ScreenHeight,
         m_SampleCount);
@@ -417,7 +407,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentResources(uint32_t width, 
     m_GeometryPassDescription.Attachments.push_back(
         Graphics::RenderPassAttachment::RenderTarget(
         m_GeometryPositionBuffer,
-        Graphics::Format::R16G16B16A16_FLOAT,
+        gBufferImageFormat,
         m_SampleCount,
         Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
         Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
@@ -428,7 +418,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentResources(uint32_t width, 
     m_GeometryPassDescription.Attachments.push_back(
         Graphics::RenderPassAttachment::RenderTarget(
         m_GeometryNormalBuffer,
-        Graphics::Format::R16G16B16A16_FLOAT,
+        gBufferImageFormat,
         m_SampleCount,
         Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
         Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
@@ -439,7 +429,7 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentResources(uint32_t width, 
     m_GeometryPassDescription.Attachments.push_back(
         Graphics::RenderPassAttachment::RenderTarget(
         m_GeometryAlbedoBuffer,
-        Graphics::Format::R16G16B16A16_FLOAT,
+        gBufferImageFormat,
         m_SampleCount,
         Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
         Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
@@ -520,28 +510,6 @@ void AmbientOcclusion::InititalizeDisplaySizeDependentResources(uint32_t width, 
             Graphics::ResourceState::UNDEFINED,
             Graphics::ResourceState::RENDERTARGET,
             Graphics::ResourceState::SHADER_RESOURCE));
-
-    gfxDevice->DestroyImage(m_PostEffectsBuffer);
-
-    gfxDevice->CreateRenderTarget(
-        m_PostEffectsBuffer,
-        gfxDevice->ConvertFormat(gfxDevice->GetSwapChain().ImageFormat),
-        m_ScreenWidth,
-        m_ScreenHeight,
-        m_SampleCount);
-
-    m_PostEffectsPassDescription.Attachments.clear();
-
-    m_PostEffectsPassDescription.Attachments.push_back(
-        Graphics::RenderPassAttachment::RenderTarget(
-            m_PostEffectsBuffer,
-            gfxDevice->ConvertFormat(gfxDevice->GetSwapChain().ImageFormat),
-            m_SampleCount,
-            Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
-            Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
-            Graphics::ResourceState::UNDEFINED,
-            Graphics::ResourceState::RENDERTARGET,
-            Graphics::ResourceState::SHADER_RESOURCE));
 }
 
 void AmbientOcclusion::InitializeSSAO() {
@@ -558,8 +526,6 @@ void AmbientOcclusion::InitializeSSAO() {
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_GeometryPassFragmentShader, "../src/Samples/AmbientOcclusion/geometry_pass_fragment.glsl");
 
     ResourceManager* rm = ResourceManager::Get();
-
-    m_GeometryPassUBO = gfxDevice->CreateBuffer(sizeof(SceneUBOData));
 
     m_GeometryPassInputLayout = {
         .pushConstants = {
@@ -590,7 +556,7 @@ void AmbientOcclusion::InitializeSSAO() {
         gfxDevice->WriteDescriptor(m_GeometryPassInputLayout.bindings[2], m_GeometryPassSet[frameIndex], rm->GetTextures());
     }
 
-    GenerateSSAOKernel(SSAOUBOData.SSAOKernel);
+    GenerateSSAOKernel(m_SSAOUBOData.SSAOKernel);
     m_SSAONoise = GenerateSSAONoise();
 
     m_SSAORenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
@@ -688,7 +654,6 @@ void AmbientOcclusion::InitializeSSAO() {
             { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Normal
             { 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Albedo Spec 
             { 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // SSAO 
-            { 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // SSAO Blur
         }
     };
 
@@ -814,9 +779,6 @@ void AmbientOcclusion::CleanUp() {
 	gfxDevice->DestroyDescriptorSetLayout(m_SetLayout);
 	gfxDevice->DestroyPipeline(m_PSO);
 
-    m_PostEffectsRenderTarget.reset();
-
-    gfxDevice->DestroyImage(m_PostEffectsBuffer);
     gfxDevice->DestroyShader(m_PostEffectsVertexShader);
     gfxDevice->DestroyShader(m_PostEffectsFragmentShader);
 	gfxDevice->DestroyDescriptorSetLayout(m_PostEffectsSetLayout);
@@ -863,29 +825,31 @@ void AmbientOcclusion::Update(const float constantT, const float deltaT, InputSy
 	
 	SCOPED_PROFILER_US("AmbientOcclusion::Update");
 
+    Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
 	m_Camera.OnUpdate(deltaT, input);
 
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+	m_SampleSceneUBOData.Projection = m_Camera.ProjectionMatrix;
+	m_SampleSceneUBOData.View	= m_Camera.ViewMatrix;
+    m_SampleSceneUBOData.ViewerPosition = glm::vec4(m_Camera.Position, 1.0f);
+	m_SampleSceneUBOData.Light = m_Light;
+    m_SampleSceneUBOData.LightView = m_Camera.ViewMatrix * glm::vec4(m_Light.x, m_Light.y, m_Light.z, 1.0f);
 
-	SampleSceneUBOData.Projection = m_Camera.ProjectionMatrix;
-	SampleSceneUBOData.View	= m_Camera.ViewMatrix;
-    SampleSceneUBOData.ViewerPosition = glm::vec4(m_Camera.Position, 1.0f);
-	SampleSceneUBOData.Light = m_Light;
-    SampleSceneUBOData.LightView = m_Camera.ViewMatrix * glm::vec4(m_Light.x, m_Light.y, m_Light.z, 1.0f);
+    m_SampleSceneUBOData.Flags = (m_BlurSSAOEnabled << 1 | m_SSAODebugViewEnabled);
 
-    SampleSceneUBOData.Flags = (m_BlurSSAOEnabled << 1 | m_SSAODebugViewEnabled << 0);
+    m_SSAOUBOData.Projection = m_SampleSceneUBOData.Projection;
+    m_SSAOUBOData.ScreenWidth = m_ScreenWidth;
+    m_SSAOUBOData.ScreenHeight = m_ScreenHeight;
 
-    SSAOUBOData.Projection = SampleSceneUBOData.Projection;
-    SSAOUBOData.ScreenWidth = m_ScreenWidth;
-    SSAOUBOData.ScreenHeight = m_ScreenHeight;
-
-	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &SampleSceneUBOData);
-	gfxDevice->UpdateBuffer(m_PostEffectsUBO, &PostProcessUBOData);
-    gfxDevice->UpdateBuffer(m_SSAOUBO, 0, &SSAOUBOData, sizeof(SSAOUBO));
+	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &m_SampleSceneUBOData);
+	gfxDevice->UpdateBuffer(m_PostEffectsUBO, &m_PostProcessUBOData);
+    gfxDevice->UpdateBuffer(m_SSAOUBO, 0, &m_SSAOUBOData, sizeof(SSAOUBO));
 }
 
 void AmbientOcclusion::RenderSSAO(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
     SCOPED_PROFILER_US("AmbientOcclusion::RenderSSAO");
+
+    Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
     SSAOGeometryPass(currentFrame, commandBuffer);
     SSAOPass(currentFrame, commandBuffer);
@@ -895,25 +859,7 @@ void AmbientOcclusion::RenderSSAO(const uint32_t currentFrame, const VkCommandBu
     }
 
     SSAOLightCompositionPass(currentFrame, commandBuffer);
-
-    Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
-    Graphics::GPUImage* lastImage = &m_LightCompositionBuffer;
-
-    if (m_RenderPostEffects) {
-        SSAOPostEffectsPass(currentFrame, commandBuffer);
-
-        lastImage = &m_PostEffectsBuffer;
-    } 
-
-    if (m_FinalImageFirstFrame) {
-        gfxDevice->TransitionImageLayout(*lastImage, Graphics::ResourceState::UNDEFINED, Graphics::ResourceState::COPY_SRC);
-        m_FinalImageFirstFrame = false;
-    } else {
-        gfxDevice->TransitionImageLayout(*lastImage, Graphics::ResourceState::SHADER_RESOURCE, Graphics::ResourceState::COPY_SRC);
-    }
-
-    gfxDevice->GetSwapChain().RenderTarget->CopyColor(*lastImage);
+    SSAOPostEffectsPass(currentFrame, commandBuffer);
 }
 
 void AmbientOcclusion::SSAOGeometryPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -936,12 +882,12 @@ void AmbientOcclusion::SSAOGeometryPass(const uint32_t currentFrame, const VkCom
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &Model.DataBuffer.Handle, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, Model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
-		SamplePushConstants.Model = Model.GetModelMatrix();
+		m_SamplePushConstants.Model = Model.GetModelMatrix();
 
 		for (const auto& Mesh: Model.Meshes) {
-            SamplePushConstants.MaterialIndex = Mesh.MaterialIndex;
+            m_SamplePushConstants.MaterialIndex = Mesh.MaterialIndex;
 
-            vkCmdPushConstants(commandBuffer, m_GeometryPassPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
+            vkCmdPushConstants(commandBuffer, m_GeometryPassPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &m_SamplePushConstants);
 
 			vkCmdDrawIndexed(
 				commandBuffer, 
@@ -992,12 +938,15 @@ void AmbientOcclusion::SSAOLightCompositionPass(const uint32_t currentFrame, con
 void AmbientOcclusion::SSAOPostEffectsPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
     SCOPED_PROFILER_US("AmbientOcclusion::SSAOPostEffectsPass");
 
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
     FullScreenPass(
         commandBuffer, 
         m_PostEffectsSSAOPassSet[currentFrame], 
         m_PostEffectsPSO.pipelineLayout, 
         m_PostEffectsPSO.pipeline, 
-        m_PostEffectsRenderTarget.get());
+        gfxDevice->GetSwapChain().RenderTarget.get(),
+        false);    
 }
 
 void AmbientOcclusion::FullScreenPass(
@@ -1005,7 +954,8 @@ void AmbientOcclusion::FullScreenPass(
     VkDescriptorSet& set,
     const VkPipelineLayout& pipelineLayout,
     const VkPipeline& pipeline,
-    Graphics::IRenderTarget* renderTarget) {
+    Graphics::IRenderTarget* renderTarget,
+    const bool endRenderTarget) {
 
     if (!renderTarget) return;
 
@@ -1017,32 +967,17 @@ void AmbientOcclusion::FullScreenPass(
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdDraw(commandBuffer, 6, 1, 0, 0);
 
-    renderTarget->End(commandBuffer);
+    if (endRenderTarget) {
+        renderTarget->End(commandBuffer);
+    }
 }
 
 void AmbientOcclusion::RenderNormalScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 
     SCOPED_PROFILER_US("AmbientOcclusion::RenderNormalScene");
 
-    Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-
     ForwardLightCompositionPass(currentFrame, commandBuffer);
-
-    Graphics::GPUImage* lastImage = &m_ForwardResolveBuffer;
-
-    if (m_RenderPostEffects) {
-        ForwardPostEffectsPass(currentFrame, commandBuffer);
-        lastImage = &m_PostEffectsBuffer;
-    }
-
-    if (m_FinalImageFirstFrame) {
-        gfxDevice->TransitionImageLayout(*lastImage, Graphics::ResourceState::UNDEFINED, Graphics::ResourceState::COPY_SRC);
-        m_FinalImageFirstFrame = false;
-    } else {
-        gfxDevice->TransitionImageLayout(*lastImage, Graphics::ResourceState::SHADER_RESOURCE, Graphics::ResourceState::COPY_SRC);
-    }
-
-    gfxDevice->GetSwapChain().RenderTarget->CopyColor(*lastImage);
+    ForwardPostEffectsPass(currentFrame, commandBuffer);
 }
 
 void AmbientOcclusion::ForwardLightCompositionPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -1065,12 +1000,12 @@ void AmbientOcclusion::ForwardLightCompositionPass(const uint32_t currentFrame, 
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &Model.DataBuffer.Handle, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, Model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
-		SamplePushConstants.Model = Model.GetModelMatrix();
+		m_SamplePushConstants.Model = Model.GetModelMatrix();
 
 		for (const auto& Mesh: Model.Meshes) {
-            SamplePushConstants.MaterialIndex = Mesh.MaterialIndex;
+            m_SamplePushConstants.MaterialIndex = Mesh.MaterialIndex;
 
-            vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
+            vkCmdPushConstants(commandBuffer, m_PSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &m_SamplePushConstants);
 
 			vkCmdDrawIndexed(
 				commandBuffer, 
@@ -1089,12 +1024,15 @@ void AmbientOcclusion::ForwardLightCompositionPass(const uint32_t currentFrame, 
 void AmbientOcclusion::ForwardPostEffectsPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
     SCOPED_PROFILER_US("AmbientOcclusion::ForwardPostEffectsPass");
 
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
     FullScreenPass(
         commandBuffer, 
         m_PostEffectsForwardPassSet[currentFrame],
         m_PostEffectsPSO.pipelineLayout, 
         m_PostEffectsPSO.pipeline, 
-        m_PostEffectsRenderTarget.get());
+        gfxDevice->GetSwapChain().RenderTarget.get(),
+        false);    
 }
 
 void AmbientOcclusion::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -1113,31 +1051,39 @@ void AmbientOcclusion::RenderUI() {
 
     ImGui::SeparatorText("SSAO");
     ImGui::Checkbox("Render SSAO", &m_RenderSSAO);
-    ImGui::DragInt("SSAO Sample Count", &SSAOUBOData.KernelSize, 1, 1, 64);
-    ImGui::DragFloat("SSAO Radius", &SSAOUBOData.Radius, 0.002f, 0.0f, 10.0f);
-    ImGui::DragFloat("SSAO Bias", &SSAOUBOData.Bias, 0.002f, 0.0f, 10.0f);
+    ImGui::DragInt("SSAO Sample Count", &m_SSAOUBOData.KernelSize, 1, 1, 64);
+    ImGui::DragFloat("SSAO Radius", &m_SSAOUBOData.Radius, 0.002f, 0.0f, 10.0f);
+    ImGui::DragFloat("SSAO Bias", &m_SSAOUBOData.Bias, 0.002f, 0.0f, 10.0f);
 
     ImGui::Checkbox("SSAO - Blur enabled", &m_BlurSSAOEnabled);
 
-    bool rangeCheckEnabled = (SSAOUBOData.Flags & (1 << 0));
+    bool rangeCheckEnabled = (m_SSAOUBOData.Flags & 1);
 
     ImGui::Checkbox("SSAO - Range Check enabled", &rangeCheckEnabled);
 
-    SSAOUBOData.Flags = (rangeCheckEnabled << 0); 
+    m_SSAOUBOData.Flags = rangeCheckEnabled; 
 
     ImGui::Checkbox("SSAO - Debug View enabled", &m_SSAODebugViewEnabled);
 
     ImGui::DragFloat4("Light Direction", (float*)&m_Light, 0.02f, -20.0f, 20.0f);
     ImGui::DragFloat("Light Intensity", &m_Light.w, 0.002f, 0.0f, 1.0f);
-    ImGui::DragFloat("Specular Factor", &SamplePushConstants.SpecularFactor, 0.002f, 0.0f, 64.0f);
+    ImGui::DragFloat("Specular Factor", &m_SamplePushConstants.SpecularFactor, 0.002f, 0.0f, 64.0f);
 
 	for (int ModelIndex = 0; ModelIndex < TotalModels; ++ModelIndex) {
 		m_Models[ModelIndex]->OnUIRender();
 	}
 
     ImGui::SeparatorText("Scene Post Effects");
-    ImGui::Checkbox("Render Post Effects", &m_RenderPostEffects);
-    ImGui::DragFloat("Gamma Correction", &PostProcessUBOData.Gamma, 0.002f, 0.0f, 5.0f);
+
+    bool postEffectsEnabled = (m_PostProcessUBOData.Flags & 1);
+    bool gammaCorrectionEnabled = (m_PostProcessUBOData.Flags & (1 << 1));
+
+    ImGui::Checkbox("Render Post Effects", &postEffectsEnabled);
+    ImGui::Checkbox("Gamma Correction Enabled", &gammaCorrectionEnabled);
+
+    m_PostProcessUBOData.Flags = (gammaCorrectionEnabled << 1) | (postEffectsEnabled);
+
+    ImGui::DragFloat("Gamma Correction", &m_PostProcessUBOData.Gamma, 0.002f, 0.0f, 5.0f);
 }
 
 void AmbientOcclusion::Resize(uint32_t width, uint32_t height) {
@@ -1148,7 +1094,7 @@ void AmbientOcclusion::Resize(uint32_t width, uint32_t height) {
 
     Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-    InititalizeDisplaySizeDependentResources(m_ScreenWidth, m_ScreenHeight);
+    InitializeDisplaySizeDependentResources(m_ScreenWidth, m_ScreenHeight);
 
     for (uint32_t frameIndex = 0; frameIndex < Graphics::FRAMES_IN_FLIGHT; frameIndex++) {
         gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[1], m_PostEffectsForwardPassSet[frameIndex], m_ForwardResolveBuffer);
@@ -1173,13 +1119,10 @@ void AmbientOcclusion::Resize(uint32_t width, uint32_t height) {
     }    
 
 	m_ForwardPassOffscreenRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_ForwardPassDescription);
-    m_PostEffectsRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_PostEffectsPassDescription);
     m_GeometryPassRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_GeometryPassDescription);
     m_SSAORenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_SSAOPassDescription);
     m_LightCompositionRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_LightCompositionPassDescription);
     m_SSAOBlurRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_SSAOBlurRenderPassDescription);
-
-    m_FinalImageFirstFrame = true;
 }
 
 RUN_APPLICATION(AmbientOcclusion);
