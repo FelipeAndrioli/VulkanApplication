@@ -45,16 +45,20 @@ struct material_t {
 };
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
-    mat4 extra;
     mat4 projection;
     mat4 view;
     vec4 viewer_position;
     vec4 light;
     vec4 light_view;
+    vec4 extras[3];
     int flags;
-    int extra_1;
-    int extra_2;
-    int extra_3;
+    float tan_half_fov;
+    float aspect_ratio;
+    float near_plane;
+    float far_plane;
+    float extra_1;
+    float extra_2;
+    float extra_3;
 } scene_gpu_data;
 
 layout (std140, set = 0, binding = 1) uniform MaterialGPUData {
@@ -70,6 +74,8 @@ layout (push_constant) uniform PushConstants {
 } push_constants;
 
 void main() {
+
+    bool ambient_light_only = bool(scene_gpu_data.flags & (1 << 2));
 
     material_t material = material_gpu_data.materials[push_constants.material_index];
 
@@ -100,7 +106,11 @@ void main() {
     float spec = pow(max(dot(normal, halfway_dir), 0.0), 8.0);
     vec3 specular = vec3(light_color * spec) * vec3(push_constants.specular_factor);
 
-    lighting = ambient + diffuse + specular;
+    if (ambient_light_only) {
+        lighting = ambient;
+    } else {
+        lighting = ambient + diffuse + specular;
+    }
 
 	pixel_color = vec4(lighting, 1.0);	
 }

@@ -38,16 +38,20 @@ public:
 
 private:
     struct SceneUBOData {
-        alignas(16) glm::mat4 Extra;
         alignas(16) glm::mat4 Projection;
         alignas(16) glm::mat4 View;
         alignas(16) glm::vec4 ViewerPosition;
         alignas(16) glm::vec4 Light;
         alignas(16) glm::vec4 LightView;
+        alignas(16) glm::vec4 Extras[3];
         alignas(4) int Flags;
-        alignas(4) int Extra_1;
-        alignas(4) int Extra_2;
-        alignas(4) int Extra_3;
+        alignas(4) float TanHalfFov;
+        alignas(4) float AspectRatio;
+        alignas(4) float NearPlane;
+        alignas(4) float FarPlane;
+        alignas(4) float Extra1;
+        alignas(4) float Extra2;
+        alignas(4) float Extra3;
     } m_SampleSceneUBOData;
 
     struct PushConstants {
@@ -69,12 +73,16 @@ private:
 
         // this is wasting one float per kernel sample due to alignment, 256 bytes wasted :)
         alignas(16) glm::vec4 SSAOKernel[64];
-        alignas(4) int KernelSize = 64;
+        alignas(4) int KernelSize = 32;
         alignas(4) int ScreenWidth;
         alignas(4) int ScreenHeight;
         alignas(4) int Flags;
         alignas(4) float Radius = 0.5f;
         alignas(4) float Bias = 0.025f;
+        alignas(4) float AspectRatio;
+        alignas(4) float TanHalfFov;
+        alignas(4) float NearPlane;
+        alignas(4) float FarPlane;
     } m_SSAOUBOData;
 
     const glm::vec3 m_InitialCameraPosition = glm::vec3(-10.0f, -3.5f, -0.2f);
@@ -92,6 +100,12 @@ private:
     bool m_RenderSSAO = true;
     bool m_BlurSSAOEnabled = true;
     bool m_SSAODebugViewEnabled = false;
+    bool m_AmbientLightOnly = false;
+    bool m_DebugViewPos = false;
+    bool m_DebugViewUV = false;
+    bool m_BuildPosFromViewRay = true;
+    bool m_SSAORangeCheckEnabled = true;
+    bool m_DebugViewScreenRays = false;
 
 	std::array<std::shared_ptr<Assets::Model>, TOTAL_MODELS> m_Models;
 
@@ -130,7 +144,6 @@ private:
     // SSAO Geometry Pass
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_GeometryPassRenderTarget;
     Graphics::RenderPassDescription m_GeometryPassDescription = {};
-    Graphics::GPUImage m_GeometryPositionBuffer = {};
     Graphics::GPUImage m_GeometryNormalBuffer = {};
     Graphics::GPUImage m_GeometryAlbedoBuffer = {};
     Graphics::GPUImage m_GeometryDepthBuffer = {};
@@ -142,7 +155,6 @@ private:
 
     VkDescriptorSetLayout m_GeometryPassSetLayout = VK_NULL_HANDLE;
     VkDescriptorSet m_GeometryPassSet[Graphics::FRAMES_IN_FLIGHT];
-
     // SSAO Geometry Pass
 
     // SSAO Pass
@@ -371,18 +383,11 @@ void AmbientOcclusion::InitializeDisplaySizeDependentResources(uint32_t width, u
             Graphics::ResourceState::RENDERTARGET,
             Graphics::ResourceState::SHADER_RESOURCE));
 
-    gfxDevice->DestroyImage(m_GeometryPositionBuffer);
     gfxDevice->DestroyImage(m_GeometryNormalBuffer);
     gfxDevice->DestroyImage(m_GeometryAlbedoBuffer);
     gfxDevice->DestroyImage(m_GeometryDepthBuffer);
 
     const Graphics::Format gBufferImageFormat = Graphics::Format::R16G16B16A16_FLOAT;
-
-    gfxDevice->CreateRenderTarget(m_GeometryPositionBuffer,
-        gBufferImageFormat,
-        m_ScreenWidth,
-        m_ScreenHeight,
-        m_SampleCount);
 
     gfxDevice->CreateRenderTarget(m_GeometryNormalBuffer,
         gBufferImageFormat,
@@ -396,24 +401,14 @@ void AmbientOcclusion::InitializeDisplaySizeDependentResources(uint32_t width, u
         m_ScreenHeight,
         m_SampleCount);
 
-    gfxDevice->CreateDepthBuffer(m_GeometryDepthBuffer,
-        gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
-        m_ScreenWidth,
-        m_ScreenHeight,
-        m_SampleCount);
+	gfxDevice->CreateDepthOnlyBuffer(m_GeometryDepthBuffer, 
+        { m_ScreenWidth, m_ScreenHeight },
+        static_cast<VkSampleCountFlagBits>(m_SampleCount), 
+        1);
+
+    gfxDevice->CreateImageSampler(m_GeometryDepthBuffer);
 
     m_GeometryPassDescription.Attachments.clear();
-
-    m_GeometryPassDescription.Attachments.push_back(
-        Graphics::RenderPassAttachment::RenderTarget(
-        m_GeometryPositionBuffer,
-        gBufferImageFormat,
-        m_SampleCount,
-        Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
-        Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
-        Graphics::ResourceState::UNDEFINED,
-        Graphics::ResourceState::RENDERTARGET,
-        Graphics::ResourceState::SHADER_RESOURCE));
 
     m_GeometryPassDescription.Attachments.push_back(
         Graphics::RenderPassAttachment::RenderTarget(
@@ -438,15 +433,15 @@ void AmbientOcclusion::InitializeDisplaySizeDependentResources(uint32_t width, u
         Graphics::ResourceState::SHADER_RESOURCE));
 
     m_GeometryPassDescription.Attachments.push_back(
-        Graphics::RenderPassAttachment::DepthStencil(
+        Graphics::RenderPassAttachment::Depth(
         m_GeometryDepthBuffer,
-        gfxDevice->ConvertFormat(gfxDevice->GetDepthFormat()),
+        gfxDevice->ConvertFormat(m_GeometryDepthBuffer.Description.Format),
         m_SampleCount,
         Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
         Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
         Graphics::ResourceState::UNDEFINED,
-        Graphics::ResourceState::DEPTHSTENCIL,
-        Graphics::ResourceState::DEPTHSTENCIL));
+        Graphics::ResourceState::DEPTH,
+        Graphics::ResourceState::DEPTH_READONLY));
 
     gfxDevice->DestroyImage(m_SSAOBuffer);
 
@@ -542,7 +537,7 @@ void AmbientOcclusion::InitializeSSAO() {
     GeometryPassPSODesc.Name = "SSAO Geometry Pass";
     GeometryPassPSODesc.vertexShader = &m_GeometryPassVertexShader;
     GeometryPassPSODesc.fragmentShader = &m_GeometryPassFragmentShader;
-    GeometryPassPSODesc.attachmentCount = 3; // Position, Normal, AlbedoSpec (more like a color attachment count)
+    GeometryPassPSODesc.attachmentCount = 2; // Normal, AlbedoSpec (more like a color attachment count)
     GeometryPassPSODesc.cullMode = VK_CULL_MODE_BACK_BIT;
     GeometryPassPSODesc.psoInputLayout.push_back(m_GeometryPassInputLayout);
 
@@ -565,7 +560,7 @@ void AmbientOcclusion::InitializeSSAO() {
         m_SampleCount,
         m_SSAOPassDescription);
 
-    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SSAOVertexShader, "../src/Samples/AmbientOcclusion/quad_vertex.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SSAOVertexShader, "../src/Samples/AmbientOcclusion/quad_position_reconstruction_ssao_vertex.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SSAOFragmentShader, "../src/Samples/AmbientOcclusion/ssao_fragment.glsl");
 
     m_SSAOUBO = gfxDevice->CreateStorageBuffer(sizeof(SSAOUBO));
@@ -573,8 +568,8 @@ void AmbientOcclusion::InitializeSSAO() {
     m_SSAOInputLayout = {
         .pushConstants = {},
         .bindings = {
-            { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-            { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Position
+            { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },
+            { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Depth 
             { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Normal
             { 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Albedo Spec 
             { 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Noise
@@ -596,7 +591,7 @@ void AmbientOcclusion::InitializeSSAO() {
     for (uint32_t frameIndex = 0; frameIndex < Graphics::FRAMES_IN_FLIGHT; frameIndex++) {
         gfxDevice->CreateDescriptorSet(m_SSAOSetLayout, m_SSAOSet[frameIndex]);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[0], m_SSAOSet[frameIndex], m_SSAOUBO);
-        gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[1], m_SSAOSet[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[1], m_SSAOSet[frameIndex], m_GeometryDepthBuffer);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[2], m_SSAOSet[frameIndex], m_GeometryNormalBuffer);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[3], m_SSAOSet[frameIndex], m_GeometryAlbedoBuffer);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[4], m_SSAOSet[frameIndex], m_SSAONoise);
@@ -614,7 +609,7 @@ void AmbientOcclusion::InitializeSSAO() {
     m_SSAOBlurInputLayout = {
         .pushConstants = {},
         .bindings = {
-            { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }  // SSAO
+            { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }  // SSAO Buffer
         }
     };
 
@@ -641,7 +636,7 @@ void AmbientOcclusion::InitializeSSAO() {
         m_SampleCount,
         m_LightCompositionPassDescription);
 
-    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightCompositionVertexShader, "../src/Samples/AmbientOcclusion/quad_vertex.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightCompositionVertexShader, "../src/Samples/AmbientOcclusion/quad_position_reconstruction_light_vertex.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightCompositionFragmentShader, "../src/Samples/AmbientOcclusion/light_composition_fragment.glsl");
 
     m_LightCompositionInputLayout = {
@@ -649,8 +644,8 @@ void AmbientOcclusion::InitializeSSAO() {
             { VK_SHADER_STAGE_ALL, 0, sizeof(float) }
         },
         .bindings = {
-            { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-            { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Position
+            { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },
+            { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Depth 
             { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Normal
             { 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // Albedo Spec 
             { 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },      // SSAO 
@@ -672,14 +667,14 @@ void AmbientOcclusion::InitializeSSAO() {
     for (uint32_t frameIndex = 0; frameIndex < Graphics::FRAMES_IN_FLIGHT; frameIndex++) {
         gfxDevice->CreateDescriptorSet(m_LightCompositionSetLayout, m_LightCompositionSetWithoutSSAOBlur[frameIndex]);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[0], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_SceneBuffer[frameIndex]);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryDepthBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryNormalBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryAlbedoBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_SSAOBuffer);
 
         gfxDevice->CreateDescriptorSet(m_LightCompositionSetLayout, m_LightCompositionSetWithSSAOBlur[frameIndex]);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[0], m_LightCompositionSetWithSSAOBlur[frameIndex], m_SceneBuffer[frameIndex]);
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryDepthBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryNormalBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryAlbedoBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSetWithSSAOBlur[frameIndex], m_SSAOBlurBuffer);
@@ -791,7 +786,6 @@ void AmbientOcclusion::CleanUp() {
     gfxDevice->DestroyDescriptorSetLayout(m_GeometryPassSetLayout);
     gfxDevice->DestroyPipeline(m_GeometryPassPSO);
 
-    gfxDevice->DestroyImage(m_GeometryPositionBuffer);
     gfxDevice->DestroyImage(m_GeometryNormalBuffer);
     gfxDevice->DestroyImage(m_GeometryAlbedoBuffer);
     gfxDevice->DestroyImage(m_GeometryDepthBuffer);
@@ -834,12 +828,28 @@ void AmbientOcclusion::Update(const float constantT, const float deltaT, InputSy
     m_SampleSceneUBOData.ViewerPosition = glm::vec4(m_Camera.Position, 1.0f);
 	m_SampleSceneUBOData.Light = m_Light;
     m_SampleSceneUBOData.LightView = m_Camera.ViewMatrix * glm::vec4(m_Light.x, m_Light.y, m_Light.z, 1.0f);
+    m_SampleSceneUBOData.NearPlane = m_Camera.Near;
+    m_SampleSceneUBOData.FarPlane = m_Camera.Far;
+    m_SampleSceneUBOData.AspectRatio = m_ScreenWidth / static_cast<float>(m_ScreenHeight);
+    m_SampleSceneUBOData.TanHalfFov = glm::tan(glm::radians(m_Camera.Fov / 2.0f));
 
-    m_SampleSceneUBOData.Flags = (m_BlurSSAOEnabled << 1 | m_SSAODebugViewEnabled);
+    m_SampleSceneUBOData.Flags = (m_DebugViewScreenRays << 6
+            | m_BuildPosFromViewRay << 5
+            | m_DebugViewUV << 4
+            | m_DebugViewPos << 3 
+            | m_AmbientLightOnly << 2 
+            | m_BlurSSAOEnabled << 1 
+            | m_SSAODebugViewEnabled);
 
     m_SSAOUBOData.Projection = m_SampleSceneUBOData.Projection;
     m_SSAOUBOData.ScreenWidth = m_ScreenWidth;
     m_SSAOUBOData.ScreenHeight = m_ScreenHeight;
+    m_SSAOUBOData.AspectRatio = m_SampleSceneUBOData.AspectRatio;
+    m_SSAOUBOData.TanHalfFov = m_SampleSceneUBOData.TanHalfFov;
+    m_SSAOUBOData.NearPlane = m_SampleSceneUBOData.NearPlane;
+    m_SSAOUBOData.FarPlane = m_SampleSceneUBOData.FarPlane;
+
+    m_SSAOUBOData.Flags = (m_BuildPosFromViewRay << 1 | m_SSAORangeCheckEnabled);
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &m_SampleSceneUBOData);
 	gfxDevice->UpdateBuffer(m_PostEffectsUBO, &m_PostProcessUBOData);
@@ -965,7 +975,7 @@ void AmbientOcclusion::FullScreenPass(
 
     gfxDevice->BindDescriptorSet(set, commandBuffer, pipelineLayout, 0, 1);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
     if (endRenderTarget) {
         renderTarget->End(commandBuffer);
@@ -1018,7 +1028,6 @@ void AmbientOcclusion::ForwardLightCompositionPass(const uint32_t currentFrame, 
 	}
 
 	m_ForwardPassOffscreenRenderTarget->End(commandBuffer);
-
 }
 
 void AmbientOcclusion::ForwardPostEffectsPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -1051,19 +1060,19 @@ void AmbientOcclusion::RenderUI() {
 
     ImGui::SeparatorText("SSAO");
     ImGui::Checkbox("Render SSAO", &m_RenderSSAO);
+    ImGui::Checkbox("Build Position from View Ray", &m_BuildPosFromViewRay);
     ImGui::DragInt("SSAO Sample Count", &m_SSAOUBOData.KernelSize, 1, 1, 64);
     ImGui::DragFloat("SSAO Radius", &m_SSAOUBOData.Radius, 0.002f, 0.0f, 10.0f);
     ImGui::DragFloat("SSAO Bias", &m_SSAOUBOData.Bias, 0.002f, 0.0f, 10.0f);
 
     ImGui::Checkbox("SSAO - Blur enabled", &m_BlurSSAOEnabled);
-
-    bool rangeCheckEnabled = (m_SSAOUBOData.Flags & 1);
-
-    ImGui::Checkbox("SSAO - Range Check enabled", &rangeCheckEnabled);
-
-    m_SSAOUBOData.Flags = rangeCheckEnabled; 
+    ImGui::Checkbox("SSAO - Range Check enabled", &m_SSAORangeCheckEnabled);
 
     ImGui::Checkbox("SSAO - Debug View enabled", &m_SSAODebugViewEnabled);
+    ImGui::Checkbox("SSAO - Ambient light only enabled", &m_AmbientLightOnly);
+    ImGui::Checkbox("SSAO - View Position", &m_DebugViewPos);
+    ImGui::Checkbox("SSAO - View UV", &m_DebugViewUV);
+    ImGui::Checkbox("SSAO - View Screen Rays", &m_DebugViewScreenRays);
 
     ImGui::DragFloat4("Light Direction", (float*)&m_Light, 0.02f, -20.0f, 20.0f);
     ImGui::DragFloat("Light Intensity", &m_Light.w, 0.002f, 0.0f, 1.0f);
@@ -1100,17 +1109,17 @@ void AmbientOcclusion::Resize(uint32_t width, uint32_t height) {
         gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[1], m_PostEffectsForwardPassSet[frameIndex], m_ForwardResolveBuffer);
         gfxDevice->WriteDescriptor(m_PostEffectsInputLayout.bindings[1], m_PostEffectsSSAOPassSet[frameIndex], m_LightCompositionBuffer);
 
-        gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[1], m_SSAOSet[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[1], m_SSAOSet[frameIndex], m_GeometryDepthBuffer);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[2], m_SSAOSet[frameIndex], m_GeometryNormalBuffer);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[3], m_SSAOSet[frameIndex], m_GeometryAlbedoBuffer);
         gfxDevice->WriteDescriptor(m_SSAOInputLayout.bindings[4], m_SSAOSet[frameIndex], m_SSAONoise);
 
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryDepthBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryNormalBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_GeometryAlbedoBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSetWithoutSSAOBlur[frameIndex], m_SSAOBuffer);
 
-        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryPositionBuffer);
+        gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[1], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryDepthBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[2], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryNormalBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[3], m_LightCompositionSetWithSSAOBlur[frameIndex], m_GeometryAlbedoBuffer);
         gfxDevice->WriteDescriptor(m_LightCompositionInputLayout.bindings[4], m_LightCompositionSetWithSSAOBlur[frameIndex], m_SSAOBlurBuffer);

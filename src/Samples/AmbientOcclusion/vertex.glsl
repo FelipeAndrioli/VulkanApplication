@@ -14,16 +14,20 @@ layout (location = 2) out vec3 out_frag_pos;
 layout (location = 3) out vec2 out_tex_coord;
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
-    mat4 extra;
     mat4 projection;
     mat4 view;
     vec4 viewer_position;
     vec4 light;
     vec4 light_view;
+    vec4 extras[3];
     int flags;
-    int extra_1;
-    int extra_2;
-    int extra_3;
+    float tan_half_fov;
+    float aspect_ratio;
+    float near_plane;
+    float far_plane;
+    float extra_1;
+    float extra_2;
+    float extra_3;
 } scene_gpu_data;
 
 layout (push_constant) uniform PushConstants {
