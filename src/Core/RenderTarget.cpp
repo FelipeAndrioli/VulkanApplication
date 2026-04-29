@@ -957,6 +957,7 @@ namespace Graphics {
 					m_ClearValues.push_back( { .color = { 0.0f, 0.0f, 0.0f, 1.0f } });
 				} break;
 			case RenderPassAttachment::AttachmentType::DEPTHSTENCIL:
+			case RenderPassAttachment::AttachmentType::DEPTH:
 				{
 					framebufferViews.push_back(attachment.Texture.ImageView);
 					m_ClearValues.push_back( { .depthStencil = { 1.0f, 0 } });
