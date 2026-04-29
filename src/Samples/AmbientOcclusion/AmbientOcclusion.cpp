@@ -1134,4 +1134,4 @@ void AmbientOcclusion::Resize(uint32_t width, uint32_t height) {
     m_SSAOBlurRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_SSAOBlurRenderPassDescription);
 }
 
-RUN_APPLICATION(AmbientOcclusion);
+//RUN_APPLICATION(AmbientOcclusion);

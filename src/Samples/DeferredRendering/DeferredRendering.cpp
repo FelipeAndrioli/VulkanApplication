@@ -1163,4 +1163,4 @@ void DeferredRendering::Resize(uint32_t width, uint32_t height) {
 	m_FirstDeferredPassFrame = true;
 }
 
-RUN_APPLICATION(DeferredRendering);
+//RUN_APPLICATION(DeferredRendering);
