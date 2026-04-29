@@ -130,6 +130,8 @@ namespace Graphics {
 		R16G16B16A16_SNORM,
 		R16G16B16A16_SINT,
 
+		R16G16B16_FLOAT,
+
 //		R8G8B8A8_FLOAT,
 		R8G8B8A8_UNORM,
 		R8G8B8A8_UINT,
@@ -162,13 +164,16 @@ namespace Graphics {
 		DEPTHSTENCIL			= 1 << 6,	// depth stencil, write enabled
 		DEPTHSTENCIL_READONLY	= 1 << 7,	// depth stencil, read only
 
+        DEPTH                   = 1 << 8,   // depth only, write enabled
+        DEPTH_READONLY          = 1 << 9,   // depth only, read only
+
 		// Buffer resource states
-		VERTEX_BUFFER			= 1 << 8,	// vertex buffer, read only
-		INDEX_BUFFER			= 1 << 9,	// index buffer, read only
-		CONSTANT_BUFFER			= 1 << 10,	// constant buffer, read only
+		VERTEX_BUFFER			= 1 << 10,	// vertex buffer, read only
+		INDEX_BUFFER			= 1 << 11,	// index buffer, read only
+		CONSTANT_BUFFER			= 1 << 12,	// constant buffer, read only
 
 		// Other
-		SWAPCHAIN				= 1 << 11
+		SWAPCHAIN				= 1 << 13
 	};
 
 	inline bool operator & (ResourceState a, ResourceState b) {
@@ -184,6 +189,7 @@ namespace Graphics {
 		enum class AttachmentType {
 			RENDERTARGET = 0,
 			DEPTHSTENCIL,
+            DEPTH,
 			RESOLVE
 		} Type = AttachmentType::RENDERTARGET;
 
@@ -255,6 +261,30 @@ namespace Graphics {
 
 			return attachment;
 		}
+
+        static RenderPassAttachment Depth(
+            const GPUImage& resource,
+            Format format,
+            uint8_t sampleCount = 1,
+            AttachmentLoadOp loadOp		= AttachmentLoadOp::LOAD,
+			AttachmentStoreOp storeOp	= AttachmentStoreOp::STORE,
+			ResourceState initialLayout = ResourceState::DEPTH,
+			ResourceState subpassLayout = ResourceState::DEPTH,
+			ResourceState finalLayout	= ResourceState::DEPTH
+        ) {
+			RenderPassAttachment attachment;
+			attachment.Type				= AttachmentType::DEPTH;
+			attachment.Texture			= resource;
+			attachment.LoadOp			= loadOp;
+			attachment.StoreOp			= storeOp;
+			attachment.InitialLayout	= initialLayout;
+			attachment.SubpassLayout	= subpassLayout;
+			attachment.FinalLayout		= finalLayout;
+			attachment.ImageFormat		= format;
+			attachment.SampleCount		= sampleCount;
+
+			return attachment;
+        }
 
 		static RenderPassAttachment Resolve(
 			const GPUImage& resource,
