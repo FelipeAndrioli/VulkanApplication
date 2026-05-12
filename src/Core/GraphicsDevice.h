@@ -24,7 +24,9 @@ namespace Graphics {
 	const int DEDICATED_GPU = 2;
 	const std::vector<const char*> c_DeviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
+		VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+        VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME,
+        VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
 	};
 
 	struct QueueFamilyIndices {
@@ -261,8 +263,7 @@ namespace Graphics {
 		void DestroyImageView(GPUImage& image);
 		void DestroyImageView(GPUImageCube& image);
 
-		template <class T>
-		void UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize);
+		void UploadDataToImage(GPUImage& dstImage, const void* data, const size_t dataSize);
 
 		void CreateFramebuffer(const VkRenderPass& renderPass, const std::vector<VkImageView>& attachmentViews, const VkExtent2D extent, VkFramebuffer& framebuffer, const uint32_t layers = 1);
 		void CreateDepthBuffer(GPUImage& depthBuffer, const RenderPassDesc& renderPassDesc);

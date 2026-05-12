@@ -1,0 +1,116 @@
+#version 450
+
+#define MAX_MATERIALS 50
+
+#extension GL_EXT_nonuniform_qualifier : enable
+
+layout (location = 0) in vec3 in_frag_color;
+layout (location = 1) in vec3 in_frag_normal;
+layout (location = 2) in vec3 in_frag_pos;
+layout (location = 3) in vec2 in_tex_coord;
+
+layout (location = 0) out vec4 pixel_color;
+
+struct material_t {
+	vec4 ambient;						// ignore w
+	vec4 diffuse;		                // ignore w
+	vec4 specular;						// ignore w
+	vec4 transparency;					// ignore w
+	vec4 emission;						// ignore w
+	vec4 extra[6];
+
+	int pad2;
+	int illum;
+
+	int ambient_texture_index;
+	int diffuse_texture_index;
+	int specular_texture_index;
+	int bump_texture_index;
+	int roughness_texture_index;
+	int metallic_texture_index;
+	int normal_texture_index;
+
+	int extra_scalar;
+
+	float opacity;
+	float shininess;
+	float shininess_strength;
+	float roughness;
+	float metallic;
+	float sheen;
+	float clearcoat_thickness;
+	float clearcoat_roughness;
+	float anisotropy;
+	float anisotropy_rotation;
+};
+
+layout (std140, set = 0, binding = 0) uniform SceneGPUData {
+    mat4 projection;
+    mat4 view;
+    vec4 viewer_position;
+    vec4 light;
+    vec4 light_view;
+    vec4 extras[3];
+    int flags;
+    float tan_half_fov;
+    float aspect_ratio;
+    float near_plane;
+    float far_plane;
+    float extra_1;
+    float extra_2;
+    float extra_3;
+} scene_gpu_data;
+
+layout (std140, set = 0, binding = 1) uniform MaterialGPUData {
+    material_t materials[MAX_MATERIALS];
+} material_gpu_data;
+
+layout (set = 0, binding = 2) uniform sampler2D textures[];
+
+layout (push_constant) uniform PushConstants {
+	mat4 model;
+    int material_index;
+    float specular_factor;
+} push_constants;
+
+void main() {
+
+    bool ambient_light_only = bool(scene_gpu_data.flags & (1 << 2));
+
+    material_t material = material_gpu_data.materials[push_constants.material_index];
+
+    vec4 albedo = vec4(1.0, 0.0, 1.0, 1.0);
+    vec3 normal = normalize(in_frag_normal);
+
+    if (material.diffuse_texture_index != -1) {
+        albedo = texture(textures[material.diffuse_texture_index], in_tex_coord);
+    }
+
+    if (albedo.a < 0.1) discard;
+
+    vec3 lighting = vec3(0.0);
+    vec3 light_pos = scene_gpu_data.light.xyz;
+    vec3 light_color = vec3(1.0);
+
+    float light_intensity = scene_gpu_data.light.w;
+
+    vec3 ambient = light_intensity * albedo.rgb;
+
+    vec3 view_dir = normalize(scene_gpu_data.viewer_position.xyz - in_frag_pos);
+	vec3 light_dir = normalize(light_pos - in_frag_pos);
+
+	float diff = max(dot(normal, light_dir), 0.0);
+	vec3 diffuse = diff * albedo.rgb * light_color * light_intensity;
+
+    vec3 halfway_dir = normalize(light_dir + view_dir);
+    float spec = pow(max(dot(normal, halfway_dir), 0.0), 8.0);
+    vec3 specular = vec3(light_color * spec) * vec3(push_constants.specular_factor);
+
+    if (ambient_light_only) {
+        lighting = ambient;
+    } else {
+        lighting = ambient + diffuse + specular;
+    }
+
+	pixel_color = vec4(lighting, 1.0);	
+}

@@ -1,5 +1,6 @@
 #include "GraphicsDevice.h"
 
+#include "Graphics.h"
 #include "UI.h"
 #include "BufferManager.h"
 #include "RenderTarget.h"
@@ -313,10 +314,16 @@ namespace Graphics {
 		descriptorIndexingCreateInfo.runtimeDescriptorArray							= VK_TRUE;
 		descriptorIndexingCreateInfo.pNext											= nullptr;
 
+        VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures separateLayoutsCreateInfo   = {};
+        separateLayoutsCreateInfo.sType                                                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES;
+        separateLayoutsCreateInfo.separateDepthStencilLayouts                           = VK_TRUE;
+        separateLayoutsCreateInfo.pNext                                                 = &descriptorIndexingCreateInfo;
+
 		VkPhysicalDeviceFeatures2 deviceFeatures2	= {};
 		deviceFeatures2.sType						= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 		deviceFeatures2.features					= deviceFeatures;
-		deviceFeatures2.pNext						= &descriptorIndexingCreateInfo;
+//		deviceFeatures2.pNext						= &descriptorIndexingCreateInfo;
+		deviceFeatures2.pNext						= &separateLayoutsCreateInfo;
 
 		vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
 
@@ -780,7 +787,10 @@ namespace Graphics {
 		CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.presentFamily.value(), m_PresentQueue);
 		CreateQueue(m_LogicalDevice, m_QueueFamilyIndices.graphicsAndComputeFamily.value(), m_ComputeQueue);
 
-		CreateDebugMessenger(m_VulkanInstance, m_DebugMessenger);
+        if (c_EnableValidationLayers) {
+            CreateDebugMessenger(m_VulkanInstance, m_DebugMessenger);
+        }
+
 		CreateCommandPool(m_CommandPool, m_QueueFamilyIndices.graphicsFamily.value());
 
 		m_BufferManager = std::make_unique<BufferManager>();
@@ -1512,8 +1522,7 @@ namespace Graphics {
 		EndSingleTimeCommandBuffer(commandBuffer, m_CommandPool);
 	}
 
-	template <class T>
-	void GraphicsDevice::UploadDataToImage(GPUImage& dstImage, const T* data, const size_t dataSize) {
+	void GraphicsDevice::UploadDataToImage(GPUImage& dstImage, const void* data, const size_t dataSize) {
 		assert(dataSize != 0);
 
 		BufferDescription stagingDesc = {};
@@ -1686,7 +1695,8 @@ namespace Graphics {
 		desc.Usage				= static_cast<VkImageUsageFlagBits>(
 									VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | 
 									VK_IMAGE_USAGE_TRANSFER_SRC_BIT | 
-									VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+									VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                    VK_IMAGE_USAGE_SAMPLED_BIT);
 
 		desc.MemoryProperty		= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		desc.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
@@ -1943,7 +1953,7 @@ namespace Graphics {
 		CreateImageView(texture);
 		TransitionImageLayout(texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		UploadDataToImage(texture, initialData, dataSize);
-		GenerateMipMaps(texture);
+        GenerateMipMaps(texture);
 		CreateImageSampler(texture);
 	}
 
@@ -2201,6 +2211,7 @@ namespace Graphics {
 					subpassDesc.ColorAttachmentIndices.push_back(attachmentIndex);
 				} break;
 			case RenderPassAttachment::AttachmentType::DEPTHSTENCIL:
+			case RenderPassAttachment::AttachmentType::DEPTH:
 				{
 					attachmentDescription.samples		= (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
 
@@ -3196,6 +3207,10 @@ namespace Graphics {
 			return VK_FORMAT_R8G8B8A8_SNORM;
 		case Format::R8G8B8A8_SINT:
 			return VK_FORMAT_R8G8B8A8_SINT;
+        case Format::R32_FLOAT:
+            return VK_FORMAT_R32_SFLOAT;
+        case Format::R16_FLOAT:
+            return VK_FORMAT_R16_SFLOAT;
 		case Format::D32_FLOAT_S8_UINT:
 			return VK_FORMAT_D32_SFLOAT_S8_UINT;
 		case Format::D24_UNORM_S8_UINT:
@@ -3223,6 +3238,10 @@ namespace Graphics {
 			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		case ResourceState::DEPTHSTENCIL_READONLY:
 			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        case ResourceState::DEPTH:
+            return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR;
+        case ResourceState::DEPTH_READONLY:
+            return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR;
 		case ResourceState::SHADER_RESOURCE:
 		case ResourceState::SHADER_RESOURCE_COMPUTE:
 			return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

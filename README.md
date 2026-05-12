@@ -23,6 +23,9 @@
 ### Deferred Rendering (with light volume optimization)
 ![Deferred - Light Volume Optimization](screenshots/deferred_sphere_optimization.png)
 
+### SSAO (with position reconstruction from depth optimization)
+![SSAO](screenshots/SSAO.png)
+
 ## Current Work (not in order)
 
 - [x] Depth Buffer 
@@ -78,10 +81,10 @@
     - [x] Real time comparison with forward rendering
     - [x] Basic deferred rendering with range check in a for loop in the fragment shader
     - [x] Light volume optimization
+- [x] SSAO
 
 ## Next Up
 - [ ] Fix broken samples after small refactoring
-- [ ] SSAO
 
 ## Planning 
 - [ ] Shader Include
