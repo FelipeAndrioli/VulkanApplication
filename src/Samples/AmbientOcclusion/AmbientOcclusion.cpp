@@ -83,6 +83,7 @@ private:
         alignas(4) float TanHalfFov;
         alignas(4) float NearPlane;
         alignas(4) float FarPlane;
+        alignas(4) float SSAOPower = 1.0f;
     } m_SSAOUBOData;
 
     const glm::vec3 m_InitialCameraPosition = glm::vec3(-10.0f, -3.5f, -0.2f);
@@ -1064,6 +1065,7 @@ void AmbientOcclusion::RenderUI() {
     ImGui::DragInt("SSAO Sample Count", &m_SSAOUBOData.KernelSize, 1, 1, 64);
     ImGui::DragFloat("SSAO Radius", &m_SSAOUBOData.Radius, 0.002f, 0.0f, 10.0f);
     ImGui::DragFloat("SSAO Bias", &m_SSAOUBOData.Bias, 0.002f, 0.0f, 10.0f);
+    ImGui::DragFloat("SSAO Power", &m_SSAOUBOData.SSAOPower, 0.002f, 0.0f, 10.0f);
 
     ImGui::Checkbox("SSAO - Blur enabled", &m_BlurSSAOEnabled);
     ImGui::Checkbox("SSAO - Range Check enabled", &m_SSAORangeCheckEnabled);

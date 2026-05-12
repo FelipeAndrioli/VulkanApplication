@@ -20,6 +20,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SSAOGPUData {
     float tan_half_fov;
     float near_plane;
     float far_plane;
+    float ssao_power;
 } ssao_gpu_data;
 
 layout (set = 0, binding = 1) uniform sampler2D depth_map;
@@ -64,7 +65,6 @@ void main() {
     }
 
     vec3 frag_normal = normalize(texture(normal, uv).rgb);
-    vec3 frag_albedo_spec = texture(albedo_spec, uv).rgb;
     vec3 random_vec = texture(ssao_noise, uv * noise_scale).rgb;
 
     // the ssao kernel is a vector created at tangent space, it has to be 
@@ -114,5 +114,5 @@ void main() {
 
     occlusion = 1.0 - (occlusion / ssao_gpu_data.kernel_size);
 
-    frag_color = occlusion;
+    frag_color = pow(occlusion, ssao_gpu_data.ssao_power);
 }

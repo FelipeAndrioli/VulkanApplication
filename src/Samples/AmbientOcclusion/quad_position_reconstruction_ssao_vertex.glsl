@@ -19,6 +19,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SSAOGPUData {
     float tan_half_fov;
     float near_plane;
     float far_plane;
+    float ssao_power;
 } ssao_gpu_data;
 
 void main() {
