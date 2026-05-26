@@ -135,10 +135,12 @@ namespace Graphics {
 	};
 
 	struct PipelineStateDescription {
-		const Shader* vertexShader		= nullptr;
-		const Shader* fragmentShader	= nullptr;
-		const Shader* geometryShader	= nullptr;
-		const Shader* computeShader		= nullptr;
+		const Shader* vertexShader		            = nullptr;
+		const Shader* fragmentShader	            = nullptr;
+		const Shader* geometryShader	            = nullptr;
+		const Shader* computeShader		            = nullptr;
+		const Shader* tessellationControlShader     = nullptr;
+		const Shader* tessellationEvaluationShader  = nullptr;
 
 		bool noVertex					= false;
 		bool depthTestEnable			= true;
@@ -161,6 +163,7 @@ namespace Graphics {
 		std::string Name;
 
 		uint32_t attachmentCount = 1;
+        uint32_t tessellationPatchControlPoints = 3;
 
 		union {
 			VkPipelineColorBlendAttachmentState colorBlendingDesc = {};

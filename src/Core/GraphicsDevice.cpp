@@ -2702,6 +2702,10 @@ namespace Graphics {
 			return EShLangGeometry;
 		case VK_SHADER_STAGE_COMPUTE_BIT:
 			return EShLangCompute;
+        case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+            return EShLangTessControl;
+        case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+            return EShLangTessEvaluation;
 		default:
 			return EShLangVertex;
 		}
@@ -2971,7 +2975,7 @@ namespace Graphics {
 		VkVertexInputBindingDescription bindingDescription						= Assets::Vertex::GetBindingDescription();
 		std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions	= Assets::Vertex::GetAttributeDescriptions();
 
-		if (desc.vertexShader != nullptr) {
+		if (desc.vertexShader) {
 
 			pso.vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
@@ -2989,12 +2993,25 @@ namespace Graphics {
 			shaderStages.push_back(desc.vertexShader->shaderStageInfo);
 		}
 
-		if (desc.fragmentShader != nullptr)
+        if (desc.tessellationControlShader) {
+            shaderStages.push_back(desc.tessellationControlShader->shaderStageInfo);
+        }
+
+        if (desc.tessellationEvaluationShader) {
+            shaderStages.push_back(desc.tessellationEvaluationShader->shaderStageInfo);
+        }
+
+		if (desc.fragmentShader) {
 			shaderStages.push_back(desc.fragmentShader->shaderStageInfo);
-		if (desc.computeShader != nullptr)
+        }
+
+        if (desc.computeShader) {
 			shaderStages.push_back(desc.computeShader->shaderStageInfo);
-		if (desc.geometryShader != nullptr)
+        }
+		
+        if (desc.geometryShader) {
 			shaderStages.push_back(desc.geometryShader->shaderStageInfo);
+        }
 
 		for (auto stage : shaderStages) {
 			stage.pNext = nullptr;
@@ -3069,6 +3086,28 @@ namespace Graphics {
 		//pipelineInfo.basePipelineIndex		= -1;
 
 //		pso.renderPass							= &renderTarget.GetRenderPass();
+
+
+        if (desc.tessellationControlShader && desc.tessellationEvaluationShader) {
+            /* 
+            Note:   If VkPipelineTessellationDomainOriginStateCreateInfo is not 
+                    set in VkPipelineTessellationStateCreateInfo pNext, below 
+                    is adopted as default value.
+
+            VkPipelineTessellationDomainOriginStateCreateInfo tessellationDomainOriginCreateInfo = {};
+            tessellationDomainOriginCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO;
+            tessellationDomainOriginCreateInfo.pNext = 0;
+            tessellationDomainOriginCreateInfo.domainOrigin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
+            */
+
+            VkPipelineTessellationStateCreateInfo tessellationCreateInfo = {};
+            tessellationCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+            tessellationCreateInfo.pNext = 0;
+            tessellationCreateInfo.flags = 0;
+            tessellationCreateInfo.patchControlPoints = desc.tessellationPatchControlPoints;
+
+            pso.pipelineInfo.pTessellationState = &tessellationCreateInfo;
+        }
 
 		result = vkCreateGraphicsPipelines(m_LogicalDevice, VK_NULL_HANDLE, 1, &pso.pipelineInfo, nullptr, &pso.pipeline);
 		assert(result == VK_SUCCESS);
