@@ -10,21 +10,39 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	mat4 projection;
 	mat4 view;
 	vec4 light_position;
+	vec4 viewer_position;
+	vec4 water_color;
+    vec4 wave_direction;
+    int flags;
     float tessellation_level_inner;
     float tessellation_level_outer;
-    float constant_t;
+    float time;
     float delta_t;
-    float wave_frequency;
     float wave_amplitude;
 } scene_gpu_data;
 
 void main() {
 
-	vec3 light_dir = scene_gpu_data.light_position.xyz - in_frag_pos;
+    bool debug_render_normals = bool(scene_gpu_data.flags & (1 << 1));
 
-	float diff = max(dot(light_dir, in_frag_normal), 0.1);
+    if (debug_render_normals) {
+        pixel_color = vec4(in_frag_normal, 1.0);
+    } else {
+        vec3 water_color = scene_gpu_data.water_color.rgb;
+        float water_specular_factor = scene_gpu_data.water_color.a;
 
-	vec3 diffuse = diff * in_frag_color;
+        vec3 light_dir = normalize(scene_gpu_data.light_position.xyz - in_frag_pos);
+       
+        float diff = max(dot(light_dir, in_frag_normal), 0.1);
+    
+        vec3 diffuse = diff * water_color;
 
-	pixel_color = vec4(diffuse, 1.0);	
+        vec3 view_dir = normalize(scene_gpu_data.viewer_position.xyz - in_frag_pos);
+        vec3 halfway_dir = normalize(light_dir + view_dir);
+
+        float spec = pow(max(dot(in_frag_normal, halfway_dir), 0.0), water_specular_factor);
+        vec3 specular = vec3(spec);
+
+        pixel_color = vec4(diffuse + specular, 1.0);	
+    }
 }

@@ -31,16 +31,11 @@ layout (push_constant) uniform PushConstants {
 
 void main() {
 
-//	vec4 frag_pos = push_constants.model * vec4(in_position, 1.0);
+	vec4 frag_pos = push_constants.model * vec4(in_position, 1.0);
 
-//	gl_Position = scene_gpu_data.projection * scene_gpu_data.view * frag_pos;
-
-    gl_Position = vec4(in_position, 1.0);
+	gl_Position = scene_gpu_data.projection * scene_gpu_data.view * frag_pos;
 
 	out_frag_color	= in_color;
-    out_frag_normal = in_normal;
-    out_frag_position = in_position;
-//	out_frag_normal = mat3(push_constants.model) * in_normal;
-
-//	fragNormal = mat3(current_model.normal_matrix) * inNormal;
+    out_frag_position = frag_pos.xyz;
+	out_frag_normal = mat3(push_constants.model) * in_normal;
 }

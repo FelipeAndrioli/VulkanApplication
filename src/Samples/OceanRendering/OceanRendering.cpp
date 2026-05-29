@@ -15,6 +15,8 @@
 #include <glm.hpp>
 #include <gtc/type_ptr.hpp>
 
+#define PI 3.14159265359
+
 /*
     My pipeline expectation for this project:
         - Draw call of a simple quad formed by 2 triangles
@@ -67,17 +69,23 @@ public:
 		alignas(16) glm::mat4 Projection;
 		alignas(16) glm::mat4 View;
 		alignas(16) glm::vec4 LightPosition;
+		alignas(16) glm::vec4 ViewerPosition;
+        // Note: W is specular factor
+		alignas(16) glm::vec4 WaterColor = glm::vec4(1.0f);
+        // Note: X and Z are directions, Y is length and W is speed.
+        alignas(16) glm::vec4 WaveDirection = glm::vec4(-1.0f, 0.450f, 0.7f, 0.2f); 
+        alignas(4) int Flags;
         alignas(4) float TessellationLevelInner = 64.0f;
         alignas(4) float TessellationLevelOuter = 64.0f;
-        alignas(4) float ConstantT = 0.0f;
+        alignas(4) float Time = 0.0f;
         alignas(4) float DeltaT = 0.0f;
-        alignas(4) float WaveFrequency = 3.0f;
-        alignas(4) float WaveAmplitude = 0.01f;
+        alignas(4) float WaveAmplitude = 0.02f;
 	} SampleSceneData;
 
 	struct PushConstants {
-		alignas(16) glm::mat4 Model;
-	} SamplePushConstants;
+		alignas(16) glm::mat4 Model = glm::mat4(1.0f);
+        alignas(16) glm::vec4 Color = glm::vec4(1.0f);
+	} FramePushConstants;
 
 	const glm::vec3 InitialCameraPosition = glm::vec3(-15.0f, 12.0f, 17.0f);
 
@@ -99,22 +107,62 @@ private:
 	Graphics::Shader m_TessellationControlShader = {};
 	Graphics::Shader m_TessellationEvaluationShader = {};
 	Graphics::Shader m_FragShader = {};
+    Graphics::Shader m_VertexShaderTessellationDisabled = {};
 
 	Graphics::Buffer m_SceneBuffer = {};
 
 	Graphics::PipelineState m_DefaultPSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
+	Graphics::PipelineState m_DefaultTessellationDisabledPSO = {};
+    Graphics::PipelineState m_WireframeTessellationDisabledPSO = {};
 
-	VkDescriptorSetLayout m_SetLayout = VK_NULL_HANDLE;
-	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_Set = { VK_NULL_HANDLE };
+	VkDescriptorSetLayout m_FrameDescriptorSetLayout = VK_NULL_HANDLE;
+	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_FrameDescriptorSet = { VK_NULL_HANDLE };
 
-	glm::vec4 m_LightPosition = glm::vec4(1.0f, 1.0f, -15.0f, 1.0f);
+    VkDescriptorSetLayout m_FrameTessellationDisabledDescriptorSetLayout = VK_NULL_HANDLE;
+    std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_FrameTessellationDisabledDescriptorSet = { VK_NULL_HANDLE };
 
-	float m_OrbitalLightSpeed = 0.5f;
+    Graphics::Shader m_LightSourceVertexShader = {};
+    Graphics::Shader m_LightSourceFragmentShader = {};
+
+    Graphics::PipelineState m_LightSourcePSO = {};
+    Graphics::PipelineState m_LightSourceTessellationDisabledPSO = {};
+
+    VkDescriptorSetLayout m_LightSourceDescriptorSetLayout = VK_NULL_HANDLE;
+    std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_LightSourceDescriptorSet = { VK_NULL_HANDLE };
+
+	glm::vec4 m_LightPosition = glm::vec4(1.0f, 8.0f, 1.0f, 1.0f);
+    glm::vec3 m_WaterColor = glm::vec3(0.09f, 0.55f, 0.79f);
+    glm::vec2 m_WaveDirection = glm::vec2(-1.0f, 0.7f);
+
+    float m_OrbitalLightSpeed = 0.5f;
 	float m_OrbitalLightDisplacement = 3.0f;
-	bool m_OrbitateLight = false;
+    float m_WaveLength = 0.450f;
+    float m_WaveSpeed = 0.2f;
+    float m_WaterSpecularFactor = 32.0f; 
+
+    bool m_TessellationEnabled = true;
+    bool m_OrbitateLight = false;
     bool m_RenderWireframe = false;
+    bool m_SineWave = false;
+    bool m_DebugRenderNormals = false;
+
+private:
+    void RenderLightSource(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
+    void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline, VkDescriptorSet *frameDescriptorSet, bool drawIndexed = false);
 };
+
+void OceanRendering::RenderLightSource(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) {
+	SCOPED_PROFILER_US("OceanRendering::RenderLightSource");
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+    FramePushConstants.Model = glm::translate(glm::mat4(1.0f), glm::vec3(m_LightPosition));
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+    vkCmdPushConstants(commandBuffer, m_LightSourcePSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &FramePushConstants);
+    vkCmdDraw(commandBuffer, 36, 1, 0, 0);
+}
 
 void OceanRendering::StartUp() {
 
@@ -125,6 +173,12 @@ void OceanRendering::StartUp() {
 
 	m_Camera.Init(InitialCameraPosition, InitialCameraFov, InitialCameraYaw, InitialCameraPitch, m_ScreenWidth, m_ScreenHeight);
 
+	m_OceanModel = ModelLoader::LoadModel(ModelType::QUAD);
+	m_OceanModel->Transformations.translation.y = -0.51f;
+//	m_OceanModel->Transformations.rotation.x = 90.0f;
+	m_OceanModel->Transformations.scaleHandler = 20.0f;
+	m_OceanModel->ModelIndex = 0;
+
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "../src/Samples/OceanRendering/vertex.glsl");
@@ -134,7 +188,7 @@ void OceanRendering::StartUp() {
 
 	m_SceneBuffer = gfxDevice->CreateBuffer(sizeof(SceneData));
 
-	Graphics::InputLayout inputLayout = {
+	Graphics::InputLayout frameInputLayout = {
 		.pushConstants = {
 			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
 		},
@@ -144,14 +198,15 @@ void OceanRendering::StartUp() {
 	};
 
 	Graphics::PipelineStateDescription desc = {};
-	desc.Name = "Default";
+	desc.Name = "Default - Tessellation enabled";
 	desc.vertexShader = &m_VertexShader;
 	desc.tessellationControlShader = &m_TessellationControlShader;
 	desc.tessellationEvaluationShader = &m_TessellationEvaluationShader;
     desc.tessellationPatchControlPoints = 4;
     desc.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
 	desc.fragmentShader = &m_FragShader;
-	desc.psoInputLayout.push_back(inputLayout);
+	desc.psoInputLayout.push_back(frameInputLayout);
+    desc.cullMode = VK_CULL_MODE_NONE;      // TEMPORARY for testing purposes
 
     gfxDevice->CreatePipelineState(desc, m_DefaultPSO, *m_OffscreenRenderTarget.get());
 
@@ -161,18 +216,67 @@ void OceanRendering::StartUp() {
 
     gfxDevice->CreatePipelineState(desc, m_WireframePSO, *m_OffscreenRenderTarget.get());
 
-	gfxDevice->CreateDescriptorSetLayout(m_SetLayout, inputLayout.bindings);
+	gfxDevice->CreateDescriptorSetLayout(m_FrameDescriptorSetLayout, frameInputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-		gfxDevice->CreateDescriptorSet(m_SetLayout, m_Set[i]);
-		gfxDevice->WriteDescriptor(inputLayout.bindings[0], m_Set[i], m_SceneBuffer);
+		gfxDevice->CreateDescriptorSet(m_FrameDescriptorSetLayout, m_FrameDescriptorSet[i]);
+		gfxDevice->WriteDescriptor(frameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer);
 	}
 
-	m_OceanModel = ModelLoader::LoadModel(ModelType::QUAD);
-	m_OceanModel->Transformations.translation.y = -0.51f;
-	m_OceanModel->Transformations.rotation.x = 90.0f;
-	m_OceanModel->Transformations.scaleHandler = 20.0f;
-	m_OceanModel->ModelIndex = 0;
+    Graphics::InputLayout frameTessellationDisabledInputLayout = {
+		.pushConstants = {
+			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
+		},
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
+		}
+    };
+
+    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShaderTessellationDisabled, "../src/Samples/OceanRendering/vertex_tessellation_disabled.glsl");
+
+    Graphics::PipelineStateDescription tessellationDisabledPSODesc = {};
+
+    tessellationDisabledPSODesc.Name = "Default - Tessellation disabled";
+    tessellationDisabledPSODesc.vertexShader = &m_VertexShaderTessellationDisabled;
+    tessellationDisabledPSODesc.fragmentShader = &m_FragShader;
+    tessellationDisabledPSODesc.psoInputLayout.push_back(frameTessellationDisabledInputLayout);
+
+    gfxDevice->CreatePipelineState(tessellationDisabledPSODesc, m_DefaultTessellationDisabledPSO, *m_OffscreenRenderTarget.get());
+
+    tessellationDisabledPSODesc.Name = "Wireframe - Tessellation disabled";
+    tessellationDisabledPSODesc.lineWidth = 2.0f;
+    tessellationDisabledPSODesc.polygonMode = VK_POLYGON_MODE_LINE;
+
+    gfxDevice->CreatePipelineState(tessellationDisabledPSODesc, m_WireframeTessellationDisabledPSO, *m_OffscreenRenderTarget.get());
+
+    gfxDevice->CreateDescriptorSetLayout(m_FrameTessellationDisabledDescriptorSetLayout, frameTessellationDisabledInputLayout.bindings);
+
+    for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+        gfxDevice->CreateDescriptorSet(m_FrameTessellationDisabledDescriptorSetLayout, m_FrameTessellationDisabledDescriptorSet[i]);
+        gfxDevice->WriteDescriptor(frameTessellationDisabledInputLayout.bindings[0], m_FrameTessellationDisabledDescriptorSet[i], m_SceneBuffer);
+    }
+
+    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertexShader, "../src/Samples/OceanRendering/light_source_vertex.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragmentShader, "../src/Samples/OceanRendering/light_source_fragment.glsl");
+
+    Graphics::PipelineStateDescription lightSourceDesc = {};
+    lightSourceDesc.Name = "Light Source";
+    lightSourceDesc.vertexShader = &m_LightSourceVertexShader;
+    lightSourceDesc.fragmentShader = &m_LightSourceFragmentShader;
+    lightSourceDesc.noVertex = true;
+    lightSourceDesc.psoInputLayout.push_back(frameInputLayout);
+
+    gfxDevice->CreatePipelineState(lightSourceDesc, m_LightSourcePSO, *m_OffscreenRenderTarget.get());
+
+    Graphics::PipelineStateDescription lightSourceTessellationDisabledDesc = {};
+    lightSourceTessellationDisabledDesc.Name = "Light Source - Tessellation disabled";
+    lightSourceTessellationDisabledDesc.vertexShader = &m_LightSourceVertexShader;
+    lightSourceTessellationDisabledDesc.fragmentShader = &m_LightSourceFragmentShader;
+    lightSourceTessellationDisabledDesc.noVertex = true;
+    lightSourceTessellationDisabledDesc.psoInputLayout.push_back(frameTessellationDisabledInputLayout);
+
+    gfxDevice->CreatePipelineState(lightSourceTessellationDisabledDesc, m_LightSourceTessellationDisabledPSO, *m_OffscreenRenderTarget.get());
+
 }
 
 void OceanRendering::CleanUp() {
@@ -185,9 +289,18 @@ void OceanRendering::CleanUp() {
 	gfxDevice->DestroyShader(m_TessellationControlShader);
 	gfxDevice->DestroyShader(m_TessellationEvaluationShader);
 	gfxDevice->DestroyShader(m_FragShader);
-	gfxDevice->DestroyDescriptorSetLayout(m_SetLayout);
+	gfxDevice->DestroyDescriptorSetLayout(m_FrameDescriptorSetLayout);
 	gfxDevice->DestroyPipeline(m_DefaultPSO);
 	gfxDevice->DestroyPipeline(m_WireframePSO);
+	gfxDevice->DestroyPipeline(m_DefaultTessellationDisabledPSO);
+	gfxDevice->DestroyPipeline(m_WireframeTessellationDisabledPSO);
+	gfxDevice->DestroyDescriptorSetLayout(m_FrameTessellationDisabledDescriptorSetLayout);
+    gfxDevice->DestroyShader(m_VertexShaderTessellationDisabled);
+
+    gfxDevice->DestroyShader(m_LightSourceVertexShader);
+    gfxDevice->DestroyShader(m_LightSourceFragmentShader);
+	gfxDevice->DestroyPipeline(m_LightSourcePSO);
+	gfxDevice->DestroyPipeline(m_LightSourceTessellationDisabledPSO);
 }
 
 void OceanRendering::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
@@ -206,24 +319,26 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
 	SampleSceneData.Projection		= m_Camera.ProjectionMatrix;
 	SampleSceneData.View			= m_Camera.ViewMatrix;
 	SampleSceneData.LightPosition	= m_LightPosition;
-    SampleSceneData.ConstantT       = constantT;
+    SampleSceneData.ViewerPosition  = glm::vec4(m_Camera.Position, 1.0f);
+    SampleSceneData.Time            = constantT;
     SampleSceneData.DeltaT          = deltaT;
+    SampleSceneData.WaterColor      = glm::vec4(m_WaterColor, m_WaterSpecularFactor);
+    SampleSceneData.WaveDirection.x = m_WaveDirection.x;
+    SampleSceneData.WaveDirection.z = m_WaveDirection.y;
+    SampleSceneData.WaveDirection.y = 2 * PI / m_WaveLength;
+    SampleSceneData.WaveDirection.w = m_WaveSpeed * SampleSceneData.WaveDirection.y;
+    SampleSceneData.Flags           = ((m_DebugRenderNormals << 1) | m_SineWave);
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer, &SampleSceneData);
 }
 
-void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+void OceanRendering::Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline, VkDescriptorSet *frameDescriptorSet, bool drawIndexed) {
+	SCOPED_PROFILER_US("OceanRendering::Render");
 
-	SCOPED_PROFILER_US("OceanRendering::RenderScene");
+    Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
-    Graphics::PipelineState* pipeline = m_RenderWireframe ? &m_WireframePSO : &m_DefaultPSO;
-
-	m_OffscreenRenderTarget->Begin(commandBuffer);
-
-	gfxDevice->BindDescriptorSet(m_Set[currentFrame], commandBuffer, pipeline->pipelineLayout, 0, 1);
-
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+    gfxDevice->BindDescriptorSet(*frameDescriptorSet, commandBuffer, pipeline->pipelineLayout, 0, 1);
 
     Assets::Model& Model = *m_OceanModel.get();
 
@@ -232,14 +347,52 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &Model.DataBuffer.Handle, offsets);
     vkCmdBindIndexBuffer(commandBuffer, Model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
-    SamplePushConstants.Model = Model.GetModelMatrix();
+    FramePushConstants.Model = Model.GetModelMatrix();
 
-    vkCmdPushConstants(commandBuffer, pipeline->pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &SamplePushConstants);
+    vkCmdPushConstants(commandBuffer, pipeline->pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &FramePushConstants);
 
-    for (const auto& Mesh: Model.Meshes) {
-        // Note: Must use vkCmdDraw instead of vkCmdDrawIndexed to tessellate quads.
-        vkCmdDraw(commandBuffer, Mesh.Vertices.size(), Mesh.Indices.size(), 0, 0);
+    for (const auto& Mesh: Model.Meshes) { 
+        if (drawIndexed) {
+            vkCmdDrawIndexed(
+                commandBuffer, 
+                static_cast<uint32_t>(Mesh.Indices.size()), 
+                1, 
+                static_cast<uint32_t>(Mesh.IndexOffset), 
+                static_cast<int32_t>(Mesh.VertexOffset),
+                0);
+        } else {
+            // Note: Must use vkCmdDraw instead of vkCmdDrawIndexed to tessellate quads.
+            vkCmdDraw(commandBuffer, Mesh.Vertices.size(), Mesh.Indices.size(), 0, 0);
+        }
     }
+}
+
+void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
+
+	SCOPED_PROFILER_US("OceanRendering::RenderScene");
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	m_OffscreenRenderTarget->Begin(commandBuffer);
+
+    if (m_TessellationEnabled) {
+        if (m_RenderWireframe) {
+            Render(currentFrame, commandBuffer, &m_WireframePSO, &m_FrameDescriptorSet[currentFrame]);
+        } else {
+            Render(currentFrame, commandBuffer, &m_DefaultPSO, &m_FrameDescriptorSet[currentFrame]);
+        }
+
+        RenderLightSource(currentFrame, commandBuffer, &m_LightSourcePSO);
+    } else {
+        if (m_RenderWireframe) {
+            Render(currentFrame, commandBuffer, &m_WireframeTessellationDisabledPSO, &m_FrameTessellationDisabledDescriptorSet[currentFrame], true);
+        } else {
+            Render(currentFrame, commandBuffer, &m_DefaultTessellationDisabledPSO, &m_FrameTessellationDisabledDescriptorSet[currentFrame], true);
+        }
+
+        RenderLightSource(currentFrame, commandBuffer, &m_LightSourceTessellationDisabledPSO);
+    }
+
 
 	m_OffscreenRenderTarget->End(commandBuffer);
 
@@ -252,12 +405,19 @@ void OceanRendering::RenderUI() {
 
 	m_Camera.OnUIRender("Main Camera - Settings");
 
+    ImGui::ColorPicker3("Water Color",              (float*)&m_WaterColor);
+    ImGui::DragFloat("Water Specular factor",       &m_WaterSpecularFactor, 2.0f, 0.0f, 64.0f);
     ImGui::Checkbox("Render Wireframe",				&m_RenderWireframe);
+    ImGui::Checkbox("Tessellation Enabled",         &m_TessellationEnabled);
     // Note: DragFloat signature -> const char *label, float *value, float speed, float min, float max
     ImGui::DragFloat("Tessellation Level Inner",    &SampleSceneData.TessellationLevelInner, 1.0f, 1.0f, 100.0f);
     ImGui::DragFloat("Tessellation Level Outer",    &SampleSceneData.TessellationLevelOuter, 1.0f, 1.0f, 100.0f);
-    ImGui::DragFloat("Wave Frequency",              &SampleSceneData.WaveFrequency, 0.1f, 0.0f, 100.0f);
+    ImGui::DragFloat("Wave Length",                 &m_WaveLength, 0.01f, 0.0f, 100.0f);
     ImGui::DragFloat("Wave Amplitude",              &SampleSceneData.WaveAmplitude, 0.001f, 0.0f, 10.00f);
+    ImGui::DragFloat("Wave Speed",                  &m_WaveSpeed, 0.001f, 0.0f, 10.00f);
+    ImGui::DragFloat2("Wave Direction (X and Z)",   (float*)&m_WaveDirection, 0.001f, -1.0f, 1.0f);
+    ImGui::Checkbox("Sine Wave",                    &m_SineWave);
+    ImGui::Checkbox("Debug - Render Normals",       &m_DebugRenderNormals);
 	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
 	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
 	ImGui::DragFloat("Light Orbital Displacement",	&m_OrbitalLightDisplacement, 0.02f, 0.0f, 9.0f);
