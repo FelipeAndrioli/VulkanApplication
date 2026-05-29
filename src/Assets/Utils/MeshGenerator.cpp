@@ -290,16 +290,22 @@ namespace Assets {
 		mesh.Vertices.resize(4);
 
 		mesh.Vertices[0].pos = glm::vec3(pos.x, pos.y, pos.z);
+		mesh.Vertices[1].pos = glm::vec3(pos.x, pos.y, pos.z + size);
+		mesh.Vertices[2].pos = glm::vec3(pos.x + size, pos.y, pos.z + size);
+		mesh.Vertices[3].pos = glm::vec3(pos.x + size, pos.y, pos.z);
+/*
+        mesh.Vertices[0].pos = glm::vec3(pos.x, pos.y, pos.z);
 		mesh.Vertices[1].pos = glm::vec3(pos.x, pos.y + size, pos.z);
 		mesh.Vertices[2].pos = glm::vec3(pos.x + size, pos.y + size, pos.z);
 		mesh.Vertices[3].pos = glm::vec3(pos.x + size, pos.y, pos.z);
-
+*/
 		mesh.Vertices[0].texCoord = glm::vec2(0.0f, 0.0f);
 		mesh.Vertices[1].texCoord = glm::vec2(0.0f, 1.0f);
 		mesh.Vertices[2].texCoord = glm::vec2(1.0f, 1.0f);
 		mesh.Vertices[3].texCoord = glm::vec2(1.0f, 0.0f);
 
-		glm::vec3 normal = glm::vec3(0.0f, 0.0f, -1.0f);
+//		glm::vec3 normal = glm::vec3(0.0f, 0.0f, -1.0f);
+		glm::vec3 normal = glm::vec3(0.0f, 1.0f, 0.0f);
 
 		mesh.Vertices[0].normal = normal;
 		mesh.Vertices[1].normal = normal;
