@@ -16,6 +16,7 @@
 #include <gtc/type_ptr.hpp>
 
 #define PI 3.14159265359
+#define SINE_WAVES_MAX 3
 
 /*
     My pipeline expectation for this project:
@@ -65,21 +66,33 @@ public:
 	virtual void RenderUI()																			override;
 	virtual void Resize(uint32_t width, uint32_t height)											override;
 
+    // Note: X and Z are directions, Y is length and W is speed.
+    struct WaveData {
+        alignas(16) glm::vec4 Direction = glm::vec4(-1.0f, 0.450f, 0.7f, 0.2f);
+        alignas(4) float Amplitude = 0.02f;
+    } WaveGPUData[SINE_WAVES_MAX];
+
+    struct WaveDataCPU {
+        glm::vec2 Direction = glm::vec2(-1.0f, 0.7f);
+        float Length = 0.450f;
+        float Speed = 0.2f;
+        float Amplitude = 0.02f;
+    } WaveCPUData[SINE_WAVES_MAX];
+
 	struct SceneData {
 		alignas(16) glm::mat4 Projection;
 		alignas(16) glm::mat4 View;
+        alignas(16) glm::vec4 Padding[3];
 		alignas(16) glm::vec4 LightPosition;
 		alignas(16) glm::vec4 ViewerPosition;
         // Note: W is specular factor
 		alignas(16) glm::vec4 WaterColor = glm::vec4(1.0f);
-        // Note: X and Z are directions, Y is length and W is speed.
-        alignas(16) glm::vec4 WaveDirection = glm::vec4(-1.0f, 0.450f, 0.7f, 0.2f); 
         alignas(4) int Flags;
+        alignas(4) int SineWaveCount = 1;
         alignas(4) float TessellationLevelInner = 64.0f;
         alignas(4) float TessellationLevelOuter = 64.0f;
         alignas(4) float Time = 0.0f;
         alignas(4) float DeltaT = 0.0f;
-        alignas(4) float WaveAmplitude = 0.02f;
 	} SampleSceneData;
 
 	struct PushConstants {
@@ -110,6 +123,7 @@ private:
     Graphics::Shader m_VertexShaderTessellationDisabled = {};
 
 	Graphics::Buffer m_SceneBuffer = {};
+    Graphics::Buffer m_SineWavesBuffer = {};
 
 	Graphics::PipelineState m_DefaultPSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
@@ -133,12 +147,9 @@ private:
 
 	glm::vec4 m_LightPosition = glm::vec4(1.0f, 8.0f, 1.0f, 1.0f);
     glm::vec3 m_WaterColor = glm::vec3(0.09f, 0.55f, 0.79f);
-    glm::vec2 m_WaveDirection = glm::vec2(-1.0f, 0.7f);
 
     float m_OrbitalLightSpeed = 0.5f;
 	float m_OrbitalLightDisplacement = 3.0f;
-    float m_WaveLength = 0.450f;
-    float m_WaveSpeed = 0.2f;
     float m_WaterSpecularFactor = 32.0f; 
 
     bool m_TessellationEnabled = true;
@@ -187,6 +198,7 @@ void OceanRendering::StartUp() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragShader, "../src/Samples/OceanRendering/fragment.glsl");
 
 	m_SceneBuffer = gfxDevice->CreateBuffer(sizeof(SceneData));
+	m_SineWavesBuffer = gfxDevice->CreateBuffer(sizeof(WaveData) * SINE_WAVES_MAX);
 
 	Graphics::InputLayout frameInputLayout = {
 		.pushConstants = {
@@ -194,6 +206,7 @@ void OceanRendering::StartUp() {
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
+			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
 		}
 	};
 
@@ -221,6 +234,7 @@ void OceanRendering::StartUp() {
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_FrameDescriptorSetLayout, m_FrameDescriptorSet[i]);
 		gfxDevice->WriteDescriptor(frameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer);
+		gfxDevice->WriteDescriptor(frameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_SineWavesBuffer);
 	}
 
     Graphics::InputLayout frameTessellationDisabledInputLayout = {
@@ -229,6 +243,7 @@ void OceanRendering::StartUp() {
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
+			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
 		}
     };
 
@@ -254,6 +269,7 @@ void OceanRendering::StartUp() {
     for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
         gfxDevice->CreateDescriptorSet(m_FrameTessellationDisabledDescriptorSetLayout, m_FrameTessellationDisabledDescriptorSet[i]);
         gfxDevice->WriteDescriptor(frameTessellationDisabledInputLayout.bindings[0], m_FrameTessellationDisabledDescriptorSet[i], m_SceneBuffer);
+        gfxDevice->WriteDescriptor(frameTessellationDisabledInputLayout.bindings[1], m_FrameTessellationDisabledDescriptorSet[i], m_SineWavesBuffer);
     }
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertexShader, "../src/Samples/OceanRendering/light_source_vertex.glsl");
@@ -276,7 +292,6 @@ void OceanRendering::StartUp() {
     lightSourceTessellationDisabledDesc.psoInputLayout.push_back(frameTessellationDisabledInputLayout);
 
     gfxDevice->CreatePipelineState(lightSourceTessellationDisabledDesc, m_LightSourceTessellationDisabledPSO, *m_OffscreenRenderTarget.get());
-
 }
 
 void OceanRendering::CleanUp() {
@@ -323,13 +338,22 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
     SampleSceneData.Time            = constantT;
     SampleSceneData.DeltaT          = deltaT;
     SampleSceneData.WaterColor      = glm::vec4(m_WaterColor, m_WaterSpecularFactor);
-    SampleSceneData.WaveDirection.x = m_WaveDirection.x;
-    SampleSceneData.WaveDirection.z = m_WaveDirection.y;
-    SampleSceneData.WaveDirection.y = 2 * PI / m_WaveLength;
-    SampleSceneData.WaveDirection.w = m_WaveSpeed * SampleSceneData.WaveDirection.y;
     SampleSceneData.Flags           = ((m_DebugRenderNormals << 1) | m_SineWave);
 
+    for (int WaveIndex = 0; WaveIndex < SampleSceneData.SineWaveCount; WaveIndex++) {
+
+        WaveData *WaveGPU = &WaveGPUData[WaveIndex];
+        WaveDataCPU *WaveCPU = &WaveCPUData[WaveIndex];
+
+        WaveGPU->Direction.x = WaveCPU->Direction.x;
+        WaveGPU->Direction.z = WaveCPU->Direction.y;
+        WaveGPU->Direction.y = (2 * PI) / WaveCPU->Length;
+        WaveGPU->Direction.w = WaveCPU->Speed * WaveGPU->Direction.y;
+        WaveGPU->Amplitude = WaveCPU->Amplitude;
+    }
+
 	gfxDevice->UpdateBuffer(m_SceneBuffer, &SampleSceneData);
+	gfxDevice->UpdateBuffer(m_SineWavesBuffer, &WaveGPUData);
 }
 
 void OceanRendering::Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline, VkDescriptorSet *frameDescriptorSet, bool drawIndexed) {
@@ -410,18 +434,33 @@ void OceanRendering::RenderUI() {
     ImGui::Checkbox("Render Wireframe",				&m_RenderWireframe);
     ImGui::Checkbox("Tessellation Enabled",         &m_TessellationEnabled);
     // Note: DragFloat signature -> const char *label, float *value, float speed, float min, float max
-    ImGui::DragFloat("Tessellation Level Inner",    &SampleSceneData.TessellationLevelInner, 1.0f, 1.0f, 100.0f);
-    ImGui::DragFloat("Tessellation Level Outer",    &SampleSceneData.TessellationLevelOuter, 1.0f, 1.0f, 100.0f);
-    ImGui::DragFloat("Wave Length",                 &m_WaveLength, 0.01f, 0.0f, 100.0f);
-    ImGui::DragFloat("Wave Amplitude",              &SampleSceneData.WaveAmplitude, 0.001f, 0.0f, 10.00f);
-    ImGui::DragFloat("Wave Speed",                  &m_WaveSpeed, 0.001f, 0.0f, 10.00f);
-    ImGui::DragFloat2("Wave Direction (X and Z)",   (float*)&m_WaveDirection, 0.001f, -1.0f, 1.0f);
+    // Note: Vulkan tessellation levels through dedicated tessellation pipeline stop at 64. To achieve higher levels we should we use compute shaders instead.
+    ImGui::DragFloat("Tessellation Level Inner",    &SampleSceneData.TessellationLevelInner, 1.0f, 1.0f, 64.0f);
+    ImGui::DragFloat("Tessellation Level Outer",    &SampleSceneData.TessellationLevelOuter, 1.0f, 1.0f, 64.0f);
     ImGui::Checkbox("Sine Wave",                    &m_SineWave);
     ImGui::Checkbox("Debug - Render Normals",       &m_DebugRenderNormals);
 	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
 	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
 	ImGui::DragFloat("Light Orbital Displacement",	&m_OrbitalLightDisplacement, 0.02f, 0.0f, 9.0f);
-	ImGui::DragFloat4("Light Position",				(float*)&m_LightPosition, 0.02f, -20.0f, 20.0f);
+	ImGui::DragFloat4("Light Position",				(float*)&m_LightPosition, 0.2f, -20.0f, 20.0f);
+
+    ImGui::DragInt("Active Sine Waves", &SampleSceneData.SineWaveCount, 1, 1, static_cast<int>(SINE_WAVES_MAX));
+
+    if (ImGui::TreeNode("Sine Waves Settings")) {
+        for (int WaveIndex = 0; WaveIndex < SINE_WAVES_MAX; WaveIndex++) {
+            std::string WaveId = "wave_" + std::to_string(WaveIndex);
+
+            if (ImGui::TreeNode(WaveId.c_str())) {
+                ImGui::DragFloat("Wave Length",                 &WaveCPUData[WaveIndex].Length, 0.01f, 0.0f, 100.0f);
+                ImGui::DragFloat("Wave Amplitude",              &WaveCPUData[WaveIndex].Amplitude, 0.001f, 0.0f, 10.00f);
+                ImGui::DragFloat("Wave Speed",                  &WaveCPUData[WaveIndex].Speed, 0.001f, 0.0f, 10.00f);
+                ImGui::DragFloat2("Wave Direction (X and Z)",   (float*)&WaveCPUData[WaveIndex].Direction, 0.001f, -1.0f, 1.0f);
+
+                ImGui::TreePop();
+            }
+        }
+        ImGui::TreePop();
+    }
 
     m_OceanModel->OnUIRender();
 }

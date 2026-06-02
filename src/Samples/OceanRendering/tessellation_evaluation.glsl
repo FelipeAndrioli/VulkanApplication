@@ -1,24 +1,34 @@
 #version 450
 
 #define PI 3.14159265359
+#define MAX_SINE_WAVES 3
 
 layout(quads, equal_spacing, cw) in;
 
-// Note: wave direction: X and Z are directions, Y is length and W is speed.
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	mat4 projection;
 	mat4 view;
+    vec4 padding[3];
 	vec4 light_position;
 	vec4 viewer_position;
 	vec4 water_color;
-    vec4 wave_direction;
     int flags;
+    int sine_wave_count;
     float tessellation_level_inner;
     float tessellation_level_outer;
     float time;
     float delta_t;
-    float wave_amplitude;
 } scene_gpu_data;
+
+// Note: wave direction: X and Z are directions, Y is length and W is speed.
+struct wave_data {
+    vec4 direction;
+    float amplitude;
+};
+
+layout (std140, set = 0, binding = 1) uniform WaveGPUData {
+    wave_data sine_wave[MAX_SINE_WAVES];
+} wave_gpu_data;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
@@ -55,20 +65,26 @@ void main() {
     vec4 pos = mix(pos_bottom, pos_top, v);
 
     float time = scene_gpu_data.time;
-   
-    float wave_length = scene_gpu_data.wave_direction.y;
-    float wave_speed = scene_gpu_data.wave_direction.w;
 
-    float f = dot(scene_gpu_data.wave_direction.xz, pos.xz) * wave_length + time * wave_speed;
+    wave_data wave = wave_gpu_data.sine_wave[0];
 
-    pos.y = scene_gpu_data.wave_amplitude * sin(f);
+    float wave_length = wave.direction.y;
+    float wave_speed = wave.direction.w;
 
-//    vec3 bitangent = vec3(1.0, 0.0, wave_length * scene_gpu_data.wave_direction.x * scene_gpu_data.wave_amplitude * cos(f));
-//    vec3 tangent = vec3(0.0, 1.0, wave_length * scene_gpu_data.wave_direction.y * scene_gpu_data.wave_amplitude * cos(f));
-//    vec3 normal = cross(bitangent, tangent);
-   
-    vec3 tangent = vec3(1.0, wave_length * scene_gpu_data.wave_amplitude * cos(f), 0.0);
-    vec3 normal = vec3(-tangent.y, tangent.x, 0.0);
+    float f = dot(wave.direction.xz, pos.xz) * wave_length + time * wave_speed;
+
+    pos.y = wave.amplitude * sin(f);
+
+    float wave_amplitude_cos_f = wave.amplitude * cos(f);
+    vec3 normal = vec3(
+        -(wave_length * dot(wave.direction.xz, vec2(pos.x, 0.0)) * wave_amplitude_cos_f), 
+        1.0, 
+        -(wave_length * dot(wave.direction.xz, vec2(0.0, pos.z)) * wave_amplitude_cos_f)
+    );
+
+//  Note: Working normal calculation
+//    vec3 tangent = vec3(1.0, wave_length * wave.amplitude * cos(f), 0.0);
+//    vec3 normal = vec3(-tangent.y, tangent.x, 0.0);
 
     out_normal = normalize(mat3(push_constants.model) * normal);
     out_pos = vec3(push_constants.model * pos);
