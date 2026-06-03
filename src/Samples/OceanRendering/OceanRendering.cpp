@@ -68,15 +68,15 @@ public:
 
     // Note: X and Z are directions, Y is length and W is speed.
     struct WaveData {
-        alignas(16) glm::vec4 Direction = glm::vec4(-1.0f, 0.450f, 0.7f, 0.2f);
-        alignas(4) float Amplitude = 0.02f;
+        alignas(16) glm::vec4 Direction = glm::vec4(0.0f);
+        alignas(4) float Amplitude = 0.0f;
     } WaveGPUData[SINE_WAVES_MAX];
 
     struct WaveDataCPU {
-        glm::vec2 Direction = glm::vec2(-1.0f, 0.7f);
-        float Length = 0.450f;
-        float Speed = 0.2f;
-        float Amplitude = 0.02f;
+        glm::vec2 Direction = glm::vec2(0.0f);
+        float Length = 0.0;
+        float Speed = 0.0f;
+        float Amplitude = 0.0f;
     } WaveCPUData[SINE_WAVES_MAX];
 
 	struct SceneData {
@@ -157,6 +157,7 @@ private:
     bool m_RenderWireframe = false;
     bool m_SineWave = false;
     bool m_DebugRenderNormals = false;
+    bool m_GenerateNormalPerFragment = false;
 
 private:
     void RenderLightSource(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
@@ -199,6 +200,23 @@ void OceanRendering::StartUp() {
 
 	m_SceneBuffer = gfxDevice->CreateBuffer(sizeof(SceneData));
 	m_SineWavesBuffer = gfxDevice->CreateBuffer(sizeof(WaveData) * SINE_WAVES_MAX);
+
+    WaveCPUData[0].Length = 0.6f;
+    WaveCPUData[0].Amplitude = 0.025f;
+    WaveCPUData[0].Speed = 0.1f;
+    WaveCPUData[0].Direction = glm::vec2(1.0f, 1.0f);
+
+    WaveCPUData[1].Length = 0.310f;
+    WaveCPUData[1].Amplitude = 0.025f;
+    WaveCPUData[1].Speed = 0.1f;
+    WaveCPUData[1].Direction = glm::vec2(1.0f, 0.6f);
+
+    WaveCPUData[2].Length = 0.180f;
+    WaveCPUData[2].Amplitude = 0.025f;
+    WaveCPUData[2].Speed = 0.1f;
+    WaveCPUData[2].Direction = glm::vec2(1.0f, 1.3f);
+
+    SampleSceneData.SineWaveCount = 3;
 
 	Graphics::InputLayout frameInputLayout = {
 		.pushConstants = {
@@ -338,7 +356,7 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
     SampleSceneData.Time            = constantT;
     SampleSceneData.DeltaT          = deltaT;
     SampleSceneData.WaterColor      = glm::vec4(m_WaterColor, m_WaterSpecularFactor);
-    SampleSceneData.Flags           = ((m_DebugRenderNormals << 1) | m_SineWave);
+    SampleSceneData.Flags           = ((m_GenerateNormalPerFragment << 2) | (m_DebugRenderNormals << 1) | m_SineWave);
 
     for (int WaveIndex = 0; WaveIndex < SampleSceneData.SineWaveCount; WaveIndex++) {
 
@@ -438,6 +456,7 @@ void OceanRendering::RenderUI() {
     ImGui::DragFloat("Tessellation Level Inner",    &SampleSceneData.TessellationLevelInner, 1.0f, 1.0f, 64.0f);
     ImGui::DragFloat("Tessellation Level Outer",    &SampleSceneData.TessellationLevelOuter, 1.0f, 1.0f, 64.0f);
     ImGui::Checkbox("Sine Wave",                    &m_SineWave);
+    ImGui::Checkbox("Generate Normal per fragment", &m_GenerateNormalPerFragment);
     ImGui::Checkbox("Debug - Render Normals",       &m_DebugRenderNormals);
 	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
 	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);

@@ -51,10 +51,6 @@ void main() {
     vec3 color_top = mix(in_color[3], in_color[2], u);
     out_color = mix(color_bottom, color_top, v);
 
-//    vec3 normal_bottom = mix(in_normal[0], in_normal[1], u);
-//    vec3 normal_top = mix(in_normal[3], in_normal[2], u);
-//    out_normal = vec3(push_constants.model * vec4(mix(normal_bottom, normal_top, v), 1.0));
-
     vec4 p0 = gl_in[0].gl_Position;
     vec4 p1 = gl_in[1].gl_Position;
     vec4 p2 = gl_in[2].gl_Position;
@@ -66,25 +62,31 @@ void main() {
 
     float time = scene_gpu_data.time;
 
-    wave_data wave = wave_gpu_data.sine_wave[0];
+    vec3 normal = vec3(0.0);
 
-    float wave_length = wave.direction.y;
-    float wave_speed = wave.direction.w;
+    for (int wave_index = 0; wave_index < scene_gpu_data.sine_wave_count; ++wave_index) {
 
-    float f = dot(wave.direction.xz, pos.xz) * wave_length + time * wave_speed;
+        wave_data wave = wave_gpu_data.sine_wave[wave_index];
 
-    pos.y = wave.amplitude * sin(f);
+        float wave_length = wave.direction.y;
+        float wave_speed = wave.direction.w;
 
-    float wave_amplitude_cos_f = wave.amplitude * cos(f);
-    vec3 normal = vec3(
-        -(wave_length * dot(wave.direction.xz, vec2(pos.x, 0.0)) * wave_amplitude_cos_f), 
-        1.0, 
-        -(wave_length * dot(wave.direction.xz, vec2(0.0, pos.z)) * wave_amplitude_cos_f)
-    );
+        float f = dot(wave.direction.xz, pos.xz) * wave_length + time * wave_speed;
+        pos.y += wave.amplitude * sin(f);
 
-//  Note: Working normal calculation
-//    vec3 tangent = vec3(1.0, wave_length * wave.amplitude * cos(f), 0.0);
-//    vec3 normal = vec3(-tangent.y, tangent.x, 0.0);
+        float wave_amplitude_cos_f = wave.amplitude * cos(f);
+
+        normal += vec3(
+            -(wave_length * dot(wave.direction.xz, vec2(pos.x, 0.0)) * wave_amplitude_cos_f), 
+            1.0, 
+            -(wave_length * dot(wave.direction.xz, vec2(0.0, pos.z)) * wave_amplitude_cos_f)
+        );
+
+        /*
+        vec3 tangent = vec3(1.0, wave_length * wave_amplitude_cos_f, 0.0);
+        normal += vec3(-tangent.y, tangent.x, 0.0);
+        */
+    }
 
     out_normal = normalize(mat3(push_constants.model) * normal);
     out_pos = vec3(push_constants.model * pos);
