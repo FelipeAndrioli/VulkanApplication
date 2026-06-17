@@ -2,7 +2,7 @@
 
 #extension GL_KHR_vulkan_glsl : enable
 
-#define MAX_SINE_WAVES 3
+#define MAX_SINE_WAVES 32
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	mat4 projection;
@@ -22,6 +22,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 struct wave_data {
     vec4 direction;
     float amplitude;
+    float steepness;
 };
 
 layout (std140, set = 0, binding = 1) uniform WaveGPUData {

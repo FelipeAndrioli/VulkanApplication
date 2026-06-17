@@ -1,7 +1,7 @@
 #version 450
 
 #define PI 3.14159265359
-#define MAX_SINE_WAVES 3
+#define MAX_SINE_WAVES 32
 
 layout(quads, equal_spacing, cw) in;
 
@@ -24,6 +24,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 struct wave_data {
     vec4 direction;
     float amplitude;
+    float steepness;
 };
 
 layout (std140, set = 0, binding = 1) uniform WaveGPUData {
@@ -64,6 +65,15 @@ void main() {
 
     vec3 normal = vec3(0.0);
 
+    /*
+        Book notation:
+
+        L (w): Wavelength (w = (2 * PI) / L)
+        A: Amplitude
+        S (q): Wave speed (s = (S * 2 * PI) / L)
+        D: wave direction
+    */
+
     for (int wave_index = 0; wave_index < scene_gpu_data.sine_wave_count; ++wave_index) {
 
         wave_data wave = wave_gpu_data.sine_wave[wave_index];
@@ -72,20 +82,16 @@ void main() {
         float wave_speed = wave.direction.w;
 
         float f = dot(wave.direction.xz, pos.xz) * wave_length + time * wave_speed;
+
         pos.y += wave.amplitude * sin(f);
 
         float wave_amplitude_cos_f = wave.amplitude * cos(f);
 
-        normal += vec3(
-            -(wave_length * dot(wave.direction.xz, vec2(pos.x, 0.0)) * wave_amplitude_cos_f), 
-            1.0, 
-            -(wave_length * dot(wave.direction.xz, vec2(0.0, pos.z)) * wave_amplitude_cos_f)
-        );
+        vec3 binormal = vec3(1.0, 0.0, wave_length * dot(wave.direction.xz, vec2(pos.x, 0.0)) * wave_amplitude_cos_f);
+        vec3 tangent = vec3(0.0, 1.0, wave_length * dot(wave.direction.xz, vec2(0.0, pos.z)) * wave_amplitude_cos_f);
 
-        /*
-        vec3 tangent = vec3(1.0, wave_length * wave_amplitude_cos_f, 0.0);
-        normal += vec3(-tangent.y, tangent.x, 0.0);
-        */
+//        normal += cross(binormal, tangent);
+        normal += vec3(-binormal.z, 1.0, -tangent.z);
     }
 
     out_normal = normalize(mat3(push_constants.model) * normal);

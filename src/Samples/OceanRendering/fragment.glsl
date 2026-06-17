@@ -1,6 +1,6 @@
 #version 450
 
-#define MAX_SINE_WAVES 3
+#define MAX_SINE_WAVES 32
 
 layout (location = 0) in vec3 in_frag_color;
 layout (location = 1) in vec3 in_frag_normal;
@@ -26,6 +26,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 struct wave_data {
     vec4 direction;
     float amplitude;
+    float steepness;
 };
 
 layout (std140, set = 0, binding = 1) uniform WaveGPUData {
@@ -73,7 +74,8 @@ void main() {
     }
 
     if (debug_render_normals) {
-        pixel_color = vec4(normal * 5.0, 1.0);
+//        pixel_color = vec4(normal * 5.0, 1.0);
+        pixel_color = vec4(normal, 1.0);
     } else {
         vec3 water_color = scene_gpu_data.water_color.rgb;
         float water_specular_factor = scene_gpu_data.water_color.a;
@@ -90,6 +92,8 @@ void main() {
         float spec = pow(max(dot(normal, halfway_dir), 0.0), water_specular_factor);
         vec3 specular = vec3(spec);
 
+//        pixel_color = vec4(in_frag_pos, 1.0);
         pixel_color = vec4(diffuse + specular, 1.0);	
+//        pixel_color = vec4(water_color, 1.0);	
     }
 }

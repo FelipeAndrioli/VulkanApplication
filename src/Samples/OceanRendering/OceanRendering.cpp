@@ -1,4 +1,5 @@
 #include <iostream>
+#include <random>
 
 #include "../../src/Core/Application.h"
 #include "../../src/Core/GraphicsDevice.h"
@@ -16,9 +17,17 @@
 #include <gtc/type_ptr.hpp>
 
 #define PI 3.14159265359
-#define SINE_WAVES_MAX 3
+#define SINE_WAVES_MAX 32
 
 /*
+ 
+    Notes:
+        -   Tessellation might not be the best approach due to the limitation 
+            of 64 inner/outer levels. I will first fix normal generation and 
+            then change the approach from 4 vertices tessellation to thousands
+            of vertices without tessellation.
+
+        
     My pipeline expectation for this project:
         - Draw call of a simple quad formed by 2 triangles
         - Simple vertex shader where we don't even multiply by the MVP matrices
@@ -70,6 +79,7 @@ public:
     struct WaveData {
         alignas(16) glm::vec4 Direction = glm::vec4(0.0f);
         alignas(4) float Amplitude = 0.0f;
+        alignas(4) float Steepness = 0.0f;
     } WaveGPUData[SINE_WAVES_MAX];
 
     struct WaveDataCPU {
@@ -77,6 +87,7 @@ public:
         float Length = 0.0;
         float Speed = 0.0f;
         float Amplitude = 0.0f;
+        float Steepness = 0.0f;
     } WaveCPUData[SINE_WAVES_MAX];
 
 	struct SceneData {
@@ -100,12 +111,16 @@ public:
         alignas(16) glm::vec4 Color = glm::vec4(1.0f);
 	} FramePushConstants;
 
-	const glm::vec3 InitialCameraPosition = glm::vec3(-15.0f, 12.0f, 17.0f);
+//	const glm::vec3 InitialCameraPosition = glm::vec3(-15.0f, 12.0f, 17.0f);
+	const glm::vec3 InitialCameraPosition = glm::vec3(-83.0f, 80.0f, 162.0f);
 
 	const float InitialCameraFov	= 45.0f;
-	const float InitialCameraYaw	= -52.0f;
-	const float InitialCameraPitch	= -33.0f;
 
+//    const float InitialCameraYaw	= -52.0f;
+//	const float InitialCameraPitch	= -33.0f;
+
+	const float InitialCameraYaw	= -64.0f;
+	const float InitialCameraPitch	= -23.0f;
 private:
 	Assets::Camera m_Camera = {};
 
@@ -113,6 +128,7 @@ private:
 	uint32_t m_ScreenHeight = 0;
 
 	std::shared_ptr<Assets::Model> m_OceanModel;
+    std::shared_ptr<Assets::Model> m_TestWaterModel;
 
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
 
@@ -145,24 +161,454 @@ private:
     VkDescriptorSetLayout m_LightSourceDescriptorSetLayout = VK_NULL_HANDLE;
     std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_LightSourceDescriptorSet = { VK_NULL_HANDLE };
 
-	glm::vec4 m_LightPosition = glm::vec4(1.0f, 8.0f, 1.0f, 1.0f);
+//	glm::vec4 m_LightPosition = glm::vec4(1.0f, 327.0f, 1.0f, 1.0f);
+	glm::vec4 m_LightPosition = glm::vec4(1.0f, 20.0f, 1.0f, 1.0f);
     glm::vec3 m_WaterColor = glm::vec3(0.09f, 0.55f, 0.79f);
 
     float m_OrbitalLightSpeed = 0.5f;
 	float m_OrbitalLightDisplacement = 3.0f;
     float m_WaterSpecularFactor = 32.0f; 
 
-    bool m_TessellationEnabled = true;
+    bool m_TessellationEnabled = false;
     bool m_OrbitateLight = false;
     bool m_RenderWireframe = false;
     bool m_SineWave = false;
     bool m_DebugRenderNormals = false;
     bool m_GenerateNormalPerFragment = false;
+    bool m_GenerateRandomWaveData = false;
 
 private:
     void RenderLightSource(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
     void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline, VkDescriptorSet *frameDescriptorSet, bool drawIndexed = false);
+
+    void PrintActiveWaveCPUData();
+    void SetupTessellationHardCodedWaveData();
+    void SetupHardCodedWaveData();
+    void GenerateRandomWaveData();
 };
+
+void OceanRendering::PrintActiveWaveCPUData() {
+
+    for (size_t waveIndex = 0; waveIndex < SampleSceneData.SineWaveCount; ++waveIndex) {
+        const WaveDataCPU &wave = WaveCPUData[waveIndex];
+
+        std::cout << "WaveCPUData[" << waveIndex << "].Direction.x = " << wave.Direction.x << "f;\n";
+        std::cout << "WaveCPUData[" << waveIndex << "].Direction.y = " << wave.Direction.y << "f;\n";
+        std::cout << "WaveCPUData[" << waveIndex << "].Length  = " << wave.Length << "f;\n";
+        std::cout << "WaveCPUData[" << waveIndex << "].Speed = " << wave.Speed << "f;\n";
+        std::cout << "WaveCPUData[" << waveIndex << "].Amplitude = " << wave.Amplitude << "f;\n";
+        std::cout << "WaveCPUData[" << waveIndex << "].Steepness = " << wave.Steepness << "f;\n";
+    }
+}
+
+void OceanRendering::GenerateRandomWaveData() {
+    std::uniform_real_distribution<float> randomAmplitude(0.1f, 1.0f);
+    std::uniform_real_distribution<float> randomLength(0.1f, 1.0f);
+    std::uniform_real_distribution<float> randomSpeed(0.1f, 1.0f);
+    std::uniform_real_distribution<float> randomSteepness(0.0f, 1.0f);
+    std::uniform_real_distribution<float> randomDirection(-1.0f, 1.0f);
+
+    std::default_random_engine generator;
+
+    for (size_t waveIndex = 0; waveIndex < SINE_WAVES_MAX; ++waveIndex) {
+        WaveCPUData[waveIndex].Amplitude = randomAmplitude(generator);
+        WaveCPUData[waveIndex].Length = randomLength(generator);
+        WaveCPUData[waveIndex].Speed = randomSpeed(generator);
+        WaveCPUData[waveIndex].Steepness = randomSteepness(generator);
+        WaveCPUData[waveIndex].Direction.x = randomDirection(generator);
+        WaveCPUData[waveIndex].Direction.y = randomDirection(generator);
+    }
+}
+
+void OceanRendering::SetupHardCodedWaveData() {
+    WaveCPUData[0].Direction.x = 1.0f;
+    WaveCPUData[0].Direction.y = 0.0f;
+    WaveCPUData[0].Length  = 0.484f;
+    WaveCPUData[0].Speed = 0.915213f;
+    WaveCPUData[0].Amplitude = 0.467f;
+    WaveCPUData[0].Steepness = 0.835009f;
+    WaveCPUData[1].Direction.x = -0.804919f;
+    WaveCPUData[1].Direction.y = 0.0944412f;
+    WaveCPUData[1].Length  = 0.387f;
+    WaveCPUData[1].Speed = 0.669123f;
+    WaveCPUData[1].Amplitude = 0.501f;
+    WaveCPUData[1].Steepness = 0.308167f;
+    WaveCPUData[2].Direction.x = 0.915014f;
+    WaveCPUData[2].Direction.y = 0.992923f;
+    WaveCPUData[2].Length  = 0.269544f;
+    WaveCPUData[2].Speed = 0.592193f;
+    WaveCPUData[2].Amplitude = 0.350648f;
+    WaveCPUData[2].Steepness = 0.992881f;
+    WaveCPUData[3].Direction.x = 0.941185f;
+    WaveCPUData[3].Direction.y = 0.962219f;
+    WaveCPUData[3].Length  = 0.970925f;
+    WaveCPUData[3].Speed = 0.241852f;
+    WaveCPUData[3].Amplitude = 0.323f;
+    WaveCPUData[3].Steepness = 0.725839f;
+    WaveCPUData[4].Direction.x = 0.600561f;
+    WaveCPUData[4].Direction.y = -0.405941f;
+    WaveCPUData[4].Length  = 0.729f;
+    WaveCPUData[4].Speed = 0.536838f;
+    WaveCPUData[4].Amplitude = 0.35f;
+    WaveCPUData[4].Steepness = 0.798106f;
+    WaveCPUData[5].Direction.x = 0.831471f;
+    WaveCPUData[5].Direction.y = 0.279527f;
+    WaveCPUData[5].Length  = 0.104305f;
+    WaveCPUData[5].Speed = 0.479585f;
+    WaveCPUData[5].Amplitude = 0.227698f;
+    WaveCPUData[5].Steepness = 0.112464f;
+    WaveCPUData[6].Direction.x = 0.311481f;
+    WaveCPUData[6].Direction.y = 0.595857f;
+    WaveCPUData[6].Length  = 0.890588f;
+    WaveCPUData[6].Speed = 0.963543f;
+    WaveCPUData[6].Amplitude = 0.286f;
+    WaveCPUData[6].Steepness = 0.503663f;
+    WaveCPUData[7].Direction.x = 0.867986f;
+    WaveCPUData[7].Direction.y = 0.362719f;
+    WaveCPUData[7].Length  = 0.425165f;
+    WaveCPUData[7].Speed = 0.864216f;
+    WaveCPUData[7].Amplitude = 0.13214f;
+    WaveCPUData[7].Steepness = 0.211924f;
+    WaveCPUData[8].Direction.x = 0.486265f;
+    WaveCPUData[8].Direction.y = -0.0504827f;
+    WaveCPUData[8].Length  = 0.458865f;
+    WaveCPUData[8].Speed = 0.781966f;
+    WaveCPUData[8].Amplitude = 0.282f;
+    WaveCPUData[8].Steepness = 0.740647f;
+    WaveCPUData[9].Direction.x = -0.657627f;
+    WaveCPUData[9].Direction.y = -0.396174f;
+    WaveCPUData[9].Length  = 0.479879f;
+    WaveCPUData[9].Speed = 0.68993f;
+    WaveCPUData[9].Amplitude = 0.453004f;
+    WaveCPUData[9].Steepness = 0.173865f;
+    WaveCPUData[10].Direction.x = -0.446154f;
+    WaveCPUData[10].Direction.y = 0.744858f;
+    WaveCPUData[10].Length  = 0.817552f;
+    WaveCPUData[10].Speed = 0.12865f;
+    WaveCPUData[10].Amplitude = 0.205f;
+    WaveCPUData[10].Steepness = 0.31655f;
+    WaveCPUData[11].Direction.x = 0.646916f;
+    WaveCPUData[11].Direction.y = 0.643806f;
+    WaveCPUData[11].Length  = 0.234203f;
+    WaveCPUData[11].Speed = 0.187419f;
+    WaveCPUData[11].Amplitude = 0.141554f;
+    WaveCPUData[11].Steepness = 0.994068f;
+    WaveCPUData[12].Direction.x = 0.900444f;
+    WaveCPUData[12].Direction.y = -0.018822f;
+    WaveCPUData[12].Length  = 0.212664f;
+    WaveCPUData[12].Speed = 0.38539f;
+    WaveCPUData[12].Amplitude = 0.24f;
+    WaveCPUData[12].Steepness = 0.76375f;
+    WaveCPUData[13].Direction.x = -0.236883f;
+    WaveCPUData[13].Direction.y = -0.579582f;
+    WaveCPUData[13].Length  = 0.697245f;
+    WaveCPUData[13].Speed = 0.49487f;
+    WaveCPUData[13].Amplitude = 0.131001f;
+    WaveCPUData[13].Steepness = 0.125897f;
+    WaveCPUData[14].Direction.x = -0.626255f;
+    WaveCPUData[14].Direction.y = -0.182538f;
+    WaveCPUData[14].Length  = 1.058f;
+    WaveCPUData[14].Speed = 0.272f;
+    WaveCPUData[14].Amplitude = 0.332f;
+    WaveCPUData[14].Steepness = 0.0364412f;
+    WaveCPUData[15].Direction.x = 0.292626f;
+    WaveCPUData[15].Direction.y = 0.58795f;
+    WaveCPUData[15].Length  = 0.51219f;
+    WaveCPUData[15].Speed = 0.501028f;
+    WaveCPUData[15].Amplitude = 0.358f;
+    WaveCPUData[15].Steepness = 0.487569f;
+    WaveCPUData[16].Direction.x = -0.44795f;
+    WaveCPUData[16].Direction.y = 0.411548f;
+    WaveCPUData[16].Length  = 0.928787f;
+    WaveCPUData[16].Speed = 0.779218f;
+    WaveCPUData[16].Amplitude = 0.301f;
+    WaveCPUData[16].Steepness = 0.807531f;
+    WaveCPUData[17].Direction.x = -0.674777f;
+    WaveCPUData[17].Direction.y = 0.287922f;
+    WaveCPUData[17].Length  = 1.063f;
+    WaveCPUData[17].Speed = 0.689588f;
+    WaveCPUData[17].Amplitude = 0.278f;
+    WaveCPUData[17].Steepness = 0.710704f;
+    WaveCPUData[18].Direction.x = 0.919488f;
+    WaveCPUData[18].Direction.y = 0.147509f;
+    WaveCPUData[18].Length  = 0.51043f;
+    WaveCPUData[18].Speed = 0.548528f;
+    WaveCPUData[18].Amplitude = 0.207098f;
+    WaveCPUData[18].Steepness = 0.773917f;
+    WaveCPUData[19].Direction.x = -0.552376f;
+    WaveCPUData[19].Direction.y = -0.964452f;
+    WaveCPUData[19].Length  = 0.889082f;
+    WaveCPUData[19].Speed = 0.626741f;
+    WaveCPUData[19].Amplitude = 0.203f;
+    WaveCPUData[19].Steepness = 0.808175f;
+    WaveCPUData[20].Direction.x = 0.011914f;
+    WaveCPUData[20].Direction.y = 0.880148f;
+    WaveCPUData[20].Length  = 0.839121f;
+    WaveCPUData[20].Speed = 0.329586f;
+    WaveCPUData[20].Amplitude = 0.201f;
+    WaveCPUData[20].Steepness = 0.820841f;
+    WaveCPUData[21].Direction.x = 0.918583f;
+    WaveCPUData[21].Direction.y = 0.161913f;
+    WaveCPUData[21].Length  = 0.4714f;
+    WaveCPUData[21].Speed = 0.901813f;
+    WaveCPUData[21].Amplitude = 0.212f;
+    WaveCPUData[21].Steepness = 0.423165f;
+    WaveCPUData[22].Direction.x = -0.701412f;
+    WaveCPUData[22].Direction.y = -0.539688f;
+    WaveCPUData[22].Length  = 0.242252f;
+    WaveCPUData[22].Speed = 0.224762f;
+    WaveCPUData[22].Amplitude = 0.209f;
+    WaveCPUData[22].Steepness = 0.761731f;
+    WaveCPUData[23].Direction.x = -0.491436f;
+    WaveCPUData[23].Direction.y = -0.335104f;
+    WaveCPUData[23].Length  = 0.828761f;
+    WaveCPUData[23].Speed = 0.856645f;
+    WaveCPUData[23].Amplitude = 0.278f;
+    WaveCPUData[23].Steepness = 0.988522f;
+    WaveCPUData[24].Direction.x = 0.858527f;
+    WaveCPUData[24].Direction.y = -0.565524f;
+    WaveCPUData[24].Length  = 0.369849f;
+    WaveCPUData[24].Speed = 0.319172f;
+    WaveCPUData[24].Amplitude = 0.29f;
+    WaveCPUData[24].Steepness = 0.0135391f;
+    WaveCPUData[25].Direction.x = -0.497832f;
+    WaveCPUData[25].Direction.y = 0.910035f;
+    WaveCPUData[25].Length  = 0.9f;
+    WaveCPUData[25].Speed = 0.276936f;
+    WaveCPUData[25].Amplitude = 0.253f;
+    WaveCPUData[25].Steepness = 0.848468f;
+    WaveCPUData[26].Direction.x = -0.296681f;
+    WaveCPUData[26].Direction.y = -0.864809f;
+    WaveCPUData[26].Length  = 0.801008f;
+    WaveCPUData[26].Speed = 0.52596f;
+    WaveCPUData[26].Amplitude = 0.236f;
+    WaveCPUData[26].Steepness = 0.98746f;
+    WaveCPUData[27].Direction.x = 0.0994471f;
+    WaveCPUData[27].Direction.y = 0.465597f;
+    WaveCPUData[27].Length  = 0.814238f;
+    WaveCPUData[27].Speed = 0.626738f;
+    WaveCPUData[27].Amplitude = 0.196f;
+    WaveCPUData[27].Steepness = 0.594504f;
+    WaveCPUData[28].Direction.x = 0.5144f;
+    WaveCPUData[28].Direction.y = -0.215359f;
+    WaveCPUData[28].Length  = 0.72571f;
+    WaveCPUData[28].Speed = 0.357255f;
+    WaveCPUData[28].Amplitude = 0.204f;
+    WaveCPUData[28].Steepness = 0.67982f;
+    WaveCPUData[29].Direction.x = 0.135643f;
+    WaveCPUData[29].Direction.y = 0.0547428f;
+    WaveCPUData[29].Length  = 0.605402f;
+    WaveCPUData[29].Speed = 0.442401f;
+    WaveCPUData[29].Amplitude = 0.299f;
+    WaveCPUData[29].Steepness = 0.208068f;
+    WaveCPUData[30].Direction.x = 0.0615951f;
+    WaveCPUData[30].Direction.y = 0.185648f;
+    WaveCPUData[30].Length  = 0.463788f;
+    WaveCPUData[30].Speed = 0.148555f;
+    WaveCPUData[30].Amplitude = 0.168269f;
+    WaveCPUData[30].Steepness = 0.352762f;
+    WaveCPUData[31].Direction.x = -0.740188f;
+    WaveCPUData[31].Direction.y = -0.691123f;
+    WaveCPUData[31].Length  = 0.420711f;
+    WaveCPUData[31].Speed = 0.94061f;
+    WaveCPUData[31].Amplitude = 0.266f;
+    WaveCPUData[31].Steepness = 0.964966f;
+}
+
+void OceanRendering::SetupTessellationHardCodedWaveData() {
+    WaveCPUData[0].Direction.x = 0.731f;
+    WaveCPUData[0].Direction.y = 0.0f;
+    WaveCPUData[0].Length  = 0.08f;
+    WaveCPUData[0].Speed = 0.417f;
+    WaveCPUData[0].Amplitude = 0.005f;
+    WaveCPUData[0].Steepness = 0.835009f;
+    WaveCPUData[1].Direction.x = -0.804919f;
+    WaveCPUData[1].Direction.y = 0.0944412f;
+    WaveCPUData[1].Length  = 0.163f;
+    WaveCPUData[1].Speed = 0.147f;
+    WaveCPUData[1].Amplitude = 0.002f;
+    WaveCPUData[1].Steepness = 0.308167f;
+    WaveCPUData[2].Direction.x = 0.915014f;
+    WaveCPUData[2].Direction.y = 0.992923f;
+    WaveCPUData[2].Length  = 0.539088f;
+    WaveCPUData[2].Speed = 0.121f;
+    WaveCPUData[2].Amplitude = 0.006f;
+    WaveCPUData[2].Steepness = 0.992881f;
+    WaveCPUData[3].Direction.x = 0.941185f;
+    WaveCPUData[3].Direction.y = 0.962219f;
+    WaveCPUData[3].Length  = 0.417f;
+    WaveCPUData[3].Speed = 0.157613f;
+    WaveCPUData[3].Amplitude = 0.004f;
+    WaveCPUData[3].Steepness = 0.725839f;
+    WaveCPUData[4].Direction.x = 0.600561f;
+    WaveCPUData[4].Direction.y = -0.405941f;
+    WaveCPUData[4].Length  = 0.09f;
+    WaveCPUData[4].Speed = 0.184f;
+    WaveCPUData[4].Amplitude = 0.002f;
+    WaveCPUData[4].Steepness = 0.798106f;
+    WaveCPUData[5].Direction.x = 0.831471f;
+    WaveCPUData[5].Direction.y = 0.279527f;
+    WaveCPUData[5].Length  = 0.20861f;
+    WaveCPUData[5].Speed = 0.076f;
+    WaveCPUData[5].Amplitude = 0.003f;
+    WaveCPUData[5].Steepness = 0.112464f;
+    WaveCPUData[6].Direction.x = 0.311481f;
+    WaveCPUData[6].Direction.y = 0.595857f;
+    WaveCPUData[6].Length  = 0.339f;
+    WaveCPUData[6].Speed = 0.13f;
+    WaveCPUData[6].Amplitude = 0.005f;
+    WaveCPUData[6].Steepness = 0.503663f;
+    WaveCPUData[7].Direction.x = 0.867986f;
+    WaveCPUData[7].Direction.y = 0.362719f;
+    WaveCPUData[7].Length  = 0.328f;
+    WaveCPUData[7].Speed = 0.836f;
+    WaveCPUData[7].Amplitude = 0.00357116f;
+    WaveCPUData[7].Steepness = 0.211924f;
+    WaveCPUData[8].Direction.x = 0.486265f;
+    WaveCPUData[8].Direction.y = -0.0504827f;
+    WaveCPUData[8].Length  = 0.073f;
+    WaveCPUData[8].Speed = 0.183f;
+    WaveCPUData[8].Amplitude = 0.004f;
+    WaveCPUData[8].Steepness = 0.740647f;
+    WaveCPUData[9].Direction.x = -0.657627f;
+    WaveCPUData[9].Direction.y = -0.396174f;
+    WaveCPUData[9].Length  = 0.242f;
+    WaveCPUData[9].Speed = 0.213f;
+    WaveCPUData[9].Amplitude = 0.007f;
+    WaveCPUData[9].Steepness = 0.173865f;
+    WaveCPUData[10].Direction.x = -0.446154f;
+    WaveCPUData[10].Direction.y = 0.744858f;
+    WaveCPUData[10].Length  = 0.468f;
+    WaveCPUData[10].Speed = 0.0318328f;
+    WaveCPUData[10].Amplitude = 0.01f;
+    WaveCPUData[10].Steepness = 0.31655f;
+    WaveCPUData[11].Direction.x = 0.646916f;
+    WaveCPUData[11].Direction.y = 0.643806f;
+    WaveCPUData[11].Length  = 0.468405f;
+    WaveCPUData[11].Speed = 0.0971317f;
+    WaveCPUData[11].Amplitude = 0.00461714f;
+    WaveCPUData[11].Steepness = 0.994068f;
+    WaveCPUData[12].Direction.x = 0.900444f;
+    WaveCPUData[12].Direction.y = -0.018822f;
+    WaveCPUData[12].Length  = 0.226f;
+    WaveCPUData[12].Speed = 0.317099f;
+    WaveCPUData[12].Amplitude = 0.008f;
+    WaveCPUData[12].Steepness = 0.76375f;
+    WaveCPUData[13].Direction.x = -0.236883f;
+    WaveCPUData[13].Direction.y = -0.579582f;
+    WaveCPUData[13].Length  = 1.112f;
+    WaveCPUData[13].Speed = 0.438744f;
+    WaveCPUData[13].Amplitude = 0.00344461f;
+    WaveCPUData[13].Steepness = 0.125897f;
+    WaveCPUData[14].Direction.x = -0.626255f;
+    WaveCPUData[14].Direction.y = -0.182538f;
+    WaveCPUData[14].Length  = 0.29219f;
+    WaveCPUData[14].Speed = 0.233f;
+    WaveCPUData[14].Amplitude = 0.009f;
+    WaveCPUData[14].Steepness = 0.0364412f;
+    WaveCPUData[15].Direction.x = 0.292626f;
+    WaveCPUData[15].Direction.y = 0.58795f;
+    WaveCPUData[15].Length  = 0.14f;
+    WaveCPUData[15].Speed = 0.253f;
+    WaveCPUData[15].Amplitude = 0.002f;
+    WaveCPUData[15].Steepness = 0.487569f;
+    WaveCPUData[16].Direction.x = -0.44795f;
+    WaveCPUData[16].Direction.y = 0.411548f;
+    WaveCPUData[16].Length  = 0.438f;
+    WaveCPUData[16].Speed = 0.327f;
+    WaveCPUData[16].Amplitude = 0.013f;
+    WaveCPUData[16].Steepness = 0.807531f;
+    WaveCPUData[17].Direction.x = -0.674777f;
+    WaveCPUData[17].Direction.y = 0.287922f;
+    WaveCPUData[17].Length  = 0.333f;
+    WaveCPUData[17].Speed = 0.083f;
+    WaveCPUData[17].Amplitude = 0.006f;
+    WaveCPUData[17].Steepness = 0.710704f;
+    WaveCPUData[18].Direction.x = 0.919488f;
+    WaveCPUData[18].Direction.y = 0.147509f;
+    WaveCPUData[18].Length  = 0.74f;
+    WaveCPUData[18].Speed = 0.229f;
+    WaveCPUData[18].Amplitude = 0.0118998f;
+    WaveCPUData[18].Steepness = 0.773917f;
+    WaveCPUData[19].Direction.x = -0.552376f;
+    WaveCPUData[19].Direction.y = -0.964452f;
+    WaveCPUData[19].Length  = 0.78f;
+    WaveCPUData[19].Speed = 0.258f;
+    WaveCPUData[19].Amplitude = 0.023f;
+    WaveCPUData[19].Steepness = 0.808175f;
+    WaveCPUData[20].Direction.x = 0.011914f;
+    WaveCPUData[20].Direction.y = 0.880148f;
+    WaveCPUData[20].Length  = 0.128f;
+    WaveCPUData[20].Speed = 0.255095f;
+    WaveCPUData[20].Amplitude = 0.005f;
+    WaveCPUData[20].Steepness = 0.820841f;
+    WaveCPUData[21].Direction.x = 0.918583f;
+    WaveCPUData[21].Direction.y = 0.161913f;
+    WaveCPUData[21].Length  = 0.436f;
+    WaveCPUData[21].Speed = 0.104f;
+    WaveCPUData[21].Amplitude = 0.007f;
+    WaveCPUData[21].Steepness = 0.423165f;
+    WaveCPUData[22].Direction.x = -0.701412f;
+    WaveCPUData[22].Direction.y = -0.539688f;
+    WaveCPUData[22].Length  = 0.245f;
+    WaveCPUData[22].Speed = 0.138624f;
+    WaveCPUData[22].Amplitude = 0.005f;
+    WaveCPUData[22].Steepness = 0.761731f;
+    WaveCPUData[23].Direction.x = -0.491436f;
+    WaveCPUData[23].Direction.y = -0.335104f;
+    WaveCPUData[23].Length  = 0.229f;
+    WaveCPUData[23].Speed = 0.213f;
+    WaveCPUData[23].Amplitude = 0.003f;
+    WaveCPUData[23].Steepness = 0.988522f;
+    WaveCPUData[24].Direction.x = 0.858527f;
+    WaveCPUData[24].Direction.y = -0.565524f;
+    WaveCPUData[24].Length  = 0.167f;
+    WaveCPUData[24].Speed = 0.507f;
+    WaveCPUData[24].Amplitude = 0.002f;
+    WaveCPUData[24].Steepness = 0.0135391f;
+    WaveCPUData[25].Direction.x = -0.497832f;
+    WaveCPUData[25].Direction.y = 0.910035f;
+    WaveCPUData[25].Length  = 0.769f;
+    WaveCPUData[25].Speed = 0.196595f;
+    WaveCPUData[25].Amplitude = 0.008f;
+    WaveCPUData[25].Steepness = 0.848468f;
+    WaveCPUData[26].Direction.x = -0.296681f;
+    WaveCPUData[26].Direction.y = -0.864809f;
+    WaveCPUData[26].Length  = 0.191f;
+    WaveCPUData[26].Speed = 0.102f;
+    WaveCPUData[26].Amplitude = 0.005f;
+    WaveCPUData[26].Steepness = 0.98746f;
+    WaveCPUData[27].Direction.x = 0.0994471f;
+    WaveCPUData[27].Direction.y = 0.465597f;
+    WaveCPUData[27].Length  = 0.141f;
+    WaveCPUData[27].Speed = 0.144f;
+    WaveCPUData[27].Amplitude = 0.012f;
+    WaveCPUData[27].Steepness = 0.594504f;
+    WaveCPUData[28].Direction.x = 0.5144f;
+    WaveCPUData[28].Direction.y = -0.215359f;
+    WaveCPUData[28].Length  = 0.477f;
+    WaveCPUData[28].Speed = 0.285839f;
+    WaveCPUData[28].Amplitude = 0.016f;
+    WaveCPUData[28].Steepness = 0.67982f;
+    WaveCPUData[29].Direction.x = 0.135643f;
+    WaveCPUData[29].Direction.y = 0.0547428f;
+    WaveCPUData[29].Length  = 0.071f;
+    WaveCPUData[29].Speed = 0.117f;
+    WaveCPUData[29].Amplitude = 0.009f;
+    WaveCPUData[29].Steepness = 0.208068f;
+    WaveCPUData[30].Direction.x = 0.0615951f;
+    WaveCPUData[30].Direction.y = 0.185648f;
+    WaveCPUData[30].Length  = 0.927575f;
+    WaveCPUData[30].Speed = 0.0539501f;
+    WaveCPUData[30].Amplitude = 0.00758542f;
+    WaveCPUData[30].Steepness = 0.352762f;
+    WaveCPUData[31].Direction.x = -0.740188f;
+    WaveCPUData[31].Direction.y = -0.691123f;
+    WaveCPUData[31].Length  = 0.1f;
+    WaveCPUData[31].Speed = 0.175f;
+    WaveCPUData[31].Amplitude = 0.006f;
+    WaveCPUData[31].Steepness = 0.964966f;
+}
 
 void OceanRendering::RenderLightSource(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) {
 	SCOPED_PROFILER_US("OceanRendering::RenderLightSource");
@@ -184,12 +630,19 @@ void OceanRendering::StartUp() {
 	m_OffscreenRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 
 	m_Camera.Init(InitialCameraPosition, InitialCameraFov, InitialCameraYaw, InitialCameraPitch, m_ScreenWidth, m_ScreenHeight);
+    m_Camera.Far = 2000.0f;
+    m_Camera.MovementSpeed = 0.1f;
 
 	m_OceanModel = ModelLoader::LoadModel(ModelType::QUAD);
 	m_OceanModel->Transformations.translation.y = -0.51f;
 //	m_OceanModel->Transformations.rotation.x = 90.0f;
-	m_OceanModel->Transformations.scaleHandler = 20.0f;
+//	m_OceanModel->Transformations.scaleHandler = 20.0f;
+//	m_OceanModel->Transformations.scaleHandler = 1000.0f;
+	m_OceanModel->Transformations.scaleHandler = 100.0f;
 	m_OceanModel->ModelIndex = 0;
+
+    m_TestWaterModel = ModelLoader::LoadMultiQuadModel(100, 100);
+	m_TestWaterModel->ModelIndex = 1;
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
@@ -201,22 +654,15 @@ void OceanRendering::StartUp() {
 	m_SceneBuffer = gfxDevice->CreateBuffer(sizeof(SceneData));
 	m_SineWavesBuffer = gfxDevice->CreateBuffer(sizeof(WaveData) * SINE_WAVES_MAX);
 
-    WaveCPUData[0].Length = 0.6f;
-    WaveCPUData[0].Amplitude = 0.025f;
-    WaveCPUData[0].Speed = 0.1f;
-    WaveCPUData[0].Direction = glm::vec2(1.0f, 1.0f);
+    if (m_GenerateRandomWaveData) {
+        GenerateRandomWaveData();
+    } else if (m_TessellationEnabled) {
+        SetupTessellationHardCodedWaveData();
+    } else {
 
-    WaveCPUData[1].Length = 0.310f;
-    WaveCPUData[1].Amplitude = 0.025f;
-    WaveCPUData[1].Speed = 0.1f;
-    WaveCPUData[1].Direction = glm::vec2(1.0f, 0.6f);
+    }
 
-    WaveCPUData[2].Length = 0.180f;
-    WaveCPUData[2].Amplitude = 0.025f;
-    WaveCPUData[2].Speed = 0.1f;
-    WaveCPUData[2].Direction = glm::vec2(1.0f, 1.3f);
-
-    SampleSceneData.SineWaveCount = 3;
+    SampleSceneData.SineWaveCount = 1;
 
 	Graphics::InputLayout frameInputLayout = {
 		.pushConstants = {
@@ -342,6 +788,9 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
 
 	m_Camera.OnUpdate(deltaT, input);
 
+    m_OceanModel->OnUpdate(deltaT);
+    m_TestWaterModel->OnUpdate(deltaT);
+
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	if (m_OrbitateLight) {
@@ -368,6 +817,7 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
         WaveGPU->Direction.y = (2 * PI) / WaveCPU->Length;
         WaveGPU->Direction.w = WaveCPU->Speed * WaveGPU->Direction.y;
         WaveGPU->Amplitude = WaveCPU->Amplitude;
+        WaveGPU->Steepness = WaveCPU->Steepness;
     }
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer, &SampleSceneData);
@@ -382,29 +832,29 @@ void OceanRendering::Render(const uint32_t currentFrame, const VkCommandBuffer& 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
     gfxDevice->BindDescriptorSet(*frameDescriptorSet, commandBuffer, pipeline->pipelineLayout, 0, 1);
 
-    Assets::Model& Model = *m_OceanModel.get();
+    Assets::Model& model = drawIndexed ? *m_TestWaterModel.get() : *m_OceanModel.get();
 
-    VkDeviceSize offsets[] = { sizeof(uint32_t) * Model.TotalIndices };
+    VkDeviceSize offsets[] = { sizeof(uint32_t) * model.TotalIndices };
 
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &Model.DataBuffer.Handle, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, Model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model.DataBuffer.Handle, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, model.DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
 
-    FramePushConstants.Model = Model.GetModelMatrix();
+    FramePushConstants.Model = model.GetModelMatrix();
 
     vkCmdPushConstants(commandBuffer, pipeline->pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &FramePushConstants);
 
-    for (const auto& Mesh: Model.Meshes) { 
+    for (const auto& mesh: model.Meshes) { 
         if (drawIndexed) {
             vkCmdDrawIndexed(
                 commandBuffer, 
-                static_cast<uint32_t>(Mesh.Indices.size()), 
+                static_cast<uint32_t>(mesh.Indices.size()), 
                 1, 
-                static_cast<uint32_t>(Mesh.IndexOffset), 
-                static_cast<int32_t>(Mesh.VertexOffset),
+                static_cast<uint32_t>(mesh.IndexOffset), 
+                static_cast<int32_t>(mesh.VertexOffset),
                 0);
         } else {
             // Note: Must use vkCmdDraw instead of vkCmdDrawIndexed to tessellate quads.
-            vkCmdDraw(commandBuffer, Mesh.Vertices.size(), Mesh.Indices.size(), 0, 0);
+            vkCmdDraw(commandBuffer, mesh.Vertices.size(), mesh.Indices.size(), 0, 0);
         }
     }
 }
@@ -450,7 +900,19 @@ void OceanRendering::RenderUI() {
     ImGui::ColorPicker3("Water Color",              (float*)&m_WaterColor);
     ImGui::DragFloat("Water Specular factor",       &m_WaterSpecularFactor, 2.0f, 0.0f, 64.0f);
     ImGui::Checkbox("Render Wireframe",				&m_RenderWireframe);
+
+    const bool tessellationEnabled = m_TessellationEnabled;
+
     ImGui::Checkbox("Tessellation Enabled",         &m_TessellationEnabled);
+
+    if (tessellationEnabled != m_TessellationEnabled && !tessellationEnabled) {
+        SetupTessellationHardCodedWaveData();
+    }
+
+    if (tessellationEnabled != m_TessellationEnabled && tessellationEnabled) {
+        SetupHardCodedWaveData();
+    }
+
     // Note: DragFloat signature -> const char *label, float *value, float speed, float min, float max
     // Note: Vulkan tessellation levels through dedicated tessellation pipeline stop at 64. To achieve higher levels we should we use compute shaders instead.
     ImGui::DragFloat("Tessellation Level Inner",    &SampleSceneData.TessellationLevelInner, 1.0f, 1.0f, 64.0f);
@@ -461,17 +923,22 @@ void OceanRendering::RenderUI() {
 	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
 	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
 	ImGui::DragFloat("Light Orbital Displacement",	&m_OrbitalLightDisplacement, 0.02f, 0.0f, 9.0f);
-	ImGui::DragFloat4("Light Position",				(float*)&m_LightPosition, 0.2f, -20.0f, 20.0f);
+	ImGui::DragFloat4("Light Position",				(float*)&m_LightPosition, 0.2f, -1000.0f, 1000.0f);
 
     ImGui::DragInt("Active Sine Waves", &SampleSceneData.SineWaveCount, 1, 1, static_cast<int>(SINE_WAVES_MAX));
 
+    if (ImGui::Button("Print Active Wave CPU Data")) {
+        PrintActiveWaveCPUData();
+    }
+    
     if (ImGui::TreeNode("Sine Waves Settings")) {
         for (int WaveIndex = 0; WaveIndex < SINE_WAVES_MAX; WaveIndex++) {
             std::string WaveId = "wave_" + std::to_string(WaveIndex);
 
             if (ImGui::TreeNode(WaveId.c_str())) {
-                ImGui::DragFloat("Wave Length",                 &WaveCPUData[WaveIndex].Length, 0.01f, 0.0f, 100.0f);
+                ImGui::DragFloat("Wave Length",                 &WaveCPUData[WaveIndex].Length, 0.001f, 0.0f, 100.0f);
                 ImGui::DragFloat("Wave Amplitude",              &WaveCPUData[WaveIndex].Amplitude, 0.001f, 0.0f, 10.00f);
+                ImGui::DragFloat("Wave Steepness",              &WaveCPUData[WaveIndex].Steepness, 1.0, 0.0f, 50.00f);
                 ImGui::DragFloat("Wave Speed",                  &WaveCPUData[WaveIndex].Speed, 0.001f, 0.0f, 10.00f);
                 ImGui::DragFloat2("Wave Direction (X and Z)",   (float*)&WaveCPUData[WaveIndex].Direction, 0.001f, -1.0f, 1.0f);
 
@@ -482,6 +949,7 @@ void OceanRendering::RenderUI() {
     }
 
     m_OceanModel->OnUIRender();
+    m_TestWaterModel->OnUIRender();
 }
 
 void OceanRendering::Resize(uint32_t width, uint32_t height) {

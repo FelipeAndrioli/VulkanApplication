@@ -1,6 +1,6 @@
 #version 450
 
-#define MAX_SINE_WAVES 3
+#define MAX_SINE_WAVES 32
 
 layout (vertices = 4) out;
 
@@ -30,6 +30,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 struct wave_data {
     vec4 direction;
     float amplitude;
+    float steepness;
 };
 
 layout (std140, set = 0, binding = 1) uniform WaveGPUData {
