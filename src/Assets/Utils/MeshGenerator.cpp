@@ -3,7 +3,15 @@
 
 #include <iostream>
 
+#define INVALID_TRIANGLE_INDEX -1
+
+#define QUAD_TOP_LEFT_INDEX 1
+#define QUAD_TOP_RIGHT_INDEX 2
+#define QUAD_BOTTOM_LEFT_INDEX 0
+#define QUAD_BOTTOM_RIGHT_INDEX 3
+
 namespace Assets {
+
 	glm::vec3 MeshGenerator::GenerateTangentVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 uv1, glm::vec2 uv2, glm::vec2 uv3) {
 		
 		glm::vec3 edge1 = p2 - p1;
@@ -518,4 +526,111 @@ namespace Assets {
 
 		return icosphereMesh;
 	}
+
+    std::vector<Mesh> MeshGenerator::GenerateMultiQuadMesh(int verticalVerticesCount, int horizontalVerticesCount, glm::vec3 position, float size) {
+        std::cout << "Generating multi quad mesh started!\n";
+
+        Assets::Mesh mesh = {};
+
+        // TODO: generate tex coords.
+        
+        int verticalVerticesToGenerate = verticalVerticesCount < 2 ? 2 : verticalVerticesCount;
+        int horizontalVerticesToGenerate = horizontalVerticesCount < 2 ? 2 : horizontalVerticesCount;
+
+        int verticalQuadsToGenerate = verticalVerticesToGenerate - 1;
+        int horizontalQuadsToGenerate = horizontalVerticesToGenerate - 1;
+
+        glm::vec3 quadPosition = position;
+
+        for (size_t verticalQuadIndex = 0; verticalQuadIndex < verticalQuadsToGenerate; ++verticalQuadIndex) {
+
+            std::cout << "Generating vertical quad " << verticalQuadIndex + 1 << " of " << verticalQuadsToGenerate + 1 << '\n';
+
+            for (size_t horizontalQuadIndex = 0; horizontalQuadIndex < horizontalQuadsToGenerate; ++horizontalQuadIndex) {
+
+                std::cout << "Generating horizontal quad " << horizontalQuadIndex + 1 << " of " << horizontalQuadsToGenerate + 1 << '\n';
+
+                Assets::Vertex quadVertices[4] = {};
+
+                quadVertices[QUAD_BOTTOM_LEFT_INDEX].pos = glm::vec3(quadPosition.x, quadPosition.y, quadPosition.z);
+                quadVertices[QUAD_BOTTOM_LEFT_INDEX].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+
+                quadVertices[QUAD_TOP_LEFT_INDEX].pos = glm::vec3(quadPosition.x, quadPosition.y, quadPosition.z + size);
+                quadVertices[QUAD_TOP_LEFT_INDEX].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+
+                quadVertices[QUAD_TOP_RIGHT_INDEX].pos = glm::vec3(quadPosition.x + size, quadPosition.y, quadPosition.z + size);
+                quadVertices[QUAD_TOP_RIGHT_INDEX].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+
+                quadVertices[QUAD_BOTTOM_RIGHT_INDEX].pos = glm::vec3(quadPosition.x + size, quadPosition.y, quadPosition.z);
+                quadVertices[QUAD_BOTTOM_RIGHT_INDEX].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+
+                int quadIndices[4] = {};
+
+                quadIndices[QUAD_BOTTOM_LEFT_INDEX] = INVALID_TRIANGLE_INDEX;
+                quadIndices[QUAD_BOTTOM_RIGHT_INDEX] = INVALID_TRIANGLE_INDEX;
+                quadIndices[QUAD_TOP_LEFT_INDEX] = INVALID_TRIANGLE_INDEX;
+                quadIndices[QUAD_TOP_RIGHT_INDEX] = INVALID_TRIANGLE_INDEX;
+
+                for (size_t vertexIndex = 0; vertexIndex < mesh.Vertices.size(); ++vertexIndex) {
+                    const Assets::Vertex& vertex = mesh.Vertices[vertexIndex];
+    
+                    if (vertex.pos == quadVertices[QUAD_BOTTOM_LEFT_INDEX].pos) {
+                        quadIndices[QUAD_BOTTOM_LEFT_INDEX] = vertexIndex;
+                    } else if (vertex.pos == quadVertices[QUAD_TOP_LEFT_INDEX].pos) {
+                        quadIndices[QUAD_TOP_LEFT_INDEX] = vertexIndex;
+                    } else if (vertex.pos == quadVertices[QUAD_TOP_RIGHT_INDEX].pos) {
+                        quadIndices[QUAD_TOP_RIGHT_INDEX] = vertexIndex;
+                    } else if (vertex.pos == quadVertices[QUAD_BOTTOM_RIGHT_INDEX].pos) {
+                        quadIndices[QUAD_BOTTOM_RIGHT_INDEX] = vertexIndex;
+                    }
+
+                    if (quadIndices[QUAD_BOTTOM_LEFT_INDEX] != INVALID_TRIANGLE_INDEX
+                        && quadIndices[QUAD_TOP_LEFT_INDEX] != INVALID_TRIANGLE_INDEX
+                        && quadIndices[QUAD_TOP_RIGHT_INDEX] != INVALID_TRIANGLE_INDEX
+                        && quadIndices[QUAD_BOTTOM_RIGHT_INDEX] != INVALID_TRIANGLE_INDEX) {
+                        break;
+                    }
+                }
+
+                if (quadIndices[QUAD_BOTTOM_LEFT_INDEX] == INVALID_TRIANGLE_INDEX) {
+                    quadIndices[QUAD_BOTTOM_LEFT_INDEX] = mesh.Vertices.size();
+                    mesh.Vertices.push_back(quadVertices[QUAD_BOTTOM_LEFT_INDEX]);
+                }
+
+                if (quadIndices[QUAD_BOTTOM_RIGHT_INDEX] == INVALID_TRIANGLE_INDEX) {
+                    quadIndices[QUAD_BOTTOM_RIGHT_INDEX] = mesh.Vertices.size();
+                    mesh.Vertices.push_back(quadVertices[QUAD_BOTTOM_RIGHT_INDEX]);
+                }
+
+                if (quadIndices[QUAD_TOP_LEFT_INDEX] == INVALID_TRIANGLE_INDEX) {
+                    quadIndices[QUAD_TOP_LEFT_INDEX] = mesh.Vertices.size();
+                    mesh.Vertices.push_back(quadVertices[QUAD_TOP_LEFT_INDEX]);
+                }
+
+                if (quadIndices[QUAD_TOP_RIGHT_INDEX] == INVALID_TRIANGLE_INDEX) {
+                    quadIndices[QUAD_TOP_RIGHT_INDEX] = mesh.Vertices.size();
+                    mesh.Vertices.push_back(quadVertices[QUAD_TOP_RIGHT_INDEX]);
+                }
+
+                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_LEFT_INDEX]);
+                mesh.Indices.push_back(quadIndices[QUAD_TOP_LEFT_INDEX]);
+                mesh.Indices.push_back(quadIndices[QUAD_TOP_RIGHT_INDEX]);
+
+                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_LEFT_INDEX]);
+                mesh.Indices.push_back(quadIndices[QUAD_TOP_RIGHT_INDEX]);
+                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_RIGHT_INDEX]);
+
+                quadPosition.x += size;
+            }
+
+            quadPosition.x = position.x;
+            quadPosition.z += size;
+        }
+
+        std::vector<Assets::Mesh> result = { mesh };
+
+        std::cout << "Generating multi quad mesh finished!\n";
+
+        return result;
+    }
 }
