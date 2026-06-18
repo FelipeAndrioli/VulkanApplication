@@ -49,39 +49,34 @@ void main() {
     float time = scene_gpu_data.time;
 
     float displacement_sum = 0.0;
-    float partial_derivative_sum_x = 0.0;
-    float partial_derivative_sum_z = 0.0;
-    float partial_derivative_sum = 0.0;
+    float derivative_sum_x = 0.0;
+    float derivative_sum_z = 0.0;
 
     for (int wave_index = 0; wave_index < scene_gpu_data.sine_wave_count; ++wave_index) {
         wave_data wave = wave_gpu_data.sine_wave[wave_index];
 
+        vec2 d = normalize(wave.direction.xz);
+
         float amplitude = wave.amplitude;
-        float steepness = wave.steepness;
-        float speed = wave.direction.w;
         float frequency = wave.direction.y;
+        float speed = wave.direction.w;
+       
+        float f = dot(d, vec2(pos.xz)) * frequency + (time * speed);
+      
+        float derivative_x = frequency * d.x * amplitude * cos(f);
+        float derivative_z = frequency * d.y * amplitude * cos(f);
 
-        float f = dot(wave.direction.xz, pos.xz) * frequency + (time * speed);
-        float displacement = amplitude * sin(f);
-        displacement_sum += displacement;
-
-        float partial_derivative_x = frequency * wave.direction.x * amplitude * cos(f);
-        float partial_derivative_z = frequency * wave.direction.z * amplitude * cos(f);
-        float partial_derivative = amplitude * frequency * cos(f);
-
-        partial_derivative_sum_x += partial_derivative_x;
-        partial_derivative_sum_z += partial_derivative_z;
+        displacement_sum += amplitude * sin(f);
+        derivative_sum_x += derivative_x;
+        derivative_sum_z += derivative_z;
     }
 
-//    vec3 binormal = normalize(vec3(1.0, partial_derivative_sum_x, 0.0));
-//    vec3 tangent = normalize(vec3(0.0, partial_derivative_sum_z, 1.0));
+    pos.y = displacement_sum;
 
-    vec3 binormal = normalize(vec3(1.0, partial_derivative_sum, 0.0));
-    vec3 tangent = normalize(vec3(0.0, partial_derivative_sum, 1.0));
+    vec3 binormal = vec3(1.0, derivative_sum_x, 0.0);
+    vec3 tangent = vec3(0.0, derivative_sum_z, 1.0);
 
-    normal = normalize(cross(tangent, binormal));
-
-    pos.y += displacement_sum;
+    normal = normalize(vec3(-derivative_sum_x, 1.0, -derivative_sum_z));
 
 	out_frag_normal = normalize(mat3(push_constants.model) * normal);
 	vec3 frag_pos = vec3(push_constants.model * pos);
@@ -93,39 +88,3 @@ void main() {
         * scene_gpu_data.view 
         * vec4(frag_pos, 1.0);
 }
-
-/*
-float calculateWave(vec2 position, vec2 direction, float amplitude, float frequency, float speed, float time) {
-    float angle = dot(direction, position) * frequency + (time * speed);
-    return amplitude * sin(angle);
-}
-
-void main() {
-    vUv = uv; // Pass UVs for texturing in fragment shader
-
-    // Start with the base vertex position
-    vec3 displacedPosition = position;
-
-    // Calculate displacement for two waves and sum them
-    float wave1 = calculateWave(displacedPosition.xz, uDir1, uAmp1, uFreq1, uSpeed1, uTime);
-    float wave2 = calculateWave(displacedPosition.xz, uDir2, uAmp2, uFreq2, uSpeed2, uTime);
-    
-    // Apply combined displacement to Y (height)
-    displacedPosition.y += wave1 + wave2;
-
-    // Calculate approximate analytic normals (derivatives of sine)
-    // d/dx(A * sin(kx + wt)) = A * k * cos(kx + wt)
-    float waveD1 = uAmp1 * uFreq1 * cos(dot(uDir1, displacedPosition.xz) * uFreq1 + (uTime * uSpeed1));
-    float waveD2 = uAmp2 * uFreq2 * cos(dot(uDir2, displacedPosition.xz) * uFreq2 + (uTime * uSpeed2));
-
-    // Simple analytical tangent and bitangent approximations for smooth shading
-    vec3 tangent = normalize(vec3(1.0, waveD1 + waveD2, 0.0));
-    vec3 bitangent = normalize(vec3(0.0, waveD1 + waveD2, 1.0));
-    vNormal = normalize(cross(bitangent, tangent));
-
-    // Final transformed vertex projection
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
-}
-
-*/
-
