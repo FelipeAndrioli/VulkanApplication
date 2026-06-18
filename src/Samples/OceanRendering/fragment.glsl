@@ -74,14 +74,14 @@ void main() {
     }
 
     if (debug_render_normals) {
-//        pixel_color = vec4(normal * 5.0, 1.0);
         pixel_color = vec4(normal, 1.0);
     } else {
         vec3 water_color = scene_gpu_data.water_color.rgb;
         float water_specular_factor = scene_gpu_data.water_color.a;
 
         vec3 light_dir = normalize(scene_gpu_data.light_position.xyz - in_frag_pos);
-       
+      
+        vec3 ambient = water_color * 0.4;
         float diff = max(dot(light_dir, normal), 0.1);
     
         vec3 diffuse = diff * water_color;
@@ -93,7 +93,7 @@ void main() {
         vec3 specular = vec3(spec);
 
 //        pixel_color = vec4(in_frag_pos, 1.0);
-        pixel_color = vec4(diffuse + specular, 1.0);	
+        pixel_color = vec4(ambient + diffuse + specular, 1.0);	
 //        pixel_color = vec4(water_color, 1.0);	
     }
 }
