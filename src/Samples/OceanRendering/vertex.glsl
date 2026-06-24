@@ -27,8 +27,11 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
     float delta_t;
 } scene_gpu_data;
 
+// Note: wave direction: X and Z are directions, Y is length and W is speed.
+// Note: circular wave: X and Y corrsponds to the wave center X and Z.
 struct wave_data {
     vec4 direction;
+    vec4 circular_wave;
     float amplitude;
     float steepness;
 };

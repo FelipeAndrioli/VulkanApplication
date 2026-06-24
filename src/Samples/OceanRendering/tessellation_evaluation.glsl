@@ -21,8 +21,10 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.
+// Note: circular wave: X and Y corrsponds to the wave center X and Z.
 struct wave_data {
     vec4 direction;
+    vec4 circular_wave;
     float amplitude;
     float steepness;
 };
@@ -42,6 +44,7 @@ layout (location = 2) in vec3 in_pos[];
 layout (location = 0) out vec3 out_color;
 layout (location = 1) out vec3 out_normal;
 layout (location = 2) out vec3 out_pos;
+layout (location = 3) out vec3 out_frag_model_space_pos;
 
 void main() {
 
@@ -62,9 +65,9 @@ void main() {
     vec4 pos = mix(pos_bottom, pos_top, v);
 
     float time = scene_gpu_data.time;
+    float displacement_sum = 0.0;
 
-    vec3 normal = vec3(0.0);
-
+    bool circular_waves_enabled = bool(scene_gpu_data.flags & (1 << 2));
     /*
         Book notation:
 
@@ -75,27 +78,41 @@ void main() {
     */
 
     for (int wave_index = 0; wave_index < scene_gpu_data.sine_wave_count; ++wave_index) {
-
         wave_data wave = wave_gpu_data.sine_wave[wave_index];
 
-        float wave_length = wave.direction.y;
-        float wave_speed = wave.direction.w;
+        vec2 dir = vec2(0.0);
 
-        float f = dot(wave.direction.xz, pos.xz) * wave_length + time * wave_speed;
+        float amplitude = wave.amplitude;
+        float frequency = wave.direction.y;
+        float speed = wave.direction.w;
+        float steepness = wave.steepness;
 
-        pos.y += wave.amplitude * sin(f);
+        float f = 0.0;
 
-        float wave_amplitude_cos_f = wave.amplitude * cos(f);
+        if (circular_waves_enabled) {
+            vec2 d = pos.xz - wave.circular_wave.xy;
+            float dist = length(d);
 
-        vec3 binormal = vec3(1.0, 0.0, wave_length * dot(wave.direction.xz, vec2(pos.x, 0.0)) * wave_amplitude_cos_f);
-        vec3 tangent = vec3(0.0, 1.0, wave_length * dot(wave.direction.xz, vec2(0.0, pos.z)) * wave_amplitude_cos_f);
+            dir = (dist > 0.0001) ? d / dist : vec2(1.0, 0.0);
+            f = dist * frequency + (time * speed) * -1;
+        } else {
+            dir = normalize(wave.direction.xz);
+            f = dot(dir, vec2(pos.xz)) * frequency + (time * speed);
+        }
 
-//        normal += cross(binormal, tangent);
-        normal += vec3(-binormal.z, 1.0, -tangent.z);
+        float sine_base = (sin(f) + 1.0) / 2.0;
+        float power_term = (sine_base > 0.0) ? pow(sine_base, steepness) : 0.0;
+        float derivative = frequency * amplitude * steepness * power_term * 0.5 * cos(f);
+
+        displacement_sum += 2 * amplitude * power_term;
     }
 
-    out_normal = normalize(mat3(push_constants.model) * normal);
+    pos.y = displacement_sum;
+
+    // Note:    Normal generated on fragment shader.
+    out_normal = vec3(0.0); 
     out_pos = vec3(push_constants.model * pos);
+    out_frag_model_space_pos = pos.xyz; 
    
     gl_Position = scene_gpu_data.projection 
         * scene_gpu_data.view 
