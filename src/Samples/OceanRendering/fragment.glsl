@@ -81,6 +81,8 @@ vec3 generate_normal(float x, float z, float t, bool circular_waves_enabled) {
         float f = 0.0;
 
         if (circular_waves_enabled) {
+
+            // "manual" normalization to avoid division very close to 0.
             vec2 d = vec2(x, z) - wave.circular_wave.xy;
             float dist = length(d);
 
@@ -92,7 +94,13 @@ vec3 generate_normal(float x, float z, float t, bool circular_waves_enabled) {
         }
      
         float sine_base = (sin(f) + 1.0) / 2.0;
+
+        // Check on sine base greater than zero to skip a pow of 0.
         float power_term = (sine_base > 0.0) ? pow(sine_base, steepness - 1.0) : 0.0;
+
+        // The book height function compresses the sine wave range by / 2, its
+        // rate of change is halved. Adding the 0.5 factor synchronizes the
+        // derivative with the actual height change of the vertices.
         float derivative = frequency * amplitude * steepness * power_term * 0.5 * cos(f);
         float derivative_x = dir.x * derivative;
         float derivative_z = dir.y * derivative;
