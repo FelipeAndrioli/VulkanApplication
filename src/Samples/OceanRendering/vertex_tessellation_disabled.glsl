@@ -10,7 +10,7 @@ layout (location = 4) in vec2 in_texCoord;
 
 layout (location = 0) out vec3 out_frag_color;
 layout (location = 1) out vec3 out_frag_normal;
-layout (location = 2) out vec3 out_frag_view_space_position;
+layout (location = 2) out vec3 out_frag_world_space_position;
 layout (location = 3) out vec3 out_frag_model_space_position;
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
@@ -45,14 +45,17 @@ layout (push_constant) uniform PushConstants {
 	mat4 model;
 } push_constants;
 
-void main() {
+struct wave_function_result {
+    vec3 normal;
+    float displacement_sum;
+    float derivative_sum_x;
+    float derivative_sum_z;
+};
 
-    vec4 pos = vec4(in_position, 1.0);
-
-    float time = scene_gpu_data.time;
+wave_function_result sine_wave(vec4 pos, float time, bool circular_waves_enabled) {
     float displacement_sum = 0.0;
-
-    bool circular_waves_enabled = bool(scene_gpu_data.flags & (1 << 2));
+    float derivative_sum_x = 0.0;
+    float derivative_sum_z = 0.0;
 
     for (int wave_index = 0; wave_index < scene_gpu_data.sine_wave_count; ++wave_index) {
         wave_data wave = wave_gpu_data.sine_wave[wave_index];
@@ -70,6 +73,7 @@ void main() {
             vec2 d = pos.xz - wave.circular_wave.xy;
             float dist = length(d);
 
+            // "manual" normalization to avoid division very close to 0.
             dir = (dist > 0.0001) ? d / dist : vec2(1.0, 0.0);
             f = dist * frequency + (time * speed) * -1;
         } else {
@@ -78,23 +82,69 @@ void main() {
         }
 
         float sine_base = (sin(f) + 1.0) / 2.0;
+
+        // Check on sine base greater than zero to skip a pow of 0.
         float power_term = (sine_base > 0.0) ? pow(sine_base, steepness) : 0.0;
+        float normal_power_term = (sine_base > 0.0) ? pow(sine_base, steepness - 1.0) : 0.0;
+
+        // The book height function compresses the sine wave range by / 2, its
+        // rate of change is halved. Adding the 0.5 factor synchronizes the
+        // derivative with the actual height change of the vertices.
         float derivative = frequency * amplitude * steepness * power_term * 0.5 * cos(f);
+        float normal_derivative = frequency * amplitude * steepness * normal_power_term * 0.5 * cos(f);
+
+        float derivative_x = dir.x * normal_derivative;
+        float derivative_z = dir.y * normal_derivative;
 
         displacement_sum += 2 * amplitude * power_term;
+        derivative_sum_x += derivative_x;
+        derivative_sum_z += derivative_z;
     }
 
-    pos.y = displacement_sum;
+    vec3 binormal = normalize(vec3(1.0, derivative_sum_x, 0.0));
+    vec3 tangent = normalize(vec3(0.0, derivative_sum_z, 1.0));
 
-    // Note:    Normal generated on fragment shader.
-	out_frag_normal = vec3(0.0);
-	vec3 frag_pos = vec3(push_constants.model * pos);
+    // Note: Cross product shortcut
+    vec3 normal = normalize(vec3(-derivative_sum_x, 1.0, -derivative_sum_z));
+//    vec3 normal = normalize(cross(tangent, binormal));
+
+    wave_function_result result;
+
+    result.normal = normal;
+    result.displacement_sum = displacement_sum;
+    result.derivative_sum_x = derivative_sum_x;
+    result.derivative_sum_z = derivative_sum_z;
+
+    return result;
+}
+
+
+void main() {
+
+    vec4 pos = vec4(in_position, 1.0);
+
+    float time = scene_gpu_data.time;
+
+    bool circular_waves_enabled = bool(scene_gpu_data.flags & (1 << 2));
+    bool sine_waves_enabled = bool(scene_gpu_data.flags);
+    bool gerstner_waves_enabled = bool(scene_gpu_data.flags & (1 << 3));
+
+    if (sine_waves_enabled) {
+        wave_function_result w = sine_wave(pos, time, circular_waves_enabled);
+
+        pos.y = w.displacement_sum;
+
+        // Note:    Normal generated on fragment shader.
+        out_frag_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
+    } else {
+        out_frag_normal = normalize(mat3(push_constants.model) * in_normal);
+    }
 
 	out_frag_color = in_color;
-    out_frag_view_space_position = frag_pos;
+    out_frag_world_space_position = vec3(push_constants.model * pos);
     out_frag_model_space_position = pos.xyz;
 
     gl_Position = scene_gpu_data.projection 
         * scene_gpu_data.view 
-        * vec4(frag_pos, 1.0);
+        * vec4(out_frag_world_space_position, 1.0);
 }

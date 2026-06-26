@@ -182,7 +182,8 @@ private:
     bool m_TessellationEnabled = false;
     bool m_OrbitateLight = false;
     bool m_RenderWireframe = false;
-    bool m_SineWave = false;
+    bool m_SineWave = true;
+    bool m_GerstnerWave = false;
     bool m_DebugRenderNormals = false;
     bool m_GenerateRandomWaveData = false;
     bool m_CircularWavesEnabled = false;
@@ -647,7 +648,8 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
     SampleSceneData.Time            = constantT;
     SampleSceneData.DeltaT          = deltaT;
     SampleSceneData.WaterColor      = glm::vec4(m_WaterColor, m_WaterSpecularFactor);
-    SampleSceneData.Flags           = ((m_CircularWavesEnabled << 2) 
+    SampleSceneData.Flags           = ((m_GerstnerWave << 3)
+                                        | (m_CircularWavesEnabled << 2) 
                                         | (m_DebugRenderNormals << 1) 
                                         | m_SineWave);
 
@@ -754,7 +756,6 @@ void OceanRendering::RenderUI() {
         SetupTessellationHardCodedWaveData();
     }
 
-
     const float currentAverageWaveLength = m_AverageWaveLength;
     ImGui::DragFloat("Average wave length",         &m_AverageWaveLength, 0.5f, 0.0f, 50.0f);
 
@@ -797,6 +798,7 @@ void OceanRendering::RenderUI() {
     ImGui::DragFloat("Tessellation Level Inner",    &SampleSceneData.TessellationLevelInner, 1.0f, 1.0f, 64.0f);
     ImGui::DragFloat("Tessellation Level Outer",    &SampleSceneData.TessellationLevelOuter, 1.0f, 1.0f, 64.0f);
     ImGui::Checkbox("Sine Wave",                    &m_SineWave);
+    ImGui::Checkbox("Gerstner Wave",                &m_GerstnerWave);
     ImGui::Checkbox("Debug - Render Normals",       &m_DebugRenderNormals);
 	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
 	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
