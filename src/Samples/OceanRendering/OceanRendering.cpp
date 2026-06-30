@@ -101,7 +101,7 @@ public:
         // Note: W is specular factor
 		alignas(16) glm::vec4 WaterColor = glm::vec4(1.0f);
         alignas(4) int Flags;
-        alignas(4) int SineWaveCount = 1;
+        alignas(4) int WaveCount = 1;
         alignas(4) float TessellationLevelInner = 64.0f;
         alignas(4) float TessellationLevelOuter = 64.0f;
         alignas(4) float Time = 0.0f;
@@ -141,7 +141,7 @@ private:
     Graphics::Shader m_VertexShaderTessellationDisabled = {};
 
 	Graphics::Buffer m_SceneBuffer = {};
-    Graphics::Buffer m_SineWavesBuffer = {};
+    Graphics::Buffer m_WavesBuffer = {};
 
 	Graphics::PipelineState m_DefaultPSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
@@ -187,6 +187,7 @@ private:
     bool m_DebugRenderNormals = false;
     bool m_GenerateRandomWaveData = false;
     bool m_CircularWavesEnabled = false;
+    bool m_DebugRenderWorldSpacePos = false;
 
 private:
     void RenderLightSource(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
@@ -199,7 +200,7 @@ private:
 
 void OceanRendering::PrintActiveWaveCPUData() {
 
-    for (size_t waveIndex = 0; waveIndex < SampleSceneData.SineWaveCount; ++waveIndex) {
+    for (size_t waveIndex = 0; waveIndex < SampleSceneData.WaveCount; ++waveIndex) {
 
         if (waveIndex == 0) {
             std::cout << "--- Big base waves ---\n";
@@ -230,10 +231,10 @@ void OceanRendering::GenerateWaveData() {
     const float halfAverageWaveAmplitude = m_AverageWaveAmplitude * 0.5f;
     const float doubleAverageWaveAmplitude = m_AverageWaveAmplitude * 2.0f;
 
-    const float minDirectionX = m_AverageWaveDirection.x - m_DirectionDeviation;
+    const float minDirectionX = -1.0f * (m_AverageWaveDirection.x + m_DirectionDeviation);
     const float maxDirectionX = m_AverageWaveDirection.x + m_DirectionDeviation;
 
-    const float minDirectionY = m_AverageWaveDirection.y - m_DirectionDeviation;
+    const float minDirectionY = -1.0f * (m_AverageWaveDirection.y + m_DirectionDeviation);
     const float maxDirectionY = m_AverageWaveDirection.y + m_DirectionDeviation;
 
     std::uniform_real_distribution<float> randomWaveLength(halfAverageWaveLength, doubleAverageWaveLength);
@@ -243,7 +244,7 @@ void OceanRendering::GenerateWaveData() {
 
     std::default_random_engine generator;
 
-    for (size_t waveIndex = 0; waveIndex < SampleSceneData.SineWaveCount; ++waveIndex) {
+    for (size_t waveIndex = 0; waveIndex < SINE_WAVES_MAX; ++waveIndex) {
         WaveCPUData[waveIndex].Length = randomWaveLength(generator);
         WaveCPUData[waveIndex].Amplitude = randomWaveAmplitude(generator);
         WaveCPUData[waveIndex].Speed = sqrt(m_GravitationalConstant * ((2 * PI) / WaveCPUData[waveIndex].Length));
@@ -497,7 +498,7 @@ void OceanRendering::StartUp() {
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragShader, "../src/Samples/OceanRendering/fragment.glsl");
 
 	m_SceneBuffer = gfxDevice->CreateBuffer(sizeof(SceneData));
-	m_SineWavesBuffer = gfxDevice->CreateBuffer(sizeof(WaveData) * SINE_WAVES_MAX);
+	m_WavesBuffer = gfxDevice->CreateBuffer(sizeof(WaveData) * SINE_WAVES_MAX);
 
     if (m_TessellationEnabled) {
         SetupTessellationHardCodedWaveData();
@@ -505,7 +506,7 @@ void OceanRendering::StartUp() {
         GenerateWaveData();
     }
 
-    SampleSceneData.SineWaveCount = 1;
+    SampleSceneData.WaveCount = 1;
 
 	Graphics::InputLayout frameInputLayout = {
 		.pushConstants = {
@@ -541,7 +542,7 @@ void OceanRendering::StartUp() {
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
 		gfxDevice->CreateDescriptorSet(m_FrameDescriptorSetLayout, m_FrameDescriptorSet[i]);
 		gfxDevice->WriteDescriptor(frameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer);
-		gfxDevice->WriteDescriptor(frameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_SineWavesBuffer);
+		gfxDevice->WriteDescriptor(frameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_WavesBuffer);
 	}
 
     Graphics::InputLayout frameTessellationDisabledInputLayout = {
@@ -576,7 +577,7 @@ void OceanRendering::StartUp() {
     for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
         gfxDevice->CreateDescriptorSet(m_FrameTessellationDisabledDescriptorSetLayout, m_FrameTessellationDisabledDescriptorSet[i]);
         gfxDevice->WriteDescriptor(frameTessellationDisabledInputLayout.bindings[0], m_FrameTessellationDisabledDescriptorSet[i], m_SceneBuffer);
-        gfxDevice->WriteDescriptor(frameTessellationDisabledInputLayout.bindings[1], m_FrameTessellationDisabledDescriptorSet[i], m_SineWavesBuffer);
+        gfxDevice->WriteDescriptor(frameTessellationDisabledInputLayout.bindings[1], m_FrameTessellationDisabledDescriptorSet[i], m_WavesBuffer);
     }
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertexShader, "../src/Samples/OceanRendering/light_source_vertex.glsl");
@@ -648,12 +649,13 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
     SampleSceneData.Time            = constantT;
     SampleSceneData.DeltaT          = deltaT;
     SampleSceneData.WaterColor      = glm::vec4(m_WaterColor, m_WaterSpecularFactor);
-    SampleSceneData.Flags           = ((m_GerstnerWave << 3)
-                                        | (m_CircularWavesEnabled << 2) 
-                                        | (m_DebugRenderNormals << 1) 
+    SampleSceneData.Flags           = (m_DebugRenderWorldSpacePos << 4
+                                        | m_GerstnerWave << 3
+                                        | m_CircularWavesEnabled << 2
+                                        | m_DebugRenderNormals << 1
                                         | m_SineWave);
 
-    for (int WaveIndex = 0; WaveIndex < SampleSceneData.SineWaveCount; WaveIndex++) {
+    for (int WaveIndex = 0; WaveIndex < SampleSceneData.WaveCount; WaveIndex++) {
 
         WaveData *WaveGPU = &WaveGPUData[WaveIndex];
         WaveDataCPU *WaveCPU = &WaveCPUData[WaveIndex];
@@ -668,7 +670,7 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
     }
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer, &SampleSceneData);
-	gfxDevice->UpdateBuffer(m_SineWavesBuffer, &WaveGPUData);
+	gfxDevice->UpdateBuffer(m_WavesBuffer, &WaveGPUData);
 }
 
 void OceanRendering::Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline, VkDescriptorSet *frameDescriptorSet, bool drawIndexed) {
@@ -760,25 +762,25 @@ void OceanRendering::RenderUI() {
     ImGui::DragFloat("Average wave length",         &m_AverageWaveLength, 0.5f, 0.0f, 50.0f);
 
     const float currentAverageWaveAmplitude = m_AverageWaveAmplitude;
-    ImGui::DragFloat("Average wave amplitude",      &m_AverageWaveAmplitude, 0.01f, 0.0f, 50.0f);
+    ImGui::DragFloat("Average wave amplitude",      &m_AverageWaveAmplitude, 0.01f, 0.0001f, 50.0f);
 
     const float currentGravitationalConstant = m_GravitationalConstant;
     ImGui::DragFloat("Gravitational Constant",      &m_GravitationalConstant, 1.0f, 0.0f, 200.0f);
 
     const glm::vec2 currentAverageDirection = m_AverageWaveDirection;
-    ImGui::DragFloat2("Average direction", (float*)&m_AverageWaveDirection, 0.01f, -1.0f, 1.0f);
+    ImGui::DragFloat2("Average direction", (float*)&m_AverageWaveDirection, 0.01f, 0.0f, 1.0f);
 
     const float currentDirectionDeviation = m_DirectionDeviation;
     ImGui::DragFloat("Direction deviation", &m_DirectionDeviation, 0.01f, 0.1f, 1.0f);
 
     const float currentAverageWaveSteepness = m_AverageWaveSteepness;
-    ImGui::DragFloat("Average wave steepness", &m_AverageWaveSteepness, 0.01f, 1.0f, 15.0f);
+    ImGui::DragFloat("Average wave steepness", &m_AverageWaveSteepness, 0.01f, 1.0f, 50.0f);
 
     const float currentWaveSteepnessDeviation = m_WaveSteepnessDeviation;
-    ImGui::DragFloat("Wave steepness deviation", &m_WaveSteepnessDeviation, 0.01f, 0.0f, 5.0f);
+    ImGui::DragFloat("Wave steepness deviation", &m_WaveSteepnessDeviation, 0.01f, 0.0f, 15.0f);
 
-    const int currentWaveCount = SampleSceneData.SineWaveCount;
-    ImGui::DragInt("Active Sine Waves", &SampleSceneData.SineWaveCount, 1, 1, static_cast<int>(SINE_WAVES_MAX));
+    const int currentWaveCount = SampleSceneData.WaveCount;
+    ImGui::DragInt("Active Waves", &SampleSceneData.WaveCount, 1, 1, static_cast<int>(SINE_WAVES_MAX));
 
     if (currentAverageWaveLength != m_AverageWaveLength 
         || currentAverageWaveAmplitude != m_AverageWaveAmplitude 
@@ -786,8 +788,7 @@ void OceanRendering::RenderUI() {
         || currentAverageDirection != m_AverageWaveDirection
         || currentDirectionDeviation != m_DirectionDeviation
         || currentWaveSteepnessDeviation != m_WaveSteepnessDeviation
-        || currentAverageWaveSteepness != m_AverageWaveSteepness
-        || currentWaveCount != SampleSceneData.SineWaveCount) {
+        || currentAverageWaveSteepness != m_AverageWaveSteepness) {
         GenerateWaveData(); 
     }
 
@@ -797,8 +798,22 @@ void OceanRendering::RenderUI() {
     // Note: Vulkan tessellation levels through dedicated tessellation pipeline stop at 64. To achieve higher levels we should we use compute shaders instead.
     ImGui::DragFloat("Tessellation Level Inner",    &SampleSceneData.TessellationLevelInner, 1.0f, 1.0f, 64.0f);
     ImGui::DragFloat("Tessellation Level Outer",    &SampleSceneData.TessellationLevelOuter, 1.0f, 1.0f, 64.0f);
-    ImGui::Checkbox("Sine Wave",                    &m_SineWave);
-    ImGui::Checkbox("Gerstner Wave",                &m_GerstnerWave);
+
+    const bool originalSineWaveEnabled = m_SineWave;
+    const bool originalGerstnerWaveEnabled = m_GerstnerWave;
+    
+    ImGui::Checkbox("Sine Wave",        &m_SineWave);
+    ImGui::Checkbox("Gerstner Wave",    &m_GerstnerWave);
+
+    if (m_SineWave && !originalSineWaveEnabled) {
+        m_GerstnerWave = false;
+    }
+
+    if (m_GerstnerWave && !originalGerstnerWaveEnabled) {
+        m_SineWave = false;
+    }
+
+    ImGui::Checkbox("Debug - Render World Space Pos", &m_DebugRenderWorldSpacePos);
     ImGui::Checkbox("Debug - Render Normals",       &m_DebugRenderNormals);
 	ImGui::Checkbox("Orbitate Light",				&m_OrbitateLight);
 	ImGui::DragFloat("Light Orbital Speed",			&m_OrbitalLightSpeed, 0.02f, 0.0f, 3.0f);
@@ -809,7 +824,7 @@ void OceanRendering::RenderUI() {
         PrintActiveWaveCPUData();
     }
     
-    if (ImGui::TreeNode("Sine Waves Settings")) {
+    if (ImGui::TreeNode("Waves Settings")) {
         for (int WaveIndex = 0; WaveIndex < SINE_WAVES_MAX; WaveIndex++) { 
             std::string WaveId = "wave_" + std::to_string(WaveIndex);
 

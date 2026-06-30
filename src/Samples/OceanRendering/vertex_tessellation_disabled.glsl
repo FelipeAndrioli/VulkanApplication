@@ -1,6 +1,6 @@
 #version 450
 
-#define MAX_SINE_WAVES 32
+#define MAX_WAVES 32
 
 layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec3 in_normal;
@@ -21,7 +21,7 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	vec4 viewer_position;
 	vec4 water_color;
     int flags;
-    int sine_wave_count;
+    int wave_count;
     float tessellation_level_inner;
     float tessellation_level_outer;
     float time;
@@ -38,7 +38,7 @@ struct wave_data {
 };
 
 layout (std140, set = 0, binding = 1) uniform WaveGPUData {
-    wave_data sine_wave[MAX_SINE_WAVES];
+    wave_data wave[MAX_WAVES];
 } wave_gpu_data;
 
 layout (push_constant) uniform PushConstants {
@@ -46,6 +46,7 @@ layout (push_constant) uniform PushConstants {
 } push_constants;
 
 struct wave_function_result {
+    vec3 gerstner_position;
     vec3 normal;
     float displacement_sum;
     float derivative_sum_x;
@@ -57,8 +58,8 @@ wave_function_result sine_wave(vec4 pos, float time, bool circular_waves_enabled
     float derivative_sum_x = 0.0;
     float derivative_sum_z = 0.0;
 
-    for (int wave_index = 0; wave_index < scene_gpu_data.sine_wave_count; ++wave_index) {
-        wave_data wave = wave_gpu_data.sine_wave[wave_index];
+    for (int wave_index = 0; wave_index < scene_gpu_data.wave_count; ++wave_index) {
+        wave_data wave = wave_gpu_data.wave[wave_index];
 
         vec2 dir = vec2(0.0);
 
@@ -118,6 +119,71 @@ wave_function_result sine_wave(vec4 pos, float time, bool circular_waves_enabled
     return result;
 }
 
+wave_function_result gerstner_wave(vec4 pos, float time, bool circular_waves_enabled) {
+
+    float pos_sum_x = 0.0;
+    float pos_sum_y = 0.0;
+    float pos_sum_z = 0.0;
+
+    vec3 normal = vec3(0.0);
+    vec3 tangent = vec3(0.0);
+    vec3 binormal = vec3(0.0);
+
+    for (int wave_index = 0; wave_index < scene_gpu_data.wave_count; ++wave_index) {
+        wave_data wave = wave_gpu_data.wave[wave_index];
+
+        float amplitude = wave.amplitude;
+        float frequency = wave.direction.y;
+        float speed = wave.direction.w;
+        float steepness = wave.steepness / (frequency * amplitude * scene_gpu_data.wave_count);
+
+        vec2 dir = vec2(0.0);
+
+        float f = 0.0;
+
+        if (circular_waves_enabled) {
+            vec2 d = pos.xz - wave.circular_wave.xy;
+            float dist = length(d);
+
+            // "manual" normalization to avoid division very close to 0.
+            dir = (dist > 0.0001) ? d / dist : vec2(1.0, 0.0);
+            f = frequency * dist + (time * speed);
+        } else {
+            dir = normalize(wave.direction.xz);
+            f = dot(dir, vec2(pos.x, pos.z)) * frequency + (time * speed);
+        }
+
+        float pos_x = steepness * amplitude * dir.x * cos(f);
+        float pos_z = steepness * amplitude * dir.y * cos(f);
+        float pos_y = amplitude * sin(f);
+   
+        pos_sum_x += pos_x;
+        pos_sum_y += pos_y;
+        pos_sum_z += pos_z;
+
+        tangent.x += steepness * dir.x * dir.x * frequency * amplitude * sin(f);
+        tangent.y += dir.x * frequency * amplitude * cos(f);
+        tangent.z += steepness * dir.x * dir.y * frequency * amplitude * sin(f);
+
+        binormal.x += steepness * dir.x * dir.y * frequency * amplitude * sin(f);
+        binormal.y += dir.y * frequency * amplitude * cos(f);
+        binormal.z += steepness * dir.y * dir.y * frequency * amplitude * sin(f);
+    }
+
+    tangent.x = 1.0 - tangent.x;
+    tangent.z = -tangent.z;
+
+    binormal.x = -binormal.x;
+    binormal.z = 1.0 - binormal.z;
+
+    normal = normalize(cross(binormal, tangent));
+
+    wave_function_result result;
+    result.gerstner_position = vec3(pos.x + pos_sum_x, pos_sum_y, pos.z + pos_sum_z);
+    result.normal = normal; 
+
+    return result;
+}
 
 void main() {
 
@@ -125,22 +191,28 @@ void main() {
 
     float time = scene_gpu_data.time;
 
+    bool sine_waves_enabled = bool(scene_gpu_data.flags & 1);
     bool circular_waves_enabled = bool(scene_gpu_data.flags & (1 << 2));
-    bool sine_waves_enabled = bool(scene_gpu_data.flags);
     bool gerstner_waves_enabled = bool(scene_gpu_data.flags & (1 << 3));
+
+    if (gerstner_waves_enabled) {
+        wave_function_result w = gerstner_wave(pos, time, circular_waves_enabled);
+        pos = vec4(w.gerstner_position, 1.0);
+        out_frag_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
+    } 
 
     if (sine_waves_enabled) {
         wave_function_result w = sine_wave(pos, time, circular_waves_enabled);
-
         pos.y = w.displacement_sum;
-
         // Note:    Normal generated on fragment shader.
         out_frag_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
-    } else {
-        out_frag_normal = normalize(mat3(push_constants.model) * in_normal);
     }
 
-	out_frag_color = in_color;
+    if (!gerstner_waves_enabled && !sine_waves_enabled) {
+        out_frag_normal = normalize(mat3(push_constants.model) * in_normal);
+    }
+   
+    out_frag_color = in_color;
     out_frag_world_space_position = vec3(push_constants.model * pos);
     out_frag_model_space_position = pos.xyz;
 
