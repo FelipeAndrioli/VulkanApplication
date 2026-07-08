@@ -1,7 +1,8 @@
 #include "./MeshGenerator.h"
 #include "../Mesh.h"
 
-#include <functional>
+#include "../../Core/Timestep.h"
+
 #include <iostream>
 
 #define INVALID_TRIANGLE_INDEX -1
@@ -537,6 +538,8 @@ namespace Assets {
     std::vector<Mesh> MeshGenerator::GenerateMultiQuadMesh(int verticalVerticesCount, int horizontalVerticesCount, glm::vec3 position, float size) {
         std::cout << "Generating multi quad mesh started!\n";
 
+        Timestep startTime = glfwGetTime();
+
         Assets::Mesh mesh = {};
 
         // TODO: generate tex coords.
@@ -553,11 +556,11 @@ namespace Assets {
 
         for (size_t verticalQuadIndex = 0; verticalQuadIndex < verticalQuadsToGenerate; ++verticalQuadIndex) {
 
-            std::cout << "Generating vertical quad " << verticalQuadIndex + 1 << " of " << verticalQuadsToGenerate + 1 << '\n';
+//            std::cout << "Generating vertical quad " << verticalQuadIndex + 1 << " of " << verticalQuadsToGenerate + 1 << '\n';
 
             for (size_t horizontalQuadIndex = 0; horizontalQuadIndex < horizontalQuadsToGenerate; ++horizontalQuadIndex) {
 
-                std::cout << "Generating horizontal quad " << horizontalQuadIndex + 1 << " of " << horizontalQuadsToGenerate + 1 << '\n';
+//                std::cout << "Generating horizontal quad " << horizontalQuadIndex + 1 << " of " << horizontalQuadsToGenerate + 1 << '\n';
 
                 Assets::Vertex quadVertices[4] = {};
 
@@ -627,8 +630,9 @@ namespace Assets {
         }
 
         std::vector<Assets::Mesh> result = { mesh };
+        Timestep finishTime = glfwGetTime();
 
-        std::cout << "Generating multi quad mesh finished!\n";
+        std::cout << "Generating multi quad mesh finished in " << finishTime.GetSeconds() - startTime.GetSeconds() << "seconds\n";
 
         return result;
     }
