@@ -15,16 +15,21 @@ layout (location = 2) out vec3 out_frag_position;
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	mat4 projection;
 	mat4 view;
-    vec4 padding[3];
 	vec4 light_position;
+	vec4 light_color;   // w is specular
 	vec4 viewer_position;
-	vec4 water_color;
+	vec4 deep_water_color;
+	vec4 shallow_water_color;
     int flags;
-    int sine_wave_count;
+    int wave_count;
     float tessellation_level_inner;
     float tessellation_level_outer;
     float time;
-    float delta_t;
+    float water_depth;
+    float sine_fbm_amplitude;
+    float sine_fbm_frequency;
+    float sine_fbm_amplitude_multiplier;
+    float sine_fbm_frequency_multiplier;
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.
