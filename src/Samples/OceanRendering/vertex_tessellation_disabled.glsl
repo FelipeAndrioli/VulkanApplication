@@ -12,25 +12,32 @@ layout (location = 0) out vec3 out_frag_color;
 layout (location = 1) out vec3 out_frag_normal;
 layout (location = 2) out vec3 out_frag_world_space_position;
 layout (location = 3) out vec3 out_frag_model_space_position;
+layout (location = 4) out vec3 out_frag_original_model_space_pos;
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	mat4 projection;
 	mat4 view;
-	vec4 light_position;
-	vec4 light_color;   // w is specular
+	vec4 light_position;    // w is light strength
+	vec4 light_color;       // w is light specular
 	vec4 viewer_position;
-	vec4 deep_water_color;
-	vec4 shallow_water_color;
     int flags;
     int wave_count;
-    float tessellation_level_inner;
-    float tessellation_level_outer;
+    float specular_displacement;
+    float water_shininess;
+    float temporal_phase_exponent;
+    float height_multiplier;
+    float wind_angle;
+    float wind_speed;
+    float drag_mult;
     float time;
     float water_depth;
     float sine_fbm_amplitude;
     float sine_fbm_frequency;
     float sine_fbm_amplitude_multiplier;
     float sine_fbm_frequency_multiplier;
+    float padding1;
+    float padding2;
+    float padding3;
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.
@@ -198,58 +205,71 @@ wave_function_result sine_wave_fractal_brownian_motion(
     float sine_fbm_amplitude_multiplier,
     float sine_fbm_frequency_multiplier,
     float water_depth,
+    float drag_mult,
+    float wind_angle,
+    float wind_speed,
+    float temporal_phase_exponent,
+    float height_multiplier,
     bool domain_warping_enabled) {
 
-    float displacement_sum = 0.0;
+    float height_sum = 0.0;
     float weight_sum = 0.0;
-    float derivative_sum_x = 0.0;
-    float derivative_sum_z = 0.0;
+  
+    vec2 position = pos.xz;
 
-    wave_data placeholder_wave = wave_gpu_data.wave[0];
-
-    float frequency = sine_fbm_frequency;
     float amplitude = sine_fbm_amplitude;
-    float drag_mult = 0.38;
-    float time_multiplier = 2.0;
+    float frequency = sine_fbm_frequency;
+    float dir_helper = 0.0;
 
-    float wave_dir_helper = 0.0;
+    mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
 
-    vec3 position = pos.xyz;
+    vec2 derivative_sum = vec2(0.0);
+    float chop_sum = 0.0;
 
-    for (int wave_index = 0; wave_index < scene_gpu_data.wave_count; ++wave_index) {
-        
-        vec2 wave_dir = vec2(sin(wave_dir_helper), cos(wave_dir_helper));
-        vec2 sample_pos = domain_warping_enabled ? position.xz : pos.xz;
+    for (int octave_index = 0; octave_index < scene_gpu_data.wave_count; octave_index++) {
+      
+        float angle_variation = sin(float(octave_index) * 45.321) * 0.785;
+        float current_angle = wind_angle + angle_variation;
+        float wave_speed = sqrt(9.81 / frequency) * wind_speed;
 
-//        float wave_phase_shift = length(sample_pos) * 0.1;
-        float wave_phase_shift = dot(sample_pos, wave_dir) * 0.1;
+//        vec2 dir = vec2(cos(current_angle), sin(current_angle));
+        vec2 dir = vec2(sin(dir_helper), cos(dir_helper));
 
-        float f = dot(wave_dir, vec2(sample_pos)) * frequency + (time * time_multiplier + wave_phase_shift);
-        float wave_height = exp(sin(f) - 1.0);
-        float derivative = wave_height * cos(f);
-       
-        position.xz += wave_dir * derivative * amplitude * drag_mult;
-
-        derivative_sum_x += wave_dir.x * derivative * frequency * amplitude;
-        derivative_sum_z += wave_dir.y * derivative * frequency * amplitude;
-
-        displacement_sum += wave_height * amplitude;
+        float spatial_phase = dot(position, dir) * frequency;
+        float temporal_phase = time * wave_speed * pow(frequency, temporal_phase_exponent);
+        float x = spatial_phase + temporal_phase;
+        float f = exp(sin(x) - 1.);
+        float base_derivative = f * cos(x);
+    
+        height_sum += f * amplitude;
         weight_sum += amplitude;
 
-        frequency *= sine_fbm_frequency_multiplier;
-        amplitude *= sine_fbm_amplitude_multiplier;
-        time_multiplier *= 1.04;
+        vec2 derivative = dir * base_derivative * amplitude;
+        derivative_sum += derivative;
 
-//        wave_dir_helper += 2.399963;
-        wave_dir_helper += 7.1259;
+        if (domain_warping_enabled) {
+            float chop = sin(x) * (-base_derivative) * amplitude * drag_mult;
+            chop_sum += length(dir) * chop;
+
+            position += rot * (dir * sin(x) * (-base_derivative) * amplitude * drag_mult);
+        }
+
+        amplitude *= sine_fbm_amplitude_multiplier;
+        frequency *= sine_fbm_frequency_multiplier;
+
+        dir_helper += 1232.399963;
     }
+
+    float height = weight_sum > 0.0 ? ((height_sum / weight_sum) * height_multiplier) * water_depth - water_depth : 0.0;
 
     wave_function_result result;
 
-    result.position = vec3(position.x, pos.y + (displacement_sum / weight_sum) * water_depth - water_depth, position.z);
-    result.normal = normalize(vec3(-derivative_sum_x, 1.0, -derivative_sum_z));
+    result.position = vec3(position.x, height, position.y);
+    result.normal = normalize(vec3(-derivative_sum.x, 1.0 - chop_sum * 0.5, -derivative_sum.y));
 
     return result;
+
+
 }
 
 void main() {
@@ -286,10 +306,16 @@ void main() {
             scene_gpu_data.sine_fbm_amplitude_multiplier,
             scene_gpu_data.sine_fbm_frequency_multiplier,
             scene_gpu_data.water_depth,
+            scene_gpu_data.drag_mult,
+            scene_gpu_data.wind_angle,
+            scene_gpu_data.wind_speed,
+            scene_gpu_data.temporal_phase_exponent,
+            scene_gpu_data.height_multiplier,
             domain_warping_enabled);
 
         pos = vec4(w.position, 1.0);
         out_frag_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
+        out_frag_normal.z *= -1.0;
     }
 
     if (!gerstner_waves_enabled && !sine_waves_enabled && !sine_wave_fractal_brownian_motion_enabled) {
@@ -299,6 +325,7 @@ void main() {
     out_frag_color = in_color;
     out_frag_world_space_position = vec3(push_constants.model * pos);
     out_frag_model_space_position = pos.xyz;
+    out_frag_original_model_space_pos = in_position;
 
     gl_Position = scene_gpu_data.projection 
         * scene_gpu_data.view 

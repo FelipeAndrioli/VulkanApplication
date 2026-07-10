@@ -6,27 +6,34 @@ layout (location = 0) in vec3 in_frag_color;
 layout (location = 1) in vec3 in_frag_normal;
 layout (location = 2) in vec3 in_frag_world_space_pos;
 layout (location = 3) in vec3 in_frag_model_space_pos;
+layout (location = 4) in vec3 in_frag_original_model_space_pos;
 
 layout (location = 0) out vec4 pixel_color;
 
 layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	mat4 projection;
 	mat4 view;
-	vec4 light_position;
-	vec4 light_color;   // w is specular
+	vec4 light_position;    // w is light strength
+	vec4 light_color;       // w is light specular
 	vec4 viewer_position;
-	vec4 deep_water_color;
-	vec4 shallow_water_color;
     int flags;
     int wave_count;
-    float shallow_water_color_sum_deviation;
-    float deep_water_color_sum_deviation;
+    float specular_displacement;
+    float water_shininess;
+    float temporal_phase_exponent;
+    float height_multiplier;
+    float wind_angle;
+    float wind_speed;
+    float drag_mult;
     float time;
     float water_depth;
     float sine_fbm_amplitude;
     float sine_fbm_frequency;
     float sine_fbm_amplitude_multiplier;
     float sine_fbm_frequency_multiplier;
+    float padding1;
+    float padding2;
+    float padding3;
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.
@@ -202,68 +209,6 @@ wave_function_result gerstner_wave(vec4 pos, float time, bool circular_waves_ena
     return result;
 }
 
-wave_function_result sine_wave_fractal_brownian_motion(
-    vec4 pos, 
-    float time, 
-    float sine_fbm_amplitude,
-    float sine_fbm_frequency,
-    float sine_fbm_amplitude_multiplier,
-    float sine_fbm_frequency_multiplier,
-    float water_depth,
-    bool domain_warping_enabled) {
-
-    float displacement_sum = 0.0;
-    float weight_sum = 0.0;
-    float derivative_sum_x = 0.0;
-    float derivative_sum_z = 0.0;
-
-    wave_data placeholder_wave = wave_gpu_data.wave[0];
-
-//    float wave_phase_shift = length(pos.xz) * 0.1;
-    float frequency = sine_fbm_frequency;
-    float amplitude = sine_fbm_amplitude;
-    float drag_mult = 0.38;
-    float time_multiplier = 2.0;
-
-    float wave_dir_helper = 0.0;
-
-    vec3 position = pos.xyz;
-
-    for (int wave_index = 0; wave_index < 36; ++wave_index) {
-        
-        vec2 wave_dir = vec2(sin(wave_dir_helper), cos(wave_dir_helper));
-        vec2 sample_pos = domain_warping_enabled ? position.xz : pos.xz;
-
-//        float wave_phase_shift = length(sample_pos) * 0.1;
-        float wave_phase_shift = dot(sample_pos, wave_dir) * 0.1;
-
-        float f = dot(wave_dir, vec2(sample_pos)) * frequency + (time * time_multiplier + wave_phase_shift);
-        float wave_height = exp(sin(f) - 1.0);
-        float derivative = wave_height * cos(f);
-       
-        position.xz += wave_dir * derivative * amplitude * drag_mult;
-
-        derivative_sum_x += wave_dir.x * derivative * frequency * amplitude;
-        derivative_sum_z += wave_dir.y * derivative * frequency * amplitude;
-
-        displacement_sum += wave_height * amplitude;
-        weight_sum += amplitude;
-
-        frequency *= sine_fbm_frequency_multiplier;
-        amplitude *= sine_fbm_amplitude_multiplier;
-        time_multiplier *= 1.07;
-
-        wave_dir_helper += 2.399963;
-    }
-
-    wave_function_result result;
-
-    result.position = vec3(position.x, pos.y + (displacement_sum / weight_sum) * water_depth - water_depth, position.z);
-    result.normal = normalize(vec3(-derivative_sum_x, 1.0, -derivative_sum_z));
-
-    return result;
-}
-
 void main() {
 
     bool sine_waves_enabled                         = bool(scene_gpu_data.flags & 1);
@@ -289,24 +234,7 @@ void main() {
         normal = normalize(mat3(push_constants.model) * w.normal);
     }
 
-    if (sine_wave_fractal_brownian_motion_enabled) {
-//        normal = in_frag_normal;
-
-        wave_function_result w = sine_wave_fractal_brownian_motion(
-            pos, 
-            time, 
-            scene_gpu_data.sine_fbm_amplitude,
-            scene_gpu_data.sine_fbm_frequency,
-            scene_gpu_data.sine_fbm_amplitude_multiplier,
-            scene_gpu_data.sine_fbm_frequency_multiplier,
-            scene_gpu_data.water_depth,
-            domain_warping_enabled);
-
-        normal = normalize(mat3(push_constants.model) * vec3(w.normal));
-
-    }
-
-    if (!gerstner_waves_enabled && !sine_waves_enabled && !sine_wave_fractal_brownian_motion_enabled) {
+    if (!gerstner_waves_enabled && !sine_waves_enabled && sine_wave_fractal_brownian_motion_enabled) {
         normal = in_frag_normal;
     }
 
@@ -314,48 +242,45 @@ void main() {
         pixel_color = vec4(normal * 5.0, 1.0);
     } else {
 
-//        vec3 dark_blue = vec3(0.0117, 0.0196, 0.0705);
-//        vec3 light_blue = vec3(0.1529, 0.8901, 0.8392);
-        vec3 deep_water_color = scene_gpu_data.deep_water_color.rgb;
-        float deep_water_color_deviation = scene_gpu_data.deep_water_color.a;
-        float deep_water_color_sum_deviation = scene_gpu_data.deep_water_color_sum_deviation;
+        //        vec3 deep_water_color = vec3(0.0293, 0.0698, 0.1717);
+        //        vec3 shallow_water_color = vec3(0.1529, 0.8901, 0.8392);
+        /*
+        vec3 deep_water_color = vec3(0.09, 0.102, 0.31);
+        vec3 shallow_water_color = vec3(0., 0.957, 1.);
 
-        vec3 shallow_water_color = scene_gpu_data.shallow_water_color.rgb;
-        float shallow_water_color_deviation = scene_gpu_data.shallow_water_color.a;
-        float shallow_water_color_sum_deviation = scene_gpu_data.shallow_water_color_sum_deviation;
-
-        vec3 white = vec3(1.0);
+        float water_color_deviation = 0.550; 
+        //        float water_color_deviation = 1.;
 
         float water_height_factor = (pos.y - scene_gpu_data.water_depth * -1.0) / (scene_gpu_data.water_depth - scene_gpu_data.water_depth * -1.0);
         water_height_factor = clamp(water_height_factor, 0.0, 1.0);
 
-        vec3 water_color = mix(deep_water_color, shallow_water_color, water_height_factor * deep_water_color_deviation + deep_water_color_sum_deviation);
-//        water_color = mix(water_color, white, water_height_factor * shallow_water_color_deviation + shallow_water_color_sum_deviation);
+        vec3 water_color = mix(deep_water_color, shallow_water_color, water_height_factor * water_color_deviation);
+        */
 
-//        vec3 water_color = mix(deep_water_color, shallow_water_color, (water_height_factor + deep_water_color_sum_deviation) * deep_water_color_deviation);
-//        water_color = mix(water_color, white, (water_height_factor + shallow_water_color_sum_deviation) * shallow_water_color_deviation);
+        vec3 water_color = vec3(0.227, 0.325, 0.392);
 
-
-        float light_specular_factor = scene_gpu_data.light_color.w;
+        float light_strength = scene_gpu_data.light_position.a;
+        float light_specular_factor = scene_gpu_data.light_color.a;
 
         vec3 light_dir = normalize(scene_gpu_data.light_position.xyz - in_frag_world_space_pos);
-      
-        vec3 ambient = water_color * 0.8;
-        float diff = normalize(max(dot(light_dir, normal), 0.1));
-    
+
+        vec3 ambient = water_color;
+
+        float diff = max(dot(light_dir, normal), 0.0);
         vec3 diffuse = diff * water_color;
 
         vec3 view_dir = normalize(scene_gpu_data.viewer_position.xyz - in_frag_world_space_pos);
-        vec3 halfway_dir = normalize(light_dir + view_dir);
+        view_dir.y *= scene_gpu_data.specular_displacement;
 
-        float spec = pow(max(dot(normal, halfway_dir), 0.0), 32.0);
-        vec3 specular = vec3(0.5 * spec) * scene_gpu_data.light_color.xyz * light_specular_factor;
+        vec3 halfway_dir = normalize(light_dir + view_dir);
+        float spec = pow(max(dot(normal, halfway_dir), 0.0), scene_gpu_data.water_shininess);
+        vec3 specular = (spec * scene_gpu_data.light_color.rgb) * light_specular_factor;
 
         if (debug_render_world_space_pos) {
             pixel_color = vec4(in_frag_world_space_pos, 1.0);
         } else {
-            pixel_color = vec4(ambient + diffuse + specular, 1.0);	
-//            pixel_color = vec4(water_color, 1.0);	
+            pixel_color = vec4(ambient + ((diffuse + specular) * light_strength), 1.0);	
+            //            pixel_color = vec4(water_color, 1.0);	
         }
     }
 }

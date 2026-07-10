@@ -10,18 +10,24 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
 	vec4 light_position;
 	vec4 light_color;   // w is specular
 	vec4 viewer_position;
-	vec4 deep_water_color;
-	vec4 shallow_water_color;
     int flags;
     int wave_count;
-    float tessellation_level_inner;
-    float tessellation_level_outer;
+    float specular_displacement;
+    float water_shininess;
+    float light_strength;
+    float temporal_phase_exponent;
+    float height_multiplier;
+    float wind_angle;
+    float wind_speed;
+    float drag_mult;
     float time;
     float water_depth;
     float sine_fbm_amplitude;
     float sine_fbm_frequency;
     float sine_fbm_amplitude_multiplier;
     float sine_fbm_frequency_multiplier;
+    float padding1;
+    float padding2;
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.
