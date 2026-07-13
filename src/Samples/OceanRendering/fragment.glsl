@@ -10,12 +10,15 @@ layout (location = 4) in vec3 in_frag_original_model_space_pos;
 
 layout (location = 0) out vec4 pixel_color;
 
-layout (std140, set = 0, binding = 0) uniform SceneGPUData {
+layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	mat4 projection;
 	mat4 view;
-	vec4 light_position;    // w is light strength
-	vec4 light_color;       // w is light specular
+	vec4 light_position;        // w is light strength
+	vec4 light_color;           // w is light specular
 	vec4 viewer_position;
+    vec4 deep_water_color;      // w is empty
+    vec4 surface_water_color;   // w is fog factor height multiplier
+    vec4 water_absorption;      // w is water absorption multiplier
     int flags;
     int wave_count;
     float specular_displacement;
@@ -31,9 +34,6 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
     float sine_fbm_frequency;
     float sine_fbm_amplitude_multiplier;
     float sine_fbm_frequency_multiplier;
-    float padding1;
-    float padding2;
-    float padding3;
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.
@@ -242,27 +242,25 @@ void main() {
         pixel_color = vec4(normal * 5.0, 1.0);
     } else {
 
-        //        vec3 deep_water_color = vec3(0.0293, 0.0698, 0.1717);
-        //        vec3 shallow_water_color = vec3(0.1529, 0.8901, 0.8392);
-        /*
-        vec3 deep_water_color = vec3(0.09, 0.102, 0.31);
-        vec3 shallow_water_color = vec3(0., 0.957, 1.);
-
-        float water_color_deviation = 0.550; 
-        //        float water_color_deviation = 1.;
-
-        float water_height_factor = (pos.y - scene_gpu_data.water_depth * -1.0) / (scene_gpu_data.water_depth - scene_gpu_data.water_depth * -1.0);
-        water_height_factor = clamp(water_height_factor, 0.0, 1.0);
-
-        vec3 water_color = mix(deep_water_color, shallow_water_color, water_height_factor * water_color_deviation);
-        */
-
-        vec3 water_color = vec3(0.227, 0.325, 0.392);
-
         float light_strength = scene_gpu_data.light_position.a;
         float light_specular_factor = scene_gpu_data.light_color.a;
 
         vec3 light_dir = normalize(scene_gpu_data.light_position.xyz - in_frag_world_space_pos);
+
+//        vec3 deep_water_color = vec3(0.005, 0.02, 0.05);
+        vec3 deep_water_color = scene_gpu_data.deep_water_color.rgb;
+
+        vec3 surface_water_color = scene_gpu_data.surface_water_color.rgb;
+        float fog_factor_height_multiplier = scene_gpu_data.surface_water_color.a;
+
+//        vec3 water_absorption = vec3(2.5, 0.4, 0.1) * water_absorption_multiplier;
+        vec3 water_absorption = scene_gpu_data.water_absorption.rgb * scene_gpu_data.water_absorption.a;
+        vec3 transmitted_light = surface_water_color * exp(water_absorption * in_frag_world_space_pos.y);
+        float light_intensity = max(normalize(dot(transmitted_light, scene_gpu_data.light_position.xyz) * light_strength), 0.0);
+        float fog_factor = min(exp(-in_frag_world_space_pos.y * fog_factor_height_multiplier) * light_intensity, 1.0);
+
+        vec3 water_color = mix(deep_water_color, transmitted_light, fog_factor);
+        water_color = pow(water_color, vec3(1.0 / 2.2));
 
         vec3 ambient = water_color;
 
@@ -284,3 +282,33 @@ void main() {
         }
     }
 }
+
+/*
+const vec3 WATER_ABSORPTION = vec3(2.5, 0.4, 0.1); 
+const vec3 SURFACE_LIGHT = vec3(1.0, 1.0, 1.0);
+const vec3 DEEP_WATER_COLOR = vec3(0.005, 0.02, 0.05);
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {    
+    vec2 uv = fragCoord / iResolution.xy;
+        
+    float depth = (1.0 - uv.y) * 4.0; 
+        
+    depth += sin(uv.x * 3.0 + iTime) * 0.3;
+    depth = max(0.0, depth);
+    
+    vec3 transmittedLight = SURFACE_LIGHT * exp(-WATER_ABSORPTION * depth);
+    
+    float lightIntensity = dot(transmittedLight, vec3(0.299, 0.587, 0.114));        
+    float fogFactor = exp(-depth * 0.2);
+    
+    vec3 finalColor = mix(DEEP_WATER_COLOR, transmittedLight, fogFactor);
+        
+    if (depth < 0.05) {
+        finalColor = mix(vec3(0.7, 0.9, 1.0), finalColor, depth / 0.05);        
+    }    
+    
+    finalColor = pow(finalColor, vec3(1.0 / 2.2));
+
+    fragColor = vec4(finalColor, 1.0);
+}
+*/

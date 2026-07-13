@@ -14,12 +14,15 @@ layout (location = 2) out vec3 out_frag_world_space_position;
 layout (location = 3) out vec3 out_frag_model_space_position;
 layout (location = 4) out vec3 out_frag_original_model_space_pos;
 
-layout (std140, set = 0, binding = 0) uniform SceneGPUData {
+layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	mat4 projection;
 	mat4 view;
-	vec4 light_position;    // w is light strength
-	vec4 light_color;       // w is light specular
+	vec4 light_position;        // w is light strength
+	vec4 light_color;           // w is light specular
 	vec4 viewer_position;
+    vec4 deep_water_color;      // w is empty
+    vec4 surface_water_color;   // w is fog factor height multiplier
+    vec4 water_absorption;      // w is water absorption multiplier
     int flags;
     int wave_count;
     float specular_displacement;
@@ -35,9 +38,6 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
     float sine_fbm_frequency;
     float sine_fbm_amplitude_multiplier;
     float sine_fbm_frequency_multiplier;
-    float padding1;
-    float padding2;
-    float padding3;
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.

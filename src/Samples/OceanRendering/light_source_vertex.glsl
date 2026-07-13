@@ -4,17 +4,21 @@
 
 #define MAX_SINE_WAVES 32
 
-layout (std140, set = 0, binding = 0) uniform SceneGPUData {
+layout(location = 0) out vec3 out_frag_color;
+
+layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	mat4 projection;
 	mat4 view;
-	vec4 light_position;
-	vec4 light_color;   // w is specular
+	vec4 light_position;        // w is light strength
+	vec4 light_color;           // w is light specular
 	vec4 viewer_position;
+    vec4 deep_water_color;      // w is empty
+    vec4 surface_water_color;   // w is fog factor height multiplier
+    vec4 water_absorption;      // w is water absorption multiplier
     int flags;
     int wave_count;
     float specular_displacement;
     float water_shininess;
-    float light_strength;
     float temporal_phase_exponent;
     float height_multiplier;
     float wind_angle;
@@ -26,8 +30,6 @@ layout (std140, set = 0, binding = 0) uniform SceneGPUData {
     float sine_fbm_frequency;
     float sine_fbm_amplitude_multiplier;
     float sine_fbm_frequency_multiplier;
-    float padding1;
-    float padding2;
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.
@@ -78,6 +80,8 @@ const int indices[36] = int[36](
 
 void main() {
     int idx = indices[gl_VertexIndex];
+
+    out_frag_color = scene_gpu_data.light_color.rgb;
 
 	gl_Position = scene_gpu_data.projection 
         * scene_gpu_data.view 

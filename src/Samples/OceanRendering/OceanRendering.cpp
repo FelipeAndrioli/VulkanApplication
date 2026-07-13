@@ -18,47 +18,7 @@
 #include <gtc/type_ptr.hpp>
 
 #define PI 3.14159265359
-#define SINE_WAVES_MAX 32
-
-/*
- 
-    Notes:
-        -   Tessellation might not be the best approach due to the limitation 
-            of 64 inner/outer levels. I will first fix normal generation and 
-            then change the approach from 4 vertices tessellation to thousands
-            of vertices without tessellation.
-
-        
-    My pipeline expectation for this project:
-        - Draw call of a simple quad formed by 2 triangles
-        - Simple vertex shader where we don't even multiply by the MVP matrices
-        - Tesselation stage where the quad is split into thousands of triangles and MVP matrices multiplication happens
-        - Fragment shader for lighing and color
-        - Only noise texture will be used (if used)
-
-    
-    Topics to look into and implement:
-        - Simpler wave simulation: Gerstner waves (or sine/trochoidal wave)
-        - More realistic approach: FFT (Fast Fourier Transform)
-        - Normals and micro-detail computation
-            - Derive surface normals from wave slopes (either analysitcally from the wave function or from a normal map generated alongside displacement).
-        - Water material
-            - Fresnel term for view-dependent reflection/refraction.
-            - Reflection: Sample from a dynamic reflection probe, cubemap, or rendered reflection texture (planar or screen space)
-            - Refraction: Sample scene color with distortion based on normals/wave height (possibly with a separate refraction render target)
-            - Color/absorption: Depth-based tinting (deeper water darker/bluer) and subsurface scattering approximation
-            - Specular/highlights: Strong sun reflections and environmental specular
-            - Foam and details: Add foam on wave crests (based on height/slope)
-        - Supporting effects
-            - Caustics: Project or render light patterns underwater
-            - Interactions: Basic buoyancy for objects, shoreline blending, or particle systems for breaking waves/spray.
-            - Environmental integration: match lighting to the sky, add wind direction influence on waves.
-        - Optimizations:
-            - LOD, Frustum culling, and wave culling for distant areas.
-            - Render at lower resolution or with lower simulation resolution far away.
-            - Profile compute shaders (FFT can be heavy) and consider multi-threading or pre-computation where possible.
-            - Handle horizon clipping and large-world positioning (e.g., grid snapping to camera).
-*/
+#define WAVES_COUNT 32
 
 class OceanRendering : public Application::IScene {
 public:
@@ -82,7 +42,7 @@ public:
         alignas(16) glm::vec4 CircularWave = glm::vec4(0.0f);
         alignas(4) float Amplitude = 0.0f;
         alignas(4) float Steepness = 0.0f;
-    } WaveGPUData[SINE_WAVES_MAX];
+    } WaveGPUData[WAVES_COUNT];
 
     struct WaveDataCPU {
         glm::vec2 Direction = glm::vec2(0.0f);
@@ -91,17 +51,19 @@ public:
         float Speed = 0.0f;
         float Amplitude = 0.0f;
         float Steepness = 0.0f;
-    } WaveCPUData[SINE_WAVES_MAX];
+    } WaveCPUData[WAVES_COUNT];
 
-    // TODO: add tessellation 
     struct SceneData {
 		alignas(16) glm::mat4 Projection = glm::mat4(1.0f);
 		alignas(16) glm::mat4 View = glm::mat4(1.0f);
-		alignas(16) glm::vec4 LightPosition = glm::vec4(80.0f, 20.0f, 10.0f, 0.8f); // w is light strength
-		alignas(16) glm::vec4 LightColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.7f);       // w is light specular factor
+		alignas(16) glm::vec4 LightPosition = glm::vec4(80.0f, 20.0f, 10.0f, 0.8f);         // w is light strength
+		alignas(16) glm::vec4 LightColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.7f);               // w is light specular factor
 		alignas(16) glm::vec4 ViewerPosition = glm::vec4(0.0f);
+		alignas(16) glm::vec4 DeepWaterColor = glm::vec4(0.005f, 0.02f, 0.05f, 1.0f);       // w is empty
+		alignas(16) glm::vec4 SurfaceWaterColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.2f);        // w is fog factor height multiplier
+		alignas(16) glm::vec4 WaterAbsorption = glm::vec4(2.5f, 0.4f, 0.1f, 1.0f);          // w is water absorption multiplier
         alignas(4) int Flags = 0;
-        alignas(4) int WaveCount = 1;
+        alignas(4) int WaveCount = WAVES_COUNT;
         alignas(4) float SpecularDisplacement = 1.0f;
         alignas(4) float WaterShininess = 750.0f;
         alignas(4) float TemporalPhaseExponent = 0.8f;
@@ -115,9 +77,6 @@ public:
         alignas(4) float SineFBMFrequency = 0.1f;
         alignas(4) float SineFBMAmplitudeMultiplier = 0.8f;   // must be smaller than 1.0
         alignas(4) float SineFBMFrequencyMultiplier = 1.2;    // must be greater than 1.0
-        alignas(4) float Padding1 = 0.0f;
-        alignas(4) float Padding2 = 0.0f;
-        alignas(4) float Padding3 = 0.0f;
 	} SampleSceneData;
 
 	struct PushConstants {
@@ -148,7 +107,7 @@ private:
     Graphics::Shader m_VertexShader = {};
 	Graphics::Shader m_FragShader = {};
 
-	Graphics::Buffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
+	Graphics::GPUBuffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
     Graphics::Buffer m_WavesBuffer = {};
 
 	Graphics::PipelineState m_DefaultPSO = {};
@@ -162,9 +121,6 @@ private:
 
     Graphics::PipelineState m_LightSourcePSO = {};
 
-    VkDescriptorSetLayout m_LightSourceDescriptorSetLayout = VK_NULL_HANDLE;
-    std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_LightSourceDescriptorSet = { VK_NULL_HANDLE };
-
     glm::vec2 m_AverageWaveDirection = glm::vec2(1.0f, 0.0f);
 
     float m_AverageWaveLength = 7.0f;
@@ -175,47 +131,21 @@ private:
     float m_WaveSteepnessDeviation = 2.4f;
 
     bool m_RenderWireframe = false;
-    bool m_SineWave = true;
+    bool m_SineWave = false;
     bool m_GerstnerWave = false;
     bool m_DebugRenderNormals = false;
     bool m_GenerateRandomWaveData = false;
     bool m_CircularWavesEnabled = false;
     bool m_DebugRenderWorldSpacePos = false;
-    bool m_SineWaveFractalBrownianMotion = false;
-    bool m_FractalBrownianMotionDomainWarpingEnabled = false;
+    bool m_SineWaveFractalBrownianMotion = true;
+    bool m_FractalBrownianMotionDomainWarpingEnabled = true;
 
 private:
     void RenderLightSource(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
     void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline, VkDescriptorSet *frameDescriptorSet);
 
-    void PrintActiveWaveCPUData();
     void GenerateWaveData();
 };
-
-void OceanRendering::PrintActiveWaveCPUData() {
-
-    for (size_t waveIndex = 0; waveIndex < SampleSceneData.WaveCount; ++waveIndex) {
-
-        if (waveIndex == 0) {
-            std::cout << "--- Big base waves ---\n";
-        } else if (waveIndex == 6) {
-            std::cout << "--- Medium waves ---\n";
-        } else if (waveIndex == 22) {
-            std::cout << "--- fast surface waves ---\n";
-        }
-
-        const WaveDataCPU &wave = WaveCPUData[waveIndex];
-
-        std::cout << "WaveCPUData[" << waveIndex << "].Direction.x = " << wave.Direction.x << "f; ";
-        std::cout << "WaveCPUData[" << waveIndex << "].Direction.y = " << wave.Direction.y << "f; ";
-        std::cout << "WaveCPUData[" << waveIndex << "].Length  = " << wave.Length << "f; ";
-        std::cout << "WaveCPUData[" << waveIndex << "].Speed = " << wave.Speed << "f; ";
-        std::cout << "WaveCPUData[" << waveIndex << "].Amplitude = " << wave.Amplitude << "f; ";
-        std::cout << "WaveCPUData[" << waveIndex << "].Steepness = " << wave.Steepness << "f; ";
-        
-        std::cout << '\n';
-    }
-}
 
 void OceanRendering::GenerateWaveData() {
 
@@ -238,7 +168,7 @@ void OceanRendering::GenerateWaveData() {
 
     std::default_random_engine generator;
 
-    for (size_t waveIndex = 0; waveIndex < SINE_WAVES_MAX; ++waveIndex) {
+    for (size_t waveIndex = 0; waveIndex < WAVES_COUNT; ++waveIndex) {
         WaveCPUData[waveIndex].Length = randomWaveLength(generator);
         WaveCPUData[waveIndex].Amplitude = randomWaveAmplitude(generator);
         WaveCPUData[waveIndex].Speed = sqrt(m_GravitationalConstant * ((2 * PI) / WaveCPUData[waveIndex].Length));
@@ -294,7 +224,7 @@ void OceanRendering::StartUp() {
 			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
 		},
 		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
+			{ 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
 			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
 		}
 	};
@@ -320,12 +250,12 @@ void OceanRendering::StartUp() {
         desc.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
     */
 
-	m_WavesBuffer = gfxDevice->CreateBuffer(sizeof(WaveData) * SINE_WAVES_MAX);
+	m_WavesBuffer = gfxDevice->CreateBuffer(sizeof(WaveData) * WAVES_COUNT);
 
 	gfxDevice->CreateDescriptorSetLayout(m_FrameDescriptorSetLayout, frameInputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-        m_SceneBuffer[i] = gfxDevice->CreateBuffer(sizeof(SceneData));
+        m_SceneBuffer[i] = gfxDevice->CreateStorageBuffer(sizeof(SceneData));
 
         gfxDevice->CreateDescriptorSet(m_FrameDescriptorSetLayout, m_FrameDescriptorSet[i]);
 		gfxDevice->WriteDescriptor(frameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer[i]);
@@ -350,14 +280,6 @@ void OceanRendering::StartUp() {
 
     gfxDevice->CreatePipelineState(psoDesc, m_WireframePSO, *m_OffscreenRenderTarget.get());
 
-    gfxDevice->CreateDescriptorSetLayout(m_LightSourceDescriptorSetLayout, frameInputLayout.bindings);
-
-    for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-        gfxDevice->CreateDescriptorSet(m_FrameDescriptorSetLayout, m_FrameDescriptorSet[i]);
-        gfxDevice->WriteDescriptor(frameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer[i]);
-        gfxDevice->WriteDescriptor(frameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_WavesBuffer);
-    }
-
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertexShader, "../src/Samples/OceanRendering/light_source_vertex.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragmentShader, "../src/Samples/OceanRendering/light_source_fragment.glsl");
 
@@ -377,8 +299,11 @@ void OceanRendering::CleanUp() {
 
 	m_OffscreenRenderTarget.reset();
 
+    for (size_t i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+        gfxDevice->DestroyBuffer(m_SceneBuffer[i]);
+    }
+
     gfxDevice->DestroyDescriptorSetLayout(m_FrameDescriptorSetLayout);
-	gfxDevice->DestroyDescriptorSetLayout(m_LightSourceDescriptorSetLayout);
 
     gfxDevice->DestroyShader(m_VertexShader);
    	gfxDevice->DestroyShader(m_FragShader);
@@ -427,7 +352,7 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
         WaveGPU->CircularWave = glm::vec4(WaveCPU->CircularWaveCenter, 0.0f, 0.0f);
     }
 
-	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], &SampleSceneData);
+	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], 0, &SampleSceneData, sizeof(SceneData));
 	gfxDevice->UpdateBuffer(m_WavesBuffer, &WaveGPUData);
 }
 
@@ -486,113 +411,121 @@ void OceanRendering::RenderUI() {
 
 	m_Camera.OnUIRender("Main Camera - Settings");
 
-    ImGui::Checkbox("Render Wireframe",				&m_RenderWireframe);
+    if (ImGui::TreeNode("Wave Settings")) {
+        const float currentAverageWaveLength = m_AverageWaveLength;
+        const float currentAverageWaveAmplitude = m_AverageWaveAmplitude;
+        const float currentGravitationalConstant = m_GravitationalConstant;
+        const glm::vec2 currentAverageDirection = m_AverageWaveDirection;
+        const float currentDirectionDeviation = m_DirectionDeviation;
+        const float currentAverageWaveSteepness = m_AverageWaveSteepness;
+        const float currentWaveSteepnessDeviation = m_WaveSteepnessDeviation;
+        const int currentWaveCount = SampleSceneData.WaveCount;
 
-    const float currentAverageWaveLength = m_AverageWaveLength;
-    ImGui::DragFloat("Average wave length",         &m_AverageWaveLength, 0.5f, 0.0f, 50.0f);
+        ImGui::DragFloat("Average wave length",         &m_AverageWaveLength, 0.5f, 0.0f, 50.0f);
+        ImGui::DragFloat("Average wave amplitude",      &m_AverageWaveAmplitude, 0.01f, 0.0001f, 50.0f);
+        ImGui::DragFloat("Gravitational Constant",      &m_GravitationalConstant, 1.0f, 0.0f, 200.0f);
+        ImGui::DragFloat2("Average direction",          (float*)&m_AverageWaveDirection, 0.01f, 0.0f, 1.0f);
+        ImGui::DragFloat("Direction deviation",         &m_DirectionDeviation, 0.01f, 0.1f, 1.0f);
+        ImGui::DragFloat("Average wave steepness",      &m_AverageWaveSteepness, 0.01f, 1.0f, 50.0f);
+        ImGui::DragFloat("Wave steepness deviation",    &m_WaveSteepnessDeviation, 0.01f, 0.0f, 15.0f);
+        ImGui::DragInt("Wave Count",                    &SampleSceneData.WaveCount, 1, 1, static_cast<int>(WAVES_COUNT));
+        ImGui::DragFloat("Specular Displacement",       &SampleSceneData.SpecularDisplacement, 0.01f, -10.0f, 10.0f);
 
-    const float currentAverageWaveAmplitude = m_AverageWaveAmplitude;
-    ImGui::DragFloat("Average wave amplitude",      &m_AverageWaveAmplitude, 0.01f, 0.0001f, 50.0f);
+        if (currentAverageWaveLength != m_AverageWaveLength 
+                || currentAverageWaveAmplitude != m_AverageWaveAmplitude 
+                || currentGravitationalConstant != m_GravitationalConstant
+                || currentAverageDirection != m_AverageWaveDirection
+                || currentDirectionDeviation != m_DirectionDeviation
+                || currentWaveSteepnessDeviation != m_WaveSteepnessDeviation
+                || currentAverageWaveSteepness != m_AverageWaveSteepness) {
+            GenerateWaveData(); 
+        }
 
-    const float currentGravitationalConstant = m_GravitationalConstant;
-    ImGui::DragFloat("Gravitational Constant",      &m_GravitationalConstant, 1.0f, 0.0f, 200.0f);
+        ImGui::Checkbox("Circular Waves Enabled",       &m_CircularWavesEnabled);
 
-    const glm::vec2 currentAverageDirection = m_AverageWaveDirection;
-    ImGui::DragFloat2("Average direction", (float*)&m_AverageWaveDirection, 0.01f, 0.0f, 1.0f);
+        const bool originalSineWaveEnabled = m_SineWave;
+        const bool originalGerstnerWaveEnabled = m_GerstnerWave;
+        const bool originalSineWaveFractalBrownianMotionEnabled = m_SineWaveFractalBrownianMotion;
 
-    const float currentDirectionDeviation = m_DirectionDeviation;
-    ImGui::DragFloat("Direction deviation", &m_DirectionDeviation, 0.01f, 0.1f, 1.0f);
+        ImGui::Checkbox("Sine Wave",        &m_SineWave);
+        ImGui::Checkbox("Gerstner Wave",    &m_GerstnerWave);
+        ImGui::Checkbox("Sine Wave Fractal Brownian Motion", &m_SineWaveFractalBrownianMotion);
+        ImGui::Checkbox("Fractal Brownian Motion Domain Warping Enabled", &m_FractalBrownianMotionDomainWarpingEnabled);
+        if (m_SineWave && !originalSineWaveEnabled) {
+            m_GerstnerWave = false;
+            m_SineWaveFractalBrownianMotion = false;
+        }
 
-    const float currentAverageWaveSteepness = m_AverageWaveSteepness;
-    ImGui::DragFloat("Average wave steepness", &m_AverageWaveSteepness, 0.01f, 1.0f, 50.0f);
+        if (m_GerstnerWave && !originalGerstnerWaveEnabled) {
+            m_SineWave = false;
+            m_SineWaveFractalBrownianMotion = false;
+        }
 
-    const float currentWaveSteepnessDeviation = m_WaveSteepnessDeviation;
-    ImGui::DragFloat("Wave steepness deviation", &m_WaveSteepnessDeviation, 0.01f, 0.0f, 15.0f);
+        if (m_SineWaveFractalBrownianMotion && !originalSineWaveFractalBrownianMotionEnabled) {
+            m_SineWave = false;
+            m_GerstnerWave = false;
+        }
 
-    const int currentWaveCount = SampleSceneData.WaveCount;
-    ImGui::DragInt("Wave Count", &SampleSceneData.WaveCount, 1, 1, static_cast<int>(SINE_WAVES_MAX));
-    ImGui::DragFloat("Specular Displacement", &SampleSceneData.SpecularDisplacement, 0.01f, -10.0f, 10.0f);
+        if (m_SineWaveFractalBrownianMotion) {
+            ImGui::DragFloat("Water Depth",                         &SampleSceneData.WaterDepth, 0.01f, 0.0f, 50.0f);
+            ImGui::DragFloat("Sine FBM Wave Amplitude",             &SampleSceneData.SineFBMAmplitude, 0.001f, 0.0f, 100.0f);
+            ImGui::DragFloat("Sine FBM Wave Frequency",             &SampleSceneData.SineFBMFrequency, 0.001f, 0.0f, 100.0f);
+            ImGui::DragFloat("Sine FBM Wave Amplitude Multiplier",  &SampleSceneData.SineFBMAmplitudeMultiplier, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Sine FBM Wave Frequency Multiplier",  &SampleSceneData.SineFBMFrequencyMultiplier, 0.001f, 1.0f, 10.0f);
+            ImGui::DragFloat("Drag Mult",                           &SampleSceneData.DragMult, 0.001f, 0.0f, 10.0f);
+            ImGui::DragFloat("Wind Angle",                          &SampleSceneData.WindAngle, 0.01f, -90.0f, 90.0f);
+            ImGui::DragFloat("Wind Speed",                          &SampleSceneData.WindSpeed, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("Temporal Phase Exponent",             &SampleSceneData.TemporalPhaseExponent, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("Height Multiplier",                   &SampleSceneData.HeightMultiplier, 0.01f, 0.0f, 10.0f);
+        }
 
-    if (currentAverageWaveLength != m_AverageWaveLength 
-        || currentAverageWaveAmplitude != m_AverageWaveAmplitude 
-        || currentGravitationalConstant != m_GravitationalConstant
-        || currentAverageDirection != m_AverageWaveDirection
-        || currentDirectionDeviation != m_DirectionDeviation
-        || currentWaveSteepnessDeviation != m_WaveSteepnessDeviation
-        || currentAverageWaveSteepness != m_AverageWaveSteepness) {
-        GenerateWaveData(); 
-    }
-
-    ImGui::Checkbox("Circular Waves Enabled",       &m_CircularWavesEnabled);
-
-    const bool originalSineWaveEnabled = m_SineWave;
-    const bool originalGerstnerWaveEnabled = m_GerstnerWave;
-    const bool originalSineWaveFractalBrownianMotionEnabled = m_SineWaveFractalBrownianMotion;
-    
-    ImGui::Checkbox("Sine Wave",        &m_SineWave);
-    ImGui::Checkbox("Gerstner Wave",    &m_GerstnerWave);
-    ImGui::Checkbox("Sine Wave Fractal Brownian Motion", &m_SineWaveFractalBrownianMotion);
-    ImGui::Checkbox("Fractal Brownian Motion Domain Warping Enabled", &m_FractalBrownianMotionDomainWarpingEnabled);
-    if (m_SineWave && !originalSineWaveEnabled) {
-        m_GerstnerWave = false;
-        m_SineWaveFractalBrownianMotion = false;
-    }
-
-    if (m_GerstnerWave && !originalGerstnerWaveEnabled) {
-        m_SineWave = false;
-        m_SineWaveFractalBrownianMotion = false;
-    }
-
-    if (m_SineWaveFractalBrownianMotion && !originalSineWaveFractalBrownianMotionEnabled) {
-        m_SineWave = false;
-        m_GerstnerWave = false;
-    }
-
-    if (m_SineWaveFractalBrownianMotion) {
-        ImGui::DragFloat("Water Depth", &SampleSceneData.WaterDepth, 0.01f, 0.0f, 50.0f);
-        ImGui::DragFloat("Sine FBM Wave Amplitude", &SampleSceneData.SineFBMAmplitude, 0.001f, 0.0f, 100.0f);
-        ImGui::DragFloat("Sine FBM Wave Frequency", &SampleSceneData.SineFBMFrequency, 0.001f, 0.0f, 100.0f);
-        ImGui::DragFloat("Sine FBM Wave Amplitude Multiplier (should be smaller than wave amplitude)", &SampleSceneData.SineFBMAmplitudeMultiplier, 0.001f, 0.0f, 1.0f);
-        ImGui::DragFloat("Sine FBM Wave Frequency Multiplier (should be greater than wave frequency)", &SampleSceneData.SineFBMFrequencyMultiplier, 0.001f, 1.0f, 10.0f);
-        ImGui::DragFloat("Drag Mult", &SampleSceneData.DragMult, 0.001f, 0.0f, 10.0f);
-        ImGui::DragFloat("Wind Angle", &SampleSceneData.WindAngle, 0.01f, -90.0f, 90.0f);
-        ImGui::DragFloat("Wind Speed", &SampleSceneData.WindSpeed, 0.01f, 0.0f, 10.0f);
-        ImGui::DragFloat("Temporal Phase Exponent", &SampleSceneData.TemporalPhaseExponent, 0.01f, 0.0f, 10.0f);
-        ImGui::DragFloat("Height Multiplier", &SampleSceneData.HeightMultiplier, 0.01f, 0.0f, 10.0f);
-    }
-
-    ImGui::Checkbox("Debug - Render World Space Pos",   &m_DebugRenderWorldSpacePos);
-    ImGui::Checkbox("Debug - Render Normals",           &m_DebugRenderNormals);
-
-    ImGui::DragFloat("Water Shininess",                 &SampleSceneData.WaterShininess, 1.0f, 0.0f, 3000.0f);
-
-    ImGui::DragFloat3("Light Position",				    (float*)&SampleSceneData.LightPosition, 0.2f, -1000.0f, 1000.0f);
-    ImGui::DragFloat("Light Strength",                  &SampleSceneData.LightPosition.w, 0.1f, 0.0f, 200.0f);
-    ImGui::ColorPicker3("Light Color",                  (float*)&SampleSceneData.LightColor);
-	ImGui::DragFloat("Light Specular",			        &SampleSceneData.LightColor.w, 0.02f, 0.0f, 1.0f);
-
-    if (ImGui::Button("Print Active Wave CPU Data")) {
-        PrintActiveWaveCPUData();
-    }
-    
-    if (ImGui::TreeNode("Waves Settings")) {
-        for (int WaveIndex = 0; WaveIndex < SINE_WAVES_MAX; WaveIndex++) { 
+        for (int WaveIndex = 0; WaveIndex < WAVES_COUNT; WaveIndex++) { 
             std::string WaveId = "wave_" + std::to_string(WaveIndex);
 
             if (ImGui::TreeNode(WaveId.c_str())) {
-                ImGui::DragFloat("Wave Length",                 &WaveCPUData[WaveIndex].Length, 0.001f, 0.0f, 100.0f);
-                ImGui::DragFloat("Wave Amplitude",              &WaveCPUData[WaveIndex].Amplitude, 0.001f, 0.0f, 10.00f);
-                ImGui::DragFloat("Wave Steepness",              &WaveCPUData[WaveIndex].Steepness, 0.01, 1.0f, 10.0f);
-                ImGui::DragFloat("Wave Speed",                  &WaveCPUData[WaveIndex].Speed, 0.001f, 0.0f, 10.00f);
-                ImGui::DragFloat2("Wave Direction (X and Z)",   (float*)&WaveCPUData[WaveIndex].Direction, 0.001f, -1.0f, 1.0f);
-                ImGui::DragFloat2("Circular Wave Center (X and Z)",   (float*)&WaveCPUData[WaveIndex].CircularWaveCenter, 0.1f, -200.0f, 200.0f);
+                ImGui::DragFloat("Wave Length",                     &WaveCPUData[WaveIndex].Length, 0.001f, 0.0f, 100.0f);
+                ImGui::DragFloat("Wave Amplitude",                  &WaveCPUData[WaveIndex].Amplitude, 0.001f, 0.0f, 10.00f);
+                ImGui::DragFloat("Wave Steepness",                  &WaveCPUData[WaveIndex].Steepness, 0.01, 1.0f, 10.0f);
+                ImGui::DragFloat("Wave Speed",                      &WaveCPUData[WaveIndex].Speed, 0.001f, 0.0f, 10.00f);
+                ImGui::DragFloat2("Wave Direction (X and Z)",       (float*)&WaveCPUData[WaveIndex].Direction, 0.001f, -1.0f, 1.0f);
+                ImGui::DragFloat2("Circular Wave Center (X and Z)", (float*)&WaveCPUData[WaveIndex].CircularWaveCenter, 0.1f, -200.0f, 200.0f);
 
                 ImGui::TreePop();
             }
         }
+
         ImGui::TreePop();
     }
 
+    if (ImGui::TreeNode("Pipeline Settings")) {
+        ImGui::Checkbox("Render Wireframe",				    &m_RenderWireframe);
+        ImGui::Checkbox("Debug - Render World Space Pos",   &m_DebugRenderWorldSpacePos);
+        ImGui::Checkbox("Debug - Render Normals",           &m_DebugRenderNormals);
+
+        ImGui::TreePop();
+    }
+
+    if (ImGui::TreeNode("Water Material Settings")) {
+        ImGui::ColorPicker3("Deep Water Color",         (float*)&SampleSceneData.DeepWaterColor);
+        ImGui::ColorPicker3("Surface Water Color",      (float*)&SampleSceneData.SurfaceWaterColor);
+        ImGui::DragFloat("Fog Height Multiplier",       &SampleSceneData.SurfaceWaterColor.a, 0.01f, 0.0f, 5.0f);
+        ImGui::DragFloat("Water Shininess",             &SampleSceneData.WaterShininess, 1.0f, 0.0f, 3000.0f);
+        ImGui::DragFloat3("Water Absorption",           (float*)&SampleSceneData.WaterAbsorption, 0.1f, 0.0f, 10.0f);
+        ImGui::DragFloat("Water Absorption Multiplier", &SampleSceneData.WaterAbsorption.a, 0.01f, 0.0f, 5.0f);
+
+        ImGui::TreePop();
+    }
+
+    if (ImGui::TreeNode("Light Settings")) {
+        ImGui::DragFloat3("Light Position",	(float*)&SampleSceneData.LightPosition, 0.2f, -1000.0f, 1000.0f);
+        ImGui::DragFloat("Light Strength",  &SampleSceneData.LightPosition.w, 0.02f, 0.0f, 200.0f);
+        ImGui::ColorPicker3("Light Color",  (float*)&SampleSceneData.LightColor);
+        ImGui::DragFloat("Light Specular",	&SampleSceneData.LightColor.w, 0.02f, 0.0f, 1.0f);
+
+        ImGui::TreePop();
+    }
+
+	ImGui::SeparatorText("Model Settings");
     m_WaterModel->OnUIRender();
 }
 
