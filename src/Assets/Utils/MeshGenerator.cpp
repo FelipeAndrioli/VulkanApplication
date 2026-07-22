@@ -7,10 +7,10 @@
 
 #define INVALID_TRIANGLE_INDEX -1
 
-#define QUAD_TOP_LEFT_INDEX 1
-#define QUAD_TOP_RIGHT_INDEX 2
-#define QUAD_BOTTOM_LEFT_INDEX 0
-#define QUAD_BOTTOM_RIGHT_INDEX 3
+//#define QUAD_BOTTOM_LEFT_INDEX 0
+//#define QUAD_TOP_LEFT_INDEX 1
+//#define QUAD_TOP_RIGHT_INDEX 2
+//#define QUAD_BOTTOM_RIGHT_INDEX 3
 
 namespace Assets {
 
@@ -535,15 +535,19 @@ namespace Assets {
         return hasher(position) ^ hasher(normal);
     }
 
-    std::vector<Mesh> MeshGenerator::GenerateMultiQuadMesh(int verticalVerticesCount, int horizontalVerticesCount, glm::vec3 position, float size) {
-        std::cout << "Generating multi quad mesh started!\n";
+    std::vector<Mesh> MeshGenerator::GenerateTriangleIndexedMultiQuadMesh(int verticalVerticesCount, int horizontalVerticesCount, glm::vec3 position, float size) {
+        std::cout << "Generating triangle indexed multi quad mesh started!\n";
+
+        const uint32_t QUAD_BOTTOM_LEFT_INDEX = 0;
+        const uint32_t QUAD_TOP_LEFT_INDEX = 1;
+        const uint32_t QUAD_TOP_RIGHT_INDEX = 2;
+        const uint32_t QUAD_BOTTOM_RIGHT_INDEX = 3;
 
         Timestep startTime = glfwGetTime();
 
         Assets::Mesh mesh = {};
 
         // TODO: generate tex coords.
-        
         int verticalVerticesToGenerate = verticalVerticesCount < 2 ? 2 : verticalVerticesCount;
         int horizontalVerticesToGenerate = horizontalVerticesCount < 2 ? 2 : horizontalVerticesCount;
 
@@ -555,12 +559,7 @@ namespace Assets {
         std::unordered_map<size_t, size_t> existingVertices = {};
 
         for (size_t verticalQuadIndex = 0; verticalQuadIndex < verticalQuadsToGenerate; ++verticalQuadIndex) {
-
-//            std::cout << "Generating vertical quad " << verticalQuadIndex + 1 << " of " << verticalQuadsToGenerate + 1 << '\n';
-
             for (size_t horizontalQuadIndex = 0; horizontalQuadIndex < horizontalQuadsToGenerate; ++horizontalQuadIndex) {
-
-//                std::cout << "Generating horizontal quad " << horizontalQuadIndex + 1 << " of " << horizontalQuadsToGenerate + 1 << '\n';
 
                 Assets::Vertex quadVertices[4] = {};
 
@@ -589,17 +588,10 @@ namespace Assets {
                 quadIndices[QUAD_TOP_LEFT_INDEX] = existingVertices.find(verticesKey[QUAD_TOP_LEFT_INDEX]) == existingVertices.end() ? INVALID_TRIANGLE_INDEX : existingVertices[verticesKey[QUAD_TOP_LEFT_INDEX]];
                 quadIndices[QUAD_TOP_RIGHT_INDEX] = existingVertices.find(verticesKey[QUAD_TOP_RIGHT_INDEX]) == existingVertices.end() ? INVALID_TRIANGLE_INDEX : existingVertices[verticesKey[QUAD_TOP_RIGHT_INDEX]];
 
-
                 if (quadIndices[QUAD_BOTTOM_LEFT_INDEX] == INVALID_TRIANGLE_INDEX) {
                     quadIndices[QUAD_BOTTOM_LEFT_INDEX] = mesh.Vertices.size();
                     existingVertices[verticesKey[QUAD_BOTTOM_LEFT_INDEX]] = quadIndices[QUAD_BOTTOM_LEFT_INDEX];
                     mesh.Vertices.push_back(quadVertices[QUAD_BOTTOM_LEFT_INDEX]);
-                }
-
-                if (quadIndices[QUAD_BOTTOM_RIGHT_INDEX] == INVALID_TRIANGLE_INDEX) {
-                    quadIndices[QUAD_BOTTOM_RIGHT_INDEX] = mesh.Vertices.size();
-                    existingVertices[verticesKey[QUAD_BOTTOM_RIGHT_INDEX]] = quadIndices[QUAD_BOTTOM_RIGHT_INDEX];
-                    mesh.Vertices.push_back(quadVertices[QUAD_BOTTOM_RIGHT_INDEX]);
                 }
 
                 if (quadIndices[QUAD_TOP_LEFT_INDEX] == INVALID_TRIANGLE_INDEX) {
@@ -614,13 +606,22 @@ namespace Assets {
                     mesh.Vertices.push_back(quadVertices[QUAD_TOP_RIGHT_INDEX]);
                 }
 
+                if (quadIndices[QUAD_BOTTOM_RIGHT_INDEX] == INVALID_TRIANGLE_INDEX) {
+                    quadIndices[QUAD_BOTTOM_RIGHT_INDEX] = mesh.Vertices.size();
+                    existingVertices[verticesKey[QUAD_BOTTOM_RIGHT_INDEX]] = quadIndices[QUAD_BOTTOM_RIGHT_INDEX];
+                    mesh.Vertices.push_back(quadVertices[QUAD_BOTTOM_RIGHT_INDEX]);
+                }
+
                 mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_LEFT_INDEX]);
                 mesh.Indices.push_back(quadIndices[QUAD_TOP_LEFT_INDEX]);
                 mesh.Indices.push_back(quadIndices[QUAD_TOP_RIGHT_INDEX]);
+                // Note: When generating indexed quads one of the indices must be duplicated.
+//                mesh.Indices.push_back(quadIndices[QUAD_TOP_RIGHT_INDEX]);
 
-                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_LEFT_INDEX]);
                 mesh.Indices.push_back(quadIndices[QUAD_TOP_RIGHT_INDEX]);
                 mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_RIGHT_INDEX]);
+                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_LEFT_INDEX]);
+//                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_LEFT_INDEX]);
 
                 quadPosition.x += size;
             }
@@ -632,7 +633,7 @@ namespace Assets {
         std::vector<Assets::Mesh> result = { mesh };
         Timestep finishTime = glfwGetTime();
 
-        std::cout << "Generating multi quad mesh finished in " << finishTime.GetSeconds() - startTime.GetSeconds() << "seconds\n";
+        std::cout << "Generating triangle indexed multi quad mesh finished in " << finishTime.GetSeconds() - startTime.GetSeconds() << " seconds\n";
 
         return result;
     }
