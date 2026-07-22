@@ -268,8 +268,6 @@ wave_function_result sine_wave_fractal_brownian_motion(
     result.normal = normalize(vec3(-derivative_sum.x, 1.0 - chop_sum * 0.5, -derivative_sum.y));
 
     return result;
-
-
 }
 
 void main() {
@@ -283,6 +281,7 @@ void main() {
     bool gerstner_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
     bool sine_wave_fractal_brownian_motion_enabled  = bool(scene_gpu_data.flags & (1 << 5));
     bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 6));
+    bool tessellation_enabled                       = bool(scene_gpu_data.flags & (1 << 7));
 
     if (gerstner_waves_enabled) {
         wave_function_result w = gerstner_wave(pos, time, circular_waves_enabled);
