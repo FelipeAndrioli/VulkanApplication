@@ -380,10 +380,11 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadMultiQuadModel(int verticalQuads
     static int multiQuadIdx = 0;
 
     std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
-    model->Meshes = Assets::MeshGenerator::GenerateMultiQuadMesh(verticalQuadsCount, horizontalQuadsCount, position, size);
+    
+    model->Meshes = Assets::MeshGenerator::GenerateTriangleIndexedMultiQuadMesh(verticalQuadsCount, horizontalQuadsCount, position, size);
     model->Name = "MultiQuad_" + std::to_string(multiQuadIdx++);
-
     model->Transformations.translation = position;
+
     CompileMesh(*model.get());
 
     return model;
