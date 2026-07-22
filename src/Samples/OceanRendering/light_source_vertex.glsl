@@ -30,6 +30,11 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float sine_fbm_frequency;
     float sine_fbm_amplitude_multiplier;
     float sine_fbm_frequency_multiplier;
+    float tessellation_min_threshold;
+    float tessellation_max_threshold;
+    float tessellation_level_min;
+    float tessellation_level_max;
+    float tessellation_step;
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.
