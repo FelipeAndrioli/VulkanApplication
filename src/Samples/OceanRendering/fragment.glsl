@@ -34,6 +34,11 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float sine_fbm_frequency;
     float sine_fbm_amplitude_multiplier;
     float sine_fbm_frequency_multiplier;
+    float tessellation_min_threshold;
+    float tessellation_max_threshold;
+    float tessellation_level_min;
+    float tessellation_level_max;
+    float tessellation_step;
 } scene_gpu_data;
 
 // Note: wave direction: X and Z are directions, Y is length and W is speed.
@@ -247,13 +252,11 @@ void main() {
 
         vec3 light_dir = normalize(scene_gpu_data.light_position.xyz - in_frag_world_space_pos);
 
-//        vec3 deep_water_color = vec3(0.005, 0.02, 0.05);
         vec3 deep_water_color = scene_gpu_data.deep_water_color.rgb;
 
         vec3 surface_water_color = scene_gpu_data.surface_water_color.rgb;
         float fog_factor_height_multiplier = scene_gpu_data.surface_water_color.a;
 
-//        vec3 water_absorption = vec3(2.5, 0.4, 0.1) * water_absorption_multiplier;
         vec3 water_absorption = scene_gpu_data.water_absorption.rgb * scene_gpu_data.water_absorption.a;
         vec3 transmitted_light = surface_water_color * exp(water_absorption * in_frag_world_space_pos.y);
         float light_intensity = max(normalize(dot(transmitted_light, scene_gpu_data.light_position.xyz) * light_strength), 0.0);
@@ -278,37 +281,7 @@ void main() {
             pixel_color = vec4(in_frag_world_space_pos, 1.0);
         } else {
             pixel_color = vec4(ambient + ((diffuse + specular) * light_strength), 1.0);	
-            //            pixel_color = vec4(water_color, 1.0);	
+//            pixel_color = vec4(water_color, 1.0);	
         }
     }
 }
-
-/*
-const vec3 WATER_ABSORPTION = vec3(2.5, 0.4, 0.1); 
-const vec3 SURFACE_LIGHT = vec3(1.0, 1.0, 1.0);
-const vec3 DEEP_WATER_COLOR = vec3(0.005, 0.02, 0.05);
-
-void mainImage(out vec4 fragColor, in vec2 fragCoord) {    
-    vec2 uv = fragCoord / iResolution.xy;
-        
-    float depth = (1.0 - uv.y) * 4.0; 
-        
-    depth += sin(uv.x * 3.0 + iTime) * 0.3;
-    depth = max(0.0, depth);
-    
-    vec3 transmittedLight = SURFACE_LIGHT * exp(-WATER_ABSORPTION * depth);
-    
-    float lightIntensity = dot(transmittedLight, vec3(0.299, 0.587, 0.114));        
-    float fogFactor = exp(-depth * 0.2);
-    
-    vec3 finalColor = mix(DEEP_WATER_COLOR, transmittedLight, fogFactor);
-        
-    if (depth < 0.05) {
-        finalColor = mix(vec3(0.7, 0.9, 1.0), finalColor, depth / 0.05);        
-    }    
-    
-    finalColor = pow(finalColor, vec3(1.0 / 2.2));
-
-    fragColor = vec4(finalColor, 1.0);
-}
-*/
