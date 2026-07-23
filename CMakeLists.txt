@@ -4,11 +4,15 @@ project("VulkanApplication")
 
 set(BUILD_SHARED_LIBRARY false CACHE BOOL "Build shared library.")
 set(ENABLE_IMGUI true CACHE BOOL "Enable ImGui.")
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export Compile Commands" FORCE)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+
+# CMAKE_EXPORT_COMPILE_COMMANDS will create a 'compile_commands.json' file inside 
+# the root directory, the command 'ln -s location/compile_commands.json project/root/directory' 
+# must be executed to create a symbolic link and clangd will automatically pick
+# up.
 
 set(SRC_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src")
 set(ASSETS_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src/Assets")
