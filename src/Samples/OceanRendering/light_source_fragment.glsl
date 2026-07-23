@@ -1,5 +1,6 @@
 #version 450
 
+layout (location = 0) in vec3 light_color;
 layout (location = 0) out vec4 frag_color;
 
 layout (push_constant) uniform PushConstants {
@@ -8,5 +9,5 @@ layout (push_constant) uniform PushConstants {
 } push_constants;
 
 void main() {
-	frag_color = push_constants.color;
+	frag_color = vec4(light_color, 1.0);
 }

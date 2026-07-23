@@ -16,9 +16,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	vec4 light_position;        // w is light strength
 	vec4 light_color;           // w is light specular
 	vec4 viewer_position;
-    vec4 deep_water_color;      // w is empty
-    vec4 surface_water_color;   // w is fog factor height multiplier
-    vec4 water_absorption;      // w is water absorption multiplier
+    vec4 water_color;           // w is empty
     int flags;
     int wave_count;
     float specular_displacement;
@@ -39,20 +37,10 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float tessellation_level_min;
     float tessellation_level_max;
     float tessellation_step;
+    float reflection_strength;
 } scene_gpu_data;
 
-// Note: wave direction: X and Z are directions, Y is length and W is speed.
-// Note: circular wave: X and Y corrsponds to the wave center X and Z.
-struct wave_data {
-    vec4 direction;
-    vec4 circular_wave;
-    float amplitude;
-    float steepness;
-};
-
-layout (std140, set = 0, binding = 1) uniform WaveGPUData {
-    wave_data wave[MAX_WAVES];
-} wave_gpu_data;
+layout (set = 0, binding = 1) uniform samplerCube cube_texture;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
@@ -66,6 +54,7 @@ struct wave_function_result {
     float derivative_sum_z;
 };
 
+#ifdef UNUSED
 wave_function_result sine_wave(vec4 pos, float time, bool circular_waves_enabled) {
     float displacement_sum = 0.0;
     float derivative_sum_x = 0.0;
@@ -213,35 +202,21 @@ wave_function_result gerstner_wave(vec4 pos, float time, bool circular_waves_ena
 
     return result;
 }
+#endif
 
 void main() {
 
-    bool sine_waves_enabled                         = bool(scene_gpu_data.flags & 1);
-    bool debug_render_normals                       = bool(scene_gpu_data.flags & (1 << 1));
-    bool circular_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 2));
-    bool gerstner_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
-    bool debug_render_world_space_pos               = bool(scene_gpu_data.flags & (1 << 4));
-    bool sine_wave_fractal_brownian_motion_enabled  = bool(scene_gpu_data.flags & (1 << 5));
-    bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 6));
+    bool debug_render_normals                       = bool(scene_gpu_data.flags & 1);
+    bool circular_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 1));
+    bool debug_render_world_space_pos               = bool(scene_gpu_data.flags & (1 << 2));
+    bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
+    bool UNUSED_tessellation_enabled                = bool(scene_gpu_data.flags & (1 << 4));
+    bool reflection_enabled                         = bool(scene_gpu_data.flags & (1 << 5));
 
     float time = scene_gpu_data.time;
     vec4 pos = vec4(in_frag_model_space_pos, 1.0);
 
-    vec3 normal = vec3(0.0);
-
-    if (gerstner_waves_enabled) {
-        wave_function_result w = gerstner_wave(pos, time, circular_waves_enabled);
-        normal = normalize(mat3(push_constants.model) * w.normal);
-    } 
-
-    if (sine_waves_enabled) {
-        wave_function_result w = sine_wave(pos, time, circular_waves_enabled);
-        normal = normalize(mat3(push_constants.model) * w.normal);
-    }
-
-    if (!gerstner_waves_enabled && !sine_waves_enabled && sine_wave_fractal_brownian_motion_enabled) {
-        normal = in_frag_normal;
-    }
+    vec3 normal = in_frag_normal;
 
     if (debug_render_normals) {
         pixel_color = vec4(normal * 5.0, 1.0);
@@ -251,20 +226,7 @@ void main() {
         float light_specular_factor = scene_gpu_data.light_color.a;
 
         vec3 light_dir = normalize(scene_gpu_data.light_position.xyz - in_frag_world_space_pos);
-
-        vec3 deep_water_color = scene_gpu_data.deep_water_color.rgb;
-
-        vec3 surface_water_color = scene_gpu_data.surface_water_color.rgb;
-        float fog_factor_height_multiplier = scene_gpu_data.surface_water_color.a;
-
-        vec3 water_absorption = scene_gpu_data.water_absorption.rgb * scene_gpu_data.water_absorption.a;
-        vec3 transmitted_light = surface_water_color * exp(water_absorption * in_frag_world_space_pos.y);
-        float light_intensity = max(normalize(dot(transmitted_light, scene_gpu_data.light_position.xyz) * light_strength), 0.0);
-        float fog_factor = min(exp(-in_frag_world_space_pos.y * fog_factor_height_multiplier) * light_intensity, 1.0);
-
-        vec3 water_color = mix(deep_water_color, transmitted_light, fog_factor);
-        water_color = pow(water_color, vec3(1.0 / 2.2));
-
+        vec3 water_color = scene_gpu_data.water_color.rgb;
         vec3 ambient = water_color;
 
         float diff = max(dot(light_dir, normal), 0.0);
@@ -277,10 +239,15 @@ void main() {
         float spec = pow(max(dot(normal, halfway_dir), 0.0), scene_gpu_data.water_shininess);
         vec3 specular = (spec * scene_gpu_data.light_color.rgb) * light_specular_factor;
 
+        vec3 reflected_view_dir = reflect(view_dir, normal);
+        vec3 reflection = reflection_enabled ? texture(cube_texture, reflected_view_dir).rgb : vec3(0.0);
+
+        reflection *= scene_gpu_data.reflection_strength;
+
         if (debug_render_world_space_pos) {
             pixel_color = vec4(in_frag_world_space_pos, 1.0);
         } else {
-            pixel_color = vec4(ambient + ((diffuse + specular) * light_strength), 1.0);	
+            pixel_color = vec4((ambient + diffuse + specular + reflection) * light_strength, 1.0);
 //            pixel_color = vec4(water_color, 1.0);	
         }
     }

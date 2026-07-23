@@ -12,9 +12,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	vec4 light_position;        // w is light strength
 	vec4 light_color;           // w is light specular
 	vec4 viewer_position;
-    vec4 deep_water_color;      // w is empty
-    vec4 surface_water_color;   // w is fog factor height multiplier
-    vec4 water_absorption;      // w is water absorption multiplier
+    vec4 water_color;           // w is empty
     int flags;
     int wave_count;
     float specular_displacement;
@@ -35,20 +33,8 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float tessellation_level_min;
     float tessellation_level_max;
     float tessellation_step;
+    float reflection_strength;
 } scene_gpu_data;
-
-// Note: wave direction: X and Z are directions, Y is length and W is speed.
-// Note: circular wave: X and Y corrsponds to the wave center X and Z.
-struct wave_data {
-    vec4 direction;
-    vec4 circular_wave;
-    float amplitude;
-    float steepness;
-};
-
-layout (std140, set = 0, binding = 1) uniform WaveGPUData {
-    wave_data sine_wave[MAX_SINE_WAVES];
-} wave_gpu_data;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;

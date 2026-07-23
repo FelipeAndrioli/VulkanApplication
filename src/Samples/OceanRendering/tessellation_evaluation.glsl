@@ -22,9 +22,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	vec4 light_position;        // w is light strength
 	vec4 light_color;           // w is light specular
 	vec4 viewer_position;
-    vec4 deep_water_color;      // w is empty
-    vec4 surface_water_color;   // w is fog factor height multiplier
-    vec4 water_absorption;      // w is water absorption multiplier
+    vec4 water_color;           // w is empty
     int flags;
     int wave_count;
     float specular_displacement;
@@ -45,20 +43,8 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float tessellation_level_min;
     float tessellation_level_max;
     float tessellation_step;
+    float reflection_strength;
 } scene_gpu_data;
-
-// Note: wave direction: X and Z are directions, Y is length and W is speed.
-// Note: circular wave: X and Y corrsponds to the wave center X and Z.
-struct wave_data {
-    vec4 direction;
-    vec4 circular_wave;
-    float amplitude;
-    float steepness;
-};
-
-layout (std140, set = 0, binding = 1) uniform WaveGPUData {
-    wave_data wave[MAX_WAVES];
-} wave_gpu_data;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
@@ -82,6 +68,7 @@ struct wave_function_result {
     float derivative_sum_z;
 };
 
+#ifdef UNUSED
 wave_function_result sine_wave(vec4 pos, float time, bool circular_waves_enabled) {
     float displacement_sum = 0.0;
     float derivative_sum_x = 0.0;
@@ -213,6 +200,7 @@ wave_function_result gerstner_wave(vec4 pos, float time, bool circular_waves_ena
 
     return result;
 }
+#endif
 
 wave_function_result sine_wave_fractal_brownian_motion(
     vec4 pos, 
@@ -253,8 +241,7 @@ wave_function_result sine_wave_fractal_brownian_motion(
 //        vec2 dir = vec2(cos(current_angle), sin(current_angle));
         vec2 dir = vec2(sin(dir_helper), cos(dir_helper));
 
-//        float spatial_phase = float(dot(position, dir) * frequency);
-        float spatial_phase = float(dot(pos.xz, dir) * frequency);
+        float spatial_phase = float(dot(position, dir) * frequency);
         float temporal_phase = time * wave_speed * pow(float(frequency), temporal_phase_exponent);
         float x = spatial_phase + temporal_phase;
         float f = exp(sin(x) - 1.);
@@ -340,51 +327,32 @@ void main() {
 
     float time = scene_gpu_data.time;
 
-    bool sine_waves_enabled                         = bool(scene_gpu_data.flags & 1);
-    bool circular_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 2));
-    bool gerstner_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
-    bool sine_wave_fractal_brownian_motion_enabled  = bool(scene_gpu_data.flags & (1 << 5));
-    bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 6));
-    bool tessellation_enabled                       = bool(scene_gpu_data.flags & (1 << 7));
+    bool debug_render_normals                       = bool(scene_gpu_data.flags & 1);
+    bool circular_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 1));
+    bool debug_render_world_space_pos               = bool(scene_gpu_data.flags & (1 << 2));
+    bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
+    bool tessellation_enabled                       = bool(scene_gpu_data.flags & (1 << 4));
+    bool reflection_enabled                         = bool(scene_gpu_data.flags & (1 << 5));
 
-    if (gerstner_waves_enabled) {
-        wave_function_result w = gerstner_wave(interpolated_pos, time, circular_waves_enabled);
-        interpolated_pos = vec4(w.position, 1.0);
-        out_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
-    } 
+    wave_function_result w = sine_wave_fractal_brownian_motion(
+        interpolated_pos, 
+        time, 
+        scene_gpu_data.sine_fbm_amplitude,
+        scene_gpu_data.sine_fbm_frequency,
+        scene_gpu_data.sine_fbm_amplitude_multiplier,
+        scene_gpu_data.sine_fbm_frequency_multiplier,
+        scene_gpu_data.water_depth,
+        scene_gpu_data.drag_mult,
+        scene_gpu_data.wind_angle,
+        scene_gpu_data.wind_speed,
+        scene_gpu_data.temporal_phase_exponent,
+        scene_gpu_data.height_multiplier,
+        domain_warping_enabled);
 
-    if (sine_waves_enabled) {
-        wave_function_result w = sine_wave(interpolated_pos, time, circular_waves_enabled);
-        interpolated_pos.y = w.displacement_sum;
-        // Note:    Normal generated on fragment shader.
-        out_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
-    }
+    interpolated_pos = vec4(w.position, 1.0);
+    out_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
+    out_normal.z *= -1.0;
 
-    if (sine_wave_fractal_brownian_motion_enabled) {
-        wave_function_result w = sine_wave_fractal_brownian_motion(
-            interpolated_pos, 
-            time, 
-            scene_gpu_data.sine_fbm_amplitude,
-            scene_gpu_data.sine_fbm_frequency,
-            scene_gpu_data.sine_fbm_amplitude_multiplier,
-            scene_gpu_data.sine_fbm_frequency_multiplier,
-            scene_gpu_data.water_depth,
-            scene_gpu_data.drag_mult,
-            scene_gpu_data.wind_angle,
-            scene_gpu_data.wind_speed,
-            scene_gpu_data.temporal_phase_exponent,
-            scene_gpu_data.height_multiplier,
-            domain_warping_enabled);
-
-        interpolated_pos = vec4(w.position, 1.0);
-        out_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
-        out_normal.z *= -1.0;
-    }
-
-    if (!gerstner_waves_enabled && !sine_waves_enabled && !sine_wave_fractal_brownian_motion_enabled) {
-        out_normal = normalize(mat3(push_constants.model) * out_normal);
-    }
-   
     out_world_space_position = vec3(push_constants.model * interpolated_pos);
     out_model_space_position = interpolated_pos.xyz;
     out_original_model_space_pos = original_interpolated_pos.xyz;
