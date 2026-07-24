@@ -15,6 +15,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	mat4 view;
 	vec4 light_position;        // w is light strength
 	vec4 light_color;           // w is light specular
+    vec4 sun;                   // xy -> pos; z -> radius; w -> strength
 	vec4 viewer_position;
     vec4 water_color;           // w is empty
     int flags;
@@ -38,6 +39,8 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float tessellation_level_max;
     float tessellation_step;
     float reflection_strength;
+    float image_width;
+    float image_height;
 } scene_gpu_data;
 
 layout (set = 0, binding = 1) uniform samplerCube cube_texture;
@@ -233,9 +236,8 @@ void main() {
         vec3 diffuse = diff * water_color;
 
         vec3 view_dir = normalize(scene_gpu_data.viewer_position.xyz - in_frag_world_space_pos);
-        view_dir.y *= scene_gpu_data.specular_displacement;
 
-        vec3 halfway_dir = normalize(light_dir + view_dir);
+        vec3 halfway_dir = normalize(light_dir + view_dir) * scene_gpu_data.specular_displacement;
         float spec = pow(max(dot(normal, halfway_dir), 0.0), scene_gpu_data.water_shininess);
         vec3 specular = (spec * scene_gpu_data.light_color.rgb) * light_specular_factor;
 

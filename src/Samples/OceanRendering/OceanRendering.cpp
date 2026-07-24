@@ -40,19 +40,20 @@ public:
     struct SceneData {
 		alignas(16) glm::mat4 Projection = glm::mat4(1.0f);
 		alignas(16) glm::mat4 View = glm::mat4(1.0f);
-		alignas(16) glm::vec4 LightPosition = glm::vec4(80.0f, 20.0f, 10.0f, 0.8f);         // w is light strength
-		alignas(16) glm::vec4 LightColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.7f);               // w is light specular factor
+		alignas(16) glm::vec4 LightPosition = glm::vec4(540.0f, 160.0f, 10.0f, 0.8f);       // w is light strength
+		alignas(16) glm::vec4 LightColor = glm::vec4(1.0f, 1.0f, 1.0f, 0.3f);               // w is light specular factor
+		alignas(16) glm::vec4 Sun = glm::vec4(0.0f, 0.0f, 0.04f, 1.14f);                    // xy -> pos; z -> radius; w -> strength
 		alignas(16) glm::vec4 ViewerPosition = glm::vec4(0.0f);
 		alignas(16) glm::vec4 WaterColor = glm::vec4(0.005f, 0.02f, 0.05f, 1.0f);           // w is empty
         alignas(4) int Flags = 0;
         alignas(4) int WaveCount = WAVES_COUNT;
-        alignas(4) float SpecularDisplacement = 1.0f;
+        alignas(4) float SpecularDisplacement = 1.002f;
         alignas(4) float WaterShininess = 750.0f;
         alignas(4) float TemporalPhaseExponent = 0.8f;
         alignas(4) float HeightMultiplier = 1.5f;
         alignas(4) float WindAngle = 0.5f;
         alignas(4) float WindSpeed = 2.0f;
-        alignas(4) float DragMult = 0.1f;
+        alignas(4) float DragMult = 1.0f;
         alignas(4) float Time = 0.0f;
         alignas(4) float WaterDepth = 8.0f;
 //        alignas(4) float SineFBMAmplitude = 1.0f;
@@ -66,6 +67,8 @@ public:
         alignas(4) float TessellationLevelMax = 8.0f;
         alignas(4) float TessellationStep = 5.0f;
         alignas(4) float ReflectionStrength = 0.5f;
+        alignas(4) float ImageWidth;
+        alignas(4) float ImageHeight;
     } SampleSceneData;
 
 	struct PushConstants {
@@ -89,6 +92,7 @@ private:
     std::shared_ptr<Assets::Model> m_WaterModel;
 
 	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
+	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
 
     Graphics::Shader m_VertexShader = {};
     Graphics::Shader m_TessellationControlShader = {};
@@ -100,22 +104,23 @@ private:
 	Graphics::PipelineState m_DefaultPSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
 
+    Graphics::InputLayout m_FrameInputLayout = {};
 	VkDescriptorSetLayout m_FrameDescriptorSetLayout = VK_NULL_HANDLE;
 	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_FrameDescriptorSet = { VK_NULL_HANDLE };
-
-    Graphics::Shader m_LightSourceVertexShader = {};
-    Graphics::Shader m_LightSourceFragmentShader = {};
-    Graphics::PipelineState m_LightSourcePSO = {};
 
     Graphics::Shader m_SkyboxVertexShader = {};
     Graphics::Shader m_SkyboxFragmentShader = {};
     Graphics::PipelineState m_SkyboxPSO = {};
 
+    Graphics::Shader m_PostEffectsVertexShader = {};
+    Graphics::Shader m_PostEffectsFragmentShader = {};
+    Graphics::PipelineState m_PostEffectsPSO = {};
+
     glm::vec2 m_AverageWaveDirection = glm::vec2(1.0f, 0.0f);
 
     float m_SkyboxCubeSize = 1000.0f;
 
-    bool m_RenderWireframe = true;
+    bool m_RenderWireframe = false;
     bool m_DebugRenderNormals = false;
     bool m_CircularWavesEnabled = false;
     bool m_DebugRenderWorldSpacePos = false;
@@ -125,9 +130,11 @@ private:
     bool m_RenderSkybox = true;
 private:
     void RenderSkybox(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
-    void RenderLightSource(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
     void RenderCube(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
+    void RenderPostEffects(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
     void Render(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline, VkDescriptorSet *frameDescriptorSet);
+
+    glm::vec2 CalculateScreenSpaceLightPos(const glm::mat4& Projection, const glm::mat4& View, const glm::vec4& WorldSpaceLightPos);
 };
 
 void OceanRendering::RenderSkybox(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -136,15 +143,6 @@ void OceanRendering::RenderSkybox(const uint32_t currentFrame, const VkCommandBu
     FramePushConstants.Color.r = m_SkyboxCubeSize;
     vkCmdPushConstants(commandBuffer, m_SkyboxPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &FramePushConstants);
     RenderCube(currentFrame, commandBuffer, &m_SkyboxPSO);
-}
-
-void OceanRendering::RenderLightSource(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
-	SCOPED_PROFILER_US("OceanRendering::RenderLightSource");
-
-    FramePushConstants.Model = glm::translate(glm::mat4(1.0f), glm::vec3(SampleSceneData.LightPosition));
-    vkCmdPushConstants(commandBuffer, m_LightSourcePSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &FramePushConstants);
-
-    RenderCube(currentFrame, commandBuffer, &m_LightSourcePSO);
 }
 
 void OceanRendering::RenderCube(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) {
@@ -156,12 +154,30 @@ void OceanRendering::RenderCube(const uint32_t currentFrame, const VkCommandBuff
     vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 }
 
+void OceanRendering::RenderPostEffects(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) {
+    SCOPED_PROFILER_US("OceanRendering::RenderPostEffects");
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+}
+
+glm::vec2 OceanRendering::CalculateScreenSpaceLightPos(const glm::mat4& Projection, const glm::mat4& View, const glm::vec4& WorldSpaceLightPos) {
+
+    glm::vec4 screenSpaceLightPos = Projection * View * glm::vec4(WorldSpaceLightPos.x, WorldSpaceLightPos.y, WorldSpaceLightPos.z, 1.0);
+    screenSpaceLightPos /=  screenSpaceLightPos.w;
+
+    return glm::vec2(screenSpaceLightPos.x, screenSpaceLightPos.y);
+}
+
 void OceanRendering::StartUp() {
 
 	m_ScreenWidth	= settings.Width;
 	m_ScreenHeight	= settings.Height;
 
 	m_OffscreenRenderTarget = std::make_unique<Graphics::OffscreenRenderTarget>(m_ScreenWidth, m_ScreenHeight);
+    m_PostEffectsRenderTarget = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 
 	m_Camera.Init(InitialCameraPosition, InitialCameraFov, InitialCameraYaw, InitialCameraPitch, m_ScreenWidth, m_ScreenHeight);
     m_Camera.Far = 2500.0f;
@@ -173,27 +189,29 @@ void OceanRendering::StartUp() {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	Graphics::InputLayout frameInputLayout = {
+	m_FrameInputLayout = {
 		.pushConstants = {
 			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
-			{ 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },			
+			{ 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	// Skybox texture
+			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	// Offscreen pass result texture
 		}
 	};
 
     m_SkyboxTexture = TextureLoader::LoadCubemapTexture("./Textures/evening_road_01_puresky_4k.hdr");
 //    m_SkyboxTexture = TextureLoader::LoadCubemapTexture("./Textures/sunflowers_puresky_4k.hdr");
 
-	gfxDevice->CreateDescriptorSetLayout(m_FrameDescriptorSetLayout, frameInputLayout.bindings);
+	gfxDevice->CreateDescriptorSetLayout(m_FrameDescriptorSetLayout, m_FrameInputLayout.bindings);
 
 	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
         m_SceneBuffer[i] = gfxDevice->CreateStorageBuffer(sizeof(SceneData));
 
         gfxDevice->CreateDescriptorSet(m_FrameDescriptorSetLayout, m_FrameDescriptorSet[i]);
-		gfxDevice->WriteDescriptor(frameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer[i]);
-        gfxDevice->WriteDescriptor(frameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_SkyboxTexture);
+		gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer[i]);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_SkyboxTexture);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_OffscreenRenderTarget->GetColorBuffer());
 	}
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "../src/Samples/OceanRendering/vertex.glsl");
@@ -210,7 +228,7 @@ void OceanRendering::StartUp() {
     psoDesc.tessellationPatchControlPoints = 3;
     psoDesc.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
     psoDesc.fragmentShader = &m_FragShader;
-    psoDesc.psoInputLayout.push_back(frameInputLayout);
+    psoDesc.psoInputLayout.push_back(m_FrameInputLayout);
     psoDesc.cullMode = VK_CULL_MODE_NONE;
 
     gfxDevice->CreatePipelineState(psoDesc, m_DefaultPSO, *m_OffscreenRenderTarget.get());
@@ -221,18 +239,6 @@ void OceanRendering::StartUp() {
 
     gfxDevice->CreatePipelineState(psoDesc, m_WireframePSO, *m_OffscreenRenderTarget.get());
 
-    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_LightSourceVertexShader, "../src/Samples/OceanRendering/light_source_vertex.glsl");
-    gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_LightSourceFragmentShader, "../src/Samples/OceanRendering/light_source_fragment.glsl");
-
-    Graphics::PipelineStateDescription lightSourceDesc = {};
-    lightSourceDesc.Name = "Light Source";
-    lightSourceDesc.vertexShader = &m_LightSourceVertexShader;
-    lightSourceDesc.fragmentShader = &m_LightSourceFragmentShader;
-    lightSourceDesc.noVertex = true;
-    lightSourceDesc.psoInputLayout.push_back(frameInputLayout);
-
-    gfxDevice->CreatePipelineState(lightSourceDesc, m_LightSourcePSO, *m_OffscreenRenderTarget.get());
-
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "../src/Samples/OceanRendering/skybox_vertex.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragmentShader, "../src/Samples/OceanRendering/skybox_fragment.glsl");
 
@@ -241,9 +247,22 @@ void OceanRendering::StartUp() {
     skyboxDesc.vertexShader = &m_SkyboxVertexShader;
     skyboxDesc.fragmentShader = &m_SkyboxFragmentShader;
     skyboxDesc.noVertex = true;
-    skyboxDesc.psoInputLayout.push_back(frameInputLayout);
+    skyboxDesc.psoInputLayout.push_back(m_FrameInputLayout);
 
     gfxDevice->CreatePipelineState(skyboxDesc, m_SkyboxPSO, *m_OffscreenRenderTarget.get());
+
+    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_PostEffectsVertexShader, "../src/Samples/OceanRendering/post_effects_vertex.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_PostEffectsFragmentShader, "../src/Samples/OceanRendering/post_effects_fragment.glsl");
+
+    Graphics::PipelineStateDescription postEffectsDesc = {};
+    postEffectsDesc.Name = "Post Effects PSO";
+    postEffectsDesc.vertexShader = &m_PostEffectsVertexShader;
+    postEffectsDesc.fragmentShader = &m_PostEffectsFragmentShader;
+    postEffectsDesc.noVertex = true;
+    postEffectsDesc.cullMode = VK_CULL_MODE_NONE;
+    postEffectsDesc.psoInputLayout.push_back(m_FrameInputLayout);
+
+    gfxDevice->CreatePipelineState(postEffectsDesc, m_PostEffectsPSO, *gfxDevice->GetSwapChain().RenderTarget.get());
 }
 
 void OceanRendering::CleanUp() {
@@ -266,14 +285,14 @@ void OceanRendering::CleanUp() {
 	gfxDevice->DestroyPipeline(m_DefaultPSO);
 	gfxDevice->DestroyPipeline(m_WireframePSO);
 
-    gfxDevice->DestroyShader(m_LightSourceVertexShader);
-    gfxDevice->DestroyShader(m_LightSourceFragmentShader);
-	gfxDevice->DestroyPipeline(m_LightSourcePSO);
-
     gfxDevice->DestroyImage(m_SkyboxTexture);
     gfxDevice->DestroyShader(m_SkyboxVertexShader);
     gfxDevice->DestroyShader(m_SkyboxFragmentShader);
     gfxDevice->DestroyPipeline(m_SkyboxPSO);
+
+    gfxDevice->DestroyShader(m_PostEffectsVertexShader);
+    gfxDevice->DestroyShader(m_PostEffectsFragmentShader);
+    gfxDevice->DestroyPipeline(m_PostEffectsPSO);
 }
 
 void OceanRendering::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
@@ -286,10 +305,16 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	SampleSceneData.Projection		= m_Camera.ProjectionMatrix;
+    glm::vec2 screenSpaceLightPos = CalculateScreenSpaceLightPos(m_Camera.ProjectionMatrix, m_Camera.ViewMatrix, SampleSceneData.LightPosition);
+
+    SampleSceneData.Sun.x = screenSpaceLightPos.x;
+    SampleSceneData.Sun.y = screenSpaceLightPos.y;
+    SampleSceneData.Projection		= m_Camera.ProjectionMatrix;
 	SampleSceneData.View			= m_Camera.ViewMatrix;
     SampleSceneData.ViewerPosition  = glm::vec4(m_Camera.Position, 1.0f);
     SampleSceneData.Time            = constantT;
+    SampleSceneData.ImageWidth      = static_cast<float>(m_ScreenWidth);
+    SampleSceneData.ImageHeight     = static_cast<float>(m_ScreenHeight);
     SampleSceneData.Flags           = (m_ReflectionEnabled << 5
                                         | m_TessellationEnabled << 4
                                         | m_FractalBrownianMotionDomainWarpingEnabled << 3
@@ -342,8 +367,6 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
         Render(currentFrame, commandBuffer, &m_DefaultPSO, &m_FrameDescriptorSet[currentFrame]);
     }
 
-    RenderLightSource(currentFrame, commandBuffer);
-
     if (m_RenderSkybox) {
         RenderSkybox(currentFrame, commandBuffer);
     }
@@ -351,7 +374,9 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
 	m_OffscreenRenderTarget->End(commandBuffer);
 
 	m_OffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	gfxDevice->GetSwapChain().RenderTarget->CopyColor(m_OffscreenRenderTarget->GetColorBuffer());
+
+    gfxDevice->GetSwapChain().RenderTarget->Begin(commandBuffer);
+    RenderPostEffects(currentFrame, commandBuffer, &m_PostEffectsPSO);
 }
 
 void OceanRendering::RenderUI() {
@@ -387,7 +412,7 @@ void OceanRendering::RenderUI() {
         ImGui::ColorPicker3("Deep Water Color",         (float*)&SampleSceneData.WaterColor);
         ImGui::DragFloat("Water Shininess",             &SampleSceneData.WaterShininess, 1.0f, 0.0f, 3000.0f);
         ImGui::DragFloat("Water Reflection Strength" ,  &SampleSceneData.ReflectionStrength, 0.01f, -10.0f, 10.0f);
-        ImGui::DragFloat("Specular Displacement",       &SampleSceneData.SpecularDisplacement, 0.01f, -10.0f, 10.0f);
+        ImGui::DragFloat("Specular Displacement",       &SampleSceneData.SpecularDisplacement, 0.0001f, -2.0f, 2.0f);
 
         ImGui::TreePop();
     }
@@ -397,6 +422,8 @@ void OceanRendering::RenderUI() {
         ImGui::DragFloat("Light Strength",  &SampleSceneData.LightPosition.w, 0.02f, 0.0f, 200.0f);
         ImGui::ColorPicker3("Light Color",  (float*)&SampleSceneData.LightColor);
         ImGui::DragFloat("Light Specular",	&SampleSceneData.LightColor.w, 0.02f, 0.0f, 1.0f);
+        ImGui::DragFloat("Sun Radius",	    &SampleSceneData.Sun.z, 0.01f, 0.0f, 5.0f);
+        ImGui::DragFloat("Sun Strength",	&SampleSceneData.Sun.w, 0.01f, 0.0f, 5.0f);
 
         ImGui::TreePop();
     }
@@ -428,6 +455,12 @@ void OceanRendering::Resize(uint32_t width, uint32_t height) {
 
 	m_Camera.Resize(m_ScreenWidth, m_ScreenHeight);
 	m_OffscreenRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight);
+
+	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+   
+    for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_OffscreenRenderTarget->GetColorBuffer());
+	}
 }
 
 RUN_APPLICATION(OceanRendering);

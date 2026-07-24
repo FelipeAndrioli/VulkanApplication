@@ -7,6 +7,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	mat4 view;
 	vec4 light_position;        // w is light strength
 	vec4 light_color;           // w is light specular
+    vec4 sun;                   // xy -> pos; z -> radius; w -> strength
 	vec4 viewer_position;
     vec4 water_color;           // w is empty
     int flags;
@@ -30,6 +31,8 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float tessellation_level_max;
     float tessellation_step;
     float reflection_strength;
+    float image_width;
+    float image_height;
 } scene_gpu_data;
 
 layout (push_constant) uniform PushConstants {
