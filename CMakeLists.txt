@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # CMAKE_EXPORT_COMPILE_COMMANDS will create a 'compile_commands.json' file inside 
-# the root directory, the command 'ln -s location/compile_commands.json project/root/directory' 
+# the build directory, the command 'ln -s location/compile_commands.json project/root/directory' 
 # must be executed to create a symbolic link and clangd will automatically pick
 # up.
 
