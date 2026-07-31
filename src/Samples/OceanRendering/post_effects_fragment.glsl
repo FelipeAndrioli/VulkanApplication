@@ -14,6 +14,7 @@ layout (set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 water_color;           // w is empty
     int flags;
     int wave_count;
+    int normal_wave_count;
     float specular_displacement;
     float water_shininess;
     float temporal_phase_exponent;
@@ -48,7 +49,7 @@ void main() {
     // calculate aspect correction for a circular sun
     vec2 aspect_correction = vec2(scene_gpu_data.image_width / scene_gpu_data.image_height, 1.);
 
-    float dist = length((uv - light_pos) * aspect_correction);
+    float dist = clamp(length((uv - light_pos) * aspect_correction), 0.0, 1.0);
     float sun_radius = scene_gpu_data.sun.z;
     float sun_strength = scene_gpu_data.sun.w; 
     float sun_mask = smoothstep(sun_radius, sun_radius - 0.05, dist);

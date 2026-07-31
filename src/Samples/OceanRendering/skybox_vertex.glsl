@@ -1,6 +1,6 @@
 #version 450
 
-#define MAX_WAVES 32 
+layout (location = 0) out vec3 dir;
 
 layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	mat4 projection;
@@ -12,6 +12,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 water_color;           // w is empty
     int flags;
     int wave_count;
+    int normal_wave_count;
     float specular_displacement;
     float water_shininess;
     float temporal_phase_exponent;
@@ -39,8 +40,6 @@ layout (push_constant) uniform PushConstants {
 	mat4 model;
 	vec4 color;
 } push_constants;
-
-layout (location = 0) out vec3 dir;
 
 // hardcoded cube
 const vec3 pos[8] = vec3[8](
@@ -72,10 +71,17 @@ const int indices[36] = int[36](
 
 void main() {
 
-    const float cube_size = push_constants.color.r;
     const int idx = indices[gl_VertexIndex];
 
-    gl_Position = scene_gpu_data.projection * scene_gpu_data.view * vec4(cube_size * pos[idx], 1.0);
+    const float cube_size = push_constants.color.r;
+
+    // Note: consider moving rotation to the storage buffer since it'll also be used by the fragment shader.
+    // Note: inverse rotation to align with reflection.
+    mat3 rotation = mat3(cos(push_constants.color.g), 0.0, -sin(push_constants.color.g),
+                         0.0, 1.0, 0.0,
+                         sin(push_constants.color.g), 0.0, cos(push_constants.color.g));
+
+    gl_Position = scene_gpu_data.projection * scene_gpu_data.view * vec4(rotation * (cube_size * pos[idx]), 1.0);
 
     dir = pos[idx].xyz;
 }

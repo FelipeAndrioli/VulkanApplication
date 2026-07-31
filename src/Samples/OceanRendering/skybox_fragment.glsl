@@ -15,6 +15,7 @@ layout (set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 water_color;           // w is empty
     int flags;
     int wave_count;
+    int normal_wave_count;
     float specular_displacement;
     float water_shininess;
     float temporal_phase_exponent;
@@ -38,6 +39,13 @@ layout (set = 0, binding = 0) readonly buffer SceneGPUData {
     float image_height;
 } scene_gpu_data;
 
+layout (push_constant) uniform PushConstants {
+	mat4 model;
+	vec4 color;
+} push_constants;
+
 void main() {
+    float fog_factor = exp(-0.0007 * gl_FragCoord.z);
+    fog_factor = clamp(fog_factor, 0.0, 1.0);
     color = texture(skybox_texture, dir);
 }

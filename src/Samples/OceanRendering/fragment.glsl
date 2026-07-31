@@ -17,9 +17,10 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	vec4 light_color;           // w is light specular
     vec4 sun;                   // xy -> pos; z -> radius; w -> strength
 	vec4 viewer_position;
-    vec4 water_color;           // w is empty
+    vec4 water_color;           // w is ambient color strength
     int flags;
     int wave_count;
+    int normal_wave_count;
     float specular_displacement;
     float water_shininess;
     float temporal_phase_exponent;
@@ -47,6 +48,7 @@ layout (set = 0, binding = 1) uniform samplerCube cube_texture;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
+    vec4 color;
 } push_constants;
 
 struct wave_function_result {
@@ -215,6 +217,8 @@ void main() {
     bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
     bool UNUSED_tessellation_enabled                = bool(scene_gpu_data.flags & (1 << 4));
     bool reflection_enabled                         = bool(scene_gpu_data.flags & (1 << 5));
+    bool wave_random_direction_enabled              = bool(scene_gpu_data.flags & (1 << 6));
+    bool generate_normal_per_fragment               = bool(scene_gpu_data.flags & (1 << 7));
 
     float time = scene_gpu_data.time;
     vec4 pos = vec4(in_frag_model_space_pos, 1.0);
@@ -230,27 +234,51 @@ void main() {
 
         vec3 light_dir = normalize(scene_gpu_data.light_position.xyz - in_frag_world_space_pos);
         vec3 water_color = scene_gpu_data.water_color.rgb;
-        vec3 ambient = water_color;
+
+        float ambient_color_strength = scene_gpu_data.water_color.a;
+
+        vec3 ambient = water_color * ambient_color_strength;
 
         float diff = max(dot(light_dir, normal), 0.0);
         vec3 diffuse = diff * water_color;
 
-        vec3 view_dir = normalize(scene_gpu_data.viewer_position.xyz - in_frag_world_space_pos);
+        vec3 camera_to_frag = scene_gpu_data.viewer_position.xyz - in_frag_world_space_pos;
+        vec3 view_dir = normalize(camera_to_frag);
 
-        vec3 halfway_dir = normalize(light_dir + view_dir) * scene_gpu_data.specular_displacement;
+        vec3 halfway_dir = normalize(light_dir + view_dir);
+        
         float spec = pow(max(dot(normal, halfway_dir), 0.0), scene_gpu_data.water_shininess);
         vec3 specular = (spec * scene_gpu_data.light_color.rgb) * light_specular_factor;
 
-        vec3 reflected_view_dir = reflect(view_dir, normal);
-        vec3 reflection = reflection_enabled ? texture(cube_texture, reflected_view_dir).rgb : vec3(0.0);
+        // Note: Schlick's Fresnel approximation from wikipedia.
+        // According to Schlick's model, the specular reflection coefficient R can be approximated by:
+        // R(theta) = F0 + (1 - F0) * pow(1.0 - cos(theta), 5.0);
+        float F0 = 0.02; // typical for water
+        float fresnel = F0 + (1.0 - F0) * pow(1.0 - max(dot(normal, view_dir), 0.0), 5.0);
 
-        reflection *= scene_gpu_data.reflection_strength;
+        // Note: Reflected view direction rotation to align with skybox rotation.
+        mat3 rotation = mat3(cos(push_constants.color.g), 0.0, sin(push_constants.color.g),
+                            0.0, 1.0, 0.0,
+                            -sin(push_constants.color.g), 0.0, cos(push_constants.color.g));
+
+        vec3 reflected_view_dir = (rotation * reflect(-view_dir, normal));
+        vec3 reflection = reflection_enabled 
+            ? texture(cube_texture, reflected_view_dir).rgb * scene_gpu_data.reflection_strength * fresnel  
+            : vec3(0.0);
+
+        float fog_factor = exp(-0.0007 * length(camera_to_frag));
+        fog_factor = clamp(fog_factor, 0.0, 1.0);
+            
+        vec3 color = ambient + (diffuse + specular * fresnel) * light_strength + reflection;
+
+        color = mix(vec3(1.0), color, fog_factor);
+
+        color = pow(color, vec3(1.0 / 2.2));
 
         if (debug_render_world_space_pos) {
             pixel_color = vec4(in_frag_world_space_pos, 1.0);
         } else {
-            pixel_color = vec4((ambient + diffuse + specular + reflection) * light_strength, 1.0);
-//            pixel_color = vec4(water_color, 1.0);	
+            pixel_color = vec4(color, 1.0);
         }
     }
 }

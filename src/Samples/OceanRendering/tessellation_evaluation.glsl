@@ -26,6 +26,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 water_color;           // w is empty
     int flags;
     int wave_count;
+    int normal_wave_count;
     float specular_displacement;
     float water_shininess;
     float temporal_phase_exponent;
@@ -218,19 +219,18 @@ wave_function_result sine_wave_fractal_brownian_motion(
     float wind_speed,
     float temporal_phase_exponent,
     float height_multiplier,
-    bool domain_warping_enabled) {
+    bool domain_warping_enabled,
+    bool wave_random_direction_enabled) {
 
     float height_sum = 0.0;
     float weight_sum = 0.0;
   
     vec2 position = pos.xz;
-    vec2 displacement_accumullation = vec2(0.0);
+    vec2 displacement_accumulation = vec2(0.0);
 
     float amplitude = sine_fbm_amplitude;
-    double frequency = sine_fbm_frequency;
-    float dir_helper = 0.0;
-
-    mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
+    float frequency = sine_fbm_frequency;
+    float direction_seed = 0.0;
 
     vec2 derivative_sum = vec2(0.0);
     float chop_sum = 0.0;
@@ -241,8 +241,13 @@ wave_function_result sine_wave_fractal_brownian_motion(
         float current_angle = wind_angle + angle_variation;
         float wave_speed = float(sqrt(9.81 / frequency) * wind_speed);
 
-//        vec2 dir = vec2(cos(current_angle), sin(current_angle));
-        vec2 dir = vec2(sin(dir_helper), cos(dir_helper));
+        vec2 dir = vec2(0.0);
+
+        if (wave_random_direction_enabled) {
+            dir = vec2(sin(direction_seed), cos(direction_seed));
+        } else {
+            dir = vec2(cos(current_angle), sin(current_angle));
+        }
 
         float spatial_phase = float(dot(position, dir) * frequency);
         float temporal_phase = time * wave_speed * pow(float(frequency), temporal_phase_exponent);
@@ -260,23 +265,25 @@ wave_function_result sine_wave_fractal_brownian_motion(
             float chop = sin(x) * (-base_derivative) * amplitude * drag_mult;
             chop_sum += length(dir) * chop;
 
+            mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
+
             vec2 offset = rot * (dir * sin(x) * (-base_derivative) * amplitude * drag_mult);
-            
-            displacement_accumullation += offset;
+           
+            displacement_accumulation += offset;
             position += offset;
         }
 
         amplitude *= sine_fbm_amplitude_multiplier;
         frequency *= sine_fbm_frequency_multiplier;
 
-        dir_helper += 1232.399963;
+        direction_seed += 1232.399963;
     }
 
-    float height = weight_sum > 0.0 ? ((height_sum / weight_sum) * height_multiplier) * water_depth - water_depth : 0.0;
+    float height = weight_sum > 0.0 ? ((height_sum / weight_sum) * height_multiplier) * water_depth - water_depth: 0.0;
 
     wave_function_result result;
 
-    result.position = vec3(pos.x + displacement_accumullation.x, height, pos.z + displacement_accumullation.y);
+    result.position = vec3(pos.x + displacement_accumulation.x, height, pos.z + displacement_accumulation.y);
     result.normal = normalize(vec3(-derivative_sum.x, 1.0 - chop_sum * 0.5, -derivative_sum.y));
 
     return result;
@@ -336,6 +343,7 @@ void main() {
     bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
     bool tessellation_enabled                       = bool(scene_gpu_data.flags & (1 << 4));
     bool reflection_enabled                         = bool(scene_gpu_data.flags & (1 << 5));
+    bool wave_random_direction_enabled              = bool(scene_gpu_data.flags & (1 << 6));
 
     wave_function_result w = sine_wave_fractal_brownian_motion(
         interpolated_pos, 
@@ -350,11 +358,11 @@ void main() {
         scene_gpu_data.wind_speed,
         scene_gpu_data.temporal_phase_exponent,
         scene_gpu_data.height_multiplier,
-        domain_warping_enabled);
+        domain_warping_enabled,
+        wave_random_direction_enabled);
 
     interpolated_pos = vec4(w.position, 1.0);
     out_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
-    out_normal.z *= -1.0;
 
     out_world_space_position = vec3(push_constants.model * interpolated_pos);
     out_model_space_position = interpolated_pos.xyz;

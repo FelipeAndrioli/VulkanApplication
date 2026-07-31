@@ -22,6 +22,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 water_color;           // w is empty
     int flags;
     int wave_count;
+    int normal_wave_count;
     float specular_displacement;
     float water_shininess;
     float temporal_phase_exponent;
