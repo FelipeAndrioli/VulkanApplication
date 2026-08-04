@@ -45,7 +45,5 @@ layout (push_constant) uniform PushConstants {
 } push_constants;
 
 void main() {
-    float fog_factor = exp(-0.0007 * gl_FragCoord.z);
-    fog_factor = clamp(fog_factor, 0.0, 1.0);
     color = texture(skybox_texture, dir);
 }
