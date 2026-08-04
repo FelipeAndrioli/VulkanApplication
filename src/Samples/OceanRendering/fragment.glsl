@@ -265,13 +265,9 @@ void main() {
         vec3 reflection = reflection_enabled 
             ? texture(cube_texture, reflected_view_dir).rgb * scene_gpu_data.reflection_strength * fresnel  
             : vec3(0.0);
-
-        float fog_factor = exp(-0.0007 * length(camera_to_frag));
-        fog_factor = clamp(fog_factor, 0.0, 1.0);
-            
+   
         vec3 color = ambient + (diffuse + specular * fresnel) * light_strength + reflection;
 
-        color = mix(vec3(1.0), color, fog_factor);
 
         color = pow(color, vec3(1.0 / 2.2));
 
