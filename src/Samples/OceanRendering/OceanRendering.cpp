@@ -64,11 +64,11 @@ public:
         alignas(4) float SineFBMFrequency = 0.05f;
         alignas(4) float SineFBMAmplitudeMultiplier = 0.780f; // must be smaller than 1.0
         alignas(4) float SineFBMFrequencyMultiplier = 1.315;  // must be greater than 1.0
-        alignas(4) float TessellationMinThreshold = 0.0f;
-        alignas(4) float TessellationMaxThreshold = 500.0f;
+        alignas(4) float TessellationMinThreshold = 95.0f;
+        alignas(4) float TessellationMaxThreshold = 305.0f;
         alignas(4) float TessellationLevelMin = 2.0f;
         alignas(4) float TessellationLevelMax = 32.0f;
-        alignas(4) float TessellationStep = 3.0f;
+        alignas(4) float TessellationStep = 6.0f;
         alignas(4) float ReflectionStrength = 0.660f;
         alignas(4) float ImageWidth;
         alignas(4) float ImageHeight;
@@ -98,19 +98,23 @@ private:
     std::shared_ptr<Assets::Model> m_SkyboxCube;
 
     Graphics::RenderPassDescription m_OffscreenRenderPassDescription = {};
+    Graphics::RenderPassDescription m_HDRPostEffectsRenderPassDescription = {};
 
     Graphics::GPUImage m_OffscreenPassColor = {};
     Graphics::GPUImage m_OffscreenPassResolvedColor = {};
     Graphics::GPUImage m_OffscreenDepthStencil = {};
 
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_OffscreenRenderTarget;
-//	std::unique_ptr<Graphics::OffscreenRenderTarget> m_OffscreenRenderTarget;
+    std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_HDRPostProcessRenderTarget;
 	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
 
     Graphics::Shader m_VertexShader = {};
     Graphics::Shader m_TessellationControlShader = {};
     Graphics::Shader m_TessellationEvaluationShader = {};
 	Graphics::Shader m_FragShader = {};
+
+    Graphics::Shader m_HDRPostProcessFragmentShader = {};
+    Graphics::PipelineState m_HDRPostProcessPSO = {};
 
 	Graphics::GPUBuffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 
@@ -166,14 +170,14 @@ void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, c
 
     gfxDevice->CreateRenderTarget(
         m_OffscreenPassColor, 
-        Graphics::Format::R16G16B16A16_UNORM, 
+        Graphics::Format::R16G16B16A16_FLOAT, 
         m_ScreenWidth, 
         m_ScreenHeight, 
         m_SampleCount);
 
     gfxDevice->CreateRenderTarget(
         m_OffscreenPassResolvedColor, 
-        Graphics::Format::R16G16B16A16_UNORM, 
+        Graphics::Format::R16G16B16A16_FLOAT, 
         m_ScreenWidth, 
         m_ScreenHeight, 
         1);
@@ -197,7 +201,7 @@ void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, c
             Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
             Graphics::ResourceState::UNDEFINED, 
             Graphics::ResourceState::RENDERTARGET, 
-            Graphics::ResourceState::SHADER_RESOURCE));
+            Graphics::ResourceState::RENDERTARGET));
 
     m_OffscreenRenderPassDescription.Attachments.push_back(
         Graphics::RenderPassAttachment::Depth(
@@ -219,6 +223,19 @@ void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, c
             Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
             Graphics::ResourceState::UNDEFINED, 
             Graphics::ResourceState::RENDERTARGET, 
+            Graphics::ResourceState::RENDERTARGET));
+
+    m_HDRPostEffectsRenderPassDescription.Attachments.clear();
+
+    m_HDRPostEffectsRenderPassDescription.Attachments.push_back(
+        Graphics::RenderPassAttachment::RenderTarget(
+            m_OffscreenPassResolvedColor,
+            gfxDevice->ConvertFormat(m_OffscreenPassResolvedColor.Description.Format),
+            1,
+            Graphics::RenderPassAttachment::AttachmentLoadOp::LOAD,
+            Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+            Graphics::ResourceState::RENDERTARGET,
+            Graphics::ResourceState::RENDERTARGET,
             Graphics::ResourceState::SHADER_RESOURCE));
 }
 
@@ -280,6 +297,12 @@ void OceanRendering::StartUp() {
         m_SampleCount,
         m_OffscreenRenderPassDescription);
 
+    m_HDRPostProcessRenderTarget = std::make_unique<Graphics::MultiAttachmentRenderTarget>(
+        m_ScreenWidth,
+        m_ScreenHeight,
+        1,
+        m_HDRPostEffectsRenderPassDescription);
+
     m_PostEffectsRenderTarget = std::make_unique<Graphics::PostEffectsRenderTarget>(m_ScreenWidth, m_ScreenHeight);
 
 	m_Camera.Init(InitialCameraPosition, InitialCameraFov, InitialCameraYaw, InitialCameraPitch, m_ScreenWidth, m_ScreenHeight);
@@ -319,6 +342,11 @@ void OceanRendering::StartUp() {
     gfxDevice->LoadShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, m_TessellationControlShader, "../src/Samples/OceanRendering/tessellation_control.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, m_TessellationEvaluationShader, "../src/Samples/OceanRendering/tessellation_evaluation.glsl");
 	gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_FragShader, "../src/Samples/OceanRendering/fragment.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_PostEffectsVertexShader, "../src/Samples/OceanRendering/post_effects_vertex.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_HDRPostProcessFragmentShader, "../src/Samples/OceanRendering/hdr_post_effects_fragment.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "../src/Samples/OceanRendering/skybox_vertex.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragmentShader, "../src/Samples/OceanRendering/skybox_fragment.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_PostEffectsFragmentShader, "../src/Samples/OceanRendering/post_effects_fragment.glsl");
 
     Graphics::PipelineStateDescription psoDesc = {};
 
@@ -340,9 +368,22 @@ void OceanRendering::StartUp() {
 
     gfxDevice->CreatePipelineState(psoDesc, m_WireframePSO, *m_OffscreenRenderTarget.get());
 
-    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "../src/Samples/OceanRendering/skybox_vertex.glsl");
-    gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragmentShader, "../src/Samples/OceanRendering/skybox_fragment.glsl");
+    Graphics::PipelineStateDescription hdrPostProcessDesc = {};
+    hdrPostProcessDesc.Name = "HDR Post Effects";
+    hdrPostProcessDesc.vertexShader = &m_PostEffectsVertexShader;
+    hdrPostProcessDesc.fragmentShader = &m_HDRPostProcessFragmentShader;
+    hdrPostProcessDesc.noVertex = true;
+    hdrPostProcessDesc.cullMode = VK_CULL_MODE_NONE;
+    hdrPostProcessDesc.psoInputLayout.push_back(m_FrameInputLayout);
 
+    hdrPostProcessDesc.colorBlendingEnable = true;
+    hdrPostProcessDesc.colorBlendingDesc.blendEnable = VK_TRUE;
+    hdrPostProcessDesc.colorBlendingDesc.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    hdrPostProcessDesc.colorBlendingDesc.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    hdrPostProcessDesc.colorBlendingDesc.colorBlendOp = VK_BLEND_OP_ADD;
+
+    gfxDevice->CreatePipelineState(hdrPostProcessDesc, m_HDRPostProcessPSO, *m_HDRPostProcessRenderTarget.get());
+    
     Graphics::PipelineStateDescription skyboxDesc = {};
     skyboxDesc.Name = "Skybox";
     skyboxDesc.vertexShader = &m_SkyboxVertexShader;
@@ -351,9 +392,6 @@ void OceanRendering::StartUp() {
     skyboxDesc.psoInputLayout.push_back(m_FrameInputLayout);
 
     gfxDevice->CreatePipelineState(skyboxDesc, m_SkyboxPSO, *m_OffscreenRenderTarget.get());
-
-    gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_PostEffectsVertexShader, "../src/Samples/OceanRendering/post_effects_vertex.glsl");
-    gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_PostEffectsFragmentShader, "../src/Samples/OceanRendering/post_effects_fragment.glsl");
 
     Graphics::PipelineStateDescription postEffectsDesc = {};
     postEffectsDesc.Name = "Post Effects PSO";
@@ -372,6 +410,7 @@ void OceanRendering::CleanUp() {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	m_OffscreenRenderTarget.reset();
+    m_HDRPostProcessRenderTarget.reset();
 
     for (size_t i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
         gfxDevice->DestroyBuffer(m_SceneBuffer[i]);
@@ -395,6 +434,9 @@ void OceanRendering::CleanUp() {
     gfxDevice->DestroyShader(m_PostEffectsVertexShader);
     gfxDevice->DestroyShader(m_PostEffectsFragmentShader);
     gfxDevice->DestroyPipeline(m_PostEffectsPSO);
+
+    gfxDevice->DestroyShader(m_HDRPostProcessFragmentShader);
+    gfxDevice->DestroyPipeline(m_HDRPostProcessPSO);
 
     gfxDevice->DestroyImage(m_OffscreenPassColor);
     gfxDevice->DestroyImage(m_OffscreenDepthStencil);
@@ -488,7 +530,11 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
 
 	m_OffscreenRenderTarget->End(commandBuffer);
 
-	m_OffscreenRenderTarget->ChangeLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+   m_HDRPostProcessRenderTarget->Begin(commandBuffer);
+
+    RenderPostEffects(currentFrame, commandBuffer, &m_HDRPostProcessPSO);
+
+    m_HDRPostProcessRenderTarget->End(commandBuffer);
 
     gfxDevice->GetSwapChain().RenderTarget->Begin(commandBuffer);
     RenderPostEffects(currentFrame, commandBuffer, &m_PostEffectsPSO);
@@ -519,7 +565,7 @@ void OceanRendering::RenderUI() {
             ImGui::DragFloat("Tessellation Max Threshold",  &SampleSceneData.TessellationMaxThreshold, 1.0f, 0.0f, 500.0f);
             ImGui::DragFloat("Tessellation Level Min",      &SampleSceneData.TessellationLevelMin, 1.0f, 1.0f, 64.0f);
             ImGui::DragFloat("Tessellation Level Max",      &SampleSceneData.TessellationLevelMax, 1.0f, 1.0f, 64.0f);
-            ImGui::DragFloat("Tessellation Step",           &SampleSceneData.TessellationStep, 0.01f, 0.0f, 5.0f);
+            ImGui::DragFloat("Tessellation Step",           &SampleSceneData.TessellationStep, 0.1f, 0.0f, 50.0f);
         }
 
         ImGui::TreePop();
@@ -580,6 +626,7 @@ void OceanRendering::Resize(uint32_t width, uint32_t height) {
     CreateDisplaySizeDependentResources(m_ScreenWidth, m_ScreenHeight);
 
 	m_OffscreenRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_OffscreenRenderPassDescription);
+    m_HDRPostProcessRenderTarget->Resize(m_ScreenWidth, m_ScreenHeight, m_HDRPostEffectsRenderPassDescription);
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
    
