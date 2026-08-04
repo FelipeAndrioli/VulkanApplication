@@ -42,20 +42,5 @@ layout (set = 0, binding = 1) uniform sampler2D skybox_texture;
 layout (set = 0, binding = 2) uniform sampler2D offscreen_pass_result;
 
 void main() {
-
-    // Move light pos from [-1, 1] to [0, 1]
-    vec2 light_pos = scene_gpu_data.sun.xy * 0.5 + 0.5;
-
-    // calculate aspect correction for a circular sun
-    vec2 aspect_correction = vec2(scene_gpu_data.image_width / scene_gpu_data.image_height, 1.);
-
-    float dist = clamp(length((uv - light_pos) * aspect_correction), 0.0, 1.0);
-    float sun_radius = scene_gpu_data.sun.z;
-    float sun_strength = scene_gpu_data.sun.w; 
-    float sun_mask = smoothstep(sun_radius, sun_radius - 0.05, dist);
-
-    vec3 sun_color = scene_gpu_data.light_color.rgb * sun_strength * sun_mask;
-
     frag_color = texture(offscreen_pass_result, uv);
-    frag_color.rgb += sun_color;
 }
