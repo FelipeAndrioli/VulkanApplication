@@ -954,6 +954,8 @@ namespace Graphics {
 		for (int attachmentIndex = 0; attachmentIndex < renderPassDescription.Attachments.size(); ++attachmentIndex) {
 			RenderPassAttachment& attachment = renderPassDescription.Attachments[attachmentIndex];
 
+            framebufferViews.push_back(attachment.Texture.ImageView);
+
 			switch (attachment.Type) {
             case RenderPassAttachment::AttachmentType::RENDERTARGET:
                 {
@@ -961,15 +963,14 @@ namespace Graphics {
                 }
 			case RenderPassAttachment::AttachmentType::RESOLVE:
 				{
-					framebufferViews.push_back(attachment.Texture.ImageView);
                     if (attachment.LoadOp != Graphics::RenderPassAttachment::AttachmentLoadOp::LOAD) {
                         m_ClearValues.push_back( { .color = { 0.0f, 0.0f, 0.0f, 1.0f } });
                     }
 				} break;
 			case RenderPassAttachment::AttachmentType::DEPTHSTENCIL:
 			case RenderPassAttachment::AttachmentType::DEPTH:
+            case RenderPassAttachment::AttachmentType::RESOLVEDEPTH:
 				{
-					framebufferViews.push_back(attachment.Texture.ImageView);
                     if (attachment.LoadOp != Graphics::RenderPassAttachment::AttachmentLoadOp::LOAD) {
                         m_ClearValues.push_back( { .depthStencil = { 1.0f, 0 } });
                     }
