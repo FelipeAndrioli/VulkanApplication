@@ -167,7 +167,7 @@ namespace Graphics {
 		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.pEngineName = "No Engine";
 		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.apiVersion = VK_API_VERSION_1_1;
+		appInfo.apiVersion = VK_API_VERSION_1_2;
 
 		VkInstanceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -2132,13 +2132,14 @@ namespace Graphics {
 	VkRenderPass GraphicsDevice::CreateRenderPass(RenderPassDescription& renderPassDesc) {
 
 		// Note: Can we make depth and resolve attachment references a single variable instead of a vector?
-		std::vector<VkAttachmentReference> colorAttachmentReferences	= {};
-		std::vector<VkAttachmentReference> depthAttachmentReferences	= {};
-		std::vector<VkAttachmentReference> resolveAttachmentReferences	= {};
+		std::vector<VkAttachmentReference2> colorAttachmentReferences	= {};
+        std::vector<VkAttachmentReference2> resolveAttachmentReferences	= {};
+		std::vector<VkAttachmentReference2> depthAttachmentReferences	= {};
+		std::vector<VkAttachmentReference2> resolveDepthAttachmentReferences	= {};
 
-		std::vector<VkSubpassDescription> subpassDescriptions		= {};
-		std::vector<VkSubpassDependency> subpassDependencies		= {};
-		std::vector<VkAttachmentDescription> attachmentDescriptions = {};
+		std::vector<VkSubpassDescription2> subpassDescriptions		= {};
+		std::vector<VkSubpassDependency2> subpassDependencies		= {};
+		std::vector<VkAttachmentDescription2> attachmentDescriptions = {};
 
 		std::vector<SubPassDescription> subpassDescriptionsForDependencies = {};
 		SubPassDescription subpassDesc = {};
@@ -2147,7 +2148,9 @@ namespace Graphics {
 		
 			const RenderPassAttachment& renderPassAttachment = renderPassDesc.Attachments[attachmentIndex];
 			
-			VkAttachmentDescription attachmentDescription = {};
+			VkAttachmentDescription2 attachmentDescription = {};
+            attachmentDescription.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+            attachmentDescription.pNext = 0; 
 
 			switch (renderPassAttachment.LoadOp) {
 			default:
@@ -2179,44 +2182,36 @@ namespace Graphics {
 
 			attachmentDescription.stencilLoadOp		= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			attachmentDescription.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachmentDescription.samples		    = (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
+
+            VkAttachmentReference2 attachmentRef	= {};
+            attachmentRef.sType                     = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+            attachmentRef.pNext                     = 0;
+            attachmentRef.attachment			    = attachmentIndex;
+            attachmentRef.layout				    = ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
 
 			// Note: Check multiple samples/resolve depth attachments.
 			switch (renderPassAttachment.Type) {
 			default:
 			case RenderPassAttachment::AttachmentType::RENDERTARGET:
 				{
-
-					attachmentDescription.samples		= (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
-
-					VkAttachmentReference attachmentRef	= {};
-					attachmentRef.attachment			= attachmentIndex;
-					attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
-
 					colorAttachmentReferences.emplace_back(attachmentRef);
-
 					subpassDesc.ColorAttachmentIndices.push_back(attachmentIndex);
 				} break;
 			case RenderPassAttachment::AttachmentType::DEPTHSTENCIL:
 			case RenderPassAttachment::AttachmentType::DEPTH:
 				{
-					attachmentDescription.samples		= (VkSampleCountFlagBits)renderPassAttachment.SampleCount;
-
-					VkAttachmentReference attachmentRef	= {};
-					attachmentRef.attachment			= attachmentIndex;
-					attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
-
 					depthAttachmentReferences.emplace_back(attachmentRef);
-
 					subpassDesc.DepthStencilAttachmentIndex = attachmentIndex;
 				} break;
+            case RenderPassAttachment::AttachmentType::RESOLVEDEPTH:
+                {
+                    attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+                    resolveDepthAttachmentReferences.emplace_back(attachmentRef);
+                } break;
 			case RenderPassAttachment::AttachmentType::RESOLVE:
 				{
 					attachmentDescription.samples		= VK_SAMPLE_COUNT_1_BIT;
-
-					VkAttachmentReference attachmentRef = {};
-					attachmentRef.attachment			= attachmentIndex;
-					attachmentRef.layout				= ConvertResourceStateToImageLayout(renderPassAttachment.SubpassLayout);
-
 					resolveAttachmentReferences.emplace_back(attachmentRef);
 					subpassDesc.ResolveAttachmentIndices.push_back(attachmentIndex);
 				} break;
@@ -2232,39 +2227,61 @@ namespace Graphics {
 		subpassDependencies.push_back(CreateSubpassDependency(VK_SUBPASS_EXTERNAL, 0, renderPassDesc.Attachments, subpassDescriptionsForDependencies));
 		subpassDependencies.push_back(CreateSubpassDependency(0, VK_SUBPASS_EXTERNAL, renderPassDesc.Attachments, subpassDescriptionsForDependencies));
 
+        VkSubpassDescriptionDepthStencilResolve depthStencilResolve = {};
+        depthStencilResolve.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE;
+        depthStencilResolve.pNext = 0;
+        depthStencilResolve.stencilResolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+        depthStencilResolve.depthResolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
 
-		VkSubpassDescription vkSubPassDesc		= {};
+        // Note: if resolveDepthAttachmentReferences is greater than 0 only the first will be processed.
+        depthStencilResolve.pDepthStencilResolveAttachment = resolveDepthAttachmentReferences.empty() ? nullptr : resolveDepthAttachmentReferences.data();
+
+		VkSubpassDescription2 vkSubPassDesc		= {};
+        vkSubPassDesc.sType                     = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
+        vkSubPassDesc.pNext                     = resolveDepthAttachmentReferences.empty() ? 0 : &depthStencilResolve;
+        vkSubPassDesc.flags                     = 0;
 		vkSubPassDesc.pipelineBindPoint			= VK_PIPELINE_BIND_POINT_GRAPHICS;
+		vkSubPassDesc.viewMask                  = 0;
+		vkSubPassDesc.inputAttachmentCount      = 0;
+		vkSubPassDesc.pInputAttachments         = nullptr;
 		vkSubPassDesc.colorAttachmentCount		= colorAttachmentReferences.size();
-		vkSubPassDesc.pColorAttachments			= colorAttachmentReferences.data();
-		vkSubPassDesc.pDepthStencilAttachment	= depthAttachmentReferences.data();
-		vkSubPassDesc.pResolveAttachments		= resolveAttachmentReferences.data();
+		vkSubPassDesc.pColorAttachments			= colorAttachmentReferences.empty() ? nullptr : colorAttachmentReferences.data();
+		vkSubPassDesc.pDepthStencilAttachment	= depthAttachmentReferences.empty() ? nullptr : depthAttachmentReferences.data();
+		vkSubPassDesc.pResolveAttachments		= resolveAttachmentReferences.empty() ? nullptr : resolveAttachmentReferences.data();
+        vkSubPassDesc.preserveAttachmentCount   = 0;
+        vkSubPassDesc.pPreserveAttachments      = nullptr;
 
 		subpassDescriptions.emplace_back(vkSubPassDesc);
 
-		VkRenderPassCreateInfo createInfo	= {};
-		createInfo.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		VkRenderPassCreateInfo2 createInfo	= {};
+		createInfo.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
+        createInfo.pNext                    = 0;
+        createInfo.flags                    = 0;
 		createInfo.attachmentCount			= static_cast<uint32_t>(attachmentDescriptions.size());
-		createInfo.pAttachments				= attachmentDescriptions.data();
+		createInfo.pAttachments				= attachmentDescriptions.empty() ? nullptr : attachmentDescriptions.data();
 		createInfo.subpassCount				= static_cast<uint32_t>(subpassDescriptions.size());
-		createInfo.pSubpasses				= subpassDescriptions.data();
+		createInfo.pSubpasses				= subpassDescriptions.empty() ? nullptr : subpassDescriptions.data();
 		createInfo.dependencyCount			= static_cast<uint32_t>(subpassDependencies.size());
-		createInfo.pDependencies			= subpassDependencies.data();
+		createInfo.pDependencies			= subpassDependencies.empty() ? nullptr : subpassDependencies.data();
+        createInfo.correlatedViewMaskCount  = 0;
+        createInfo.pCorrelatedViewMasks     = nullptr;
 
 		VkRenderPass handle = VK_NULL_HANDLE;
 
-		VkResult result = vkCreateRenderPass(m_LogicalDevice, &createInfo, nullptr, &handle);
+		VkResult result = vkCreateRenderPass2(m_LogicalDevice, &createInfo, nullptr, &handle);
 
 		assert(result == VK_SUCCESS);
 
 		return handle;
 	}
 
-	VkSubpassDependency GraphicsDevice::CreateSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, std::vector<RenderPassAttachment>& attachments, std::vector<SubPassDescription>& subpassDescriptions) {
+	VkSubpassDependency2 GraphicsDevice::CreateSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, std::vector<RenderPassAttachment>& attachments, std::vector<SubPassDescription>& subpassDescriptions) {
 		
-		VkSubpassDependency subpassDependency = {};
-		subpassDependency.srcSubpass = srcSubpass;
-		subpassDependency.dstSubpass = dstSubpass;
+		VkSubpassDependency2 subpassDependency  = {};
+        subpassDependency.sType                 = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+        subpassDependency.pNext                 = 0;
+		subpassDependency.srcSubpass            = srcSubpass;
+		subpassDependency.dstSubpass            = dstSubpass;
 
 		// Note:	VK_DEPENDENCY_BY_REGION_BIT specifies that dependencies will be framebuffer-local.
 		subpassDependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
