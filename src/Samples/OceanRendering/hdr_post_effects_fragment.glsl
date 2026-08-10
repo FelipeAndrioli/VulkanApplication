@@ -36,16 +36,11 @@ layout (set = 0, binding = 0) readonly buffer SceneGPUData {
     float reflection_strength;
     float image_width;
     float image_height;
+    float fog_density;
+    float fog_height_falloff;
 } scene_gpu_data;
 
 void main() {
-
-    /*
-    // TODO: need to calculate distance based flog with the skybox as well. 
-    float fog_factor = exp(-0.0007 * length(camera_to_frag));
-    fog_factor = clamp(fog_factor, 0.0, 1.0);
-    color = mix(vec3(1.0), color, fog_factor);
-    */
 
     // Move light pos from [-1, 1] to [0, 1]
     vec2 light_pos = scene_gpu_data.sun.xy * 0.5 + 0.5;

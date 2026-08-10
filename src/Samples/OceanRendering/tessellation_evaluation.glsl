@@ -48,6 +48,8 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float reflection_strength;
     float image_width;
     float image_height;
+    float fog_density;
+    float fog_height_falloff;
 } scene_gpu_data;
 
 layout (push_constant) uniform PushConstants {

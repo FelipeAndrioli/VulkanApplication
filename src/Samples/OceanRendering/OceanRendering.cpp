@@ -24,6 +24,13 @@
 //#define QUAD_VERTEX_DISTANCE 5.0f
 //#define QUAD_VERTEX_DISTANCE 1.0f
 
+/*
+    TODO's:
+        - add resolved depth texture to post processing pass to render distance based fog (reduced by height factor).
+        - HDR bloom pass(?).
+        - cinematic tone mapper for HDR bloom pass(?).
+*/
+
 class OceanRendering : public Application::IScene {
 public:
 	OceanRendering() {
@@ -72,7 +79,8 @@ public:
         alignas(4) float ReflectionStrength = 0.660f;
         alignas(4) float ImageWidth;
         alignas(4) float ImageHeight;
-        alignas(4) float FogIntensity = 0.0f;
+        alignas(4) float FogDensity = 0.003f;
+        alignas(4) float FogHeightFalloff = 0.1f;
     } SampleSceneData;
 
 	struct PushConstants {
@@ -102,7 +110,8 @@ private:
 
     Graphics::GPUImage m_OffscreenPassColor = {};
     Graphics::GPUImage m_OffscreenPassResolvedColor = {};
-    Graphics::GPUImage m_OffscreenDepthStencil = {};
+    Graphics::GPUImage m_OffscreenDepth = {};
+    Graphics::GPUImage m_OffscreenResolvedDepth = {};
 
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_OffscreenRenderTarget;
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_HDRPostProcessRenderTarget;
@@ -165,7 +174,8 @@ void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, c
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
     gfxDevice->DestroyImage(m_OffscreenPassColor);
-    gfxDevice->DestroyImage(m_OffscreenDepthStencil);
+    gfxDevice->DestroyImage(m_OffscreenDepth);
+    gfxDevice->DestroyImage(m_OffscreenResolvedDepth);
     gfxDevice->DestroyImage(m_OffscreenPassResolvedColor);
 
     gfxDevice->CreateRenderTarget(
@@ -183,12 +193,20 @@ void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, c
         1);
 
     gfxDevice->CreateDepthOnlyBuffer(
-        m_OffscreenDepthStencil,
+        m_OffscreenDepth,
         { m_ScreenWidth, m_ScreenHeight },
         static_cast<VkSampleCountFlagBits>(m_SampleCount),
         1);
-   
-    gfxDevice->CreateImageSampler(m_OffscreenDepthStencil);
+
+    gfxDevice->CreateImageSampler(m_OffscreenDepth);
+
+    gfxDevice->CreateDepthOnlyBuffer(
+        m_OffscreenResolvedDepth,
+        { m_ScreenWidth, m_ScreenHeight },
+        VK_SAMPLE_COUNT_1_BIT,
+        1);
+     
+    gfxDevice->CreateImageSampler(m_OffscreenResolvedDepth);
 
     m_OffscreenRenderPassDescription.Attachments.clear();
 
@@ -205,9 +223,19 @@ void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, c
 
     m_OffscreenRenderPassDescription.Attachments.push_back(
         Graphics::RenderPassAttachment::Depth(
-            m_OffscreenDepthStencil,
-            gfxDevice->ConvertFormat(m_OffscreenDepthStencil.Description.Format),
+            m_OffscreenDepth,
+            gfxDevice->ConvertFormat(m_OffscreenDepth.Description.Format),
             m_SampleCount,
+            Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
+            Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
+            Graphics::ResourceState::UNDEFINED,
+            Graphics::ResourceState::DEPTH,
+            Graphics::ResourceState::DEPTH_READONLY));
+
+    m_OffscreenRenderPassDescription.Attachments.push_back(
+        Graphics::RenderPassAttachment::ResolveDepth(
+            m_OffscreenResolvedDepth,
+            gfxDevice->ConvertFormat(m_OffscreenResolvedDepth.Description.Format),
             Graphics::RenderPassAttachment::AttachmentLoadOp::CLEAR,
             Graphics::RenderPassAttachment::AttachmentStoreOp::STORE,
             Graphics::ResourceState::UNDEFINED,
@@ -320,7 +348,7 @@ void OceanRendering::StartUp() {
 			{ 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
 			{ 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	// Skybox texture
 			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	// Offscreen pass color result texture
-//			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	// Offscreen pass depth result texture
+			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	// Offscreen pass depth result texture
 		}
 	};
 
@@ -335,7 +363,7 @@ void OceanRendering::StartUp() {
 		gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer[i]);
         gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_SkyboxTexture);
         gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
-//        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_OffscreenDepthStencil);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
 	}
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "../src/Samples/OceanRendering/vertex.glsl");
@@ -439,7 +467,8 @@ void OceanRendering::CleanUp() {
     gfxDevice->DestroyPipeline(m_HDRPostProcessPSO);
 
     gfxDevice->DestroyImage(m_OffscreenPassColor);
-    gfxDevice->DestroyImage(m_OffscreenDepthStencil);
+    gfxDevice->DestroyImage(m_OffscreenDepth);
+    gfxDevice->DestroyImage(m_OffscreenResolvedDepth);
     gfxDevice->DestroyImage(m_OffscreenPassResolvedColor);
 }
 
@@ -552,6 +581,8 @@ void OceanRendering::RenderUI() {
     }
 
     if (ImGui::TreeNode("Pipeline Settings")) {
+        ImGui::DragFloat("Fog Density",                     &SampleSceneData.FogDensity, 0.001f, -10.0f, 10.0f);
+        ImGui::DragFloat("Fog Height Falloff",              &SampleSceneData.FogHeightFalloff, 0.001f, -10.0f, 10.0f);
         ImGui::Checkbox("Render Wireframe",				    &m_RenderWireframe);
         ImGui::Checkbox("Render Skybox",                    &m_RenderSkybox);
         ImGui::Checkbox("Tessellation Enabled",             &m_TessellationEnabled);
@@ -577,7 +608,6 @@ void OceanRendering::RenderUI() {
         ImGui::DragFloat("Water Shininess",             &SampleSceneData.WaterShininess, 1.0f, 0.0f, 3000.0f);
         ImGui::DragFloat("Water Reflection Strength" ,  &SampleSceneData.ReflectionStrength, 0.01f, -10.0f, 10.0f);
         ImGui::DragFloat("Specular Displacement",       &SampleSceneData.SpecularDisplacement, 0.0001f, -2.0f, 2.0f);
-        ImGui::DragFloat("Fog Intensity",               &SampleSceneData.FogIntensity, 0.01f, -10.0f, 10.0f);
 
         ImGui::TreePop();
     }
@@ -595,7 +625,6 @@ void OceanRendering::RenderUI() {
 
     if (ImGui::TreeNode("Wave Settings")) {
         ImGui::DragInt("Wave Count",                                        &SampleSceneData.WaveCount, 1.0f, 0, 200);
-        ImGui::DragInt("Normal Wave Count",                                 &SampleSceneData.NormalWaveCount, 1.0f, 0, 200);
         ImGui::Checkbox("Circular Waves Enabled",                           &m_CircularWavesEnabled);
         ImGui::Checkbox("Random Wave Direction Enabled",                    &m_RandomWaveDirectionEnabled);
         ImGui::Checkbox("Fractal Brownian Motion Domain Warping Enabled",   &m_FractalBrownianMotionDomainWarpingEnabled);
@@ -632,7 +661,7 @@ void OceanRendering::Resize(uint32_t width, uint32_t height) {
    
     for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
         gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
-//        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_OffscreenDepthStencil);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
 	}
 }
 
