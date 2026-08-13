@@ -175,7 +175,6 @@ private:
     glm::vec2 CalculateScreenSpaceLightPos(const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& WorldSpaceLightPos);
 };
 
-
 void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, const uint32_t height) {
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
@@ -187,14 +186,14 @@ void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, c
 
     gfxDevice->CreateRenderTarget(
         m_OffscreenPassColor, 
-        Graphics::Format::R16G16B16A16_FLOAT, 
+        Graphics::Format::R32G32B32A32_FLOAT, 
         m_ScreenWidth, 
         m_ScreenHeight, 
         m_SampleCount);
 
     gfxDevice->CreateRenderTarget(
         m_OffscreenPassResolvedColor, 
-        Graphics::Format::R16G16B16A16_FLOAT, 
+        Graphics::Format::R32G32B32A32_FLOAT, 
         m_ScreenWidth, 
         m_ScreenHeight, 
         1);
