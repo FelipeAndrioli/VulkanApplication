@@ -32,8 +32,6 @@
         - BRDF
         - HDR bloom pass(?).
         - cinematic tone mapper for HDR bloom pass(?).
-    Bug's:
-        - Fog
 */
 
 class OceanRendering : public Application::IScene {
@@ -57,7 +55,7 @@ public:
 		alignas(16) glm::mat4 View = glm::mat4(1.0f);
 		alignas(16) glm::vec4 LightPosition = glm::vec4(1500.0f, 225.0f, 264.0f, 0.8f);         // w is light strength
 		alignas(16) glm::vec4 LightColor = glm::vec4(1.0f, 1.0f, 1.0f, 100.0f);                 // w is light specular factor
-		alignas(16) glm::vec4 Sun = glm::vec4(0.0f, 0.0f, 0.04f, 1.14f);                        // xy -> pos; z -> radius; w -> strength
+		alignas(16) glm::vec4 Sun = glm::vec4(0.0f, 0.0f, 0.07f, 1.14f);                        // xy -> pos; z -> radius; w -> strength
 		alignas(16) glm::vec4 ViewerPosition = glm::vec4(0.0f);
 		alignas(16) glm::vec4 WaterColor = glm::vec4(0.00858454f, 0.105058f, 0.0814091f, 0.94f);// w is ambient strength 
         alignas(16) glm::vec4 LocalSpaceCameraFrustumPlanes[6] = {}; 
@@ -77,9 +75,9 @@ public:
         alignas(4) float SineFBMFrequency = 0.05f;
         alignas(4) float SineFBMAmplitudeMultiplier = 0.780f; // must be smaller than 1.0
         alignas(4) float SineFBMFrequencyMultiplier = 1.315;  // must be greater than 1.0
-        alignas(4) float TessellationMinThreshold = 95.0f;
-        alignas(4) float TessellationMaxThreshold = 305.0f;
-        alignas(4) float TessellationLevelMin = 2.0f;
+        alignas(4) float TessellationMinThreshold = 40.0f;
+        alignas(4) float TessellationMaxThreshold = 460.0f;
+        alignas(4) float TessellationLevelMin = 1.0f;
         alignas(4) float TessellationLevelMax = 32.0f;
         alignas(4) float TessellationStep = 6.0f;
         alignas(4) float ReflectionStrength = 0.660f;
@@ -307,7 +305,7 @@ void OceanRendering::RenderPostEffects(const uint32_t currentFrame, const VkComm
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
-    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 }
 
 glm::vec2 OceanRendering::CalculateScreenSpaceLightPos(const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& WorldSpaceLightPos) {
