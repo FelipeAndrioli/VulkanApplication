@@ -26,9 +26,14 @@
 
 /*
     TODO's:
-        - add resolved depth texture to post processing pass to render distance based fog (reduced by height factor).
+        - Move displacement calculation to compute shader
+        - FFT for non-tiling water
+        - Jacobian for foam 
+        - BRDF
         - HDR bloom pass(?).
         - cinematic tone mapper for HDR bloom pass(?).
+    Bug's:
+        - Fog
 */
 
 class OceanRendering : public Application::IScene {
@@ -55,6 +60,7 @@ public:
 		alignas(16) glm::vec4 Sun = glm::vec4(0.0f, 0.0f, 0.04f, 1.14f);                        // xy -> pos; z -> radius; w -> strength
 		alignas(16) glm::vec4 ViewerPosition = glm::vec4(0.0f);
 		alignas(16) glm::vec4 WaterColor = glm::vec4(0.00858454f, 0.105058f, 0.0814091f, 0.94f);// w is ambient strength 
+        alignas(16) glm::vec4 LocalSpaceCameraFrustumPlanes[6] = {}; 
         alignas(4) int Flags = 0;
         alignas(4) int WaveCount = WAVES_COUNT;
         alignas(4) int NormalWaveCount = WAVES_COUNT;
@@ -144,6 +150,8 @@ private:
 
     glm::vec2 m_AverageWaveDirection = glm::vec2(1.0f, 0.0f);
 
+    glm::mat4 m_WaterModelMatrix = glm::mat4(1.0f);
+
     float m_SkyboxCubeSize = 2000.0f;
     float m_SkyboxRotation = 234.0f;
 
@@ -157,6 +165,7 @@ private:
     bool m_RenderSkybox = true;
     bool m_RandomWaveDirectionEnabled = true;
     bool m_GenerateNormalPerFragment = false;
+    bool m_GPUCullingFreeze = false;
 private:
 
     void CreateDisplaySizeDependentResources(const uint32_t width, const uint32_t height);
@@ -484,6 +493,8 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
 
     glm::vec2 screenSpaceLightPos = CalculateScreenSpaceLightPos(m_Camera.ProjectionMatrix, m_Camera.ViewMatrix, SampleSceneData.LightPosition);
 
+    m_WaterModelMatrix = m_WaterModel->GetModelMatrix();
+
     SampleSceneData.Sun.x = screenSpaceLightPos.x;
     SampleSceneData.Sun.y = screenSpaceLightPos.y;
     SampleSceneData.Projection		= m_Camera.ProjectionMatrix;
@@ -500,6 +511,47 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
                                         | m_DebugRenderWorldSpacePos << 2
                                         | m_CircularWavesEnabled << 1
                                         | m_DebugRenderNormals);
+
+    if (!m_GPUCullingFreeze) {
+        const glm::mat4 viewProj = m_Camera.ProjectionMatrix * m_Camera.ViewMatrix;
+
+        const glm::vec4 r0 = glm::vec4(viewProj[0][0], viewProj[1][0], viewProj[2][0], viewProj[3][0]);
+        const glm::vec4 r1 = glm::vec4(viewProj[0][1], viewProj[1][1], viewProj[2][1], viewProj[3][1]);
+        const glm::vec4 r2 = glm::vec4(viewProj[0][2], viewProj[1][2], viewProj[2][2], viewProj[3][2]);
+        const glm::vec4 r3 = glm::vec4(viewProj[0][3], viewProj[1][3], viewProj[2][3], viewProj[3][3]);
+
+        // Gribb-Hartmann method to create frustum planes from viewProj matrix
+        // is fater than geometric frustum construction since with heavy 
+        // trigonometric functions (e.g., cos, tan).
+        std::array<glm::vec4, 6> cameraFrustumPlanes = {};
+
+        // After the vertex is multiplied by the view matrix, below can be concoluded
+        // -w < x < w
+        // -w < x                       -> x' is the inside halfspace of the left clipping plane
+        // (v . row3) < (v . row0)
+        // 0 < (v . row3) + (v . row0)
+        // 0 < v . (row3 + row0)
+        cameraFrustumPlanes[0] = glm::normalize(r3 + r0);   // left plane
+        cameraFrustumPlanes[1] = glm::normalize(r3 - r0);   // right plane
+        cameraFrustumPlanes[2] = glm::normalize(r3 + r1);   // bottom plane
+        cameraFrustumPlanes[3] = glm::normalize(r3 - r1);   // top plane
+        cameraFrustumPlanes[4] = glm::normalize(r2);        // near plane
+        cameraFrustumPlanes[5] = glm::normalize(r3 - r2);   // far plane
+
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[0] = cameraFrustumPlanes[0] * m_WaterModelMatrix;
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[1] = cameraFrustumPlanes[1] * m_WaterModelMatrix;
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[2] = cameraFrustumPlanes[2] * m_WaterModelMatrix;
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[3] = cameraFrustumPlanes[3] * m_WaterModelMatrix;
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[4] = cameraFrustumPlanes[4] * m_WaterModelMatrix;
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[5] = cameraFrustumPlanes[5] * m_WaterModelMatrix;
+       
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[0] /= glm::length(glm::vec3(SampleSceneData.LocalSpaceCameraFrustumPlanes[0]));
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[1] /= glm::length(glm::vec3(SampleSceneData.LocalSpaceCameraFrustumPlanes[1]));
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[2] /= glm::length(glm::vec3(SampleSceneData.LocalSpaceCameraFrustumPlanes[2]));
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[3] /= glm::length(glm::vec3(SampleSceneData.LocalSpaceCameraFrustumPlanes[3]));
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[4] /= glm::length(glm::vec3(SampleSceneData.LocalSpaceCameraFrustumPlanes[4]));
+        SampleSceneData.LocalSpaceCameraFrustumPlanes[5] /= glm::length(glm::vec3(SampleSceneData.LocalSpaceCameraFrustumPlanes[5]));
+    }
 
 	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], 0, &SampleSceneData, sizeof(SceneData));
 }
@@ -545,7 +597,7 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
     gfxDevice->BindDescriptorSet(m_FrameDescriptorSet[currentFrame], commandBuffer, m_DefaultPSO.pipelineLayout, 0, 1);
 
     FramePushConstants.Color.g = glm::radians(m_SkyboxRotation);
-    FramePushConstants.Model = m_WaterModel->GetModelMatrix();
+    FramePushConstants.Model = m_WaterModelMatrix;
 
     if (m_RenderWireframe) {
         RenderModel(commandBuffer, currentFrame, m_WaterModel, m_WireframePSO, FramePushConstants);
@@ -590,6 +642,7 @@ void OceanRendering::RenderUI() {
         ImGui::Checkbox("Generate normal per fragment",     &m_GenerateNormalPerFragment);
         ImGui::Checkbox("Debug - Render World Space Pos",   &m_DebugRenderWorldSpacePos);
         ImGui::Checkbox("Debug - Render Normals",           &m_DebugRenderNormals);
+        ImGui::Checkbox("GPU Culling Freeze",               &m_GPUCullingFreeze);
 
         if (m_TessellationEnabled) {
             ImGui::DragFloat("Tessellation Min Threshold",  &SampleSceneData.TessellationMinThreshold, 1.0f, 0.0f, 500.0f);

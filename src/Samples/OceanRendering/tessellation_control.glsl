@@ -26,6 +26,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 sun;                   // xy -> pos; z -> radius; w -> strength
 	vec4 viewer_position;
     vec4 water_color;           // w is empty
+    vec4 local_space_camera_frustum_planes[6];
     int flags;
     int wave_count;
     int normal_wave_count;
@@ -82,20 +83,45 @@ void main() {
 
     if (gl_InvocationID == 0) {
 
-        float tessellation_level_inner = 1.0;
-        float tessellation_level_outer = 1.0;
+        bool culled = false;
 
-        if (tessellation_enabled) {
-            vec4 vertex_position = vec4(in_position[gl_InvocationID], 1.0);
-            vertex_position = push_constants.model * vertex_position;
+        vec3 aabb_min_p = min(min(in_position[0], in_position[1]), in_position[2]);
+        vec3 aabb_max_p = max(max(in_position[0], in_position[1]), in_position[2]);
 
-            vec4 p0 = push_constants.model * vec4(in_position[0], 1.0);
-            vec4 p1 = push_constants.model * vec4(in_position[1], 1.0);
-            vec4 p2 = push_constants.model * vec4(in_position[2], 1.0);
+        // add/subtract max height displacement here
+        aabb_min_p -= vec3(5.0);
+        aabb_max_p += vec3(5.0);
 
-            gl_TessLevelOuter[0] = calc_edge_tessellation_level(p1.xyz, p2.xyz);
-            gl_TessLevelOuter[1] = calc_edge_tessellation_level(p2.xyz, p0.xyz);
-            gl_TessLevelOuter[2] = calc_edge_tessellation_level(p0.xyz, p1.xyz);
+        for (int frustum_plane_index = 0; frustum_plane_index < 6; frustum_plane_index++) {
+            vec4 plane = scene_gpu_data.local_space_camera_frustum_planes[frustum_plane_index];
+
+            vec4 p = vec4(
+                (plane.x >= 0.0) ? aabb_max_p.x : aabb_min_p.x,
+                (plane.y >= 0.0) ? aabb_max_p.y : aabb_min_p.y,
+                (plane.z >= 0.0) ? aabb_max_p.z : aabb_min_p.z,
+                1.0
+            );
+
+            if (dot(plane, p) < 0.0) {
+                culled = true;
+                break;
+            }
+        }
+
+        if (culled) {
+            gl_TessLevelOuter[0] = 0.0;
+            gl_TessLevelOuter[1] = 0.0;
+            gl_TessLevelOuter[2] = 0.0;
+
+            gl_TessLevelInner[0] = 0.0;
+        } else if (tessellation_enabled) {
+            vec4 p0_world_space = push_constants.model * vec4(in_position[0], 1.0);
+            vec4 p1_world_space = push_constants.model * vec4(in_position[1], 1.0);
+            vec4 p2_world_space = push_constants.model * vec4(in_position[2], 1.0);
+
+            gl_TessLevelOuter[0] = calc_edge_tessellation_level(p1_world_space.xyz, p2_world_space.xyz);
+            gl_TessLevelOuter[1] = calc_edge_tessellation_level(p2_world_space.xyz, p0_world_space.xyz);
+            gl_TessLevelOuter[2] = calc_edge_tessellation_level(p0_world_space.xyz, p1_world_space.xyz);
 
             gl_TessLevelInner[0] = max(gl_TessLevelOuter[0], max(gl_TessLevelOuter[1], gl_TessLevelOuter[2]));
 

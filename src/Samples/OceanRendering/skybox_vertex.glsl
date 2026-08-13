@@ -10,6 +10,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 sun;                   // xy -> pos; z -> radius; w -> strength
 	vec4 viewer_position;
     vec4 water_color;           // w is empty
+    vec4 local_space_camera_frustum_planes[6];
     int flags;
     int wave_count;
     int normal_wave_count;
