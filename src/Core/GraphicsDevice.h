@@ -26,7 +26,8 @@ namespace Graphics {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
         VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME,
-        VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME
+        VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+        VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME
 	};
 
 	struct QueueFamilyIndices {
@@ -135,10 +136,12 @@ namespace Graphics {
 	};
 
 	struct PipelineStateDescription {
-		const Shader* vertexShader		= nullptr;
-		const Shader* fragmentShader	= nullptr;
-		const Shader* geometryShader	= nullptr;
-		const Shader* computeShader		= nullptr;
+		const Shader* vertexShader		            = nullptr;
+		const Shader* fragmentShader	            = nullptr;
+		const Shader* geometryShader	            = nullptr;
+		const Shader* computeShader		            = nullptr;
+		const Shader* tessellationControlShader     = nullptr;
+		const Shader* tessellationEvaluationShader  = nullptr;
 
 		bool noVertex					= false;
 		bool depthTestEnable			= true;
@@ -161,6 +164,7 @@ namespace Graphics {
 		std::string Name;
 
 		uint32_t attachmentCount = 1;
+        uint32_t tessellationPatchControlPoints = 3;
 
 		union {
 			VkPipelineColorBlendAttachmentState colorBlendingDesc = {};
@@ -293,7 +297,7 @@ namespace Graphics {
 	
 		void CreateRenderPass(RenderPass& renderPass);
 		VkRenderPass CreateRenderPass(RenderPassDescription& renderPassDesc);
-		VkSubpassDependency CreateSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, std::vector<RenderPassAttachment>& attachments, std::vector<SubPassDescription>& subpassDescriptions);
+		VkSubpassDependency2 CreateSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, std::vector<RenderPassAttachment>& attachments, std::vector<SubPassDescription>& subpassDescriptions);
 		void DestroyRenderPass(VkRenderPass& renderPass);
 		void DestroyFramebuffer(std::vector<VkFramebuffer>& framebuffers);
 

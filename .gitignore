@@ -5,3 +5,4 @@ build/
 bin/
 CMakeSettings.json
 out/
+compile_commands.json

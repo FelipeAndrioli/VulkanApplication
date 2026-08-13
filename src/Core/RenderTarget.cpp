@@ -909,10 +909,15 @@ namespace Graphics {
 		renderPassBeginInfo.framebuffer				= m_Framebuffers[gfxDevice->GetSwapChain().ImageIndex];
 		renderPassBeginInfo.renderArea.extent		= GetExtent();
 		renderPassBeginInfo.pNext					= nullptr;
-		renderPassBeginInfo.clearValueCount			= m_ClearValues.size();
-		renderPassBeginInfo.pClearValues			= m_ClearValues.data();
-	
-		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        renderPassBeginInfo.clearValueCount			= 0;
+        renderPassBeginInfo.pClearValues			= nullptr;
+
+        if (!m_ClearValues.empty()) {
+            renderPassBeginInfo.clearValueCount	= m_ClearValues.size();
+            renderPassBeginInfo.pClearValues	= m_ClearValues.data();
+        } 
+
+        vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		VkViewport viewport = GetViewport();
 		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
@@ -949,23 +954,26 @@ namespace Graphics {
 		for (int attachmentIndex = 0; attachmentIndex < renderPassDescription.Attachments.size(); ++attachmentIndex) {
 			RenderPassAttachment& attachment = renderPassDescription.Attachments[attachmentIndex];
 
+            framebufferViews.push_back(attachment.Texture.ImageView);
+
 			switch (attachment.Type) {
-			case RenderPassAttachment::AttachmentType::RENDERTARGET:
+            case RenderPassAttachment::AttachmentType::RENDERTARGET:
+                {
+                    ++m_NumColorAttachments;
+                }
+			case RenderPassAttachment::AttachmentType::RESOLVE:
 				{
-					framebufferViews.push_back(attachment.Texture.ImageView);
-					++m_NumColorAttachments;
-					m_ClearValues.push_back( { .color = { 0.0f, 0.0f, 0.0f, 1.0f } });
+                    if (attachment.LoadOp != Graphics::RenderPassAttachment::AttachmentLoadOp::LOAD) {
+                        m_ClearValues.push_back( { .color = { 0.0f, 0.0f, 0.0f, 1.0f } });
+                    }
 				} break;
 			case RenderPassAttachment::AttachmentType::DEPTHSTENCIL:
 			case RenderPassAttachment::AttachmentType::DEPTH:
+            case RenderPassAttachment::AttachmentType::RESOLVEDEPTH:
 				{
-					framebufferViews.push_back(attachment.Texture.ImageView);
-					m_ClearValues.push_back( { .depthStencil = { 1.0f, 0 } });
-				} break;
-			case RenderPassAttachment::AttachmentType::RESOLVE:
-				{
-					framebufferViews.push_back(attachment.Texture.ImageView);
-					m_ClearValues.push_back( { .color = { 0.0f, 0.0f, 0.0f, 1.0f } });
+                    if (attachment.LoadOp != Graphics::RenderPassAttachment::AttachmentLoadOp::LOAD) {
+                        m_ClearValues.push_back( { .depthStencil = { 1.0f, 0 } });
+                    }
 				} break;
 			default:
 				break;

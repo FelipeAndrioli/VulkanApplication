@@ -190,6 +190,7 @@ namespace Graphics {
 			RENDERTARGET = 0,
 			DEPTHSTENCIL,
             DEPTH,
+            RESOLVEDEPTH,
 			RESOLVE
 		} Type = AttachmentType::RENDERTARGET;
 
@@ -286,6 +287,29 @@ namespace Graphics {
 			return attachment;
         }
 
+        static RenderPassAttachment ResolveDepth(
+            const GPUImage& resource,
+            Format format, 
+            AttachmentLoadOp loadOp     = AttachmentLoadOp::CLEAR,
+            AttachmentStoreOp storeOp   = AttachmentStoreOp::STORE,
+			ResourceState initialLayout = ResourceState::DEPTH,
+			ResourceState subpassLayout = ResourceState::DEPTH,
+			ResourceState finalLayout	= ResourceState::DEPTH
+        ) {
+            RenderPassAttachment attachment;
+			attachment.Type				= AttachmentType::RESOLVEDEPTH;
+			attachment.Texture			= resource;
+			attachment.LoadOp			= loadOp;
+			attachment.StoreOp			= storeOp;
+			attachment.InitialLayout	= initialLayout;
+			attachment.SubpassLayout	= subpassLayout;
+			attachment.FinalLayout		= finalLayout;
+			attachment.ImageFormat		= format;
+			attachment.SampleCount		= 1;
+
+			return attachment;
+        }
+
 		static RenderPassAttachment Resolve(
 			const GPUImage& resource,
 			Format format,
@@ -321,5 +345,6 @@ namespace Graphics {
 		std::vector<uint32_t> InputAttachmentIndices;		// For reading previous outputs (e.g., G-Buffers in deferred)
 		std::vector<uint32_t> PreserveAttachmentIndices;	// If needed for attachments not used but preserved
 		uint32_t DepthStencilAttachmentIndex = VK_ATTACHMENT_UNUSED;
+        uint32_t DepthResolveAttachmentIndex = VK_ATTACHMENT_UNUSED;
 	};
 }

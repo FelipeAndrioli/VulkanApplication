@@ -1,9 +1,19 @@
 #include "./MeshGenerator.h"
 #include "../Mesh.h"
 
+#include "../../Core/Timestep.h"
+
 #include <iostream>
 
+#define INVALID_TRIANGLE_INDEX -1
+
+//#define QUAD_BOTTOM_LEFT_INDEX 0
+//#define QUAD_TOP_LEFT_INDEX 1
+//#define QUAD_TOP_RIGHT_INDEX 2
+//#define QUAD_BOTTOM_RIGHT_INDEX 3
+
 namespace Assets {
+
 	glm::vec3 MeshGenerator::GenerateTangentVector(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 uv1, glm::vec2 uv2, glm::vec2 uv3) {
 		
 		glm::vec3 edge1 = p2 - p1;
@@ -290,16 +300,22 @@ namespace Assets {
 		mesh.Vertices.resize(4);
 
 		mesh.Vertices[0].pos = glm::vec3(pos.x, pos.y, pos.z);
+		mesh.Vertices[1].pos = glm::vec3(pos.x, pos.y, pos.z + size);
+		mesh.Vertices[2].pos = glm::vec3(pos.x + size, pos.y, pos.z + size);
+		mesh.Vertices[3].pos = glm::vec3(pos.x + size, pos.y, pos.z);
+/*
+        mesh.Vertices[0].pos = glm::vec3(pos.x, pos.y, pos.z);
 		mesh.Vertices[1].pos = glm::vec3(pos.x, pos.y + size, pos.z);
 		mesh.Vertices[2].pos = glm::vec3(pos.x + size, pos.y + size, pos.z);
 		mesh.Vertices[3].pos = glm::vec3(pos.x + size, pos.y, pos.z);
-
+*/
 		mesh.Vertices[0].texCoord = glm::vec2(0.0f, 0.0f);
 		mesh.Vertices[1].texCoord = glm::vec2(0.0f, 1.0f);
 		mesh.Vertices[2].texCoord = glm::vec2(1.0f, 1.0f);
 		mesh.Vertices[3].texCoord = glm::vec2(1.0f, 0.0f);
 
-		glm::vec3 normal = glm::vec3(0.0f, 0.0f, -1.0f);
+//		glm::vec3 normal = glm::vec3(0.0f, 0.0f, -1.0f);
+		glm::vec3 normal = glm::vec3(0.0f, 1.0f, 0.0f);
 
 		mesh.Vertices[0].normal = normal;
 		mesh.Vertices[1].normal = normal;
@@ -512,4 +528,113 @@ namespace Assets {
 
 		return icosphereMesh;
 	}
+
+    size_t BuildVertexKey(const glm::vec3 position, const glm::vec3 normal) { 
+        std::hash<glm::vec3> hasher;
+
+        return hasher(position) ^ hasher(normal);
+    }
+
+    std::vector<Mesh> MeshGenerator::GenerateTriangleIndexedMultiQuadMesh(int verticalVerticesCount, int horizontalVerticesCount, glm::vec3 position, float size) {
+        std::cout << "Generating triangle indexed multi quad mesh started!\n";
+
+        const uint32_t QUAD_BOTTOM_LEFT_INDEX = 0;
+        const uint32_t QUAD_TOP_LEFT_INDEX = 1;
+        const uint32_t QUAD_TOP_RIGHT_INDEX = 2;
+        const uint32_t QUAD_BOTTOM_RIGHT_INDEX = 3;
+
+        Timestep startTime = glfwGetTime();
+
+        Assets::Mesh mesh = {};
+
+        // TODO: generate tex coords.
+        int verticalVerticesToGenerate = verticalVerticesCount < 2 ? 2 : verticalVerticesCount;
+        int horizontalVerticesToGenerate = horizontalVerticesCount < 2 ? 2 : horizontalVerticesCount;
+
+        int verticalQuadsToGenerate = verticalVerticesToGenerate - 1;
+        int horizontalQuadsToGenerate = horizontalVerticesToGenerate - 1;
+
+        glm::vec3 quadPosition = position;
+
+        std::unordered_map<size_t, size_t> existingVertices = {};
+
+        for (size_t verticalQuadIndex = 0; verticalQuadIndex < verticalQuadsToGenerate; ++verticalQuadIndex) {
+            for (size_t horizontalQuadIndex = 0; horizontalQuadIndex < horizontalQuadsToGenerate; ++horizontalQuadIndex) {
+
+                Assets::Vertex quadVertices[4] = {};
+
+                quadVertices[QUAD_BOTTOM_LEFT_INDEX].pos = glm::vec3(quadPosition.x, quadPosition.y, quadPosition.z);
+                quadVertices[QUAD_BOTTOM_LEFT_INDEX].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+
+                quadVertices[QUAD_TOP_LEFT_INDEX].pos = glm::vec3(quadPosition.x, quadPosition.y, quadPosition.z + size);
+                quadVertices[QUAD_TOP_LEFT_INDEX].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+
+                quadVertices[QUAD_TOP_RIGHT_INDEX].pos = glm::vec3(quadPosition.x + size, quadPosition.y, quadPosition.z + size);
+                quadVertices[QUAD_TOP_RIGHT_INDEX].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+
+                quadVertices[QUAD_BOTTOM_RIGHT_INDEX].pos = glm::vec3(quadPosition.x + size, quadPosition.y, quadPosition.z);
+                quadVertices[QUAD_BOTTOM_RIGHT_INDEX].normal = glm::vec3(0.0f, 1.0f, 0.0f);
+
+                size_t verticesKey[4] = {};
+                verticesKey[QUAD_BOTTOM_LEFT_INDEX] = BuildVertexKey(quadVertices[QUAD_BOTTOM_LEFT_INDEX].pos, quadVertices[QUAD_BOTTOM_LEFT_INDEX].normal);
+                verticesKey[QUAD_TOP_LEFT_INDEX] = BuildVertexKey(quadVertices[QUAD_TOP_LEFT_INDEX].pos, quadVertices[QUAD_TOP_LEFT_INDEX].normal);
+                verticesKey[QUAD_TOP_RIGHT_INDEX] = BuildVertexKey(quadVertices[QUAD_TOP_RIGHT_INDEX].pos, quadVertices[QUAD_TOP_RIGHT_INDEX].normal);
+                verticesKey[QUAD_BOTTOM_RIGHT_INDEX] = BuildVertexKey(quadVertices[QUAD_BOTTOM_RIGHT_INDEX].pos, quadVertices[QUAD_BOTTOM_RIGHT_INDEX].normal);
+
+                int quadIndices[4] = {};
+
+                quadIndices[QUAD_BOTTOM_LEFT_INDEX] = existingVertices.find(verticesKey[QUAD_BOTTOM_LEFT_INDEX]) == existingVertices.end() ? INVALID_TRIANGLE_INDEX : existingVertices[verticesKey[QUAD_BOTTOM_LEFT_INDEX]];
+                quadIndices[QUAD_BOTTOM_RIGHT_INDEX] = existingVertices.find(verticesKey[QUAD_BOTTOM_RIGHT_INDEX]) == existingVertices.end() ? INVALID_TRIANGLE_INDEX : existingVertices[verticesKey[QUAD_BOTTOM_RIGHT_INDEX]];
+                quadIndices[QUAD_TOP_LEFT_INDEX] = existingVertices.find(verticesKey[QUAD_TOP_LEFT_INDEX]) == existingVertices.end() ? INVALID_TRIANGLE_INDEX : existingVertices[verticesKey[QUAD_TOP_LEFT_INDEX]];
+                quadIndices[QUAD_TOP_RIGHT_INDEX] = existingVertices.find(verticesKey[QUAD_TOP_RIGHT_INDEX]) == existingVertices.end() ? INVALID_TRIANGLE_INDEX : existingVertices[verticesKey[QUAD_TOP_RIGHT_INDEX]];
+
+                if (quadIndices[QUAD_BOTTOM_LEFT_INDEX] == INVALID_TRIANGLE_INDEX) {
+                    quadIndices[QUAD_BOTTOM_LEFT_INDEX] = mesh.Vertices.size();
+                    existingVertices[verticesKey[QUAD_BOTTOM_LEFT_INDEX]] = quadIndices[QUAD_BOTTOM_LEFT_INDEX];
+                    mesh.Vertices.push_back(quadVertices[QUAD_BOTTOM_LEFT_INDEX]);
+                }
+
+                if (quadIndices[QUAD_TOP_LEFT_INDEX] == INVALID_TRIANGLE_INDEX) {
+                    quadIndices[QUAD_TOP_LEFT_INDEX] = mesh.Vertices.size();
+                    existingVertices[verticesKey[QUAD_TOP_LEFT_INDEX]] = quadIndices[QUAD_TOP_LEFT_INDEX];
+                    mesh.Vertices.push_back(quadVertices[QUAD_TOP_LEFT_INDEX]);
+                }
+
+                if (quadIndices[QUAD_TOP_RIGHT_INDEX] == INVALID_TRIANGLE_INDEX) {
+                    quadIndices[QUAD_TOP_RIGHT_INDEX] = mesh.Vertices.size();
+                    existingVertices[verticesKey[QUAD_TOP_RIGHT_INDEX]] = quadIndices[QUAD_TOP_RIGHT_INDEX];
+                    mesh.Vertices.push_back(quadVertices[QUAD_TOP_RIGHT_INDEX]);
+                }
+
+                if (quadIndices[QUAD_BOTTOM_RIGHT_INDEX] == INVALID_TRIANGLE_INDEX) {
+                    quadIndices[QUAD_BOTTOM_RIGHT_INDEX] = mesh.Vertices.size();
+                    existingVertices[verticesKey[QUAD_BOTTOM_RIGHT_INDEX]] = quadIndices[QUAD_BOTTOM_RIGHT_INDEX];
+                    mesh.Vertices.push_back(quadVertices[QUAD_BOTTOM_RIGHT_INDEX]);
+                }
+
+                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_LEFT_INDEX]);
+                mesh.Indices.push_back(quadIndices[QUAD_TOP_LEFT_INDEX]);
+                mesh.Indices.push_back(quadIndices[QUAD_TOP_RIGHT_INDEX]);
+                // Note: When generating indexed quads one of the indices must be duplicated.
+//                mesh.Indices.push_back(quadIndices[QUAD_TOP_RIGHT_INDEX]);
+
+                mesh.Indices.push_back(quadIndices[QUAD_TOP_RIGHT_INDEX]);
+                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_RIGHT_INDEX]);
+                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_LEFT_INDEX]);
+//                mesh.Indices.push_back(quadIndices[QUAD_BOTTOM_LEFT_INDEX]);
+
+                quadPosition.x += size;
+            }
+
+            quadPosition.x = position.x;
+            quadPosition.z += size;
+        }
+
+        std::vector<Assets::Mesh> result = { mesh };
+        Timestep finishTime = glfwGetTime();
+
+        std::cout << "Generating triangle indexed multi quad mesh finished in " << finishTime.GetSeconds() - startTime.GetSeconds() << " seconds\n";
+
+        return result;
+    }
 }

@@ -376,6 +376,20 @@ std::shared_ptr<Assets::Model> ModelLoader::LoadModel(const std::string& path) {
 	return model;
 }
 
+std::shared_ptr<Assets::Model> ModelLoader::LoadMultiQuadModel(int verticalQuadsCount, int horizontalQuadsCount, glm::vec3 position, float size) {
+    static int multiQuadIdx = 0;
+
+    std::shared_ptr<Assets::Model> model = std::make_shared<Assets::Model>();
+    
+    model->Meshes = Assets::MeshGenerator::GenerateTriangleIndexedMultiQuadMesh(verticalQuadsCount, horizontalQuadsCount, position, size);
+    model->Name = "MultiQuad_" + std::to_string(multiQuadIdx++);
+    model->Transformations.translation = position;
+
+    CompileMesh(*model.get());
+
+    return model;
+}
+
 std::shared_ptr<Assets::Model> ModelLoader::LoadModel(ModelType modelType, glm::vec3 position, float size) {
 	if (modelType == ModelType::ICOSPHERE) {
 		return ModelLoader::LoadSphere(modelType, 4);

@@ -1,0 +1,283 @@
+#version 450
+
+#define MAX_WAVES 32
+
+layout (location = 0) in vec3 in_frag_color;
+layout (location = 1) in vec3 in_frag_normal;
+layout (location = 2) in vec3 in_frag_world_space_pos;
+layout (location = 3) in vec3 in_frag_model_space_pos;
+layout (location = 4) in vec3 in_frag_original_model_space_pos;
+
+layout (location = 0) out vec4 pixel_color;
+
+layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
+	mat4 projection;
+	mat4 view;
+	vec4 light_position;        // w is light strength
+	vec4 light_color;           // w is light specular
+    vec4 sun;                   // xy -> pos; z -> radius; w -> strength
+	vec4 viewer_position;
+    vec4 water_color;           // w is ambient color strength
+    vec4 local_space_camera_frustum_planes[6];
+    int flags;
+    int wave_count;
+    int normal_wave_count;
+    float specular_displacement;
+    float water_shininess;
+    float temporal_phase_exponent;
+    float height_multiplier;
+    float wind_angle;
+    float wind_speed;
+    float drag_mult;
+    float time;
+    float water_depth;
+    float sine_fbm_amplitude;
+    float sine_fbm_frequency;
+    float sine_fbm_amplitude_multiplier;
+    float sine_fbm_frequency_multiplier;
+    float tessellation_min_threshold;
+    float tessellation_max_threshold;
+    float tessellation_level_min;
+    float tessellation_level_max;
+    float tessellation_step;
+    float reflection_strength;
+    float image_width;
+    float image_height;
+    float fog_density;
+    float fog_height_falloff;
+} scene_gpu_data;
+
+layout (set = 0, binding = 1) uniform samplerCube cube_texture;
+
+layout (push_constant) uniform PushConstants {
+	mat4 model;
+    vec4 color;
+} push_constants;
+
+struct wave_function_result {
+    vec3 position;
+    vec3 normal;
+    float displacement_sum;
+    float derivative_sum_x;
+    float derivative_sum_z;
+};
+
+#ifdef UNUSED
+wave_function_result sine_wave(vec4 pos, float time, bool circular_waves_enabled) {
+    float displacement_sum = 0.0;
+    float derivative_sum_x = 0.0;
+    float derivative_sum_z = 0.0;
+
+    for (int wave_index = 0; wave_index < scene_gpu_data.wave_count; ++wave_index) {
+        wave_data wave = wave_gpu_data.wave[wave_index];
+
+        vec2 dir = vec2(0.0);
+
+        float amplitude = wave.amplitude;
+        float frequency = wave.direction.y;
+        float speed = wave.direction.w;
+        float steepness = wave.steepness;
+
+        float f = 0.0;
+
+        if (circular_waves_enabled) {
+            vec2 d = pos.xz - wave.circular_wave.xy;
+            float dist = length(d);
+
+            // "manual" normalization to avoid division very close to 0.
+            dir = (dist > 0.0001) ? d / dist : vec2(1.0, 0.0);
+            f = dist * frequency + (time * speed) * -1;
+        } else {
+            dir = normalize(wave.direction.xz);
+            f = dot(dir, vec2(pos.xz)) * frequency + (time * speed);
+        }
+
+        float sine_base = (sin(f) + 1.0) / 2.0;
+
+        // Check on sine base greater than zero to skip a pow of 0.
+        float power_term = (sine_base > 0.0) ? pow(sine_base, steepness) : 0.0;
+        float normal_power_term = (sine_base > 0.0) ? pow(sine_base, steepness - 1.0) : 0.0;
+
+        // The book height function compresses the sine wave range by / 2, its
+        // rate of change is halved. Adding the 0.5 factor synchronizes the
+        // derivative with the actual height change of the vertices.
+        float derivative = frequency * amplitude * steepness * power_term * 0.5 * cos(f);
+        float normal_derivative = frequency * amplitude * steepness * normal_power_term * 0.5 * cos(f);
+
+        float derivative_x = dir.x * normal_derivative;
+        float derivative_z = dir.y * normal_derivative;
+
+        displacement_sum += 2 * amplitude * power_term;
+        derivative_sum_x += derivative_x;
+        derivative_sum_z += derivative_z;
+    }
+
+    vec3 binormal = normalize(vec3(1.0, derivative_sum_x, 0.0));
+    vec3 tangent = normalize(vec3(0.0, derivative_sum_z, 1.0));
+
+    // Note: Cross product shortcut
+    vec3 normal = normalize(vec3(-derivative_sum_x, 1.0, -derivative_sum_z));
+//    vec3 normal = normalize(cross(tangent, binormal));
+
+    wave_function_result result;
+
+    result.normal = normal;
+    result.displacement_sum = displacement_sum;
+    result.derivative_sum_x = derivative_sum_x;
+    result.derivative_sum_z = derivative_sum_z;
+
+    return result;
+}
+
+wave_function_result gerstner_wave(vec4 pos, float time, bool circular_waves_enabled) {
+
+    float pos_sum_x = 0.0;
+    float pos_sum_y = 0.0;
+    float pos_sum_z = 0.0;
+
+    vec3 normal = vec3(0.0);
+    vec3 tangent = vec3(0.0);
+    vec3 binormal = vec3(0.0);
+
+    for (int wave_index = 0; wave_index < scene_gpu_data.wave_count; ++wave_index) {
+        wave_data wave = wave_gpu_data.wave[wave_index];
+
+        float amplitude = wave.amplitude;
+        float frequency = wave.direction.y;
+        float speed = wave.direction.w;
+        float steepness = wave.steepness / (frequency * amplitude * scene_gpu_data.wave_count);
+
+        vec2 dir = vec2(0.0);
+
+        float f = 0.0;
+
+        if (circular_waves_enabled) {
+            vec2 d = pos.xz - wave.circular_wave.xy;
+            float dist = length(d);
+
+            // "manual" normalization to avoid division very close to 0.
+            dir = (dist > 0.0001) ? d / dist : vec2(1.0, 0.0);
+            f = frequency * dist + (time * speed);
+        } else {
+            dir = normalize(wave.direction.xz);
+            f = dot(dir, vec2(pos.x, pos.z)) * frequency + (time * speed);
+        }
+
+        float pos_x = steepness * amplitude * dir.x * cos(f);
+        float pos_z = steepness * amplitude * dir.y * cos(f);
+        float pos_y = amplitude * sin(f);
+   
+        pos_sum_x += pos_x;
+        pos_sum_y += pos_y;
+        pos_sum_z += pos_z;
+
+        tangent.x += steepness * dir.x * dir.x * frequency * amplitude * sin(f);
+        tangent.y += dir.x * frequency * amplitude * cos(f);
+        tangent.z += steepness * dir.x * dir.y * frequency * amplitude * sin(f);
+
+        binormal.x += steepness * dir.x * dir.y * frequency * amplitude * sin(f);
+        binormal.y += dir.y * frequency * amplitude * cos(f);
+        binormal.z += steepness * dir.y * dir.y * frequency * amplitude * sin(f);
+
+        /*
+        vec3 current_wave_normal = vec3(0.0);
+        current_wave_normal.x = dir.x * frequency * amplitude * cos(f);
+        current_wave_normal.y = steepness * frequency * amplitude * sin(f);
+        current_wave_normal.z = dir.y * frequency * amplitude * cos(f);
+
+//        normal += vec3(current_wave_normal.x * -1.0, 1.0 - current_wave_normal.y, current_wave_normal.z * -1.0);
+        normal += vec3(current_wave_normal.x, current_wave_normal.y, current_wave_normal.z);
+        */
+    }
+
+    /*
+    normal.x = -normal.x;
+    normal.y = 1.0 - normal.y;
+    normal.z = -normal.z;
+    */
+
+    tangent.x = 1.0 - tangent.x;
+    tangent.z = -tangent.z;
+
+    binormal.x = -binormal.x;
+    binormal.z = 1.0 - binormal.z;
+
+    normal = normalize(cross(binormal, tangent));
+
+    wave_function_result result;
+    result.position = vec3(pos.x + pos_sum_x, pos_sum_y, pos.z + pos_sum_z);
+    result.normal = normal; 
+
+    return result;
+}
+#endif
+
+void main() {
+
+    bool debug_render_normals                       = bool(scene_gpu_data.flags & 1);
+    bool circular_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 1));
+    bool debug_render_world_space_pos               = bool(scene_gpu_data.flags & (1 << 2));
+    bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
+    bool UNUSED_tessellation_enabled                = bool(scene_gpu_data.flags & (1 << 4));
+    bool reflection_enabled                         = bool(scene_gpu_data.flags & (1 << 5));
+    bool wave_random_direction_enabled              = bool(scene_gpu_data.flags & (1 << 6));
+    bool generate_normal_per_fragment               = bool(scene_gpu_data.flags & (1 << 7));
+
+    float time = scene_gpu_data.time;
+    vec4 pos = vec4(in_frag_model_space_pos, 1.0);
+
+    vec3 normal = in_frag_normal;
+
+    if (debug_render_normals) {
+        pixel_color = vec4(normal * 5.0, 1.0);
+    } else {
+
+        float light_strength = scene_gpu_data.light_position.a;
+        float light_specular_factor = scene_gpu_data.light_color.a;
+
+        vec3 light_dir = normalize(scene_gpu_data.light_position.xyz - in_frag_world_space_pos);
+        vec3 water_color = scene_gpu_data.water_color.rgb;
+
+        float ambient_color_strength = scene_gpu_data.water_color.a;
+
+        vec3 ambient = water_color * ambient_color_strength;
+
+        float diff = max(dot(light_dir, normal), 0.0);
+        vec3 diffuse = diff * water_color;
+
+        vec3 camera_to_frag = scene_gpu_data.viewer_position.xyz - in_frag_world_space_pos;
+        vec3 view_dir = normalize(camera_to_frag);
+
+        vec3 halfway_dir = normalize(light_dir + view_dir);
+        
+        float spec = pow(max(dot(normal, halfway_dir), 0.0), scene_gpu_data.water_shininess);
+        vec3 specular = (spec * scene_gpu_data.light_color.rgb) * light_specular_factor;
+
+        // Note: Schlick's Fresnel approximation from wikipedia.
+        // According to Schlick's model, the specular reflection coefficient R can be approximated by:
+        // R(theta) = F0 + (1 - F0) * pow(1.0 - cos(theta), 5.0);
+        float F0 = 0.02; // typical for water
+        float fresnel = F0 + (1.0 - F0) * pow(1.0 - max(dot(normal, view_dir), 0.0), 5.0);
+
+        // Note: Reflected view direction rotation to align with skybox rotation.
+        mat3 rotation = mat3(cos(push_constants.color.g), 0.0, sin(push_constants.color.g),
+                            0.0, 1.0, 0.0,
+                            -sin(push_constants.color.g), 0.0, cos(push_constants.color.g));
+
+        vec3 reflected_view_dir = (rotation * reflect(-view_dir, normal));
+        vec3 reflection = reflection_enabled 
+            ? texture(cube_texture, reflected_view_dir).rgb * scene_gpu_data.reflection_strength * fresnel  
+            : vec3(0.0);
+   
+        vec3 color = ambient + (diffuse + specular * fresnel) * light_strength + reflection;
+
+
+        color = pow(color, vec3(1.0 / 2.2));
+
+        if (debug_render_world_space_pos) {
+            pixel_color = vec4(in_frag_world_space_pos, 1.0);
+        } else {
+            pixel_color = vec4(color, 1.0);
+        }
+    }
+}
