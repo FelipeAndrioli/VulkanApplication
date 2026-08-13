@@ -2,6 +2,9 @@
 
 ## Samples Screenshots
 
+### Water Surface Rendering
+![Water Surface Rendering](screenshots/water_surface_0.png)
+
 ### Directional Light Shadow Map
 ![Directional Light Shadow Map](screenshots/directional_light_shadow_map_1.png)
 
