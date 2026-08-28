@@ -182,6 +182,7 @@ namespace Graphics {
 		std::vector<VkImageViewType> imageViewTypes;
 
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
+        VkComputePipelineCreateInfo computePipelineInfo = {};
 		VkPipelineMultisampleStateCreateInfo multisampling = {};
 		VkPipelineShaderStageCreateInfo shaderStages = {};
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
@@ -255,6 +256,7 @@ namespace Graphics {
 		void TransitionImageLayout(GPUImage& image, Graphics::ResourceState currentLayout, Graphics::ResourceState newLayout);
 		void TransitionImageLayout(GPUImage& image, VkImageLayout oldLayout, VkImageLayout newLayout);
 		void TransitionImageLayout(GPUImage& image, VkImageLayout newLayout);
+		void TransitionImageLayout(const VkCommandBuffer& commandBuffer, GPUImage& image, VkImageLayout newLayout);
 		void TransitionImageLayout(const VkImage& image, const VkImageLayout oldLayout, const VkImageLayout newLayout, const VkImageSubresourceRange subresourceRange, const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask, const VkPipelineStageFlags srcPipelineStage, const VkPipelineStageFlags dstPipelineStage);
 		void TransitionCubeImageLayout(GPUImage& cubeImage, VkImageLayout newLayout);
 		void GenerateMipMaps(GPUImage& image);
@@ -318,7 +320,7 @@ namespace Graphics {
 		void CreateDescriptorSet(std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
 		void CreateDescriptorSet(VkDescriptorPool& descriptorPool, VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorSet& descriptorSet);
-		void BindDescriptorSet(VkDescriptorSet& descriptorSet, const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout, uint32_t set, uint32_t setCount);
+		void BindDescriptorSet(VkDescriptorSet& descriptorSet, const VkCommandBuffer& commandBuffer, const VkPipelineLayout& pipelineLayout, uint32_t set, uint32_t setCount, bool bindForGraphics = true);
 
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet);
 		void WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUBuffer& buffer);
@@ -341,6 +343,7 @@ namespace Graphics {
 		void LoadShader(VkShaderStageFlagBits shaderStage, Shader& shader, const std::string filename);
 		void DestroyShader(Shader& shader);
 		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget);
+		void CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget* renderTarget);
 		void DestroyPipelineLayout(VkPipelineLayout& pipelineLayout);
 		void DestroyPipeline(PipelineState& pso);
 
@@ -412,6 +415,9 @@ namespace Graphics {
 		VkFormat FindDepthOnlyFormat();
 		void CreateSwapChainInternal(VkPhysicalDevice& physicalDevice, VkDevice& logicalDevice, VkSurfaceKHR& surface, SwapChain& swapChain, VkExtent2D currentExtent);
 		void CreateImage(GPUImage& image);
+
+        void CreateGraphicsPipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget);
+        void CreateComputePipelineState(PipelineStateDescription& desc, PipelineState& pso);
 	};
 
 	inline GraphicsDevice*& GetDevice() {

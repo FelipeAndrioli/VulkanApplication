@@ -1186,8 +1186,18 @@ namespace Graphics {
 		TransitionImageLayout(image, newLayout);
 	}
 
-	void GraphicsDevice::TransitionImageLayout(GPUImage& image, VkImageLayout newLayout) {
-		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(m_CommandPool);
+    // Note:    Single time command buffer should be used when transitioning 
+    //          image layouts during start up time, in-frame transitions should
+    //          use the frame command buffer.
+    void GraphicsDevice::TransitionImageLayout(GPUImage& image, VkImageLayout newLayout) {
+        VkCommandBuffer singleTimeCommandBuffer = BeginSingleTimeCommandBuffer(m_CommandPool);
+        
+        TransitionImageLayout(singleTimeCommandBuffer, image, newLayout);
+
+        EndSingleTimeCommandBuffer(singleTimeCommandBuffer, m_CommandPool);
+    }
+
+	void GraphicsDevice::TransitionImageLayout(const VkCommandBuffer& commandBuffer, GPUImage& image, VkImageLayout newLayout) {
 
 		VkImageMemoryBarrier barrier			= {};
 		barrier.sType							= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1250,6 +1260,11 @@ namespace Graphics {
                 barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
                 sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             } break;
+            case VK_IMAGE_LAYOUT_GENERAL:
+            {
+                barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                sourceStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+            } break;
             default:
             {
                 throw std::invalid_argument("Unsupported layout transition!");
@@ -1289,6 +1304,11 @@ namespace Graphics {
                 barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
                 dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
             } break;
+            case VK_IMAGE_LAYOUT_GENERAL:
+            {
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                dstStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+            } break;
             case VK_IMAGE_LAYOUT_UNDEFINED:
             {
                 throw std::invalid_argument("Invalid layout transition!");
@@ -1300,8 +1320,6 @@ namespace Graphics {
         }
 
         vkCmdPipelineBarrier(commandBuffer, sourceStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-		EndSingleTimeCommandBuffer(commandBuffer, m_CommandPool);
 
 		image.ImageLayout = newLayout;
     }
@@ -2394,7 +2412,7 @@ namespace Graphics {
 	}
 
 	void GraphicsDevice::CreateDescriptorPool() {
-		VkDescriptorPoolSize poolSizes[3] = {};
+		VkDescriptorPoolSize poolSizes[4] = {};
 		uint32_t count = 0;
 
 		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -2407,6 +2425,10 @@ namespace Graphics {
 
 		poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		poolSizes[2].descriptorCount = m_PoolSize;
+		count++;
+
+        poolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        poolSizes[3].descriptorCount = m_PoolSize;
 		count++;
 
 		VkDescriptorPoolCreateInfo poolCreateInfo = {};
@@ -2514,9 +2536,18 @@ namespace Graphics {
 		const VkCommandBuffer& commandBuffer, 
 		const VkPipelineLayout& pipelineLayout,
 		uint32_t set,
-		uint32_t setCount
-	) {
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, set, setCount, &descriptorSet, 0, nullptr);
+		uint32_t setCount,
+        bool bindForGraphics) {
+
+		vkCmdBindDescriptorSets(
+            commandBuffer, 
+            bindForGraphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE, 
+            pipelineLayout, 
+            set, 
+            setCount, 
+            &descriptorSet, 
+            0, 
+            nullptr);
 	}
 
 	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet) {
@@ -2626,13 +2657,18 @@ namespace Graphics {
 	void GraphicsDevice::WriteDescriptor(const VkDescriptorSetLayoutBinding binding, const VkDescriptorSet& descriptorSet, const GPUImage& image) {
 		VkDescriptorImageInfo newImageInfo = {};
 
-		if (image.Description.AspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT || image.Description.AspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+		if (image.Description.AspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT || image.Description.AspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
 			newImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-		else
-			newImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		newImageInfo.imageView				= image.ImageView;
-		newImageInfo.sampler				= image.ImageSampler;
+        // Below line is a temporary solution.
+        } else if (image.ImageLayout != VK_IMAGE_LAYOUT_GENERAL) {
+			newImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        } else {
+            newImageInfo.imageLayout = image.ImageLayout;
+        }
+
+		newImageInfo.imageView				    = image.ImageView;
+		newImageInfo.sampler				    = image.ImageSampler;
 
 		VkWriteDescriptorSet descriptorWrite	= {};
 		descriptorWrite.sType					= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -2901,9 +2937,8 @@ namespace Graphics {
 		shader.shaderStageInfo.module = VK_NULL_HANDLE;
 	}
 
-	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget) {
 
-		std::cout << "PSO Name: " << desc.Name << '\n';
+    void GraphicsDevice::CreateGraphicsPipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget) {
 
 		pso.inputAssembly.sType						= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		pso.inputAssembly.topology					= desc.topology;
@@ -2939,7 +2974,6 @@ namespace Graphics {
 		pso.multisampling.pSampleMask				= nullptr;
 		pso.multisampling.alphaToCoverageEnable		= desc.colorBlendingEnable;
 		pso.multisampling.alphaToOneEnable			= desc.colorBlendingEnable;
-
 	
 		pso.colorBlending.sType				= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 		pso.colorBlending.logicOpEnable		= VK_FALSE;
@@ -3007,11 +3041,7 @@ namespace Graphics {
 		if (desc.fragmentShader) {
 			shaderStages.push_back(desc.fragmentShader->shaderStageInfo);
         }
-
-        if (desc.computeShader) {
-			shaderStages.push_back(desc.computeShader->shaderStageInfo);
-        }
-		
+	
         if (desc.geometryShader) {
 			shaderStages.push_back(desc.geometryShader->shaderStageInfo);
         }
@@ -3071,7 +3101,6 @@ namespace Graphics {
 		VkResult result = vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &pso.pipelineLayout);
 		assert(result == VK_SUCCESS);
 
-
 		pso.pipelineInfo.sType					= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pso.pipelineInfo.stageCount				= static_cast<uint32_t>(shaderStages.size());
 		pso.pipelineInfo.pStages				= shaderStages.data();
@@ -3116,7 +3145,68 @@ namespace Graphics {
 		assert(result == VK_SUCCESS);
 
 		pso.description = desc;
-	}
+
+    }
+
+    void GraphicsDevice::CreateComputePipelineState(PipelineStateDescription& desc, PipelineState& pso) {
+
+        VkPipelineShaderStageCreateInfo shaderStage = {};
+        shaderStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStage.stage               = VK_SHADER_STAGE_COMPUTE_BIT;
+        shaderStage.pName               = "main";
+        shaderStage.module              = desc.computeShader->shaderModule;
+        shaderStage.pNext               = 0;
+        shaderStage.pSpecializationInfo = 0;
+   
+        for (auto inputLayout : desc.psoInputLayout) {
+            VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+
+            CreateDescriptorSetLayout(layout, inputLayout.bindings);
+
+			pso.layoutBindings.insert(pso.layoutBindings.end(), inputLayout.bindings.begin(), inputLayout.bindings.end());
+			pso.pushConstants.insert(pso.pushConstants.end(), inputLayout.pushConstants.begin(), inputLayout.pushConstants.end());
+
+			pso.descriptorSetLayout.push_back(layout);
+        }
+
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo   = {};
+		pipelineLayoutInfo.sType					= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount			= static_cast<uint32_t>(pso.descriptorSetLayout.size());
+		pipelineLayoutInfo.pSetLayouts				= pso.descriptorSetLayout.data();
+		pipelineLayoutInfo.pushConstantRangeCount	= static_cast<uint32_t>(pso.pushConstants.size());
+		pipelineLayoutInfo.pPushConstantRanges		= pso.pushConstants.data();
+
+		VkResult result = vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutInfo, nullptr, &pso.pipelineLayout);
+		assert(result == VK_SUCCESS);
+
+		pso.computePipelineInfo.sType               = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        pso.computePipelineInfo.layout              = pso.pipelineLayout;
+        pso.computePipelineInfo.basePipelineHandle  = pso.pipeline;
+        pso.computePipelineInfo.stage               = shaderStage;
+
+        result = vkCreateComputePipelines(m_LogicalDevice, 0, 1, &pso.computePipelineInfo, 0, &pso.pipeline);
+        assert(result == VK_SUCCESS);
+
+        pso.description = desc;
+    }
+
+	void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget& renderTarget) {
+		std::cout << "PSO Name: " << desc.Name << '\n';
+
+        return CreateGraphicsPipelineState(desc, pso, renderTarget);
+    }
+
+    void GraphicsDevice::CreatePipelineState(PipelineStateDescription& desc, PipelineState& pso, const IRenderTarget* renderTarget) {
+		std::cout << "PSO Name: " << desc.Name << '\n';
+
+        if (desc.computeShader) {
+            return CreateComputePipelineState(desc, pso);
+        } else {
+            assert(renderTarget);
+            return CreateGraphicsPipelineState(desc, pso, *renderTarget);
+        }
+
+    }
 
 	void GraphicsDevice::DestroyPipelineLayout(VkPipelineLayout& pipelineLayout) {
 		if (pipelineLayout == VK_NULL_HANDLE)
@@ -3198,6 +3288,8 @@ namespace Graphics {
 			return Format::R8G8B8A8_SNORM;
 		case VK_FORMAT_R8G8B8A8_SINT:
 			return Format::R8G8B8A8_SINT;
+        case VK_FORMAT_R16_SFLOAT:
+            return Format::R16_FLOAT;
 //		case VK_FORMAT_R8G8B8A8_SRGB:
 //			return Format::R
 		case VK_FORMAT_D32_SFLOAT_S8_UINT:
