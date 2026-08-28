@@ -1,7 +1,5 @@
 #version 450
 
-layout (set = 0, binding = 1) uniform samplerCube skybox_texture;
-
 layout (location = 0) in vec3 dir;
 layout (location = 0) out vec4 color;
 
@@ -13,6 +11,7 @@ layout (set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 sun;                   // xy -> pos; z -> radius; w -> strength
 	vec4 viewer_position;
     vec4 water_color;           // w is empty
+    vec4 displacement;
     vec4 local_space_camera_frustum_planes[6];
     int flags;
     int wave_count;
@@ -41,6 +40,8 @@ layout (set = 0, binding = 0) readonly buffer SceneGPUData {
     float fog_density;
     float fog_height_falloff;
 } scene_gpu_data;
+
+layout (set = 0, binding = 3) uniform samplerCube skybox_texture;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;

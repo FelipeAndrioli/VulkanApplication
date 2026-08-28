@@ -17,16 +17,19 @@
 #define PI 3.14159265359
 #define WAVES_COUNT 32
 
-#define QUAD_GRID_VERTEX_COUNT 360 
-//#define QUAD_GRID_VERTEX_COUNT 180
-//#define QUAD_GRID_VERTEX_COUNT 30
+#define QUAD_GRID_VERTEX_COUNT 360
 #define QUAD_VERTEX_DISTANCE 8.0f
-//#define QUAD_VERTEX_DISTANCE 5.0f
+
 //#define QUAD_VERTEX_DISTANCE 1.0f
+
+#define DISPLACEMENT_MAP_DIMENSION 2080
+#define COMPUTE_SHADER_LOCAL_GROUP_SIZE 32
+#define COMPUTE_DISPATCH_GROUPS (DISPLACEMENT_MAP_DIMENSION / COMPUTE_SHADER_LOCAL_GROUP_SIZE)
+
+// Note: Dispatch group counts should be computed by <target computations size> / <shader local group size> 
 
 /*
     TODO's:
-        - Move displacement calculation to compute shader
         - FFT for non-tiling water
         - Jacobian for foam 
         - BRDF
@@ -58,7 +61,8 @@ public:
 		alignas(16) glm::vec4 Sun = glm::vec4(0.0f, 0.0f, 0.07f, 1.14f);                        // xy -> pos; z -> radius; w -> strength
 		alignas(16) glm::vec4 ViewerPosition = glm::vec4(0.0f);
 		alignas(16) glm::vec4 WaterColor = glm::vec4(0.00858454f, 0.105058f, 0.0814091f, 0.94f);// w is ambient strength 
-        alignas(16) glm::vec4 LocalSpaceCameraFrustumPlanes[6] = {}; 
+        alignas(16) glm::vec4 Displacement = glm::vec4(0.0f, 0.002f, 0.0f, 0.0f); // displacement map parameters; x -> scale, y -> water mesh count, z -> displacement map dimension
+        alignas(16) glm::vec4 LocalSpaceCameraFrustumPlanes[6] = {};
         alignas(4) int Flags = 0;
         alignas(4) int WaveCount = WAVES_COUNT;
         alignas(4) int NormalWaveCount = WAVES_COUNT;
@@ -83,8 +87,8 @@ public:
         alignas(4) float ReflectionStrength = 0.660f;
         alignas(4) float ImageWidth;
         alignas(4) float ImageHeight;
-        alignas(4) float FogDensity = 0.003f;
-        alignas(4) float FogHeightFalloff = 0.1f;
+        alignas(4) float FogDensity = 0.0004f;
+        alignas(4) float FogHeightFalloff = 0.03f;
     } SampleSceneData;
 
 	struct PushConstants {
@@ -112,6 +116,8 @@ private:
     Graphics::RenderPassDescription m_OffscreenRenderPassDescription = {};
     Graphics::RenderPassDescription m_HDRPostEffectsRenderPassDescription = {};
 
+    Graphics::GPUImage m_DisplacementMap = {};
+    Graphics::GPUImage m_DisplacementNormalMap = {};
     Graphics::GPUImage m_OffscreenPassColor = {};
     Graphics::GPUImage m_OffscreenPassResolvedColor = {};
     Graphics::GPUImage m_OffscreenDepth = {};
@@ -121,6 +127,7 @@ private:
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_HDRPostProcessRenderTarget;
 	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
 
+    Graphics::Shader m_DisplacementComputeShader = {};
     Graphics::Shader m_VertexShader = {};
     Graphics::Shader m_TessellationControlShader = {};
     Graphics::Shader m_TessellationEvaluationShader = {};
@@ -131,12 +138,20 @@ private:
 
 	Graphics::GPUBuffer m_SceneBuffer[Graphics::FRAMES_IN_FLIGHT] = {};
 
+    Graphics::PipelineState m_ComputeDisplacementPSO = {};
 	Graphics::PipelineState m_DefaultPSO = {};
 	Graphics::PipelineState m_WireframePSO = {};
 
     Graphics::InputLayout m_FrameInputLayout = {};
 	VkDescriptorSetLayout m_FrameDescriptorSetLayout = VK_NULL_HANDLE;
 	std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_FrameDescriptorSet = { VK_NULL_HANDLE };
+
+    Graphics::InputLayout m_DisplacementComputeInputLayout = {};
+    VkDescriptorSetLayout m_DisplacementDescriptorSetLayout = VK_NULL_HANDLE;
+    std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_DisplacementComputeDescriptorSet = { VK_NULL_HANDLE };
+
+    VkDescriptorSet m_ImGuiDisplacementTextureDescriptorSet = VK_NULL_HANDLE;
+    VkDescriptorSet m_ImGuiDisplacementNormalTextureDescriptorSet = VK_NULL_HANDLE;
 
     Graphics::Shader m_SkyboxVertexShader = {};
     Graphics::Shader m_SkyboxFragmentShader = {};
@@ -171,6 +186,7 @@ private:
     void RenderCube(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
     void RenderPostEffects(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
     void RenderModel(const VkCommandBuffer& commandBuffer, const uint32_t currentFrame, const std::shared_ptr<Assets::Model>& model, const Graphics::PipelineState& pipeline, const PushConstants& pushContants) const;
+    void ComputeDisplacement(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) const;
 
     glm::vec2 CalculateScreenSpaceLightPos(const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& WorldSpaceLightPos);
 };
@@ -343,34 +359,14 @@ void OceanRendering::StartUp() {
     m_Camera.Far = 4000.0f;
     m_Camera.MovementSpeed = 0.1f;
 
+    m_SkyboxTexture = TextureLoader::LoadCubemapTexture("./Textures/kloofendal_48d_partly_cloudy_puresky_8k.hdr");
+
     m_WaterModel = ModelLoader::LoadMultiQuadModel(QUAD_GRID_VERTEX_COUNT, QUAD_GRID_VERTEX_COUNT, glm::vec3(0.0f), QUAD_VERTEX_DISTANCE);
 	m_WaterModel->ModelIndex = 0;
 
-	m_FrameInputLayout = {
-		.pushConstants = {
-			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
-		},
-		.bindings = {
-			{ 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT },			
-			{ 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	// Skybox texture
-			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	// Offscreen pass color result texture
-			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	// Offscreen pass depth result texture
-		}
-	};
-
-    m_SkyboxTexture = TextureLoader::LoadCubemapTexture("./Textures/kloofendal_48d_partly_cloudy_puresky_8k.hdr");
-    
-	gfxDevice->CreateDescriptorSetLayout(m_FrameDescriptorSetLayout, m_FrameInputLayout.bindings);
-
-	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+    for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
         m_SceneBuffer[i] = gfxDevice->CreateStorageBuffer(sizeof(SceneData));
-
-        gfxDevice->CreateDescriptorSet(m_FrameDescriptorSetLayout, m_FrameDescriptorSet[i]);
-		gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer[i]);
-        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_SkyboxTexture);
-        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
-        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
-	}
+    }
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "../src/Samples/OceanRendering/vertex.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, m_TessellationControlShader, "../src/Samples/OceanRendering/tessellation_control.glsl");
@@ -381,6 +377,101 @@ void OceanRendering::StartUp() {
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "../src/Samples/OceanRendering/skybox_vertex.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragmentShader, "../src/Samples/OceanRendering/skybox_fragment.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_PostEffectsFragmentShader, "../src/Samples/OceanRendering/post_effects_fragment.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_DisplacementComputeShader, "../src/Samples/OceanRendering/surface_displacement_compute.glsl");
+
+    ImageDescription displacementImageDesc = {
+        .Width          = DISPLACEMENT_MAP_DIMENSION,
+        .Height         = DISPLACEMENT_MAP_DIMENSION,
+        .MipLevels      = 1,
+        .LayerCount     = 1,
+        .Format         = gfxDevice->ConvertFormat(Graphics::Format::R32G32B32A32_FLOAT),
+        .Tiling         = VK_IMAGE_TILING_OPTIMAL,
+        .Usage          = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT),
+        .MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .AspectFlags    = VK_IMAGE_ASPECT_COLOR_BIT,
+        .ViewType       = VK_IMAGE_VIEW_TYPE_2D,
+        .MsaaSamples    = static_cast<VkSampleCountFlagBits>(1),
+        .ImageType      = VK_IMAGE_TYPE_2D,
+        .AddressMode    = VK_SAMPLER_ADDRESS_MODE_REPEAT, 
+	};
+
+    gfxDevice->CreateImage(m_DisplacementMap, displacementImageDesc);
+    gfxDevice->CreateImageView(m_DisplacementMap);
+    gfxDevice->CreateImageSampler(m_DisplacementMap);
+    gfxDevice->TransitionImageLayout(m_DisplacementMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNORDERED_ACCESS));
+
+    displacementImageDesc.Format = gfxDevice->ConvertFormat(Graphics::Format::R16G16B16A16_FLOAT);
+
+    gfxDevice->CreateImage(m_DisplacementNormalMap, displacementImageDesc);
+    gfxDevice->CreateImageView(m_DisplacementNormalMap);
+    gfxDevice->CreateImageSampler(m_DisplacementNormalMap);
+    gfxDevice->TransitionImageLayout(m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNORDERED_ACCESS));
+
+    m_DisplacementComputeInputLayout = {
+        .pushConstants = {},
+        .bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },			
+            { 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT },    // Output displacement texture for compute pipeline
+            { 2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT },    // Output displacement normal texture for compute pipeline
+        }
+    };
+
+    gfxDevice->CreateDescriptorSetLayout(m_DisplacementDescriptorSetLayout, m_DisplacementComputeInputLayout.bindings);
+
+    for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+        gfxDevice->CreateDescriptorSet(m_DisplacementDescriptorSetLayout, m_DisplacementComputeDescriptorSet[i]);
+        gfxDevice->WriteDescriptor(m_DisplacementComputeInputLayout.bindings[0], m_DisplacementComputeDescriptorSet[i], m_SceneBuffer[i]);
+        gfxDevice->WriteDescriptor(m_DisplacementComputeInputLayout.bindings[1], m_DisplacementComputeDescriptorSet[i], m_DisplacementMap);
+        gfxDevice->WriteDescriptor(m_DisplacementComputeInputLayout.bindings[2], m_DisplacementComputeDescriptorSet[i], m_DisplacementNormalMap);
+    }
+
+	m_FrameInputLayout = {
+		.pushConstants = {
+			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
+		},
+		.bindings = {
+			{ 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_ALL },			
+            { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT },   // Resulting displacement texture 
+            { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT },   // Resulting displacement normal texture 
+			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	                // Skybox texture
+			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	                // Offscreen pass color result texture
+			{ 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	                // Offscreen pass depth result texture
+		}
+	};
+
+    // TODO: Evaluate whether would be worth to create a Compute Pass class
+    Graphics::PipelineStateDescription displacememntComputePsoDesc = {};
+    displacememntComputePsoDesc.Name = "Surface displacement compute PSO";
+    displacememntComputePsoDesc.computeShader = &m_DisplacementComputeShader;
+    displacememntComputePsoDesc.psoInputLayout.push_back(m_DisplacementComputeInputLayout);
+
+    gfxDevice->CreatePipelineState(displacememntComputePsoDesc, m_ComputeDisplacementPSO, 0);
+
+    gfxDevice->TransitionImageLayout(m_DisplacementMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
+    gfxDevice->TransitionImageLayout(m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
+
+    m_ImGuiDisplacementTextureDescriptorSet = ImGui_ImplVulkan_AddTexture(
+            m_DisplacementMap.ImageSampler, 
+            m_DisplacementMap.ImageView, 
+            gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
+
+    m_ImGuiDisplacementNormalTextureDescriptorSet = ImGui_ImplVulkan_AddTexture(
+            m_DisplacementNormalMap.ImageSampler, 
+            m_DisplacementNormalMap.ImageView, 
+            gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
+
+    gfxDevice->CreateDescriptorSetLayout(m_FrameDescriptorSetLayout, m_FrameInputLayout.bindings);
+
+	for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
+
+        gfxDevice->CreateDescriptorSet(m_FrameDescriptorSetLayout, m_FrameDescriptorSet[i]);
+		gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[0], m_FrameDescriptorSet[i], m_SceneBuffer[i]);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_DisplacementMap);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_DisplacementNormalMap);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_SkyboxTexture);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[4], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[5], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
+	}
 
     Graphics::PipelineStateDescription psoDesc = {};
 
@@ -451,6 +542,7 @@ void OceanRendering::CleanUp() {
     }
 
     gfxDevice->DestroyDescriptorSetLayout(m_FrameDescriptorSetLayout);
+    gfxDevice->DestroyDescriptorSetLayout(m_DisplacementDescriptorSetLayout);
 
     gfxDevice->DestroyShader(m_VertexShader);
     gfxDevice->DestroyShader(m_TessellationControlShader);
@@ -476,6 +568,12 @@ void OceanRendering::CleanUp() {
     gfxDevice->DestroyImage(m_OffscreenDepth);
     gfxDevice->DestroyImage(m_OffscreenResolvedDepth);
     gfxDevice->DestroyImage(m_OffscreenPassResolvedColor);
+
+    // Compute Shader 
+    gfxDevice->DestroyShader(m_DisplacementComputeShader);
+    gfxDevice->DestroyPipeline(m_ComputeDisplacementPSO);
+    gfxDevice->DestroyImage(m_DisplacementMap);
+    gfxDevice->DestroyImage(m_DisplacementNormalMap);
 }
 
 void OceanRendering::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
@@ -508,6 +606,9 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
                                         | m_DebugRenderWorldSpacePos << 2
                                         | m_CircularWavesEnabled << 1
                                         | m_DebugRenderNormals);
+    SampleSceneData.Displacement.x = (float)QUAD_GRID_VERTEX_COUNT / (float)DISPLACEMENT_MAP_DIMENSION;
+//    SampleSceneData.Displacement.y = (float)QUAD_GRID_VERTEX_COUNT;
+    SampleSceneData.Displacement.z = (float)DISPLACEMENT_MAP_DIMENSION;
 
     if (!m_GPUCullingFreeze) {
         const glm::mat4 viewProj = m_Camera.ProjectionMatrix * m_Camera.ViewMatrix;
@@ -583,15 +684,34 @@ void OceanRendering::RenderModel(
     }
 }
 
+void OceanRendering::ComputeDisplacement(
+    const uint32_t currentFrame, 
+    const VkCommandBuffer& commandBuffer, 
+    Graphics::PipelineState *pipeline) const {
+
+    SCOPED_PROFILER_US("OceanRendering::ComputeDisplacement");
+
+    Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipeline);
+    vkCmdDispatch(commandBuffer, COMPUTE_DISPATCH_GROUPS, COMPUTE_DISPATCH_GROUPS, 1);
+}
+
 void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
 
 	SCOPED_PROFILER_US("OceanRendering::RenderScene");
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
-	m_OffscreenRenderTarget->Begin(commandBuffer);
+    gfxDevice->BindDescriptorSet(m_DisplacementComputeDescriptorSet[currentFrame], commandBuffer, m_ComputeDisplacementPSO.pipelineLayout, 0, 1, false);
+    gfxDevice->TransitionImageLayout(commandBuffer, m_DisplacementMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNORDERED_ACCESS));
+    gfxDevice->TransitionImageLayout(commandBuffer, m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNORDERED_ACCESS));
+    ComputeDisplacement(currentFrame, commandBuffer, &m_ComputeDisplacementPSO);
+    gfxDevice->TransitionImageLayout(commandBuffer, m_DisplacementMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
+    gfxDevice->TransitionImageLayout(commandBuffer, m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
 
     gfxDevice->BindDescriptorSet(m_FrameDescriptorSet[currentFrame], commandBuffer, m_DefaultPSO.pipelineLayout, 0, 1);
+	m_OffscreenRenderTarget->Begin(commandBuffer);
 
     FramePushConstants.Color.g = glm::radians(m_SkyboxRotation);
     FramePushConstants.Model = m_WaterModelMatrix;
@@ -632,6 +752,7 @@ void OceanRendering::RenderUI() {
     if (ImGui::TreeNode("Pipeline Settings")) {
         ImGui::DragFloat("Fog Density",                     &SampleSceneData.FogDensity, 0.001f, -10.0f, 10.0f);
         ImGui::DragFloat("Fog Height Falloff",              &SampleSceneData.FogHeightFalloff, 0.001f, -10.0f, 10.0f);
+        ImGui::DragFloat("Displacement Texture Scale",      &SampleSceneData.Displacement.y, 0.001f, 0.0f, 10.0f);
         ImGui::Checkbox("Render Wireframe",				    &m_RenderWireframe);
         ImGui::Checkbox("Render Skybox",                    &m_RenderSkybox);
         ImGui::Checkbox("Tessellation Enabled",             &m_TessellationEnabled);
@@ -694,6 +815,26 @@ void OceanRendering::RenderUI() {
 
 	ImGui::SeparatorText("Models Settings");
     m_WaterModel->OnUIRender();
+
+    ImGui::SeparatorText("Displacement Compute Pipeline");
+
+    if (ImGui::TreeNode("Displacement Preview")) {
+        ImGui::Image(
+            (ImTextureID)m_ImGuiDisplacementTextureDescriptorSet, 
+//            ImVec2(m_DisplacementMap.Description.Width, m_DisplacementMap.Description.Height)
+            ImVec2(400.0f, 400.0f)
+        );
+        ImGui::TreePop();
+    }
+
+    if (ImGui::TreeNode("Displacement Normal Preview")) {
+        ImGui::Image(
+            (ImTextureID)m_ImGuiDisplacementNormalTextureDescriptorSet, 
+//                ImVec2(m_DisplacementNormalMap.Description.Width, m_DisplacementNormalMap.Description.Height)
+            ImVec2(400.0f, 400.0f)
+        );
+        ImGui::TreePop();
+    }
 }
 
 void OceanRendering::Resize(uint32_t width, uint32_t height) {
@@ -710,8 +851,8 @@ void OceanRendering::Resize(uint32_t width, uint32_t height) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
    
     for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
-        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[4], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[5], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
 	}
 }
 

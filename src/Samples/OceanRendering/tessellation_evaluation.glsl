@@ -24,6 +24,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 sun;                   // xy -> pos; z -> radius; w -> strength
 	vec4 viewer_position;
     vec4 water_color;           // w is empty
+    vec4 displacement;
     vec4 local_space_camera_frustum_planes[6];
     int flags;
     int wave_count;
@@ -53,6 +54,9 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float fog_height_falloff;
 } scene_gpu_data;
 
+layout (set = 0, binding = 1) uniform sampler2D displacement_map;
+layout (set = 0, binding = 2) uniform sampler2D normal_map;
+
 layout (push_constant) uniform PushConstants {
 	mat4 model;
 } push_constants;
@@ -66,6 +70,7 @@ layout (location = 1) out vec3 out_normal;
 layout (location = 2) out vec3 out_world_space_position;
 layout (location = 3) out vec3 out_model_space_position;
 layout (location = 4) out vec3 out_original_model_space_pos;
+layout (location = 5) out vec2 out_uv;
 
 struct wave_function_result {
     vec3 position;
@@ -348,6 +353,7 @@ void main() {
     bool reflection_enabled                         = bool(scene_gpu_data.flags & (1 << 5));
     bool wave_random_direction_enabled              = bool(scene_gpu_data.flags & (1 << 6));
 
+    /*
     wave_function_result w = sine_wave_fractal_brownian_motion(
         interpolated_pos, 
         time, 
@@ -367,9 +373,31 @@ void main() {
     interpolated_pos = vec4(w.position, 1.0);
     out_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
 
+    interpolated_pos.y = texture(displacement_map, interpolated_pos.xz).r;
+    */
+
+    float displacement_scale = scene_gpu_data.displacement.x;
+    float water_mesh_vertex_count = scene_gpu_data.displacement.y;
+    float displacement_map_dimension = scene_gpu_data.displacement.z;
+
+    float uv_x = mix(0.0, water_mesh_vertex_count, interpolated_pos.x);
+    float uv_y = mix(0.0, water_mesh_vertex_count, interpolated_pos.z);
+
+    vec2 uv = vec2(uv_x, uv_y) * displacement_scale;
+
+    vec3 displacement = texture(displacement_map, uv).rgb;
+    vec3 displacement_normal = texture(normal_map, uv).rgb;
+
+//    interpolated_pos.xyz = vec3(interpolated_pos.x, 0.0, interpolated_pos.z);
+//    interpolated_pos.xyz = displacement;
+    interpolated_pos.y = displacement.y;
+
+    out_normal = normalize(mat3(push_constants.model) * displacement_normal);
+
     out_world_space_position = vec3(push_constants.model * interpolated_pos);
     out_model_space_position = interpolated_pos.xyz;
     out_original_model_space_pos = original_interpolated_pos.xyz;
+    out_uv = uv;
 
     gl_Position = scene_gpu_data.projection 
         * scene_gpu_data.view 

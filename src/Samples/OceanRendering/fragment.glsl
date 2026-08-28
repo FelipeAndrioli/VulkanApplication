@@ -7,6 +7,7 @@ layout (location = 1) in vec3 in_frag_normal;
 layout (location = 2) in vec3 in_frag_world_space_pos;
 layout (location = 3) in vec3 in_frag_model_space_pos;
 layout (location = 4) in vec3 in_frag_original_model_space_pos;
+layout (location = 5) in vec2 in_uv;
 
 layout (location = 0) out vec4 pixel_color;
 
@@ -18,6 +19,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 sun;                   // xy -> pos; z -> radius; w -> strength
 	vec4 viewer_position;
     vec4 water_color;           // w is ambient color strength
+    vec4 displacement;
     vec4 local_space_camera_frustum_planes[6];
     int flags;
     int wave_count;
@@ -47,7 +49,9 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float fog_height_falloff;
 } scene_gpu_data;
 
-layout (set = 0, binding = 1) uniform samplerCube cube_texture;
+layout (set = 0, binding = 1) uniform sampler2D displacement_map;
+layout (set = 0, binding = 2) uniform sampler2D normal_map;
+layout (set = 0, binding = 3) uniform samplerCube cube_texture;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
