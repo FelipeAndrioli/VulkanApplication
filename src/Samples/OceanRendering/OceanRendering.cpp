@@ -11,6 +11,8 @@
 #include "../../Assets/Camera.h"
 #include "../../Assets/Model.h"
 
+#include "./WaveSpectrum/WaveSpectrum.h"
+
 #include <glm.hpp>
 #include <gtc/type_ptr.hpp>
 
@@ -53,7 +55,7 @@ public:
 	virtual void RenderUI()																			override;
 	virtual void Resize(uint32_t width, uint32_t height)											override;
 
-    struct SceneData {
+    struct scene_data {
 		alignas(16) glm::mat4 Projection = glm::mat4(1.0f);
 		alignas(16) glm::mat4 View = glm::mat4(1.0f);
 		alignas(16) glm::vec4 LightPosition = glm::vec4(1500.0f, 225.0f, 264.0f, 0.8f);         // w is light strength
@@ -85,16 +87,35 @@ public:
         alignas(4) float TessellationLevelMax = 32.0f;
         alignas(4) float TessellationStep = 6.0f;
         alignas(4) float ReflectionStrength = 0.660f;
-        alignas(4) float ImageWidth;
-        alignas(4) float ImageHeight;
+        alignas(4) float ImageWidth = 0.0f;
+        alignas(4) float ImageHeight = 0.0f;
         alignas(4) float FogDensity = 0.0004f;
         alignas(4) float FogHeightFalloff = 0.03f;
     } SampleSceneData;
 
-	struct PushConstants {
+	struct push_constants {
 		alignas(16) glm::mat4 Model = glm::mat4(1.0f);
         alignas(16) glm::vec4 Color = glm::vec4(1.0f);
 	} FramePushConstants;
+
+    struct wave_spectrum_parameters {
+        uint32_t Dimension = 256;
+        float PatchSize = 1000.0f;
+        float WindSpeed = 8.0f;
+        float Amplitude = 0.0105f;
+        float SmallWaveSuppressionThreshold = 0.01f;
+        glm::vec2 WindDirection = glm::vec2(1.0f, 0.0f);
+
+        bool operator !=(const wave_spectrum_parameters& Other) {
+            return (Dimension != Other.Dimension
+                || PatchSize != Other.PatchSize
+                || WindSpeed != Other.WindSpeed
+                || Amplitude != Other.Amplitude
+                || SmallWaveSuppressionThreshold != Other.SmallWaveSuppressionThreshold
+                || WindDirection != Other.WindDirection);
+        }
+
+    } WaveSpectrumParameters;
 
 	const glm::vec3 InitialCameraPosition = glm::vec3(-397.0f, 7.0f, -15.0f);
 
@@ -123,6 +144,8 @@ private:
     Graphics::GPUImage m_OffscreenDepth = {};
     Graphics::GPUImage m_OffscreenResolvedDepth = {};
 
+    Graphics::GPUImage m_PhillipsWaveSpectrum = {};
+
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_OffscreenRenderTarget;
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_HDRPostProcessRenderTarget;
 	std::unique_ptr<Graphics::PostEffectsRenderTarget> m_PostEffectsRenderTarget;
@@ -150,6 +173,7 @@ private:
     VkDescriptorSetLayout m_DisplacementDescriptorSetLayout = VK_NULL_HANDLE;
     std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_DisplacementComputeDescriptorSet = { VK_NULL_HANDLE };
 
+    VkDescriptorSet m_ImGuiPhillipsWaveSpectrumDescriptorSet = VK_NULL_HANDLE;
     VkDescriptorSet m_ImGuiDisplacementTextureDescriptorSet = VK_NULL_HANDLE;
     VkDescriptorSet m_ImGuiDisplacementNormalTextureDescriptorSet = VK_NULL_HANDLE;
 
@@ -181,15 +205,61 @@ private:
     bool m_GPUCullingFreeze = false;
 private:
 
+    void CreateWaveSpectrum();
+
     void CreateDisplaySizeDependentResources(const uint32_t width, const uint32_t height);
     void RenderSkybox(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
     void RenderCube(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
     void RenderPostEffects(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
-    void RenderModel(const VkCommandBuffer& commandBuffer, const uint32_t currentFrame, const std::shared_ptr<Assets::Model>& model, const Graphics::PipelineState& pipeline, const PushConstants& pushContants) const;
+    void RenderModel(const VkCommandBuffer& commandBuffer, const uint32_t currentFrame, const std::shared_ptr<Assets::Model>& model, const Graphics::PipelineState& pipeline, const push_constants& pushContants) const;
     void ComputeDisplacement(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) const;
 
     glm::vec2 CalculateScreenSpaceLightPos(const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& WorldSpaceLightPos);
 };
+
+void OceanRendering::CreateWaveSpectrum() {
+
+    Graphics::GraphicsDevice *gfxDevice = Graphics::GetDevice();
+
+    gfxDevice->DestroyImage(m_PhillipsWaveSpectrum);
+
+    ImageDescription desc = {
+        .Width          = WaveSpectrumParameters.Dimension,
+        .Height         = WaveSpectrumParameters.Dimension,
+        .MipLevels      = 1,
+        .LayerCount     = 1,
+        .Format         = gfxDevice->ConvertFormat(Graphics::Format::R32G32B32A32_FLOAT),
+        .Tiling         = VK_IMAGE_TILING_OPTIMAL,
+        .Usage          = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT),
+        .MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .AspectFlags    = VK_IMAGE_ASPECT_COLOR_BIT,
+        .ViewType       = VK_IMAGE_VIEW_TYPE_2D,
+        .MsaaSamples    = static_cast<VkSampleCountFlagBits>(1),
+        .ImageType      = VK_IMAGE_TYPE_2D,
+        .AddressMode    = VK_SAMPLER_ADDRESS_MODE_REPEAT, 
+    };
+
+    gfxDevice->CreateImage(m_PhillipsWaveSpectrum, desc);
+    gfxDevice->CreateImageView(m_PhillipsWaveSpectrum);
+    gfxDevice->CreateImageSampler(m_PhillipsWaveSpectrum);
+
+    std::vector<glm::vec4> Spectrum = GenerateWaveSpectrum(
+        WaveSpectrumParameters.Dimension, 
+        WaveSpectrumParameters.PatchSize, 
+        WaveSpectrumParameters.WindSpeed, 
+        WaveSpectrumParameters.Amplitude, 
+        WaveSpectrumParameters.SmallWaveSuppressionThreshold, 
+        WaveSpectrumParameters.WindDirection);
+
+    gfxDevice->TransitionImageLayout(m_PhillipsWaveSpectrum, gfxDevice->ConvertResourceStateToImageLayout(ResourceState::COPY_DST));
+    gfxDevice->UploadDataToImage(m_PhillipsWaveSpectrum, Spectrum.data(), sizeof(glm::vec4) * Spectrum.size());
+    gfxDevice->TransitionImageLayout(m_PhillipsWaveSpectrum, gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
+
+    m_ImGuiPhillipsWaveSpectrumDescriptorSet = ImGui_ImplVulkan_AddTexture(
+        m_PhillipsWaveSpectrum.ImageSampler, 
+        m_PhillipsWaveSpectrum.ImageView, 
+        gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
+}
 
 void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, const uint32_t height) {
 
@@ -300,7 +370,7 @@ void OceanRendering::RenderSkybox(const uint32_t currentFrame, const VkCommandBu
     
     FramePushConstants.Model = rotation * scale;
 
-    vkCmdPushConstants(commandBuffer, m_SkyboxPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &FramePushConstants);
+    vkCmdPushConstants(commandBuffer, m_SkyboxPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(push_constants), &FramePushConstants);
 
     RenderCube(currentFrame, commandBuffer, &m_SkyboxPSO);
 }
@@ -365,7 +435,7 @@ void OceanRendering::StartUp() {
 	m_WaterModel->ModelIndex = 0;
 
     for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-        m_SceneBuffer[i] = gfxDevice->CreateStorageBuffer(sizeof(SceneData));
+        m_SceneBuffer[i] = gfxDevice->CreateStorageBuffer(sizeof(scene_data));
     }
 
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_VertexShader, "../src/Samples/OceanRendering/vertex.glsl");
@@ -427,7 +497,7 @@ void OceanRendering::StartUp() {
 
 	m_FrameInputLayout = {
 		.pushConstants = {
-			{ VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants) }
+			{ VK_SHADER_STAGE_ALL, 0, sizeof(push_constants) }
 		},
 		.bindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_ALL },			
@@ -449,6 +519,8 @@ void OceanRendering::StartUp() {
 
     gfxDevice->TransitionImageLayout(m_DisplacementMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
     gfxDevice->TransitionImageLayout(m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
+
+    CreateWaveSpectrum();
 
     m_ImGuiDisplacementTextureDescriptorSet = ImGui_ImplVulkan_AddTexture(
             m_DisplacementMap.ImageSampler, 
@@ -574,6 +646,8 @@ void OceanRendering::CleanUp() {
     gfxDevice->DestroyPipeline(m_ComputeDisplacementPSO);
     gfxDevice->DestroyImage(m_DisplacementMap);
     gfxDevice->DestroyImage(m_DisplacementNormalMap);
+
+    gfxDevice->DestroyImage(m_PhillipsWaveSpectrum);
 }
 
 void OceanRendering::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
@@ -651,7 +725,7 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
         SampleSceneData.LocalSpaceCameraFrustumPlanes[5] /= glm::length(glm::vec3(SampleSceneData.LocalSpaceCameraFrustumPlanes[5]));
     }
 
-	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], 0, &SampleSceneData, sizeof(SceneData));
+	gfxDevice->UpdateBuffer(m_SceneBuffer[gfxDevice->GetCurrentFrameIndex()], 0, &SampleSceneData, sizeof(scene_data));
 }
 
 void OceanRendering::RenderModel(
@@ -659,7 +733,7 @@ void OceanRendering::RenderModel(
         const uint32_t currentFrame, 
         const std::shared_ptr<Assets::Model>& model, 
         const Graphics::PipelineState& pipeline,
-        const PushConstants& pushContants) const {
+        const push_constants& pushContants) const {
 
     SCOPED_PROFILER_US("OceanRendering::RenderModel");
 
@@ -671,7 +745,7 @@ void OceanRendering::RenderModel(
 
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &model->DataBuffer.Handle, offsets);
     vkCmdBindIndexBuffer(commandBuffer, model->DataBuffer.Handle, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(PushConstants), &FramePushConstants);
+    vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(push_constants), &FramePushConstants);
 
     for (const auto& mesh: model->Meshes) { 
         vkCmdDrawIndexed(
@@ -816,12 +890,50 @@ void OceanRendering::RenderUI() {
 	ImGui::SeparatorText("Models Settings");
     m_WaterModel->OnUIRender();
 
+    ImGui::SeparatorText("Wave Spectrum Settings");
+
+    if (ImGui::TreeNode("Wave Spectrum")) {
+
+        wave_spectrum_parameters CurrentParameters = WaveSpectrumParameters;
+
+        ImGui::DragInt("Dimension", (int*)&WaveSpectrumParameters.Dimension, 1.0, 10, 2048);
+        ImGui::DragFloat("Patch size", &WaveSpectrumParameters.PatchSize, 1.0f, 0.0f, 2000.0f);
+        ImGui::DragFloat("Wind speed", &WaveSpectrumParameters.WindSpeed, 1.0f, 0.0f, 200.0f);
+        ImGui::DragFloat("Amplitude", &WaveSpectrumParameters.Amplitude, 0.01f, 0.0f, 10.0f);
+        ImGui::DragFloat("Small wave suppression threshold", &WaveSpectrumParameters.SmallWaveSuppressionThreshold, 0.01f, 0.0f, 10.0f);
+        ImGui::DragFloat2("Wind direction", (float*)&WaveSpectrumParameters.WindDirection, 0.01f, -90.0f, 90.0f);
+
+        if (CurrentParameters != WaveSpectrumParameters) {
+            CreateWaveSpectrum(); 
+        }
+
+        ImGui::TreePop();
+    }
+
     ImGui::SeparatorText("Displacement Compute Pipeline");
+
+    // Wave Spectrum final image will contain values greater than 1.0, and
+    // smaller than 0.0, those are being "ignored" by ImGui pipeline. The image
+    // will also contain 0.0 or negative values in the alpha channel since we're
+    // using it as a "buffer" of data rather than an image per se, those are also 
+    // being "ignored" by ImGui pipeline. Expect to see only the conjugate part 
+    // (blue and alpha channels) of the spectrum in a range from 0.0 to 1.0.
+    //
+    // I might populate the alpha channel later just for the sake of visualization 
+    // but need to understand first how displacement calculation will be impacted 
+    // if doing so.
+    if (ImGui::TreeNode("Wave Spectrum")) {
+        ImGui::Image(
+            (ImTextureID)m_ImGuiPhillipsWaveSpectrumDescriptorSet,
+            ImVec2(400.0f, 400.0f)
+        );
+
+        ImGui::TreePop();
+    }
 
     if (ImGui::TreeNode("Displacement Preview")) {
         ImGui::Image(
             (ImTextureID)m_ImGuiDisplacementTextureDescriptorSet, 
-//            ImVec2(m_DisplacementMap.Description.Width, m_DisplacementMap.Description.Height)
             ImVec2(400.0f, 400.0f)
         );
         ImGui::TreePop();
@@ -830,7 +942,6 @@ void OceanRendering::RenderUI() {
     if (ImGui::TreeNode("Displacement Normal Preview")) {
         ImGui::Image(
             (ImTextureID)m_ImGuiDisplacementNormalTextureDescriptorSet, 
-//                ImVec2(m_DisplacementNormalMap.Description.Width, m_DisplacementNormalMap.Description.Height)
             ImVec2(400.0f, 400.0f)
         );
         ImGui::TreePop();
