@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 include_directories(${VK_APP_INCLUDES})
 
 file(GLOB_RECURSE SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
+file(GLOB_RECURSE SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*/*.cpp)
 
 message("Configuring shaders")
 set(SHADERS_PATH ${PROJECT_SOURCE_DIR}/src/Assets/Shaders)
