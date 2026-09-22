@@ -33,6 +33,16 @@
 /*
     TODO's:
         - FFT for non-tiling water
+           - [x] CPU implementation of Discrete Fourier Transform to understand the algorithm
+           - [x] Generate wave spectrum
+               - Note: ImGui isn't displaying it properly because it clamps the pixel value in [0.0, 1.0] and doesn't
+               show pixels without alpha value populated
+           - [ ] Fix proper resources resizing/recreation (currently validation layer screams if I change any of wave spectrum parameters)
+           - [ ] Dispersion Relation
+           - [ ] CPU implementation of inverse DFT
+           - [ ] GPU implementation of IDFT 
+           - [ ] GPU implementation of IFFT
+
         - Jacobian for foam 
         - BRDF
         - HDR bloom pass(?).
@@ -145,6 +155,7 @@ private:
     Graphics::GPUImage m_OffscreenResolvedDepth = {};
 
     Graphics::GPUImage m_PhillipsWaveSpectrum = {};
+    Graphics::GPUImage m_WaveDispersionRelation = {};
 
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_OffscreenRenderTarget;
     std::unique_ptr<Graphics::MultiAttachmentRenderTarget> m_HDRPostProcessRenderTarget;
@@ -173,6 +184,7 @@ private:
     VkDescriptorSetLayout m_DisplacementDescriptorSetLayout = VK_NULL_HANDLE;
     std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_DisplacementComputeDescriptorSet = { VK_NULL_HANDLE };
 
+    VkDescriptorSet m_ImGuiWaveDispersionRelation = VK_NULL_HANDLE;
     VkDescriptorSet m_ImGuiPhillipsWaveSpectrumDescriptorSet = VK_NULL_HANDLE;
     VkDescriptorSet m_ImGuiDisplacementTextureDescriptorSet = VK_NULL_HANDLE;
     VkDescriptorSet m_ImGuiDisplacementNormalTextureDescriptorSet = VK_NULL_HANDLE;
@@ -184,6 +196,13 @@ private:
     Graphics::Shader m_PostEffectsVertexShader = {};
     Graphics::Shader m_PostEffectsFragmentShader = {};
     Graphics::PipelineState m_PostEffectsPSO = {};
+
+    Graphics::InputLayout m_DispersionRelationInputLayout = {};
+    VkDescriptorSetLayout m_DispersionRelationSetLayout = VK_NULL_HANDLE;
+    std::array<VkDescriptorSet, Graphics::FRAMES_IN_FLIGHT> m_DispersionRelationSet = { VK_NULL_HANDLE };
+
+    Graphics::PipelineState m_DispersionRelationComputePSO = {};
+    Graphics::Shader m_WaveDispersionRelationComputeShader = {};
 
     glm::vec2 m_AverageWaveDirection = glm::vec2(1.0f, 0.0f);
 
@@ -203,16 +222,24 @@ private:
     bool m_RandomWaveDirectionEnabled = true;
     bool m_GenerateNormalPerFragment = false;
     bool m_GPUCullingFreeze = false;
+    bool m_ResizeComputeResources = false;
 private:
 
     void CreateWaveSpectrum();
+    void CreateDispersionRelationWaveResources(bool ImageResizeOnly);
 
     void CreateDisplaySizeDependentResources(const uint32_t width, const uint32_t height);
     void RenderSkybox(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer);
     void RenderCube(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
     void RenderPostEffects(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline);
     void RenderModel(const VkCommandBuffer& commandBuffer, const uint32_t currentFrame, const std::shared_ptr<Assets::Model>& model, const Graphics::PipelineState& pipeline, const push_constants& pushContants) const;
-    void ComputeDisplacement(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) const;
+    void ComputePass(
+        const uint32_t currentFrame, 
+        const VkCommandBuffer& commandBuffer, 
+        Graphics::PipelineState *pipeline,
+        uint32_t dispatchGroupsX, 
+        uint32_t dispatchGroupsY) const;
+    void DispersionRelationPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) const;
 
     glm::vec2 CalculateScreenSpaceLightPos(const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& WorldSpaceLightPos);
 };
@@ -220,8 +247,6 @@ private:
 void OceanRendering::CreateWaveSpectrum() {
 
     Graphics::GraphicsDevice *gfxDevice = Graphics::GetDevice();
-
-    gfxDevice->DestroyImage(m_PhillipsWaveSpectrum);
 
     ImageDescription desc = {
         .Width          = WaveSpectrumParameters.Dimension,
@@ -239,6 +264,12 @@ void OceanRendering::CreateWaveSpectrum() {
         .AddressMode    = VK_SAMPLER_ADDRESS_MODE_REPEAT, 
     };
 
+    // Note: Command to wait idle is only being used here because I want to 
+    // live test a resource, it might not even be needed if we don't need 
+    // a m_DispersionRelationSet descriptor set per frame.
+    gfxDevice->WaitIdle();
+    gfxDevice->DestroyImage(m_PhillipsWaveSpectrum);
+
     gfxDevice->CreateImage(m_PhillipsWaveSpectrum, desc);
     gfxDevice->CreateImageView(m_PhillipsWaveSpectrum);
     gfxDevice->CreateImageSampler(m_PhillipsWaveSpectrum);
@@ -251,6 +282,9 @@ void OceanRendering::CreateWaveSpectrum() {
         WaveSpectrumParameters.SmallWaveSuppressionThreshold, 
         WaveSpectrumParameters.WindDirection);
 
+    // Note: Since we're creating a new image anyway, we don't need to use 
+    // frame command buffer to transition the image layout and instead we can 
+    // do it with a single time command buffer.
     gfxDevice->TransitionImageLayout(m_PhillipsWaveSpectrum, gfxDevice->ConvertResourceStateToImageLayout(ResourceState::COPY_DST));
     gfxDevice->UploadDataToImage(m_PhillipsWaveSpectrum, Spectrum.data(), sizeof(glm::vec4) * Spectrum.size());
     gfxDevice->TransitionImageLayout(m_PhillipsWaveSpectrum, gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
@@ -259,6 +293,81 @@ void OceanRendering::CreateWaveSpectrum() {
         m_PhillipsWaveSpectrum.ImageSampler, 
         m_PhillipsWaveSpectrum.ImageView, 
         gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
+}
+
+void OceanRendering::CreateDispersionRelationWaveResources(bool ImageResizeOnly) {
+
+    Graphics::GraphicsDevice *gfxDevice = Graphics::GetDevice();
+
+    ImageDescription desc = {
+        .Width          = WaveSpectrumParameters.Dimension,
+        .Height         = WaveSpectrumParameters.Dimension,
+        .MipLevels      = 1,
+        .LayerCount     = 1,
+        .Format         = gfxDevice->ConvertFormat(Graphics::Format::R32G32B32A32_FLOAT),
+        .Tiling         = VK_IMAGE_TILING_OPTIMAL,
+        .Usage          = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT),
+        .MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .AspectFlags    = VK_IMAGE_ASPECT_COLOR_BIT,
+        .ViewType       = VK_IMAGE_VIEW_TYPE_2D,
+        .MsaaSamples    = static_cast<VkSampleCountFlagBits>(1),
+        .ImageType      = VK_IMAGE_TYPE_2D,
+        .AddressMode    = VK_SAMPLER_ADDRESS_MODE_REPEAT, 
+    };
+
+    gfxDevice->DestroyImage(m_WaveDispersionRelation);
+
+    gfxDevice->CreateImage(m_WaveDispersionRelation, desc);
+    gfxDevice->CreateImageView(m_WaveDispersionRelation);
+    gfxDevice->CreateImageSampler(m_WaveDispersionRelation);
+
+    // Note: Since we're creating a new image anyway, we don't need to use 
+    // frame command buffer to transition the image layout and instead we can 
+    // do it with a single time command buffer.
+    gfxDevice->TransitionImageLayout(m_WaveDispersionRelation, gfxDevice->ConvertResourceStateToImageLayout(ResourceState::UNORDERED_ACCESS));
+
+    m_ImGuiWaveDispersionRelation = ImGui_ImplVulkan_AddTexture(
+        m_WaveDispersionRelation.ImageSampler, 
+        m_WaveDispersionRelation.ImageView, 
+        gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
+
+    if (ImageResizeOnly) {
+        for (int FrameIndex = 0; FrameIndex < Graphics::FRAMES_IN_FLIGHT; FrameIndex++) {
+            gfxDevice->WriteDescriptor(m_DispersionRelationInputLayout.bindings[0], m_DispersionRelationSet[FrameIndex], m_PhillipsWaveSpectrum);
+            gfxDevice->WriteDescriptor(m_DispersionRelationInputLayout.bindings[1], m_DispersionRelationSet[FrameIndex], m_WaveDispersionRelation);
+        }
+    } else {
+        m_DispersionRelationInputLayout = {
+            .pushConstants = {},
+            .bindings = {
+                //            { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },         // Uniform buffer just in case we need it 
+                { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT },   // Wave Spectrum input
+                { 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT },            // Dispersion relation output
+            }
+        };
+
+        if (m_DispersionRelationSetLayout != VK_NULL_HANDLE) {
+            gfxDevice->DestroyDescriptorSetLayout(m_DispersionRelationSetLayout);
+        }
+
+        gfxDevice->CreateDescriptorSetLayout(m_DispersionRelationSetLayout, m_DispersionRelationInputLayout.bindings);
+
+        for (int FrameIndex = 0; FrameIndex < Graphics::FRAMES_IN_FLIGHT; FrameIndex++) {
+            gfxDevice->CreateDescriptorSet(m_DispersionRelationSetLayout, m_DispersionRelationSet[FrameIndex]);
+            //        gfxDevice->WriteDescriptor(m_DispersionRelationInputLayout.bindings[0], m_DispersionRelationSet[FrameIndex], m_DispersionRelationUBO);
+            gfxDevice->WriteDescriptor(m_DispersionRelationInputLayout.bindings[0], m_DispersionRelationSet[FrameIndex], m_PhillipsWaveSpectrum);
+            gfxDevice->WriteDescriptor(m_DispersionRelationInputLayout.bindings[1], m_DispersionRelationSet[FrameIndex], m_WaveDispersionRelation);
+        }
+
+        gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_WaveDispersionRelationComputeShader, "../src/Samples/OceanRendering/dispersion_relation_compute.glsl");
+
+        Graphics::PipelineStateDescription PipelineDescription = {};
+        PipelineDescription.Name = "Dispersion Relation PSO";
+        PipelineDescription.computeShader = &m_WaveDispersionRelationComputeShader;
+        PipelineDescription.psoInputLayout.push_back(m_DispersionRelationInputLayout);
+
+        gfxDevice->CreatePipelineState(PipelineDescription, m_DispersionRelationComputePSO, 0);
+    }
 }
 
 void OceanRendering::CreateDisplaySizeDependentResources(const uint32_t width, const uint32_t height) {
@@ -403,6 +512,8 @@ glm::vec2 OceanRendering::CalculateScreenSpaceLightPos(const glm::mat4& Projecti
 
 void OceanRendering::StartUp() {
 
+    // TODO: This function needs some better organization
+
     Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
     m_ScreenWidth	= settings.Width;
@@ -521,6 +632,7 @@ void OceanRendering::StartUp() {
     gfxDevice->TransitionImageLayout(m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
 
     CreateWaveSpectrum();
+    CreateDispersionRelationWaveResources(false);
 
     m_ImGuiDisplacementTextureDescriptorSet = ImGui_ImplVulkan_AddTexture(
             m_DisplacementMap.ImageSampler, 
@@ -641,13 +753,18 @@ void OceanRendering::CleanUp() {
     gfxDevice->DestroyImage(m_OffscreenResolvedDepth);
     gfxDevice->DestroyImage(m_OffscreenPassResolvedColor);
 
-    // Compute Shader 
+    // Displacement Compute Resources
     gfxDevice->DestroyShader(m_DisplacementComputeShader);
     gfxDevice->DestroyPipeline(m_ComputeDisplacementPSO);
     gfxDevice->DestroyImage(m_DisplacementMap);
     gfxDevice->DestroyImage(m_DisplacementNormalMap);
 
+    // Wave Spectrum and Dispersion Relation Resources
     gfxDevice->DestroyImage(m_PhillipsWaveSpectrum);
+    gfxDevice->DestroyDescriptorSetLayout(m_DispersionRelationSetLayout);
+    gfxDevice->DestroyImage(m_WaveDispersionRelation);
+    gfxDevice->DestroyShader(m_WaveDispersionRelationComputeShader);
+    gfxDevice->DestroyPipeline(m_DispersionRelationComputePSO);
 }
 
 void OceanRendering::Update(const float constantT, const float deltaT, InputSystem::Input& input) {
@@ -693,7 +810,7 @@ void OceanRendering::Update(const float constantT, const float deltaT, InputSyst
         const glm::vec4 r3 = glm::vec4(viewProj[0][3], viewProj[1][3], viewProj[2][3], viewProj[3][3]);
 
         // Gribb-Hartmann method to create frustum planes from viewProj matrix
-        // is fater than geometric frustum construction since with heavy 
+        // is faster than geometric frustum construction since with heavy 
         // trigonometric functions (e.g., cos, tan).
         std::array<glm::vec4, 6> cameraFrustumPlanes = {};
 
@@ -758,17 +875,22 @@ void OceanRendering::RenderModel(
     }
 }
 
-void OceanRendering::ComputeDisplacement(
+void OceanRendering::ComputePass(
     const uint32_t currentFrame, 
     const VkCommandBuffer& commandBuffer, 
-    Graphics::PipelineState *pipeline) const {
+    Graphics::PipelineState *pipeline,
+    uint32_t dispatchGroupsX, 
+    uint32_t dispatchGroupsY) const {
 
-    SCOPED_PROFILER_US("OceanRendering::ComputeDisplacement");
+    std::string ScopedProfilerName = "OceanRendering::ComputePass | ";
+    ScopedProfilerName.append(pipeline->description.Name);
+
+    SCOPED_PROFILER_US(ScopedProfilerName.c_str());
 
     Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipeline);
-    vkCmdDispatch(commandBuffer, COMPUTE_DISPATCH_GROUPS, COMPUTE_DISPATCH_GROUPS, 1);
+    vkCmdDispatch(commandBuffer, dispatchGroupsX, dispatchGroupsY, 1);
 }
 
 void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer) {
@@ -777,10 +899,24 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
+    if (m_ResizeComputeResources) {
+        CreateWaveSpectrum();
+        CreateDispersionRelationWaveResources(true);
+        m_ResizeComputeResources = false;
+    }
+
+    gfxDevice->BindDescriptorSet(m_DispersionRelationSet[currentFrame], commandBuffer, m_DispersionRelationComputePSO.pipelineLayout, 0, 1, false);
+    gfxDevice->TransitionImageLayout(commandBuffer, m_WaveDispersionRelation, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNORDERED_ACCESS));
+    
+    uint32_t dispersionRelationDispatchGroup = (WaveSpectrumParameters.Dimension /  COMPUTE_SHADER_LOCAL_GROUP_SIZE);
+    ComputePass(currentFrame, commandBuffer, &m_DispersionRelationComputePSO, dispersionRelationDispatchGroup, dispersionRelationDispatchGroup);
+
+    gfxDevice->TransitionImageLayout(commandBuffer, m_WaveDispersionRelation, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
+
     gfxDevice->BindDescriptorSet(m_DisplacementComputeDescriptorSet[currentFrame], commandBuffer, m_ComputeDisplacementPSO.pipelineLayout, 0, 1, false);
     gfxDevice->TransitionImageLayout(commandBuffer, m_DisplacementMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNORDERED_ACCESS));
     gfxDevice->TransitionImageLayout(commandBuffer, m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::UNORDERED_ACCESS));
-    ComputeDisplacement(currentFrame, commandBuffer, &m_ComputeDisplacementPSO);
+    ComputePass(currentFrame, commandBuffer, &m_ComputeDisplacementPSO, COMPUTE_DISPATCH_GROUPS, COMPUTE_DISPATCH_GROUPS);
     gfxDevice->TransitionImageLayout(commandBuffer, m_DisplacementMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
     gfxDevice->TransitionImageLayout(commandBuffer, m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
 
@@ -802,7 +938,7 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
 
 	m_OffscreenRenderTarget->End(commandBuffer);
 
-   m_HDRPostProcessRenderTarget->Begin(commandBuffer);
+    m_HDRPostProcessRenderTarget->Begin(commandBuffer);
 
     RenderPostEffects(currentFrame, commandBuffer, &m_HDRPostProcessPSO);
 
@@ -904,13 +1040,22 @@ void OceanRendering::RenderUI() {
         ImGui::DragFloat2("Wind direction", (float*)&WaveSpectrumParameters.WindDirection, 0.01f, -90.0f, 90.0f);
 
         if (CurrentParameters != WaveSpectrumParameters) {
-            CreateWaveSpectrum(); 
+            m_ResizeComputeResources = true;
         }
 
         ImGui::TreePop();
     }
 
     ImGui::SeparatorText("Displacement Compute Pipeline");
+
+    if (ImGui::TreeNode("Wave Spectrum - Dispersion Relation")) {
+        ImGui::Image(
+            (ImTextureID)m_ImGuiWaveDispersionRelation,
+            ImVec2(400.0f, 400.0f)
+        );
+
+        ImGui::TreePop();
+    }
 
     // Wave Spectrum final image will contain values greater than 1.0, and
     // smaller than 0.0, those are being "ignored" by ImGui pipeline. The image
