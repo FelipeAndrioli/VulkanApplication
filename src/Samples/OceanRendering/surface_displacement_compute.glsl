@@ -3,10 +3,6 @@
 // local execution workgroup dimensions
 layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
-// output image layout, format, binding slot, and access type
-layout (rgba32f, binding = 1) uniform writeonly image2D displacement_map;
-layout (rgba16f, binding = 2) uniform writeonly image2D normal_map;
-
 layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 	mat4 projection;
 	mat4 view;
@@ -44,6 +40,21 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float fog_density;
     float fog_height_falloff;
 } scene_gpu_data;
+
+layout (set = 1, binding = 0) uniform wave_spectrum_parameters {
+    mat4 extra[3];
+    vec4 extra1[2];
+    vec2 wind_direction;
+    int dimension;
+    float patch_size;
+    float wind_speed;
+    float amplitude;
+    float small_wave_suppression_threshold;
+} wave_parameters;
+
+// output image layout, format, binding slot, and access type
+layout (rgba32f, set = 1, binding = 1) uniform writeonly image2D displacement_map;
+layout (rgba16f, set = 1, binding = 2) uniform writeonly image2D normal_map;
 
 struct wave_function_result {
     vec3 position;
