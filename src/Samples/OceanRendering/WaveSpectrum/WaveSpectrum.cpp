@@ -103,6 +103,29 @@ std::vector<glm::vec4> GenerateWaveSpectrum(
         }
     }
 
+    /*
+       Phillips wave spctrum calculates the energy that a wave will have based 
+       on its size. Long waves behaves and have different energies than short 
+       waves.
+
+       The computer works with integer and discrete indices, the loop goes from 
+       x = 0 until x = dimensions - 1. However, the Phillips wave spectrum 
+       formula doesn't understand what is "pixel 3" or "pixel 54". It needs to 
+       know the real frequency space (the wave measurement in meters). 
+
+       When doing:
+            HalfResolution = vec2(dimensions * 0.5)
+            n = FragCoord - HalfResolution;
+            k = (2.0 * PI * n) / PatchSizeMeters;
+
+        We're converting the pixel index n (e.g., (-256, 128)) into a real 
+        wave vector k, measured in radians per meter. Without this 
+        multiplication, Phillips wave spectrum would be calculating the energy 
+        values based on pixel coordinates, which would change the ocean physical
+        appearance and size if we simply changed our texture resolution which 
+        we don't want.
+    */
+
     for (size_t Y = 0; Y < SpectrumDimensions; Y++) {
         for (size_t X = 0; X < SpectrumDimensions; X++) {
             glm::vec2 FragCoord = glm::vec2(X, Y);
