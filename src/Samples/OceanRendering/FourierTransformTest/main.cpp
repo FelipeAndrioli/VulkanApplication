@@ -43,6 +43,37 @@ std::array<complex_number, SAMPLES> DFT(const std::array<sample, SAMPLES>& TimeD
     return FrequencyDomainSamples;
 }
 
+std::array<sample, SAMPLES> IDFT(const std::array<complex_number, SAMPLES>& FrequencyDomainSamples) {
+
+    std::array<sample, SAMPLES> TimeDomainSamples = {};
+
+    const float TotalSamplesFloat = static_cast<float>(FrequencyDomainSamples.size());
+    const float InverseTotalSamples = 1.0f / TotalSamplesFloat;
+
+    for (size_t TimeDomainSampleIndex = 0; TimeDomainSampleIndex < SAMPLES; TimeDomainSampleIndex++) {
+
+        float AccumulatorYAxis = 0.0f;
+
+        for (size_t FrequencyDomainSampleIndex = 0; FrequencyDomainSampleIndex < SAMPLES; FrequencyDomainSampleIndex++) {
+
+            const complex_number &FrequencyDomainSample = FrequencyDomainSamples[FrequencyDomainSampleIndex];
+
+            const float Angle = (2.0f * PI * TimeDomainSampleIndex * FrequencyDomainSampleIndex) / TotalSamplesFloat;
+
+            const float CosA = std::cos(Angle);
+            const float SinA = std::sin(Angle);
+
+            // Real axis = Real * CosA - Imaginary * SinA 
+            // Imaginary axis = Real * CosA + Imaginary * SinA
+            AccumulatorYAxis += FrequencyDomainSample.Real * CosA - FrequencyDomainSample.Imaginary * SinA;
+        }
+
+        TimeDomainSamples[TimeDomainSampleIndex].Y = AccumulatorYAxis * InverseTotalSamples;;
+    }
+
+    return TimeDomainSamples;
+}
+
 int Test_main() {
 
     float TotalDurationSeconds = 1.0f;
@@ -78,6 +109,18 @@ int Test_main() {
         std::cout << "Real: " << FrequencyDomainSamples[SampleIndex].Real << ", ";
         std::cout << "Imaginary: " << FrequencyDomainSamples[SampleIndex].Imaginary << ", ";
         std::cout << "Magnitude: " << FrequencyDomainSamples[SampleIndex].Magnitude << "\n";
+    }
+
+    std::cout << "\nTime domain samples from IDFT: \n";
+
+    std::array<sample, SAMPLES> TimeDomainSamplesFromIDFT = IDFT(FrequencyDomainSamples);
+
+    CurrentTime = 0.0f;
+
+    for (size_t SampleIndex = 0; SampleIndex < SAMPLES; SampleIndex++) {
+        TimeDomainSamplesFromIDFT[SampleIndex].X = CurrentTime;
+        std::cout << "Sample: [ " << TimeDomainSamplesFromIDFT[SampleIndex].X << ", " << TimeDomainSamplesFromIDFT[SampleIndex].Y << " ]\n";
+        CurrentTime += TimeStep;
     }
 
     return 0;
