@@ -1526,7 +1526,11 @@ namespace Graphics {
 		EndSingleTimeCommandBuffer(commandBuffer, m_CommandPool);
 	}
 
-	void GraphicsDevice::UploadDataToImage(GPUImage& dstImage, const void* data, const size_t dataSize) {
+	void GraphicsDevice::UploadDataToImage(
+        GPUImage& dstImage, 
+        const void* data, 
+        const size_t dataSize) {
+
 		assert(dataSize != 0);
 
 		BufferDescription stagingDesc = {};
@@ -1541,8 +1545,6 @@ namespace Graphics {
 		vkMapMemory(m_LogicalDevice, stagingBuffer.Memory, 0, dataSize, 0, &stagingBuffer.MemoryMapped);
 		memcpy(stagingBuffer.MemoryMapped, data, dataSize);
 		vkUnmapMemory(m_LogicalDevice, stagingBuffer.Memory);
-
-		VkCommandBuffer commandBuffer = BeginSingleTimeCommandBuffer(m_CommandPool);
 
 		const VkBufferImageCopy region = {
 			.bufferOffset = 0,
@@ -1566,18 +1568,40 @@ namespace Graphics {
 			}
 		};
 
-		vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.Handle, dstImage.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-		EndSingleTimeCommandBuffer(commandBuffer, m_CommandPool);
-		DestroyBuffer(stagingBuffer);
+        VkCommandBuffer singleTimeCommandBuffer = BeginSingleTimeCommandBuffer(m_CommandPool);
+        vkCmdCopyBufferToImage(singleTimeCommandBuffer, stagingBuffer.Handle, dstImage.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        EndSingleTimeCommandBuffer(singleTimeCommandBuffer, m_CommandPool);
+
+        DestroyBuffer(stagingBuffer);
 	}
 
 	void GraphicsDevice::DestroyImage(GPUImage& image) {
-		if (image.ImageSampler != VK_NULL_HANDLE)
+		if (image.ImageSampler != VK_NULL_HANDLE) {
 			vkDestroySampler(m_LogicalDevice, image.ImageSampler, nullptr);
-		if (image.ImageView != VK_NULL_HANDLE)
-			vkDestroyImageView(m_LogicalDevice, image.ImageView, nullptr);
-		if (image.Image != VK_NULL_HANDLE)
+            image.ImageSampler = VK_NULL_HANDLE;
+        }
+
+        if (image.Description.MultiViewImage) {
+            if (image.ImageViews[0] != VK_NULL_HANDLE) {
+                vkDestroyImageView(m_LogicalDevice, image.ImageViews[0], nullptr);
+                image.ImageViews[0] = VK_NULL_HANDLE;
+            }
+
+            if (image.ImageViews[1] != VK_NULL_HANDLE) {
+                vkDestroyImageView(m_LogicalDevice, image.ImageViews[1], nullptr);
+                image.ImageViews[1] = VK_NULL_HANDLE;
+            }
+        } else {
+            if (image.ImageView != VK_NULL_HANDLE) {
+                vkDestroyImageView(m_LogicalDevice, image.ImageView, nullptr);
+                image.ImageView = VK_NULL_HANDLE;
+            }
+        }
+
+		if (image.Image != VK_NULL_HANDLE) {
 			vkDestroyImage(m_LogicalDevice, image.Image, nullptr);
+            image.Image = VK_NULL_HANDLE;
+        }
 
 		image.ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
