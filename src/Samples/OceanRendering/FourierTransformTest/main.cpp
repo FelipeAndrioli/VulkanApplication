@@ -68,7 +68,7 @@ std::array<sample, SAMPLES> IDFT(const std::array<complex_number, SAMPLES>& Freq
             AccumulatorYAxis += FrequencyDomainSample.Real * CosA - FrequencyDomainSample.Imaginary * SinA;
         }
 
-        TimeDomainSamples[TimeDomainSampleIndex].Y = AccumulatorYAxis * InverseTotalSamples;;
+        TimeDomainSamples[TimeDomainSampleIndex].Y = AccumulatorYAxis * InverseTotalSamples;
     }
 
     return TimeDomainSamples;
