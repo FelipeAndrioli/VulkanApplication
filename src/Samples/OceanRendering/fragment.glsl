@@ -49,9 +49,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float fog_height_falloff;
 } scene_gpu_data;
 
-layout (set = 0, binding = 1) uniform sampler2D displacement_map;
-layout (set = 0, binding = 2) uniform sampler2D normal_map;
-layout (set = 0, binding = 3) uniform samplerCube cube_texture;
+layout (set = 0, binding = 1) uniform samplerCube cube_texture;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;

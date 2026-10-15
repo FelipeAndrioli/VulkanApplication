@@ -43,9 +43,9 @@ layout (set = 0, binding = 0) readonly buffer SceneGPUData {
 } scene_gpu_data;
 
 
-layout (set = 0, binding = 3) uniform sampler2D skybox_texture;
-layout (set = 0, binding = 4) uniform sampler2D offscreen_pass_color_result;
-layout (set = 0, binding = 5) uniform sampler2D offscreen_pass_depth_result;
+layout (set = 0, binding = 1) uniform sampler2D skybox_texture;
+layout (set = 0, binding = 2) uniform sampler2D offscreen_pass_color_result;
+layout (set = 0, binding = 3) uniform sampler2D offscreen_pass_depth_result;
 
 const float near = 0.1;
 const float far = 4000.0;

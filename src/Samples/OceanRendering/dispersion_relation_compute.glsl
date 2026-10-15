@@ -62,12 +62,9 @@ void main() {
     ivec2 pixel_coord = ivec2(gl_GlobalInvocationID.xy);
     ivec2 image_size = textureSize(wave_spectrum_image, 0);
 
-    if (pixel_coord.x >= image_size.x || pixel_coord.y >= image_size.y ) {
+    if (pixel_coord.x >= image_size.x || pixel_coord.y >= image_size.y) {
         return;
     }
-
-    // temporary variables that will become part of shader input later
-    float patch_size = 1000.0;
 
     // Note: For texture fetching using integers we must use 'texelFetch'.
     vec4 wave_spectrum = texelFetch(wave_spectrum_image, pixel_coord, 0);
@@ -95,8 +92,13 @@ void main() {
         appearance and size if we simply changed our texture resolution which 
         we don't want.
     */
-    vec2 n = vec2(pixel_coord) - (image_size * 0.5);
-    vec2 k = (2.0 * PI * n) / patch_size;
+
+    float k_x = (pixel_coord.x < image_size.x / 2.0) ? float(pixel_coord.x) : float(pixel_coord.x - image_size.x);
+    float k_y = (pixel_coord.y < image_size.y / 2.0) ? float(pixel_coord.y) : float(pixel_coord.y - image_size.y);
+    vec2 k = (2.0 * PI * vec2(k_x, k_y)) / wave_parameters.patch_size;
+
+//    vec2 n = vec2(pixel_coord) - (image_size * 0.5);
+//    vec2 k = (2.0 * PI * n) / wave_parameters.patch_size;
     float k_length = length(k);
 
     if (k_length < 0.0001) {

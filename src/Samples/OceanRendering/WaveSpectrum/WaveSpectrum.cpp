@@ -59,7 +59,7 @@ float Phillips(
     float Amplitude, 
     float WaveSuppressionThreshold) {
 
-    float k_length = length(K);
+    float k_length = glm::length(K);
     
     if (k_length < 0.0001) return 0.0;
     
@@ -73,7 +73,7 @@ float Phillips(
     float s = exp(-k_2 * (WaveSuppressionThreshold * WaveSuppressionThreshold));
     float p = Amplitude * (exp(-1.0 / (k_2 * L_2)) / k_4) * s;      
     
-    float d = dot(normalize(K), normalize(WindDirection));
+    float d = glm::dot(glm::normalize(K), glm::normalize(WindDirection));
     
     // eliminates waves moving against wind direction
     if (d < 0.0) return 0.0;
@@ -94,6 +94,8 @@ std::vector<glm::vec4> GenerateWaveSpectrum(
     glm::vec2 HalfResolution = glm::vec2(SpectrumDimensions * 0.5f);
 
     std::vector<glm::vec2> GaussianNoise(SpectrumDimensions * SpectrumDimensions);
+
+    const int IntSpectrumDimension = (int)SpectrumDimensions;
 
     for (size_t Y = 0; Y < SpectrumDimensions; Y++) {
         for (size_t X = 0; X < SpectrumDimensions; X++) {
@@ -126,18 +128,35 @@ std::vector<glm::vec4> GenerateWaveSpectrum(
         we don't want.
     */
 
-    for (size_t Y = 0; Y < SpectrumDimensions; Y++) {
-        for (size_t X = 0; X < SpectrumDimensions; X++) {
+    for (size_t Y = 0; Y < IntSpectrumDimension; Y++) {
+
+        float KY = (Y < IntSpectrumDimension / 2.0f) ? Y : Y - IntSpectrumDimension;
+        KY *= (2.0f * PI) / PatchSizeMeters;
+
+        for (size_t X = 0; X < IntSpectrumDimension; X++) {
             glm::vec2 FragCoord = glm::vec2(X, Y);
 
-            glm::vec2 N = FragCoord - HalfResolution;
-            glm::vec2 K = (2.0f * PI * N) / PatchSizeMeters;
+//            glm::vec2 N = FragCoord - HalfResolution;
+//            glm::vec2 K = (2.0f * PI * N) / PatchSizeMeters;
+
+            float KX = (X < IntSpectrumDimension / 2.0f) ? X : X - IntSpectrumDimension;
+            KX *= (2.0f * PI) / PatchSizeMeters;
+
+            glm::vec2 K = glm::vec2(KX, KY);
 
             uint32_t XNeg = (SpectrumDimensions - X) % SpectrumDimensions;
             uint32_t YNeg = (SpectrumDimensions - Y) % SpectrumDimensions;
 
-            glm::vec2 NN = glm::vec2(XNeg, YNeg) - HalfResolution;
-            glm::vec2 NK = (2.0f * PI * NN) / PatchSizeMeters;
+//            glm::vec2 NN = glm::vec2(XNeg, YNeg) - HalfResolution;
+//            glm::vec2 NK = (2.0f * PI * NN) / PatchSizeMeters;
+
+            float NK_X = (XNeg < IntSpectrumDimension / 2.0) ? XNeg : XNeg - IntSpectrumDimension;
+            NK_X *= (2.0f * PI) / PatchSizeMeters;
+
+            float NK_Y = (YNeg < IntSpectrumDimension / 2.0) ? YNeg : YNeg - IntSpectrumDimension;
+            NK_Y *= (2.0f * PI) / PatchSizeMeters;
+
+            glm::vec2 NK = glm::vec2(NK_X, NK_Y);
 
             float P = Phillips(K, WindDirection, WindSpeed, Amplitude, WaveSuppressionThreshold);
             float NP = Phillips(NK, WindDirection, WindSpeed, Amplitude, WaveSuppressionThreshold);

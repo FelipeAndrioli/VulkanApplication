@@ -41,7 +41,7 @@ layout (set = 0, binding = 0) readonly buffer SceneGPUData {
     float fog_height_falloff;
 } scene_gpu_data;
 
-layout (set = 0, binding = 3) uniform samplerCube skybox_texture;
+layout (set = 0, binding = 1) uniform samplerCube skybox_texture;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;

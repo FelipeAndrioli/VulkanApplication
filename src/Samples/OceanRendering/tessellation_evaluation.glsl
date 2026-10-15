@@ -54,8 +54,9 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     float fog_height_falloff;
 } scene_gpu_data;
 
-layout (set = 0, binding = 1) uniform sampler2D displacement_map;
-layout (set = 0, binding = 2) uniform sampler2D normal_map;
+//layout (set = 0, binding = 1) uniform sampler2D displacement_map;
+//layout (set = 0, binding = 2) uniform sampler2D normal_map;
+layout (set = 0, binding = 4) uniform sampler2D idft;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
@@ -345,59 +346,95 @@ void main() {
 
     float time = scene_gpu_data.time;
 
-    bool debug_render_normals                       = bool(scene_gpu_data.flags & 1);
-    bool circular_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 1));
-    bool debug_render_world_space_pos               = bool(scene_gpu_data.flags & (1 << 2));
-    bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
-    bool tessellation_enabled                       = bool(scene_gpu_data.flags & (1 << 4));
-    bool reflection_enabled                         = bool(scene_gpu_data.flags & (1 << 5));
-    bool wave_random_direction_enabled              = bool(scene_gpu_data.flags & (1 << 6));
+    bool debug_render_normals               = bool(scene_gpu_data.flags & 1);
+    bool circular_waves_enabled             = bool(scene_gpu_data.flags & (1 << 1));
+    bool debug_render_world_space_pos       = bool(scene_gpu_data.flags & (1 << 2));
+    bool domain_warping_enabled             = bool(scene_gpu_data.flags & (1 << 3));
+    bool tessellation_enabled               = bool(scene_gpu_data.flags & (1 << 4));
+    bool reflection_enabled                 = bool(scene_gpu_data.flags & (1 << 5));
+    bool wave_random_direction_enabled      = bool(scene_gpu_data.flags & (1 << 6));
 
-    /*
-    wave_function_result w = sine_wave_fractal_brownian_motion(
-        interpolated_pos, 
-        time, 
-        scene_gpu_data.sine_fbm_amplitude,
-        scene_gpu_data.sine_fbm_frequency,
-        scene_gpu_data.sine_fbm_amplitude_multiplier,
-        scene_gpu_data.sine_fbm_frequency_multiplier,
-        scene_gpu_data.water_depth,
-        scene_gpu_data.drag_mult,
-        scene_gpu_data.wind_angle,
-        scene_gpu_data.wind_speed,
-        scene_gpu_data.temporal_phase_exponent,
-        scene_gpu_data.height_multiplier,
-        domain_warping_enabled,
-        wave_random_direction_enabled);
+    bool generate_normal_per_fragment       = bool(scene_gpu_data.flags & (1 << 7));
+    bool fbm_waves_enabled                  = bool(scene_gpu_data.flags & (1 << 8));
+    bool idft_waves_enabled                 = bool(scene_gpu_data.flags & (1 << 9));
 
-    interpolated_pos = vec4(w.position, 1.0);
-    out_normal = normalize(mat3(push_constants.model) * vec3(w.normal));
+    if (fbm_waves_enabled) {
+        wave_function_result w = sine_wave_fractal_brownian_motion(
+            interpolated_pos, 
+            time, 
+            scene_gpu_data.sine_fbm_amplitude,
+            scene_gpu_data.sine_fbm_frequency,
+            scene_gpu_data.sine_fbm_amplitude_multiplier,
+            scene_gpu_data.sine_fbm_frequency_multiplier,
+            scene_gpu_data.water_depth,
+            scene_gpu_data.drag_mult,
+            scene_gpu_data.wind_angle,
+            scene_gpu_data.wind_speed,
+            scene_gpu_data.temporal_phase_exponent,
+            scene_gpu_data.height_multiplier,
+            domain_warping_enabled,
+            wave_random_direction_enabled);
 
-    interpolated_pos.y = texture(displacement_map, interpolated_pos.xz).r;
-    */
+        interpolated_pos = vec4(w.position, 1.0);
+        out_normal = w.normal.xyz;
 
-    float displacement_scale = scene_gpu_data.displacement.x;
-    float water_mesh_vertex_count = scene_gpu_data.displacement.y;
-    float displacement_map_dimension = scene_gpu_data.displacement.z;
+        /*
+        interpolated_pos.y = texture(displacement_map, interpolated_pos.xz).r;
 
-    float uv_x = mix(0.0, water_mesh_vertex_count, interpolated_pos.x);
-    float uv_y = mix(0.0, water_mesh_vertex_count, interpolated_pos.z);
+        float displacement_scale = scene_gpu_data.displacement.x;
+        float water_mesh_vertex_count = scene_gpu_data.displacement.y;
+        float displacement_map_dimension = scene_gpu_data.displacement.z;
 
-    vec2 uv = vec2(uv_x, uv_y) * displacement_scale;
+        float uv_x = mix(0.0, water_mesh_vertex_count, interpolated_pos.x);
+        float uv_y = mix(0.0, water_mesh_vertex_count, interpolated_pos.z);
 
-    vec3 displacement = texture(displacement_map, uv).rgb;
-    vec3 displacement_normal = texture(normal_map, uv).rgb;
+        vec2 uv = vec2(uv_x, uv_y) * displacement_scale;
+        */
+
+//        out_uv = uv;
+    }
+//    vec3 displacement = texture(displacement_map, uv).rgb;
+//    vec3 displacement_normal = texture(normal_map, uv).rgb;
 
 //    interpolated_pos.xyz = vec3(interpolated_pos.x, 0.0, interpolated_pos.z);
 //    interpolated_pos.xyz = displacement;
-    interpolated_pos.y = displacement.y;
+//    interpolated_pos.y = displacement.y;
 
-    out_normal = normalize(mat3(push_constants.model) * displacement_normal);
+//    out_normal = normalize(mat3(push_constants.model) * displacement_normal);
+
+    if (idft_waves_enabled) {
+        // Note: scene_gpu_data.displacement.x is a fixed displacement amount 
+        // calculated by QUAD_GRID_VERTEX_COUNT / DISPLACEMENT_MAP_DIMENSION, 
+        // where quad grid vertex count is the whole water mesh size, and the 
+        // displacement map dimension is just an arbitrary value, I'll test and 
+        // decide what's the best approach.
+        //
+        // Note: scene_gpu_data.displacement.y is a displacement amount set by 
+        // the UI.
+        //
+        // Note: The term 'displacement' is used in above notes to refer to a 
+        // texture offset. The final variable name might be changed.
+
+//        vec4 idft_result = texture(idft, interpolated_pos.xz * scene_gpu_data.displacement.x);
+//        vec4 idft_result = texture(idft, interpolated_pos.xz * scene_gpu_data.displacement.y);
+
+        vec2 tex_coords = interpolated_pos.xz * scene_gpu_data.displacement.y;
+
+        vec4 idft_result = texture(idft, tex_coords);
+
+        interpolated_pos.y = idft_result.x;
+
+        float scale = scene_gpu_data.displacement.y;
+
+        out_normal = normalize(vec3(-idft_result.y * scale, 1.0, -idft_result.z * scale));;
+//        out_normal = vec3(idft_result.y, 1.0, idft_result.z);
+    }
 
     out_world_space_position = vec3(push_constants.model * interpolated_pos);
     out_model_space_position = interpolated_pos.xyz;
     out_original_model_space_pos = original_interpolated_pos.xyz;
-    out_uv = uv;
+
+    out_normal = normalize(mat3(push_constants.model) * out_normal);
 
     gl_Position = scene_gpu_data.projection 
         * scene_gpu_data.view 
