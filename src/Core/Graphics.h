@@ -42,14 +42,30 @@ namespace Graphics {
 		VkImageAspectFlags			AspectMask			= VK_IMAGE_ASPECT_NONE;
 		VkCompareOp					SamplerCompareOp	= VK_COMPARE_OP_ALWAYS;
 		VkComponentMapping			ComponentMapping	= {};
+
+        // Note: This bool multiview solution is quite fragile and not reinforced 
+        // by anything on the current framework, a multi view image could still 
+        // be created without this flag (which it shouldn't) and work properly 
+        // (which it shouldn't) until the moment it tries to destroy the resource.
+        //
+        // Destroying an image without this flag set or with it set incorrectly 
+        // will likely throw a few validation errors since it will try to release 
+        // memory from the next struct being "shared" with the ImageView union. Or 
+        // it won't know the image is multiview and one of the views won't have 
+        // its memory released.
+        bool                        MultiViewImage      = false;
 	};
 
 	struct GPUImage {
-		VkImage			Image			= VK_NULL_HANDLE;
-		VkImageView		ImageView		= VK_NULL_HANDLE;
+        VkImage	Image = VK_NULL_HANDLE;
 		VkSampler		ImageSampler	= VK_NULL_HANDLE;
 		VkDeviceMemory	Memory			= VK_NULL_HANDLE;
 		VkImageLayout	ImageLayout		= VK_IMAGE_LAYOUT_UNDEFINED;
+
+        union {
+            VkImageView	ImageView;
+            VkImageView	ImageViews[2];
+        };
 
 		void*			MemoryMapped;
 
