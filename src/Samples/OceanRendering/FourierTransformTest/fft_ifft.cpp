@@ -274,7 +274,7 @@ std::vector<complex_number> FFT(std::vector<complex_number> Samples) {
     return FrequencyBins;
 }
 
-int Test_main() {
+int fft_ifft_Test_main() {
 
     const int SampleCount = 4;
 
@@ -320,4 +320,6 @@ int Test_main() {
     for (const auto &Sample : TimeDomainSamplesFromIFFTIterative) {
         std::cout << "\tSamples Real: " << Sample.Real << ", Imaginary: " << Sample.Imaginary << '\n';
     }
+
+    return 0;
 }
