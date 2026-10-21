@@ -49,6 +49,7 @@
            - [x] GPU implementation of IDFT 
            - [x] GPU implementation of IDFT for Normals
            - [x] Separate implementation of compute IDFT/FFT waves from FBM waves
+           - [x] Disable IDFT
            - [ ] GPU implementation of IFFT
            - [ ] GPU implementation of IFFT for Normals
            - [ ] Maybe add offline shader compilation to this sample since iteration is taking too long.
@@ -266,7 +267,7 @@ private:
         Graphics::PipelineState *pipeline,
         uint32_t dispatchGroupsX, 
         uint32_t dispatchGroupsY) const;
-    void DispersionRelationPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) const;
+//    void DispersionRelationPass(const uint32_t currentFrame, const VkCommandBuffer& commandBuffer, Graphics::PipelineState *pipeline) const;
 
     glm::vec2 CalculateScreenSpaceLightPos(const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& WorldSpaceLightPos);
 };
@@ -648,8 +649,11 @@ void OceanRendering::StartUp() {
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragmentShader, "../src/Samples/OceanRendering/skybox_fragment.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_PostEffectsFragmentShader, "../src/Samples/OceanRendering/post_effects_fragment.glsl");
 //    gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_DisplacementComputeShader, "../src/Samples/OceanRendering/surface_displacement_compute.glsl");
+
+#ifdef IDFT_DISABLED
     gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_IDFTComputeShader, "../src/Samples/OceanRendering/idft_compute.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_WaveDispersionRelationComputeShader, "../src/Samples/OceanRendering/dispersion_relation_compute.glsl");
+#endif
 
     /*
     ImageDescription displacementImageDesc = {
@@ -710,7 +714,7 @@ void OceanRendering::StartUp() {
 			{ 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	                    // Skybox texture
 			{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	                    // Offscreen pass color result texture
 			{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },	                    // Offscreen pass depth result texture
-			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT },	    // IDFT Result to displace the wave
+//			{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT },	    // IDFT Result to displace the wave
 		}
 	};
 
@@ -719,13 +723,14 @@ void OceanRendering::StartUp() {
     displacememntComputePsoDesc.Name = "Surface displacement compute PSO";
     displacememntComputePsoDesc.computeShader = &m_DisplacementComputeShader;
     displacememntComputePsoDesc.psoInputLayout.push_back(m_FrameInputLayout);
-    displacememntComputePsoDesc.psoInputLayout.push_back(m_DisplacementComputeInputLayout);
+//    displacememntComputePsoDesc.psoInputLayout.push_back(m_DisplacementComputeInputLayout);
 
 //    gfxDevice->CreatePipelineState(displacememntComputePsoDesc, m_ComputeDisplacementPSO, 0);
 
 //    gfxDevice->TransitionImageLayout(m_DisplacementMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
 //    gfxDevice->TransitionImageLayout(m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
 
+#ifdef IDFT_DISABLED
     CreateWaveSpectrum();
     CreateDispersionRelationWaveResources();
     CreateIDFTComputeResources();
@@ -733,6 +738,8 @@ void OceanRendering::StartUp() {
     GenerateAndUploadWaveSpectrumData(&m_PhillipsWaveSpectrum);
 
     gfxDevice->TransitionImageLayout(m_IDFTResultImage, gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
+#endif
+
     /*
     m_ImGuiDisplacementTextureDescriptorSet = ImGui_ImplVulkan_AddTexture(
             m_DisplacementMap.ImageSampler, 
@@ -756,7 +763,7 @@ void OceanRendering::StartUp() {
         gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_SkyboxTexture);
         gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
         gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
-        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[4], m_FrameDescriptorSet[i], m_IDFTResultImage);
+//        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[4], m_FrameDescriptorSet[i], m_IDFTResultImage);
 	}
 
     Graphics::PipelineStateDescription psoDesc = {};
@@ -815,6 +822,7 @@ void OceanRendering::StartUp() {
 
     gfxDevice->CreatePipelineState(postEffectsDesc, m_PostEffectsPSO, *gfxDevice->GetSwapChain().RenderTarget.get());
 
+#ifdef IDFT_DISABLED
     Graphics::PipelineStateDescription IDFTPipelineDesc = {};
     IDFTPipelineDesc.Name = "IDFT Compute PSO";
     IDFTPipelineDesc.computeShader = &m_IDFTComputeShader;
@@ -830,6 +838,7 @@ void OceanRendering::StartUp() {
     DispersionPipelineDesc.psoInputLayout.push_back(m_WaveComputePassesInputLayout);
 
     gfxDevice->CreatePipelineState(DispersionPipelineDesc, m_DispersionRelationComputePSO, 0);
+#endif
 }
 
 void OceanRendering::CleanUp() {
@@ -1022,6 +1031,7 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
 
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
 
+#ifdef IDFT_DISABLED
     if (m_IDFTWavesEnabled) {
         if (m_ResizeComputeResources) {
             CreateWaveSpectrum();
@@ -1074,6 +1084,7 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
             gfxDevice->TransitionImageLayout(commandBuffer, m_IDFTResultImage, gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
         }
     }
+#endif
 
     /*
     gfxDevice->BindDescriptorSet(m_DisplacementComputeDescriptorSet[currentFrame], commandBuffer, m_ComputeDisplacementPSO.pipelineLayout, 1, 1, false);
@@ -1172,6 +1183,7 @@ void OceanRendering::RenderUI() {
 
     ImGui::Checkbox("(FBM) Fractal Brownian Motion Waves enabled", &m_FBMWavesEnabled);
 
+#ifdef IDFT_DISABLED
     if (m_FBMWavesEnabled && m_IDFTWavesEnabled) {
         m_IDFTWavesEnabled = false;
     }
@@ -1181,6 +1193,7 @@ void OceanRendering::RenderUI() {
     if (m_FBMWavesEnabled && m_IDFTWavesEnabled) {
         m_FBMWavesEnabled = false;
     }
+#endif
 
     if (m_FBMWavesEnabled && ImGui::TreeNode("FBM Wave Settings")) {
         ImGui::DragInt("Wave Count",                                        &SampleSceneData.WaveCount, 1.0f, 0, 200);
@@ -1201,6 +1214,7 @@ void OceanRendering::RenderUI() {
         ImGui::TreePop();
     }
 
+#ifdef IDFT_DISABLED
     if (m_IDFTWavesEnabled && ImGui::TreeNode("IDFT Wave Settings")) {
 
         wave_spectrum_parameters CurrentParameters = WaveSpectrumParameters;
@@ -1223,9 +1237,11 @@ void OceanRendering::RenderUI() {
 
         ImGui::TreePop();
     }
+#endif
 
     ImGui::SeparatorText("Textures preview");
 
+#ifdef IDFT_DISABLED
     if (ImGui::TreeNode("IDFT Result")) {
         ImGui::Image(
             (ImTextureID)m_ImGuiIDFTResult,
@@ -1234,6 +1250,7 @@ void OceanRendering::RenderUI() {
 
         ImGui::TreePop();
     }
+#endif
 
     if (ImGui::TreeNode("Wave Spectrum - Dispersion Relation")) {
         ImGui::Image(

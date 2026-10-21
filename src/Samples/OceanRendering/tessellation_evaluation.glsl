@@ -56,7 +56,9 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 
 //layout (set = 0, binding = 1) uniform sampler2D displacement_map;
 //layout (set = 0, binding = 2) uniform sampler2D normal_map;
+#ifdef IDFT_DISABLED
 layout (set = 0, binding = 4) uniform sampler2D idft;
+#endif
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
@@ -402,6 +404,7 @@ void main() {
 
 //    out_normal = normalize(mat3(push_constants.model) * displacement_normal);
 
+#ifdef IDFT_DISABLED
     if (idft_waves_enabled) {
         // Note: scene_gpu_data.displacement.x is a fixed displacement amount 
         // calculated by QUAD_GRID_VERTEX_COUNT / DISPLACEMENT_MAP_DIMENSION, 
@@ -429,6 +432,7 @@ void main() {
         out_normal = normalize(vec3(-idft_result.y * scale, 1.0, -idft_result.z * scale));;
 //        out_normal = vec3(idft_result.y, 1.0, idft_result.z);
     }
+#endif
 
     out_world_space_position = vec3(push_constants.model * interpolated_pos);
     out_model_space_position = interpolated_pos.xyz;
