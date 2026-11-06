@@ -51,13 +51,12 @@
            - [x] Separate implementation of compute IDFT/FFT waves from FBM waves
            - [x] Disable IDFT
            - [ ] IFFT
-                - [x] GPU implementation of IFFT
-                - [ ] Fix window minimizing.
-                - [ ] Chopier waves.
-                - [ ] Jacobian.
+                - [x] IFFT Height
+                - [x] IFFT Slopes
+                - [x] Fix window minimizing.
+                - [ ] IFFT Chopier waves
+                - [ ] IFFT Jacobian
                 - [ ] IFFT of multiple wave spectrum parameters.
-           - [ ] GPU implementation of IFFT for Normals
-           - [ ] Maybe add offline shader compilation to this sample since iteration is taking too long.
 
         - BRDF
         - HDR bloom pass(?).
@@ -1750,8 +1749,8 @@ void OceanRendering::Resize(uint32_t width, uint32_t height) {
 	Graphics::GraphicsDevice* gfxDevice = Graphics::GetDevice();
    
     for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[4], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
-        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[5], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
 	}
 }
 
