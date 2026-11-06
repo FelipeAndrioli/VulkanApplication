@@ -154,6 +154,8 @@ namespace Graphics {
 		R8G8B8A8_SNORM,
 		R8G8B8A8_SINT,
 
+        R32G32_FLOAT,
+
         R32_FLOAT,
         R16_FLOAT,
 

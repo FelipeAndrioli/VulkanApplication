@@ -3288,6 +3288,8 @@ namespace Graphics {
 			return Format::R32G32B32A32_INT;
 		case VK_FORMAT_R32G32B32A32_SINT:
 			return Format::R32G32B32A32_SINT;
+        case VK_FORMAT_R32G32_SFLOAT:
+            return Format::R32G32_FLOAT;
 		case VK_FORMAT_R32G32B32_SFLOAT:
 			return Format::R32G32B32_FLOAT;
 		case VK_FORMAT_R32G32B32_UINT:
@@ -3365,6 +3367,8 @@ namespace Graphics {
 			return VK_FORMAT_R8G8B8A8_SNORM;
 		case Format::R8G8B8A8_SINT:
 			return VK_FORMAT_R8G8B8A8_SINT;
+        case Format::R32G32_FLOAT:
+            return VK_FORMAT_R32G32_SFLOAT;
         case Format::R32_FLOAT:
             return VK_FORMAT_R32_SFLOAT;
         case Format::R16_FLOAT:
