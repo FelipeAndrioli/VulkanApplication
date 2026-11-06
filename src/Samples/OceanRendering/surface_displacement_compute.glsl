@@ -47,7 +47,8 @@ layout (set = 1, binding = 0) uniform wave_spectrum_parameters {
     vec2 wind_direction;
     int dimension;
     float patch_size;
-    float wind_speed;
+    float spectrum_wind_speed;
+    float dispersion_relation_wind_speed;
     float amplitude;
     float small_wave_suppression_threshold;
 } wave_parameters;

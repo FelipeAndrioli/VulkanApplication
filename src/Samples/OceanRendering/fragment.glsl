@@ -54,6 +54,9 @@ layout (set = 0, binding = 1) uniform samplerCube cube_texture;
 layout (push_constant) uniform PushConstants {
 	mat4 model;
     vec4 color;
+    int stage;
+    int flags;
+    float pi_over_L;
 } push_constants;
 
 struct wave_function_result {

@@ -46,13 +46,17 @@ layout (set = 1, binding = 0) uniform wave_spectrum_parameters {
     vec2 wind_direction;
     int dimension;
     float patch_size;
-    float wind_speed;
+    float spectrum_wind_speed;
+    float dispersion_relation_wind_speed;
     float amplitude;
     float small_wave_suppression_threshold;
 } wave_parameters;
 
 layout (set = 1, binding = 1) uniform sampler2D wave_spectrum_image;
-layout (rgba32f, set = 1, binding = 2) uniform writeonly image2D dispersion_relation_ws;
+layout (rg32f, set = 1, binding = 2) uniform writeonly image2D dispersion_relation_ws;
+layout (set = 1, binding = 3) uniform sampler2D dispersion_relation_sampler;
+layout (rgba32f, set = 1, binding = 4) uniform writeonly image2D dispersion_relation_slope;
+layout (set = 1, binding = 5) uniform sampler2D dispersion_relation_slope_sampler;
 
 #define PI 3.14159265359f
 #define G 9.81f
@@ -93,12 +97,16 @@ void main() {
         we don't want.
     */
 
+#define TEST
+#ifdef TEST
     float k_x = (pixel_coord.x < image_size.x / 2.0) ? float(pixel_coord.x) : float(pixel_coord.x - image_size.x);
     float k_y = (pixel_coord.y < image_size.y / 2.0) ? float(pixel_coord.y) : float(pixel_coord.y - image_size.y);
     vec2 k = (2.0 * PI * vec2(k_x, k_y)) / wave_parameters.patch_size;
+#else
+    vec2 n = vec2(pixel_coord) - (image_size * 0.5);
+    vec2 k = (2.0 * PI * n) / wave_parameters.patch_size;
+#endif
 
-//    vec2 n = vec2(pixel_coord) - (image_size * 0.5);
-//    vec2 k = (2.0 * PI * n) / wave_parameters.patch_size;
     float k_length = length(k);
 
     if (k_length < 0.0001) {
@@ -114,7 +122,7 @@ void main() {
     //  w(k) = sqrt(gk)
 
     float W = sqrt(G * k_length);
-    float phase = W * scene_gpu_data.time;
+    float phase = W * scene_gpu_data.time * wave_parameters.dispersion_relation_wind_speed;
 
     // we can't simply use 'exp' because it would handle the exponential as a 
     // normal number instead of a complex number, therefore we need to break 
@@ -159,6 +167,9 @@ void main() {
     );
 
     vec2 h_t = term_pos + term_neg;
+    vec2 slope_x = vec2(-h_t.y * k_x, h_t.x * k_x);
+    vec2 slope_y = vec2(-h_t.y * k_y, h_t.x * k_y);
 
-    imageStore(dispersion_relation_ws, pixel_coord, vec4(h_t, 0.0, 1.0));
+    imageStore(dispersion_relation_ws, pixel_coord, vec4(h_t, 0.0, 0.0));
+    imageStore(dispersion_relation_slope, pixel_coord, vec4(slope_x, slope_y));
 }

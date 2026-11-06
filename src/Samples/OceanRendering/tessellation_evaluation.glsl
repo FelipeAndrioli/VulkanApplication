@@ -56,9 +56,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 
 //layout (set = 0, binding = 1) uniform sampler2D displacement_map;
 //layout (set = 0, binding = 2) uniform sampler2D normal_map;
-#ifdef IDFT_DISABLED
-layout (set = 0, binding = 4) uniform sampler2D idft;
-#endif
+layout (set = 0, binding = 4) uniform sampler2D ifft;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
@@ -358,7 +356,7 @@ void main() {
 
     bool generate_normal_per_fragment       = bool(scene_gpu_data.flags & (1 << 7));
     bool fbm_waves_enabled                  = bool(scene_gpu_data.flags & (1 << 8));
-    bool idft_waves_enabled                 = bool(scene_gpu_data.flags & (1 << 9));
+    bool ifft_waves_enabled                 = bool(scene_gpu_data.flags & (1 << 9));
 
     if (fbm_waves_enabled) {
         wave_function_result w = sine_wave_fractal_brownian_motion(
@@ -433,6 +431,14 @@ void main() {
 //        out_normal = vec3(idft_result.y, 1.0, idft_result.z);
     }
 #endif
+
+    if (ifft_waves_enabled) {
+        float scale = scene_gpu_data.displacement.y;
+        vec2 tex_coords = interpolated_pos.xz * scale;
+        vec4 ifft_result = texture(ifft, tex_coords);
+        interpolated_pos.y = ifft_result.x;
+        out_normal = normalize(vec3(-ifft_result.y * scale, 1.0, -ifft_result.z * scale));
+    }
 
     out_world_space_position = vec3(push_constants.model * interpolated_pos);
     out_model_space_position = interpolated_pos.xyz;
