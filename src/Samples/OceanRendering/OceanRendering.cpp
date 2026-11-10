@@ -171,7 +171,7 @@ private:
     Graphics::RenderPassDescription m_HDRPostEffectsRenderPassDescription = {};
 
     Graphics::GPUImage m_DisplacementMap = {};
-    Graphics::GPUImage m_DisplacementNormalMap = {};
+//    Graphics::GPUImage m_DisplacementNormalMap = {};
     Graphics::GPUImage m_OffscreenPassColor = {};
     Graphics::GPUImage m_OffscreenPassResolvedColor = {};
     Graphics::GPUImage m_OffscreenDepth = {};
@@ -215,7 +215,7 @@ private:
     VkDescriptorSet m_ImGuiDisplacementTextureDescriptorSet = VK_NULL_HANDLE;
     VkDescriptorSet m_ImGuiDisplacementNormalTextureDescriptorSet = VK_NULL_HANDLE;
     VkDescriptorSet m_ImGuiIDFTResult = VK_NULL_HANDLE;
-    VkDescriptorSet m_ImGuiIFFTResult[2];
+    VkDescriptorSet m_ImGuiIFFTResult = VK_NULL_HANDLE;
 
     Graphics::Shader m_SkyboxVertexShader = {};
     Graphics::Shader m_SkyboxFragmentShader = {};
@@ -238,12 +238,13 @@ private:
 
     VkDescriptorSetLayout m_IFFT_DescriptorSetLayout = VK_NULL_HANDLE;
     VkDescriptorSet m_IFFT_DescriptorSets[2];
-    Graphics::GPUImage m_IFFT_PingPongBuffers[2] = {};
     Graphics::PipelineState m_IFFT_HeightSlopeXPSO = {};
     Graphics::PipelineState m_IFFT_JacobianSlopeYPSO = {};
     Graphics::Shader m_IFFT_HeightSlopeXComputeShader = {};
     Graphics::Shader m_IFFT_JacobianSlopeYComputeShader= {};
     Graphics::InputLayout m_IFFT_InputLayout = {};
+    Graphics::GPUImage m_IFFT_PingPongBuffers[2] = {};
+    Graphics::GPUImage m_DisplacementNormalMap = {};
 
     glm::vec2 m_AverageWaveDirection = glm::vec2(1.0f, 0.0f);
 
@@ -297,7 +298,7 @@ private:
     void CreateIFFTResources(bool ImageResizeOnly = false, const VkCommandBuffer *CommandBuffer = 0);
     void DestroyIFFTResources();
     void DispersionRelation(const uint32_t currentFrame, const VkCommandBuffer &commandBuffer);
-    void IFFT(const uint32_t currentFrame, const VkCommandBuffer &commandBuffer);
+    void IFFT(const uint32_t CurrentFrame, const VkCommandBuffer &CommandBuffer, Graphics::GPUImage &Target);
 };
 
 void OceanRendering::CreateIFFTResources(bool ImageResizeOnly, const VkCommandBuffer *CommandBuffer) {
@@ -311,44 +312,46 @@ void OceanRendering::CreateIFFTResources(bool ImageResizeOnly, const VkCommandBu
         .LayerCount     = 1,
         .Format         = gfxDevice->ConvertFormat(Graphics::Format::R32G32B32A32_FLOAT),
         .Tiling         = VK_IMAGE_TILING_OPTIMAL,
-        .Usage          = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT),
+        .Usage          = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT),
         .MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         .AspectFlags    = VK_IMAGE_ASPECT_COLOR_BIT,
         .ViewType       = VK_IMAGE_VIEW_TYPE_2D,
         .MsaaSamples    = static_cast<VkSampleCountFlagBits>(1),
         .ImageType      = VK_IMAGE_TYPE_2D,
-        .AddressMode    = VK_SAMPLER_ADDRESS_MODE_REPEAT, 
+        .AddressMode    = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .AspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
     };
 
     gfxDevice->WaitIdle();
     gfxDevice->DestroyImage(m_IFFT_PingPongBuffers[0]);
     gfxDevice->DestroyImage(m_IFFT_PingPongBuffers[1]);
+    gfxDevice->DestroyImage(m_DisplacementNormalMap);
 
     gfxDevice->CreateImage(m_IFFT_PingPongBuffers[0], ImageDescription);
     gfxDevice->CreateImage(m_IFFT_PingPongBuffers[1], ImageDescription);
+    gfxDevice->CreateImage(m_DisplacementNormalMap, ImageDescription);
 
     gfxDevice->CreateImageView(m_IFFT_PingPongBuffers[0]);
     gfxDevice->CreateImageView(m_IFFT_PingPongBuffers[1]);
+    gfxDevice->CreateImageView(m_DisplacementNormalMap);
 
     gfxDevice->CreateImageSampler(m_IFFT_PingPongBuffers[0]);
     gfxDevice->CreateImageSampler(m_IFFT_PingPongBuffers[1]);
+    gfxDevice->CreateImageSampler(m_DisplacementNormalMap);
 
     if (CommandBuffer) { 
         gfxDevice->TransitionImageLayout(*CommandBuffer, m_IFFT_PingPongBuffers[0], gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
         gfxDevice->TransitionImageLayout(*CommandBuffer, m_IFFT_PingPongBuffers[1], gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
+        gfxDevice->TransitionImageLayout(*CommandBuffer, m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(ResourceState::COPY_DST));
     } else {
         gfxDevice->TransitionImageLayout(m_IFFT_PingPongBuffers[0], gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
         gfxDevice->TransitionImageLayout(m_IFFT_PingPongBuffers[1], gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
+        gfxDevice->TransitionImageLayout(m_DisplacementNormalMap, gfxDevice->ConvertResourceStateToImageLayout(ResourceState::COPY_DST));
     }
 
-    m_ImGuiIFFTResult[0] = ImGui_ImplVulkan_AddTexture(
-        m_IFFT_PingPongBuffers[0].ImageSampler, 
-        m_IFFT_PingPongBuffers[0].ImageView, 
-        gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
-
-    m_ImGuiIFFTResult[1] = ImGui_ImplVulkan_AddTexture(
-        m_IFFT_PingPongBuffers[1].ImageSampler, 
-        m_IFFT_PingPongBuffers[1].ImageView, 
+    m_ImGuiIFFTResult = ImGui_ImplVulkan_AddTexture(
+        m_DisplacementNormalMap.ImageSampler, 
+        m_DisplacementNormalMap.ImageView, 
         gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
 
     m_IFFT_InputLayout = {
@@ -378,7 +381,7 @@ void OceanRendering::CreateIFFTResources(bool ImageResizeOnly, const VkCommandBu
 
         if (CommandBuffer) { 
             gfxDevice->TransitionImageLayout(*CommandBuffer, m_IFFT_PingPongBuffers[0], gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
-            gfxDevice->TransitionImageLayout(*CommandBuffer, m_IFFT_PingPongBuffers[1], gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
+            gfxDevice->TransitionImageLayout(*CommandBuffer, m_IFFT_PingPongBuffers[1], gfxDevice->ConvertResourceStateToImageLayout(ResourceState::UNORDERED_ACCESS));
         } else {
             gfxDevice->TransitionImageLayout(m_IFFT_PingPongBuffers[0], gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
             gfxDevice->TransitionImageLayout(m_IFFT_PingPongBuffers[1], gfxDevice->ConvertResourceStateToImageLayout(ResourceState::UNORDERED_ACCESS));
@@ -447,6 +450,7 @@ void OceanRendering::DestroyIFFTResources() {
 
     gfxDevice->DestroyImage(m_IFFT_PingPongBuffers[0]);
     gfxDevice->DestroyImage(m_IFFT_PingPongBuffers[1]);
+    gfxDevice->DestroyImage(m_DisplacementNormalMap);
 
     gfxDevice->DestroyShader(m_IFFT_HeightSlopeXComputeShader);
     gfxDevice->DestroyShader(m_IFFT_JacobianSlopeYComputeShader);
@@ -474,22 +478,28 @@ void OceanRendering::DispersionRelation(const uint32_t currentFrame, const VkCom
     gfxDevice->TransitionImageLayout(commandBuffer, m_WaveDispersionRelationSlopes, gfxDevice->ConvertResourceStateToImageLayout(Graphics::ResourceState::SHADER_RESOURCE));
 }
 
-void OceanRendering::IFFT(const uint32_t currentFrame, const VkCommandBuffer &commandBuffer) {
+void OceanRendering::IFFT(const uint32_t CurrentFrame, const VkCommandBuffer &CommandBuffer, Graphics::GPUImage &Target) {
     
 	SCOPED_PROFILER_US("OceanRendering::IFFT");
 
     Graphics::GraphicsDevice *gfxDevice = Graphics::GetDevice();
 
     gfxDevice->TransitionImageLayout(
-        commandBuffer, 
+        CommandBuffer, 
         m_IFFT_PingPongBuffers[0], 
         gfxDevice->ConvertResourceStateToImageLayout(ResourceState::UNORDERED_ACCESS)
     );
 
     gfxDevice->TransitionImageLayout(
-        commandBuffer,
+        CommandBuffer,
         m_IFFT_PingPongBuffers[1],
         gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE)
+    );
+
+    gfxDevice->TransitionImageLayout(
+        CommandBuffer, 
+        Target, 
+        gfxDevice->ConvertResourceStateToImageLayout(ResourceState::COPY_DST)
     );
 
     const uint32_t N = WaveSpectrumParameters.Dimension;
@@ -507,7 +517,7 @@ void OceanRendering::IFFT(const uint32_t currentFrame, const VkCommandBuffer &co
 
     for (size_t PipelineIndex = 0; PipelineIndex < Pipelines.size(); PipelineIndex++) {
 
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Pipelines[PipelineIndex]->pipeline);
+        vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, Pipelines[PipelineIndex]->pipeline);
 
         //  - Run a 1D IFFT on all rows independently
         //  - Run a 1D IFFT on all columns independently
@@ -532,20 +542,20 @@ void OceanRendering::IFFT(const uint32_t currentFrame, const VkCommandBuffer &co
                     |   FirstOverallPass);
 
                 gfxDevice->TransitionImageLayout(
-                        commandBuffer,
+                        CommandBuffer,
                         m_IFFT_PingPongBuffers[WriteBufferIndex],
                         gfxDevice->ConvertResourceStateToImageLayout(ResourceState::UNORDERED_ACCESS));
 
                 gfxDevice->TransitionImageLayout(
-                        commandBuffer,
+                        CommandBuffer,
                         m_IFFT_PingPongBuffers[ReadBufferIndex],
                         gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
 
-                gfxDevice->BindDescriptorSet(m_IFFT_DescriptorSets[WriteBufferIndex], commandBuffer, m_IFFT_HeightSlopeXPSO.pipelineLayout, 1, 1, false);
+                gfxDevice->BindDescriptorSet(m_IFFT_DescriptorSets[WriteBufferIndex], CommandBuffer, m_IFFT_HeightSlopeXPSO.pipelineLayout, 1, 1, false);
 
-                vkCmdPushConstants(commandBuffer, m_IFFT_HeightSlopeXPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(push_constants), &FramePushConstants);
+                vkCmdPushConstants(CommandBuffer, m_IFFT_HeightSlopeXPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(push_constants), &FramePushConstants);
 
-                ComputePass(currentFrame, commandBuffer, 0, DispatchGroup, DispatchGroup); 
+                ComputePass(CurrentFrame, CommandBuffer, 0, DispatchGroup, DispatchGroup); 
 
                 uint32_t Temp = WriteBufferIndex;
                 WriteBufferIndex = ReadBufferIndex;
@@ -555,14 +565,22 @@ void OceanRendering::IFFT(const uint32_t currentFrame, const VkCommandBuffer &co
     }
 
     gfxDevice->TransitionImageLayout(
-        commandBuffer, 
+        CommandBuffer, 
         m_IFFT_PingPongBuffers[0], 
         gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE)
     );
 
     gfxDevice->TransitionImageLayout(
-        commandBuffer,
+        CommandBuffer,
         m_IFFT_PingPongBuffers[1],
+        gfxDevice->ConvertResourceStateToImageLayout(ResourceState::COPY_SRC)
+    );
+
+    gfxDevice->CopyImage(m_IFFT_PingPongBuffers[1], Target, &CommandBuffer);
+
+    gfxDevice->TransitionImageLayout(
+        CommandBuffer, 
+        Target, 
         gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE)
     );
 }
@@ -1104,7 +1122,7 @@ void OceanRendering::StartUp() {
         gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[1], m_FrameDescriptorSet[i], m_SkyboxTexture);
         gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[2], m_FrameDescriptorSet[i], m_OffscreenPassResolvedColor);
         gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[3], m_FrameDescriptorSet[i], m_OffscreenResolvedDepth);
-        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[4], m_FrameDescriptorSet[i], m_IFFT_PingPongBuffers[1]);
+        gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[4], m_FrameDescriptorSet[i], m_DisplacementNormalMap);
 	}
 
     Graphics::PipelineStateDescription psoDesc = {};
@@ -1226,7 +1244,6 @@ void OceanRendering::CleanUp() {
     gfxDevice->DestroyShader(m_DisplacementComputeShader);
     gfxDevice->DestroyPipeline(m_ComputeDisplacementPSO);
     gfxDevice->DestroyImage(m_DisplacementMap);
-    gfxDevice->DestroyImage(m_DisplacementNormalMap);
 
     // Wave Spectrum and Dispersion Relation Resources
     gfxDevice->DestroyImage(m_PhillipsWaveSpectrum);
@@ -1392,7 +1409,7 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
             CreateIFFTResources(true);
 
             for (int i = 0; i < Graphics::FRAMES_IN_FLIGHT; i++) {
-                gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[4], m_FrameDescriptorSet[i], m_IFFT_PingPongBuffers[1]);
+                gfxDevice->WriteDescriptor(m_FrameInputLayout.bindings[4], m_FrameDescriptorSet[i], m_DisplacementNormalMap);
             }
 
             m_RegenerateIFFTResources = true;
@@ -1464,7 +1481,7 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
     gfxDevice->BindDescriptorSet(m_FrameDescriptorSet[currentFrame], commandBuffer, m_DefaultPSO.pipelineLayout, 0, 1, false);
 
     DispersionRelation(currentFrame, commandBuffer);
-    IFFT(currentFrame, commandBuffer);
+    IFFT(currentFrame, commandBuffer, m_DisplacementNormalMap);
 
     gfxDevice->BindDescriptorSet(m_FrameDescriptorSet[currentFrame], commandBuffer, m_DefaultPSO.pipelineLayout, 0, 1);
 	m_OffscreenRenderTarget->Begin(commandBuffer);
@@ -1661,18 +1678,9 @@ void OceanRendering::RenderUI() {
     }
 #endif
 
-    if (ImGui::TreeNode("IFFT Result [0]")) {
+    if (ImGui::TreeNode("IFFT Result - Height/Normal Map")) {
         ImGui::Image(
-            (ImTextureID)m_ImGuiIFFTResult[0],
-            ImVec2(400.0f, 400.0f)
-        );
-
-        ImGui::TreePop();
-    }
-
-    if (ImGui::TreeNode("IFFT Result [1]")) {
-        ImGui::Image(
-            (ImTextureID)m_ImGuiIFFTResult[1],
+            (ImTextureID)m_ImGuiIFFTResult,
             ImVec2(400.0f, 400.0f)
         );
 
