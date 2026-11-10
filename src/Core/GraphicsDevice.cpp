@@ -1526,6 +1526,47 @@ namespace Graphics {
 		EndSingleTimeCommandBuffer(commandBuffer, m_CommandPool);
 	}
 
+    void GraphicsDevice::CopyImage(const GPUImage &Source, GPUImage &Target, const VkCommandBuffer *CommandBuffer) {
+        VkCommandBuffer InternalCommandBuffer = CommandBuffer ? *CommandBuffer : BeginSingleTimeCommandBuffer(m_CommandPool);
+
+        VkImageSubresourceLayers SourceImageSubresourceLayers = {};
+        SourceImageSubresourceLayers.aspectMask     = Source.Description.AspectMask;
+        SourceImageSubresourceLayers.baseArrayLayer = Source.Description.BaseArrayLayer;
+        SourceImageSubresourceLayers.layerCount     = Source.Description.LayerCount;
+        SourceImageSubresourceLayers.mipLevel       = Source.Description.MipLevels - 1;
+
+        VkImageSubresourceLayers TargetImageSubresourceLayers = {};
+        TargetImageSubresourceLayers.aspectMask     = Target.Description.AspectMask;
+        TargetImageSubresourceLayers.baseArrayLayer = Target.Description.BaseArrayLayer;
+        TargetImageSubresourceLayers.layerCount     = Target.Description.LayerCount;
+        TargetImageSubresourceLayers.mipLevel       = Target.Description.MipLevels - 1;
+
+        VkImageCopy ImageCopy = {};
+        ImageCopy.srcSubresource = SourceImageSubresourceLayers;
+        ImageCopy.srcOffset = { 0, 0, 0 };
+        ImageCopy.dstSubresource = TargetImageSubresourceLayers;
+        ImageCopy.dstOffset = { 0, 0, 0 };
+        ImageCopy.extent = { 
+            Source.Description.Width, 
+            Source.Description.Height, 
+            1
+        };
+
+        vkCmdCopyImage(
+            InternalCommandBuffer, 
+            Source.Image, 
+            Source.ImageLayout, 
+            Target.Image, 
+            Target.ImageLayout, 
+            1, 
+            &ImageCopy
+        );
+
+        if (!CommandBuffer) {
+            EndSingleTimeCommandBuffer(InternalCommandBuffer);
+        }
+    }
+
 	void GraphicsDevice::UploadDataToImage(
         GPUImage& dstImage, 
         const void* data, 
@@ -1605,7 +1646,9 @@ namespace Graphics {
 
 		image.ImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-		vkFreeMemory(m_LogicalDevice, image.Memory, nullptr);
+        if (image.Memory != VK_NULL_HANDLE) {
+            vkFreeMemory(m_LogicalDevice, image.Memory, nullptr);
+        }
 	}
 
 	void GraphicsDevice::DestroyAndDeallocateImage(GPUImage& image) {

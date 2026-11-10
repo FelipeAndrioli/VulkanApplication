@@ -263,6 +263,7 @@ namespace Graphics {
 		void CreateImageSampler(GPUImage& image);
 		void ResizeImage(GPUImage& image, uint32_t width, uint32_t height);
 		void CopyBufferToImage(GPUImage& image, GPUBuffer& srcBuffer);
+        void CopyImage(const GPUImage &Source, GPUImage &Target, const VkCommandBuffer *CommandBuffer = 0);
 		void DestroyImage(GPUImage& image);
 		void DestroyImageCube(GPUImageCube& image);
 		void DestroyAndDeallocateImage(GPUImage& image);
