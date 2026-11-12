@@ -24,7 +24,7 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
     vec4 sun;                   // xy -> pos; z -> radius; w -> strength
 	vec4 viewer_position;
     vec4 water_color;           // w is empty
-    vec4 displacement;
+    vec4 displacement;          // x -> choppiness scale factor; y -> height map texture scale
     vec4 local_space_camera_frustum_planes[6];
     int flags;
     int wave_count;
@@ -56,7 +56,8 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 
 //layout (set = 0, binding = 1) uniform sampler2D displacement_map;
 //layout (set = 0, binding = 2) uniform sampler2D normal_map;
-layout (set = 0, binding = 4) uniform sampler2D ifft;
+layout (set = 0, binding = 4) uniform sampler2D ifft_height_slope;
+layout (set = 0, binding = 5) uniform sampler2D ifft_horizontal_displacement;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
@@ -357,6 +358,7 @@ void main() {
     bool generate_normal_per_fragment       = bool(scene_gpu_data.flags & (1 << 7));
     bool fbm_waves_enabled                  = bool(scene_gpu_data.flags & (1 << 8));
     bool ifft_waves_enabled                 = bool(scene_gpu_data.flags & (1 << 9));
+    bool ifft_horizontal_waves_enabled      = bool(scene_gpu_data.flags & (1 << 10));
 
     if (fbm_waves_enabled) {
         wave_function_result w = sine_wave_fractal_brownian_motion(
@@ -434,8 +436,20 @@ void main() {
 
     if (ifft_waves_enabled) {
         float scale = scene_gpu_data.displacement.y;
+       
         vec2 tex_coords = interpolated_pos.xz * scale;
-        vec4 ifft_result = texture(ifft, tex_coords);
+        
+        vec4 ifft_result = texture(ifft_height_slope, tex_coords);
+
+        if (ifft_horizontal_waves_enabled) {
+            float choppiness_factor = -scene_gpu_data.displacement.x;
+
+            vec4 ifft_horizontal_result = texture(ifft_horizontal_displacement, tex_coords);
+
+            interpolated_pos.x += (ifft_horizontal_result.r * choppiness_factor);
+            interpolated_pos.z += (ifft_horizontal_result.g * choppiness_factor);
+        }
+
         interpolated_pos.y = ifft_result.x;
         out_normal = normalize(vec3(-ifft_result.y * scale, 1.0, -ifft_result.z * scale));
     }

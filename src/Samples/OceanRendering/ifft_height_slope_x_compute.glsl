@@ -14,6 +14,7 @@ layout (push_constant) uniform PushConstants {
     int stage;
     int flags;
     float pi_over_L;
+    float patch_size;
 } ifft_push_constants;
 
 #define PI 3.14159265359f
