@@ -1648,6 +1648,7 @@ namespace Graphics {
 
         if (image.Memory != VK_NULL_HANDLE) {
             vkFreeMemory(m_LogicalDevice, image.Memory, nullptr);
+            image.Memory = VK_NULL_HANDLE;
         }
 	}
 
