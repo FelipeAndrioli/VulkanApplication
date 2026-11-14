@@ -245,11 +245,11 @@ private:
 
     VkDescriptorSetLayout m_IFFT_DescriptorSetLayout = VK_NULL_HANDLE;
     VkDescriptorSet m_IFFT_DescriptorSets[2];
-    Graphics::PipelineState m_IFFT_HeightSlopeXPSO = {};
-    Graphics::PipelineState m_IFFT_JacobianSlopeYPSO = {};
+    Graphics::PipelineState m_IFFT_HeightPSO = {};
+    Graphics::PipelineState m_IFFT_SlopesPSO = {};
     Graphics::PipelineState m_IFFT_HorizontalDisplacementPSO = {};
-    Graphics::Shader m_IFFT_HeightSlopeXComputeShader = {};
-    Graphics::Shader m_IFFT_JacobianSlopeYComputeShader = {};
+    Graphics::Shader m_IFFT_HeightComputeShader = {};
+    Graphics::Shader m_IFFT_SlopesComputeShader = {};
     Graphics::Shader m_IFFT_HorizontalDisplacementComputeShader = {};
     Graphics::InputLayout m_IFFT_InputLayout = {};
     Graphics::GPUImage m_IFFT_PingPongBuffers[2] = {};
@@ -478,19 +478,19 @@ void OceanRendering::CreateIFFTResources(bool ImageResizeOnly, const VkCommandBu
 
     Graphics::PipelineStateDescription IFFT_HeightSlopeXPipelineDescription= {};
     IFFT_HeightSlopeXPipelineDescription.Name = "IFFT Height and Slope X Compute PSO";
-    IFFT_HeightSlopeXPipelineDescription.computeShader = &m_IFFT_HeightSlopeXComputeShader;
+    IFFT_HeightSlopeXPipelineDescription.computeShader = &m_IFFT_HeightComputeShader;
     IFFT_HeightSlopeXPipelineDescription.psoInputLayout.push_back(m_FrameInputLayout);
     IFFT_HeightSlopeXPipelineDescription.psoInputLayout.push_back(m_IFFT_InputLayout);
 
-    gfxDevice->CreatePipelineState(IFFT_HeightSlopeXPipelineDescription, m_IFFT_HeightSlopeXPSO, 0);
+    gfxDevice->CreatePipelineState(IFFT_HeightSlopeXPipelineDescription, m_IFFT_HeightPSO, 0);
 
     Graphics::PipelineStateDescription IFFT_JacobianSlopeYPipelineDescription = {};
     IFFT_JacobianSlopeYPipelineDescription.Name = "IFFT Jacobian and Slope Y Compute PSO";
-    IFFT_JacobianSlopeYPipelineDescription.computeShader = &m_IFFT_JacobianSlopeYComputeShader;
+    IFFT_JacobianSlopeYPipelineDescription.computeShader = &m_IFFT_SlopesComputeShader;
     IFFT_JacobianSlopeYPipelineDescription.psoInputLayout.push_back(m_FrameInputLayout);
     IFFT_JacobianSlopeYPipelineDescription.psoInputLayout.push_back(m_IFFT_InputLayout);
 
-    gfxDevice->CreatePipelineState(IFFT_JacobianSlopeYPipelineDescription, m_IFFT_JacobianSlopeYPSO, 0);
+    gfxDevice->CreatePipelineState(IFFT_JacobianSlopeYPipelineDescription, m_IFFT_SlopesPSO, 0);
 
     Graphics::PipelineStateDescription IFFT_HorizontalDisplacementPipelineDescription = {};
     IFFT_HorizontalDisplacementPipelineDescription.Name = "IFFT Horizontal Displacement PSO";
@@ -510,12 +510,12 @@ void OceanRendering::DestroyIFFTResources() {
     gfxDevice->DestroyImage(m_NormalMap);
     gfxDevice->DestroyImage(m_HorizontalDisplacementMap);
 
-    gfxDevice->DestroyShader(m_IFFT_HeightSlopeXComputeShader);
-    gfxDevice->DestroyShader(m_IFFT_JacobianSlopeYComputeShader);
+    gfxDevice->DestroyShader(m_IFFT_HeightComputeShader);
+    gfxDevice->DestroyShader(m_IFFT_SlopesComputeShader);
     gfxDevice->DestroyShader(m_IFFT_HorizontalDisplacementComputeShader);
 
-    gfxDevice->DestroyPipeline(m_IFFT_HeightSlopeXPSO);
-    gfxDevice->DestroyPipeline(m_IFFT_JacobianSlopeYPSO);
+    gfxDevice->DestroyPipeline(m_IFFT_HeightPSO);
+    gfxDevice->DestroyPipeline(m_IFFT_SlopesPSO);
     gfxDevice->DestroyPipeline(m_IFFT_HorizontalDisplacementPSO);
 
     gfxDevice->DestroyDescriptorSetLayout(m_IFFT_DescriptorSetLayout);
@@ -608,9 +608,9 @@ void OceanRendering::IFFT(const uint32_t CurrentFrame, const VkCommandBuffer &Co
                     m_IFFT_PingPongBuffers[ReadBufferIndex],
                     gfxDevice->ConvertResourceStateToImageLayout(ResourceState::SHADER_RESOURCE));
 
-            gfxDevice->BindDescriptorSet(m_IFFT_DescriptorSets[WriteBufferIndex], CommandBuffer, m_IFFT_HeightSlopeXPSO.pipelineLayout, 1, 1, false);
+            gfxDevice->BindDescriptorSet(m_IFFT_DescriptorSets[WriteBufferIndex], CommandBuffer, m_IFFT_HeightPSO.pipelineLayout, 1, 1, false);
 
-            vkCmdPushConstants(CommandBuffer, m_IFFT_HeightSlopeXPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(push_constants), &FramePushConstants);
+            vkCmdPushConstants(CommandBuffer, m_IFFT_HeightPSO.pipelineLayout, VK_SHADER_STAGE_ALL, 0, sizeof(push_constants), &FramePushConstants);
 
             ComputePass(CurrentFrame, CommandBuffer, 0, DispatchGroup, DispatchGroup); 
 
@@ -1057,8 +1057,8 @@ void OceanRendering::StartUp() {
     gfxDevice->LoadShader(VK_SHADER_STAGE_VERTEX_BIT, m_SkyboxVertexShader, "../src/Samples/OceanRendering/skybox_vertex.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_SkyboxFragmentShader, "../src/Samples/OceanRendering/skybox_fragment.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_PostEffectsFragmentShader, "../src/Samples/OceanRendering/post_effects_fragment.glsl");
-    gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_IFFT_HeightSlopeXComputeShader, "../src/Samples/OceanRendering/ifft_height_slope_x_compute.glsl");
-    gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_IFFT_JacobianSlopeYComputeShader, "../src/Samples/OceanRendering/ifft_jacobian_slope_y_compute.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_IFFT_HeightComputeShader, "../src/Samples/OceanRendering/ifft_height_compute.glsl");
+    gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_IFFT_SlopesComputeShader, "../src/Samples/OceanRendering/ifft_slopes_compute.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_IFFT_HorizontalDisplacementComputeShader, "../src/Samples/OceanRendering/ifft_horizontal_displacement_compute.glsl");
     gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_WaveDispersionRelationComputeShader, "../src/Samples/OceanRendering/dispersion_relation_compute.glsl");
 //    gfxDevice->LoadShader(VK_SHADER_STAGE_COMPUTE_BIT, m_DisplacementComputeShader, "../src/Samples/OceanRendering/surface_displacement_compute.glsl");
@@ -1548,8 +1548,8 @@ void OceanRendering::RenderScene(const uint32_t currentFrame, const VkCommandBuf
         DispersionRelation(currentFrame, commandBuffer);
     }
 
-    IFFT(currentFrame, commandBuffer, m_IFFT_HeightSlopeXPSO, m_DisplacementMap);
-    IFFT(currentFrame, commandBuffer, m_IFFT_JacobianSlopeYPSO, m_NormalMap);
+    IFFT(currentFrame, commandBuffer, m_IFFT_HeightPSO, m_DisplacementMap);
+    IFFT(currentFrame, commandBuffer, m_IFFT_SlopesPSO, m_NormalMap);
     IFFT(currentFrame, commandBuffer, m_IFFT_HorizontalDisplacementPSO, m_HorizontalDisplacementMap);
 
     gfxDevice->BindDescriptorSet(m_FrameDescriptorSet[currentFrame], commandBuffer, m_DefaultPSO.pipelineLayout, 0, 1);
