@@ -56,8 +56,9 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 
 //layout (set = 0, binding = 1) uniform sampler2D displacement_map;
 //layout (set = 0, binding = 2) uniform sampler2D normal_map;
-layout (set = 0, binding = 4) uniform sampler2D ifft_height_slope;
-layout (set = 0, binding = 5) uniform sampler2D ifft_horizontal_displacement;
+layout (set = 0, binding = 4) uniform sampler2D ifft_height;
+layout (set = 0, binding = 5) uniform sampler2D ifft_normal;
+layout (set = 0, binding = 6) uniform sampler2D ifft_horizontal_displacement;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
@@ -67,12 +68,12 @@ layout (location = 0) in vec3 in_color[];
 layout (location = 1) in vec3 in_normal[];
 layout (location = 2) in vec3 in_pos[];
 
-layout (location = 0) out vec3 out_color;
-layout (location = 1) out vec3 out_normal;
-layout (location = 2) out vec3 out_world_space_position;
-layout (location = 3) out vec3 out_model_space_position;
-layout (location = 4) out vec3 out_original_model_space_pos;
-layout (location = 5) out vec2 out_uv;
+//layout (location = 0) out vec3 out_color;
+layout (location = 0) out vec3 out_normal;
+layout (location = 1) out vec3 out_world_space_position;
+layout (location = 2) out vec3 out_model_space_position;
+//layout (location = 4) out vec3 out_original_model_space_pos;
+layout (location = 3) out vec2 out_uv;
 
 struct wave_function_result {
     vec3 position;
@@ -327,7 +328,7 @@ void main() {
 
     vec3 normal_bottom = mix(n0, n1, u);
     vec3 normal_top = mix(n3, n2, u);
-    out_normal = mix(normal_bottom, normal_top, v);
+//    out_normal = mix(normal_bottom, normal_top, v);
     // Quad interpolation end
 #else
     // Triangle interpolation begin 
@@ -339,9 +340,9 @@ void main() {
 
     precise vec4 original_interpolated_pos = interpolated_pos;
    
-    out_normal = barycentric_coordinates.x * in_normal[0] +
-        barycentric_coordinates.y * in_normal[1] +
-        barycentric_coordinates.z * in_normal[2];
+//    out_normal = barycentric_coordinates.x * in_normal[0] +
+//        barycentric_coordinates.y * in_normal[1] +
+//        barycentric_coordinates.z * in_normal[2];
     // Triangle interpolation end 
 #endif
 
@@ -378,7 +379,7 @@ void main() {
             wave_random_direction_enabled);
 
         interpolated_pos = vec4(w.position, 1.0);
-        out_normal = w.normal.xyz;
+        out_normal = normalize(mat3(push_constants.model) * w.normal.xyz);
 
         /*
         interpolated_pos.y = texture(displacement_map, interpolated_pos.xz).r;
@@ -429,7 +430,7 @@ void main() {
 
         float scale = scene_gpu_data.displacement.y;
 
-        out_normal = normalize(vec3(-idft_result.y * scale, 1.0, -idft_result.z * scale));;
+//        out_normal = normalize(vec3(-idft_result.y * scale, 1.0, -idft_result.z * scale));;
 //        out_normal = vec3(idft_result.y, 1.0, idft_result.z);
     }
 #endif
@@ -439,10 +440,8 @@ void main() {
        
         vec2 tex_coords = interpolated_pos.xz * scale;
         
-        vec4 ifft_result = texture(ifft_height_slope, tex_coords);
-
         if (ifft_horizontal_waves_enabled) {
-            float choppiness_factor = -scene_gpu_data.displacement.x;
+            float choppiness_factor = scene_gpu_data.displacement.x;
 
             vec4 ifft_horizontal_result = texture(ifft_horizontal_displacement, tex_coords);
 
@@ -450,15 +449,19 @@ void main() {
             interpolated_pos.z += (ifft_horizontal_result.g * choppiness_factor);
         }
 
-        interpolated_pos.y = ifft_result.x;
-        out_normal = normalize(vec3(-ifft_result.y * scale, 1.0, -ifft_result.z * scale));
+        if (!generate_normal_per_fragment) {
+            vec2 slopes = texture(ifft_normal, tex_coords).rg;
+            out_normal = vec3(-slopes.x, 1.0, -slopes.y);
+            out_normal = mat3(push_constants.model) * out_normal;
+        }
+
+        out_uv = tex_coords;
+
+        interpolated_pos.y = texture(ifft_height, tex_coords).r;
     }
 
     out_world_space_position = vec3(push_constants.model * interpolated_pos);
     out_model_space_position = interpolated_pos.xyz;
-    out_original_model_space_pos = original_interpolated_pos.xyz;
-
-    out_normal = normalize(mat3(push_constants.model) * out_normal);
 
     gl_Position = scene_gpu_data.projection 
         * scene_gpu_data.view 

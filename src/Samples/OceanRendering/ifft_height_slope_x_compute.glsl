@@ -53,21 +53,16 @@ void main() {
     ivec2 read_uv1 = vertical ? ivec2(current_line, src_x1) : ivec2(src_x1, current_line);
 
     // Read the complex values (x - real, y - imaginary) 
-    vec4 val0;
-    vec4 val1;
+    vec2 val0;
+    vec2 val1;
 
     if (first_pass) {
-        val0.rg = texelFetch(dispersion_relation, read_uv0, 0).rg;
-        val1.rg = texelFetch(dispersion_relation, read_uv1, 0).rg;
-
-        // dispersion_relation_slope rg -> Slope X
-        // dispersion_relation_slope ba -> Slope Y
-        val0.ba = texelFetch(dispersion_relation_slope, read_uv0, 0).rg;
-        val1.ba = texelFetch(dispersion_relation_slope, read_uv1, 0).rg;
+        val0 = texelFetch(dispersion_relation, read_uv0, 0).rg;
+        val1 = texelFetch(dispersion_relation, read_uv1, 0).rg;
 
     } else {
-        val0 = texelFetch(source_image, read_uv0, 0);
-        val1 = texelFetch(source_image, read_uv1, 0);
+        val0 = texelFetch(source_image, read_uv0, 0).rg;
+        val1 = texelFetch(source_image, read_uv1, 0).rg;
     }
 
     // compute twiddle factor for IFFT (positive exponent angle)
@@ -76,18 +71,14 @@ void main() {
     vec2 twiddle = vec2(cos(angle), sin(angle));
 
     // complex multiplication: val1 * twiddle
-    vec4 twiddled_val1;
+    vec2 twiddled_val1;
 
     // height (xy)
     twiddled_val1.x = val1.x * twiddle.x - val1.y * twiddle.y;
     twiddled_val1.y = val1.x * twiddle.y + val1.y * twiddle.x;
 
-    // slope x (zw)
-    twiddled_val1.z = val1.z * twiddle.x - val1.w * twiddle.y;
-    twiddled_val1.w = val1.z * twiddle.y + val1.w * twiddle.x;
-
     // out of place butterfly addition/subtraction 
-    vec4 result = vec4(0.0);
+    vec2 result = vec2(0.0);
 
     // optimization alternative for division by L
     bool is_even = ((coordinate_x >> ifft_push_constants.stage) & 1) == 0;
@@ -103,12 +94,15 @@ void main() {
 
     if (last_pass) {
         result *= (1.0 / float(N * N)); 
-   
-        float final_height = result.x;
-        float final_slope_x = result.z;
-        
-        imageStore(target_image, uv, vec4(final_height, final_slope_x, 0.0, 1.0));
+
+        // Computes (-1)^(uv.x + uv.y)
+        // If (uv.x + uv.y) is odd, sign_flip is -1.0
+        float sign_flip = ((uv.x + uv.y) & 1) == 0 ? 1.0 : -1.0;
+
+        float final_height = result.x * sign_flip;
+
+        imageStore(target_image, uv, vec4(final_height, 0.0, 0.0, 1.0));
     } else {
-        imageStore(target_image, uv, result);
+        imageStore(target_image, uv, vec4(result.x, result.y, 0.0, 0.0));
     }
 }

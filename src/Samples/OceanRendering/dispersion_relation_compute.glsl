@@ -97,15 +97,8 @@ void main() {
         we don't want.
     */
 
-#define TEST
-#ifdef TEST
-    float k_x = (pixel_coord.x < image_size.x / 2.0) ? float(pixel_coord.x) : float(pixel_coord.x - image_size.x);
-    float k_y = (pixel_coord.y < image_size.y / 2.0) ? float(pixel_coord.y) : float(pixel_coord.y - image_size.y);
-    vec2 k = (2.0 * PI * vec2(k_x, k_y)) / wave_parameters.patch_size;
-#else
     vec2 n = vec2(pixel_coord) - (image_size * 0.5);
     vec2 k = (2.0 * PI * n) / wave_parameters.patch_size;
-#endif
 
     float k_length = length(k);
 
@@ -167,8 +160,11 @@ void main() {
     );
 
     vec2 h_t = term_pos + term_neg;
-    vec2 slope_x = vec2(-h_t.y * k_x, h_t.x * k_x);
-    vec2 slope_y = vec2(-h_t.y * k_y, h_t.x * k_y);
+//    vec2 slope_x = vec2(-h_t.y * k_x, h_t.x * k_x);
+//    vec2 slope_y = vec2(-h_t.y * k_y, h_t.x * k_y);
+
+    vec2 slope_x = vec2(-h_t.y * k.x, h_t.x * k.x);
+    vec2 slope_y = vec2(-h_t.y * k.y, h_t.x * k.y);
 
     imageStore(dispersion_relation_ws, pixel_coord, vec4(h_t, 0.0, 0.0));
     imageStore(dispersion_relation_slope, pixel_coord, vec4(slope_x, slope_y));

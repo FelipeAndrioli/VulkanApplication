@@ -53,18 +53,17 @@ void main() {
     ivec2 read_uv1 = vertical ? ivec2(current_line, src_x1) : ivec2(src_x1, current_line);
 
     // Read the complex values (x - real, y - imaginary) 
-    vec2 val0;
-    vec2 val1;
+    vec4 val0;
+    vec4 val1;
 
     if (first_pass) {
         // dispersion_relation_slope rg -> Slope X
         // dispersion_relation_slope ba -> Slope Y
-        val0 = texelFetch(dispersion_relation_slope, read_uv0, 0).ba;
-        val1 = texelFetch(dispersion_relation_slope, read_uv1, 0).ba;
-
+        val0 = texelFetch(dispersion_relation_slope, read_uv0, 0);
+        val1 = texelFetch(dispersion_relation_slope, read_uv1, 0);
     } else {
-        val0 = texelFetch(source_image, read_uv0, 0).ba;
-        val1 = texelFetch(source_image, read_uv1, 0).ba;
+        val0 = texelFetch(source_image, read_uv0, 0);
+        val1 = texelFetch(source_image, read_uv1, 0);
     }
 
     // compute twiddle factor for IFFT (positive exponent angle)
@@ -73,11 +72,14 @@ void main() {
     vec2 twiddle = vec2(cos(angle), sin(angle));
 
     // complex multiplication: val1 * twiddle
-    vec2 twiddled_val1;
+    vec4 twiddled_val1;
 
     // slope 
     twiddled_val1.x = val1.x * twiddle.x - val1.y * twiddle.y;
     twiddled_val1.y = val1.x * twiddle.y + val1.y * twiddle.x;
+
+    twiddled_val1.z = val1.z * twiddle.x - val1.w * twiddle.y;
+    twiddled_val1.w = val1.z * twiddle.y + val1.w * twiddle.x;
 
     // out of place butterfly addition/subtraction 
     vec4 result = vec4(0.0);
@@ -88,22 +90,24 @@ void main() {
 //    if ((coordinate_x / L) % 2 == 0) {
     if (is_even) {
         // even indices get the sum 
-        result = vec4(val0 + twiddled_val1, 0.0, 0.0);
+        result = val0 + twiddled_val1;
     } else {
         // odd indices get the difference
-        result = vec4(val0 - twiddled_val1, 0.0, 0.0);
+        result = val0 - twiddled_val1;
     }
 
     if (last_pass) {
         result *= (1.0 / float(N * N)); 
-   
-        float final_slope_y = result.x;
-       
-        vec4 existing_value = texelFetch(source_image, uv, 0);
+  
+        // Computes (-1)^(uv.x + uv.y)
+        // If (uv.x + uv.y) is odd, sign_flip is -1.0
+        float sign_flip = ((uv.x + uv.y) & 1) == 0 ? 1.0 : -1.0;
 
-        imageStore(target_image, uv, vec4(existing_value.x, existing_value.y, final_slope_y, 1.0));
+        float slope_x = result.x * sign_flip;
+        float slope_z = result.z * sign_flip;
+
+        imageStore(target_image, uv, vec4(slope_x, slope_z, 0.0, 1.0));
     } else {
-        vec4 existing_value = texelFetch(source_image, uv, 0);
-        imageStore(target_image, uv, vec4(existing_value.x, existing_value.y, result.xy));
+        imageStore(target_image, uv, result);
     }
 }

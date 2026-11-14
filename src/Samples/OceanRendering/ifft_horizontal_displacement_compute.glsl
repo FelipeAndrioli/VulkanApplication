@@ -122,9 +122,13 @@ void main() {
 
     if (last_pass) {
         result *= (1.0 / float(N * N)); 
-   
-        float horizontal_displacement_x = result.x;
-        float horizontal_displacement_z = result.z;
+
+        // Computes (-1)^(uv.x + uv.y)
+        // If (uv.x + uv.y) is odd, sign_flip is -1.0
+        float sign_flip = ((uv.x + uv.y) & 1) == 0 ? 1.0 : -1.0;
+  
+        float horizontal_displacement_x = result.x * sign_flip;
+        float horizontal_displacement_z = result.z * sign_flip;
         
         imageStore(target_image, uv, vec4(horizontal_displacement_x, horizontal_displacement_z, 0.0, 1.0));
     } else {

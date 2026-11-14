@@ -138,30 +138,12 @@ std::vector<glm::vec4> GenerateWaveSpectrum(
 
             uint32_t XNeg = (SpectrumDimensions - X) % SpectrumDimensions;
             uint32_t YNeg = (SpectrumDimensions - Y) % SpectrumDimensions;
-#define TEST
-#ifdef TEST
-            float KX = (X < IntSpectrumDimension / 2.0f) ? X : X - IntSpectrumDimension;
-            KX *= (2.0f * PI) / PatchSizeMeters;
 
-            glm::vec2 K = glm::vec2(KX, KY);
-
-
-            float NK_X = (XNeg < IntSpectrumDimension / 2.0) ? XNeg : XNeg - IntSpectrumDimension;
-            NK_X *= (2.0f * PI) / PatchSizeMeters;
-
-            float NK_Y = (YNeg < IntSpectrumDimension / 2.0) ? YNeg : YNeg - IntSpectrumDimension;
-            NK_Y *= (2.0f * PI) / PatchSizeMeters;
-
-            glm::vec2 NK = glm::vec2(NK_X, NK_Y);
-
-#else 
             glm::vec2 N = FragCoord - HalfResolution;
             glm::vec2 K = (2.0f * PI * N) / PatchSizeMeters;
             
             glm::vec2 NN = glm::vec2(XNeg, YNeg) - HalfResolution;
             glm::vec2 NK = (2.0f * PI * NN) / PatchSizeMeters;
-
-#endif
 
             float P = Phillips(K, WindDirection, WindSpeed, Amplitude, WaveSuppressionThreshold);
             float NP = Phillips(NK, WindDirection, WindSpeed, Amplitude, WaveSuppressionThreshold);

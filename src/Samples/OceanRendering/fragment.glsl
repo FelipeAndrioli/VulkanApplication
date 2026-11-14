@@ -2,12 +2,12 @@
 
 #define MAX_WAVES 32
 
-layout (location = 0) in vec3 in_frag_color;
-layout (location = 1) in vec3 in_frag_normal;
-layout (location = 2) in vec3 in_frag_world_space_pos;
-layout (location = 3) in vec3 in_frag_model_space_pos;
-layout (location = 4) in vec3 in_frag_original_model_space_pos;
-layout (location = 5) in vec2 in_uv;
+//layout (location = 0) in vec3 in_frag_color;
+layout (location = 0) in vec3 in_frag_normal;
+layout (location = 1) in vec3 in_frag_world_space_pos;
+layout (location = 2) in vec3 in_frag_model_space_pos;
+//layout (location = 4) in vec3 in_frag_original_model_space_pos;
+layout (location = 3) in vec2 in_uv;
 
 layout (location = 0) out vec4 pixel_color;
 
@@ -50,6 +50,9 @@ layout (std140, set = 0, binding = 0) readonly buffer SceneGPUData {
 } scene_gpu_data;
 
 layout (set = 0, binding = 1) uniform samplerCube cube_texture;
+//layout (set = 0, binding = 4) uniform sampler2D ifft_height;
+layout (set = 0, binding = 5) uniform sampler2D ifft_normal;
+//layout (set = 0, binding = 6) uniform sampler2D ifft_horizontal_displacement;
 
 layout (push_constant) uniform PushConstants {
 	mat4 model;
@@ -219,22 +222,35 @@ wave_function_result gerstner_wave(vec4 pos, float time, bool circular_waves_ena
 
 void main() {
 
-    bool debug_render_normals                       = bool(scene_gpu_data.flags & 1);
-    bool circular_waves_enabled                     = bool(scene_gpu_data.flags & (1 << 1));
-    bool debug_render_world_space_pos               = bool(scene_gpu_data.flags & (1 << 2));
-    bool domain_warping_enabled                     = bool(scene_gpu_data.flags & (1 << 3));
-    bool UNUSED_tessellation_enabled                = bool(scene_gpu_data.flags & (1 << 4));
-    bool reflection_enabled                         = bool(scene_gpu_data.flags & (1 << 5));
-    bool wave_random_direction_enabled              = bool(scene_gpu_data.flags & (1 << 6));
-    bool generate_normal_per_fragment               = bool(scene_gpu_data.flags & (1 << 7));
+    bool debug_render_normals               = bool(scene_gpu_data.flags & 1);
+    bool circular_waves_enabled             = bool(scene_gpu_data.flags & (1 << 1));
+    bool debug_render_world_space_pos       = bool(scene_gpu_data.flags & (1 << 2));
+    bool domain_warping_enabled             = bool(scene_gpu_data.flags & (1 << 3));
+    bool tessellation_enabled               = bool(scene_gpu_data.flags & (1 << 4));
+    bool reflection_enabled                 = bool(scene_gpu_data.flags & (1 << 5));
+    bool wave_random_direction_enabled      = bool(scene_gpu_data.flags & (1 << 6));
+
+    bool generate_normal_per_fragment       = bool(scene_gpu_data.flags & (1 << 7));
+    bool fbm_waves_enabled                  = bool(scene_gpu_data.flags & (1 << 8));
+    bool ifft_waves_enabled                 = bool(scene_gpu_data.flags & (1 << 9));
+    bool ifft_horizontal_waves_enabled      = bool(scene_gpu_data.flags & (1 << 10));
 
     float time = scene_gpu_data.time;
     vec4 pos = vec4(in_frag_model_space_pos, 1.0);
 
-    vec3 normal = in_frag_normal;
+    vec3 normal = vec3(0.0);
+
+    if (ifft_waves_enabled && generate_normal_per_fragment) {
+        vec2 slopes = texture(ifft_normal, in_uv).rg;
+        normal = normalize(transpose(inverse(mat3(push_constants.model))) * vec3(-slopes.x, 1.0, -slopes.y));
+    } else {
+        normal = normalize(in_frag_normal);
+    }
 
     if (debug_render_normals) {
-        pixel_color = vec4(normal * 5.0, 1.0);
+        pixel_color = vec4(normal * 0.5 + 0.5, 1.0); 
+    } else if (debug_render_world_space_pos) {
+        pixel_color = vec4(in_frag_world_space_pos, 1.0);
     } else {
 
         float light_strength = scene_gpu_data.light_position.a;
@@ -256,7 +272,7 @@ void main() {
         vec3 halfway_dir = normalize(light_dir + view_dir);
         
         float spec = pow(max(dot(normal, halfway_dir), 0.0), scene_gpu_data.water_shininess);
-        vec3 specular = (spec * scene_gpu_data.light_color.rgb) * light_specular_factor;
+        vec3 specular = (spec * scene_gpu_data.light_color.rgb) * (light_specular_factor + scene_gpu_data.specular_displacement);
 
         // Note: Schlick's Fresnel approximation from wikipedia.
         // According to Schlick's model, the specular reflection coefficient R can be approximated by:
@@ -276,13 +292,8 @@ void main() {
    
         vec3 color = ambient + (diffuse + specular * fresnel) * light_strength + reflection;
 
-
         color = pow(color, vec3(1.0 / 2.2));
 
-        if (debug_render_world_space_pos) {
-            pixel_color = vec4(in_frag_world_space_pos, 1.0);
-        } else {
-            pixel_color = vec4(color, 1.0);
-        }
+        pixel_color = vec4(color, 1.0); 
     }
 }
